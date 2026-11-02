@@ -1,168 +1,176 @@
-from typing import Dict, List, Literal, Optional, Any
+"""
+Team 3: 맞춤형 문서 생성 및 서식 검증 서브그래프 (docgen.py)
+작업 유형(task_type)에 따라 전문 문서를 생성하고, 환경 규칙 및 양식을 검증한 뒤 마크다운 파일로 저장합니다.
+"""
+from typing import Dict, Any, List, Literal
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
 
 from state import ShipAgentState
+from tools.document_tools import export_work_order_file
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-# --------------------------------------------------------------------------
-# 1. Pydantic 스키마 정의
-# --------------------------------------------------------------------------
+# ==============================================================================
+# 1. Pydantic 정형 출력 스키마 정의
+# ==============================================================================
 class WeldWorkOrder(BaseModel):
-    document_title: str = Field(default="표준 용접 작업지시서 (Work Order)")
-    material: str = Field(..., description="모재 강종 (예: SS400, AH36)")
-    thickness: str = Field(..., description="모재 판 두께 (예: 10T)")
-    target_current: str = Field(..., description="권장 용접 전류 (A 단위)")
-    target_voltage: str = Field(..., description="권장 용접 전압 (V 단위)")
-    travel_speed: str = Field(..., description="권장 주행 속도 (mm/s 단위)")
-    torch_angle: str = Field(..., description="권장 토치 각도")
-    weather_condition: Optional[Dict[str, Any]] = Field(default=None, description="작업 현장 기상 데이터")
-    safety_precautions: List[str] = Field(
-        default_factory=list,
-        description="기온, 풍속 및 현장 기본 규정에 따른 필수 안전 수칙 목록 (최소 2건 이상)"
-    )
+    document_title: str = Field(default="표준 용접 작업지시서 (Work Order)", description="문서 제목")
+    material: str = Field(description="모재 강종 (예: SS400, AH36)")
+    thickness: str = Field(description="모재 두께 (예: 10T, 20T)")
+    target_current: str = Field(description="용접 전류 (예: 220A)")
+    target_voltage: str = Field(description="용접 전압 (예: 24V)")
+    travel_speed: str = Field(description="용접 속도 (예: 5.0mm/s)")
+    torch_angle: str = Field(description="토치 각도 (예: 70도)")
+    weather_condition: Dict[str, Any] = Field(description="반영된 현장 기상 상태")
+    safety_precautions: List[str] = Field(description="기상 및 규격 기반 필수 안전/공정 수칙 목록")
 
 class HeavyLiftingPlan(BaseModel):
-    document_title: str = Field(default="중량물 취급 및 인양 작업계획서 (Safety Plan)")
-    target_object: str = Field(..., description="인양 대상 블록/설비 명칭")
-    sling_angle_limit: str = Field(default="60도 이내", description="슬링벨트 결속 각도 제한")
-    safety_factor: str = Field(default="5 이상", description="와이어로프 법정 안전계수")
-    wind_status: str = Field(..., description="현장 풍속 및 작업 허용 여부 판정")
-    weather_condition: Optional[Dict[str, Any]] = Field(default=None, description="작업 현장 기상 데이터")
-    safety_precautions: List[str] = Field(
-        default_factory=list,
-        description="강풍 대응 및 낙하 방지 안전 조치 목록"
+    document_title: str = Field(default="중량물 취급 작업계획서 (Lifting Plan)", description="문서 제목")
+    target_equipment: str = Field(description="작업 대상 및 사용 장비 (예: 골리앗 크레인 블록 인양)")
+    current_wind_speed: str = Field(description="실시간 풍속 정보")
+    operation_permission: str = Field(description="작업 가능 여부 (작업 승인 / 작업 일시 중지)")
+    safety_guidelines: List[str] = Field(description="풍속 제한 및 KOSHA 안전 수칙")
+
+weld_llm = llm.with_structured_output(WeldWorkOrder, method="function_calling")
+heavy_llm = llm.with_structured_output(HeavyLiftingPlan, method="function_calling")
+
+# ==============================================================================
+# 2. 전문 작성 에이전트 노드 정의
+# ==============================================================================
+def weld_order_agent_node(state: ShipAgentState) -> Dict[str, Any]:
+    """[Agent 3-1: 용접 작업지시서 전문 작성]"""
+    params = state.get("extracted_params", {})
+    weather = state.get("weather_info", {})
+    safety_eval = state.get("safety_evaluation", {})
+    retrieved_docs = "\n".join(state.get("retrieved_docs", []))
+    mandatory_rules = safety_eval.get("mandatory_rules", [])
+
+    prompt = (
+        "당신은 조선소 표준 공정 지시서 작성 전문가입니다. "
+        "아래 제공된 사내 규격 문서와 실시간 현장 기상 데이터를 바탕으로 표준 용접 작업지시서를 작성하세요.\n\n"
+        f"[작업 조건]\n"
+        f"- 모재 재질: {params.get('material', 'SS400')}\n"
+        f"- 모재 두께: {params.get('thickness', '10T')}\n"
+        f"- 이음 형상: {params.get('joint_type', '맞대기')}\n\n"
+        f"[사내 규격 인출 문서]\n{retrieved_docs}\n\n"
+        f"[실시간 현장 기상 환경]\n"
+        f"- 위치: {weather.get('location')}\n"
+        f"- 기온: {weather.get('temperature')} ℃\n"
+        f"- 풍속: {weather.get('wind_speed')} m/s\n\n"
+        f"[환경 검증 도구가 판정한 필수 안전 준수사항]\n"
+        f"{mandatory_rules}\n\n"
+        "※ 지침: 외기 기온이 5℃ 초과일 경우 저온 예열 문구를 절대 넣지 마십시오. "
+        "환경 검증 도구가 판정한 필수 준수사항과 표준 보호구 착용 지침을 빠짐없이 안전수칙 목록에 반영하세요."
     )
 
-class TechnicalQAAnswer(BaseModel):
-    summary: str = Field(..., description="기술 질의에 대한 명확한 핵심 답변 요약")
-    standard_reference: str = Field(..., description="근거 사내 WPS 규정 및 KOSHA 기준 조항")
-    detailed_guidance: List[str] = Field(default_factory=list, description="세부 작업 수칙")
+    res: WeldWorkOrder = weld_llm.invoke(prompt)
+    doc_dict = res.model_dump()
+    doc_dict["weather_condition"] = weather
+    return {"generated_document": doc_dict}
 
-# --------------------------------------------------------------------------
-# 2. 전문 작성 노드
-# --------------------------------------------------------------------------
-def weld_order_agent_node(state: ShipAgentState) -> Dict:
-    """[Agent 1: 용접 지시서 전문 작성] WPS 규격 + 현장 기상(기온, 풍속) 결합 지시서 작성"""
-    user_query = state.get("user_query", "")
-    params = state.get("extracted_params", {})
-    docs = state.get("retrieved_docs", [])
+def heavy_plan_agent_node(state: ShipAgentState) -> Dict[str, Any]:
+    """[Agent 3-2: 중량물 취급 안전계획서 전문 작성]"""
+    weather = state.get("weather_info", {})
+    safety_eval = state.get("safety_evaluation", {})
+    retrieved_docs = "\n".join(state.get("retrieved_docs", []))
+    mandatory_rules = safety_eval.get("mandatory_rules", [])
+
+    prompt = (
+        "당신은 조선소 산업안전 관리자입니다. KOSHA 지침과 실시간 기상 데이터를 반영해 중량물 작업계획서를 작성하세요.\n\n"
+        f"[질문 및 조건]: {state.get('user_query')}\n"
+        f"[현장 기상]: {weather}\n"
+        f"[KOSHA 안전 지침 문서]:\n{retrieved_docs}\n\n"
+        f"[환경 검증 도구가 판정한 필수 안전 준수사항]:\n{mandatory_rules}\n\n"
+        "※ 지침: 실시간 풍속이 10m/s 초과인 경우 반드시 작업 일시 중지(STOP)를 명시하고, "
+        "슬링벨트 체결 각도 및 신호수 배치 수칙을 포함하십시오."
+    )
+
+    res: HeavyLiftingPlan = heavy_llm.invoke(prompt)
+    return {"generated_document": res.model_dump()}
+
+def general_qa_agent_node(state: ShipAgentState) -> Dict[str, Any]:
+    """[Agent 3-3: 도메인 기술 질의응답 전담 작성]"""
+    retrieved_docs = "\n".join(state.get("retrieved_docs", []))
     weather = state.get("weather_info", {})
 
-    system_prompt = (
-        "당신은 조선소 생산기술팀 용접 시방서 전문 엔지니어입니다.\n"
-        "인출된 [사내 규격 문서]와 현장 [실시간 기상 데이터]를 엄격히 분석하여 '표준 용접 작업지시서'를 작성하세요.\n\n"
-        "※ 안전수칙(safety_precautions) 필수 작성 원칙:\n"
-        "1. [외기 온도 판정]: 외기온도가 5℃ 이하인 경우, '모재 온도가 5℃ 이하이므로 100℃ 이상 예열 필수'를 명시하세요.\n"
-        "2. [풍속 환경 판정]: 실시간 풍속이 2.0m/s 이상인 경우, 보호가스(Shielding Gas) 날림 방지를 위한 '방풍막(Wind Screen) 설치 필수' 수칙을 반드시 추가하세요.\n"
-        "3. [기본 안전 수칙]: 기상 영향이 없더라도 'FCAW 용접 전용 보호구(차광 차면, 방진마스크) 착용' 등 현장 필수 수칙을 반드시 1건 이상 포함하세요.\n"
-        "4. 안전수칙(safety_precautions)은 절대로 빈 배열([])로 두지 마세요.\n\n"
-        f"[추출 파라미터]: {params}\n"
-        f"[사내 규격 문서]:\n{chr(10).join(docs)}\n"
-        f"[현장 기상]: {weather}"
+    prompt = (
+        "당신은 선박 제조 엔지니어링 전문가입니다. 사내 표준 시방서 및 안전 규정을 근거로 "
+        "사용자의 기술 질문에 대해 출처를 명시하여 전문적이고 친절하게 답변하세요.\n\n"
+        f"질문: {state.get('user_query')}\n\n"
+        f"참조 규격 문서:\n{retrieved_docs}\n\n"
+        f"현장 기상 참고:\n{weather}"
     )
 
-    order = llm.with_structured_output(
-        WeldWorkOrder,
-        method="function_calling"
-    ).invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_query)
-    ])
-
+    ans = llm.invoke(prompt)
     return {
-        "generated_document": order.model_dump(),
-        "final_answer": "현장 기상 및 사내 WPS 규정을 반영한 표준 용접 작업지시서 작성을 완료했습니다."
+        "final_answer": ans.content,
+        "generated_document": None
     }
 
-def heavy_plan_agent_node(state: ShipAgentState) -> Dict:
-    """[Agent 2: 중량물 계획서 작성]"""
-    user_query = state.get("user_query", "")
-    params = state.get("extracted_params", {})
-    docs = state.get("retrieved_docs", [])
-    weather = state.get("weather_info", {})
-
-    system_prompt = (
-        "당신은 조선소 산업안전보건 관리자입니다.\n"
-        "인출된 [안전 지침]과 현장 [기상 데이터]를 반영해 중량물 작업계획서를 작성하세요.\n"
-        "실시간 풍속이 10m/s 초과 시 인양 작업을 일시 중지하도록 판정하세요.\n\n"
-        f"[추출 파라미터]: {params}\n"
-        f"[사내 지침 문서]:\n{chr(10).join(docs)}\n"
-        f"[현장 기상]: {weather}"
-    )
-
-    plan = llm.with_structured_output(
-        HeavyLiftingPlan,
-        method="function_calling"
-    ).invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_query)
-    ])
-
-    return {
-        "generated_document": plan.model_dump(),
-        "final_answer": "실시간 풍속 및 KOSHA 안전 지침을 반영한 중량물 취급계획서 작성을 완료했습니다."
-    }
-
-def general_qa_agent_node(state: ShipAgentState) -> Dict:
-    """[Agent 3: 기술 Q&A 작성]"""
-    user_query = state.get("user_query", "")
-    docs = state.get("retrieved_docs", [])
-
-    system_prompt = (
-        "당신은 조선소 기술 상담 엔지니어입니다. 제공된 사내 규격 문서만을 근거로 답변하세요.\n\n"
-        f"[사내 규정 문서]:\n{chr(10).join(docs)}"
-    )
-
-    answer = llm.with_structured_output(
-        TechnicalQAAnswer,
-        method="function_calling"
-    ).invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_query)
-    ])
-
-    return {
-        "generated_document": answer.model_dump(),
-        "final_answer": answer.summary
-    }
-
-def output_validator_node(state: ShipAgentState) -> Dict:
-    """[Agent 4: 서식 검증 및 안전수칙 Fallback 방어 노드]"""
-    generated_doc = state.get("generated_document", {})
+# ==============================================================================
+# 3. 서식 검증, 규칙 방어 및 파일 저장 노드 (Output Validator)
+# ==============================================================================
+def output_validator_node(state: ShipAgentState) -> Dict[str, Any]:
+    """[Agent 3-4: 서식 검증, 환경 규칙 필터링 및 Markdown 파일 저장 도구 호출]"""
     task_type = state.get("task_type", "general_qa")
+    generated_doc = state.get("generated_document")
     weather = state.get("weather_info", {})
+    file_export_msg = None
 
     if task_type == "weld_order" and generated_doc:
-        precautions = generated_doc.get("safety_precautions", [])
-        wind_speed = float(weather.get("wind_speed", 0.0))
         temp = float(weather.get("temperature", 20.0))
+        wind_speed = float(weather.get("wind_speed", 0.0))
+        precautions = generated_doc.get("safety_precautions", [])
 
-        # 1. 풍속 2.0m/s 이상인데 방풍 수칙이 누락된 경우 강제 주입
-        has_wind_rule = any("방풍" in p or "풍속" in p for p in precautions)
-        if wind_speed >= 2.0 and not has_wind_rule:
-            precautions.append(f"현재 실시간 풍속이 {wind_speed}m/s이므로, 보호가스 비산 방지용 방풍막(Wind Screen)을 설치하십시오.")[cite: 3]
+        # 1. 기온 5℃ 초과 시, LLM이 잘못 생성한 예열 문구 강제 제거
+        if temp > 5.0:
+            precautions = [p for p in precautions if "예열" not in p]
 
-        # 2. 기온 5℃ 이하 예열 수칙 누락 방어
-        has_temp_rule = any("예열" in p for p in precautions)
-        if temp <= 5.0 and not has_temp_rule:
-            precautions.insert(0, f"현재 외기온도가 {temp}℃(5℃ 이하)이므로, 용접 전 모재 100℃ 이상 예열이 필수입니다.")[cite: 1, 3]
+        # 2. 기온 5℃ 이하인 경우, 예열 문구가 빠졌다면 강제 추가
+        if temp <= 5.0 and not any("예열" in p for p in precautions):
+            precautions.insert(0, f"저온 환경 규정: 외기온도 {temp}℃로 모재 100℃ 이상 예열 필수 (KOSHA 지침)")
 
-        # 3. 기본 수칙 보완
-        if not precautions:
-            precautions.append("용접 전용 보안경 및 차광 보호구 착용 철저")
+        # 3. 풍속 2.0m/s 이상 시 이동식 방풍막 설치 수칙 확인
+        if wind_speed >= 2.0 and not any("방풍" in p for p in precautions):
+            precautions.append("방풍 대책 수립: 차폐가스 보호를 위해 작업 구역 이동식 방풍막 설치 필수")
+
+        # 4. 필수 보호구 착용 수칙 방어
+        if not any("보호구" in p for p in precautions):
+            precautions.append("FCAW 용접 전용 보호구(차광 차면, 방진마스크) 착용 필수")
 
         generated_doc["safety_precautions"] = precautions
 
-    return {"generated_document": generated_doc}
+        # 🛠️ 파일 저장 도구(@tool) 호출
+        file_export_msg = export_work_order_file.invoke({
+            "document_data": generated_doc,
+            "file_prefix": "weld_order"
+        })
 
-# --------------------------------------------------------------------------
-# 3. 서브그래프 빌드
-# --------------------------------------------------------------------------
-def route_doc_generator(state: ShipAgentState) -> Literal["weld_order_agent", "heavy_plan_agent", "general_qa_agent"]:
+    elif task_type == "heavy_plan" and generated_doc:
+        # 중량물 계획서 파일 저장 도구(@tool) 호출
+        file_export_msg = export_work_order_file.invoke({
+            "document_data": generated_doc,
+            "file_prefix": "heavy_plan"
+        })
+
+    # 최종 답변 정리
+    base_answer = state.get("final_answer") or "표준 문서 작성을 완료했습니다."
+    if file_export_msg:
+        final_text = f"{base_answer}\n[{file_export_msg}]"
+    else:
+        final_text = base_answer
+
+    return {
+        "generated_document": generated_doc,
+        "final_answer": final_text
+    }
+
+# ==============================================================================
+# 4. 서브그래프 라우팅 및 빌드
+# ==============================================================================
+def route_by_task_type(state: ShipAgentState) -> Literal["weld_order_agent", "heavy_plan_agent", "general_qa_agent"]:
     task_type = state.get("task_type", "general_qa")
     if task_type == "weld_order":
         return "weld_order_agent"
@@ -179,11 +187,11 @@ builder.add_node("output_validator", output_validator_node)
 
 builder.add_conditional_edges(
     START,
-    route_doc_generator,
+    route_by_task_type,
     {
         "weld_order_agent": "weld_order_agent",
         "heavy_plan_agent": "heavy_plan_agent",
-        "general_qa_agent": "general_qa_agent",
+        "general_qa_agent": "general_qa_agent"
     }
 )
 
