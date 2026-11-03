@@ -42,3 +42,5 @@ class ShipAgentState(TypedDict, total=False):
     generated_document: Optional[Dict[str, Any]]  # 표준 작업지시서 / 계획서 JSON
 
     is_param_complete: Optional[Literal["yes", "no"]]  # 필수 정보 완비 여부
+
+    safety_evaluation: Optional[Dict[str, Any]]  # 안전 룰 검증 결과 (PASS/STOP, 주의사항)
