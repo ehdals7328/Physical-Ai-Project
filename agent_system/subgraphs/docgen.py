@@ -161,18 +161,34 @@ def output_validator_node(state: ShipAgentState) -> Dict[str, Any]:
 def save_audit_node(state: ShipAgentState) -> dict:
     """[Agent 3-5: 작업 이력 감사 DB 기록 노드]"""
     session_id = state.get("session_id") or "test_session_id"
-    user_query = state.get("user_query") or ""
+    last_query = state.get("user_query") or ""
+    params = state.get("extracted_params") or {}
+    messages = state.get("messages") or []
+
+    # 1. messages 리스트에서 사용자가 입력했던 모든 대화(HumanMessage) 추출
+    user_history = [
+        m.content for m in messages 
+        if m.__class__.__name__ == "HumanMessage"
+    ]
+    
+    # 만약 messages에 아직 현재 입력이 안 들어갔거나 비어있다면 last_query 사용
+    if not user_history and last_query:
+        user_history = [last_query]
+
+    dialogue_flow = " -> ".join(user_history)
+
+    # 2. 전체 대화 흐름과 누적된 추출 조건(강종, 두께, 위치 등)을 하나의 문자열로 결합
+    full_query_log = f"[추출조건: {params}] | 대화내역: {dialogue_flow}"
 
     try:
         res = log_inspection_history.invoke({
             "session_id": session_id,
-            "query": user_query,
+            "query": full_query_log,  # 👈 마지막 단어 대신 전체 내역 전달!
             "status": "PASS"
         })
     except Exception as e:
         res = f"이력 기록 예외: {str(e)}"
 
-    # ⚠️ 반드시 딕셔너리를 명시적으로 반환해야 State에 정상 병합됩니다.
     return {"audit_result": res}
 
 # ==============================================================================
