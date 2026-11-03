@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white fw-bold">🔑 로그인 (USERS 인증)</div>
+            <div class="card-body">
+                <form id="loginForm">
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">아이디 (USERNAME)</label>
+                        <input type="text" id="loginUsername" class="form-control" placeholder="예: welder_kim" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">비밀번호 (PASSWORD)</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="비밀번호 입력" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">로그인</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white fw-bold">📝 신규 작업자 계정 생성 (USERS 테이블 등록)</div>
+            <div class="card-body">
+                <form id="regForm">
+                    <div class="row mb-2">
+                        <div class="col">
+                            <label class="form-label small fw-bold">아이디 (USERNAME)</label>
+                            <input type="text" id="regUsername" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label small fw-bold">비밀번호 (암호화 저장)</label>
+                            <input type="password" id="regPassword" class="form-control form-control-sm" required>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col">
+                            <label class="form-label small fw-bold">표시 이름 (DISPLAY_NAME)</label>
+                            <input type="text" id="regDisplayName" class="form-control form-control-sm" placeholder="김용접 기장">
+                        </div>
+                        <div class="col">
+                            <label class="form-label small fw-bold">이메일 (EMAIL)</label>
+                            <input type="email" id="regEmail" class="form-control form-control-sm" placeholder="kim@shipyard.com">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">권한 (ROLE)</label>
+                        <select id="regRole" class="form-select form-select-sm">
+                            <option value="USER">USER (일반 작업자)</option>
+                            <option value="ADMIN">ADMIN (품질 관리자)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-outline-dark w-100 fw-bold">계정 생성하기</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$("#loginForm").on("submit", async function(e) {
+    e.preventDefault();
+    const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            username: $("#loginUsername").val(),
+            password: $("#loginPassword").val()
+        })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if (res.ok) window.location.href = "/work-analysis";
+});
+
+$("#regForm").on("submit", async function(e) {
+    e.preventDefault();
+    const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            username: $("#regUsername").val(),
+            password: $("#regPassword").val(),
+            display_name: $("#regDisplayName").val(),
+            email: $("#regEmail").val(),
+            role: $("#regRole").val()
+        })
+    });
+    const data = await res.json();
+    alert(data.message);
+    if (res.ok) {
+        $("#loginUsername").val($("#regUsername").val());
+        $("#loginPassword").val($("#regPassword").val());
+        refreshSystemStatus();
+    }
+});
+</script>
+{% endblock %}
