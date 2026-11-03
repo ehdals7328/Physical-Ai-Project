@@ -13,7 +13,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from state import ShipAgentState
-from subgraphs import team1_subgraph, team2_subgraph, team3_subgraph
+from .subgraphs import team1_subgraph, team2_subgraph, team3_subgraph
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 

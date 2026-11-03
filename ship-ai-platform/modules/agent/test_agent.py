@@ -7,7 +7,7 @@ from langchain_core.messages import HumanMessage
 
 load_dotenv()
 
-from supervisor import ship_agent_app
+from .supervisor import ship_agent_app
 
 OUTPUT_DIR = Path("./generated_docs")
 

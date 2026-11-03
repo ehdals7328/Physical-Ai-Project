@@ -26,3 +26,17 @@ numpy>=1.26.0
 python-dotenv>=1.0.0
 requests>=2.31.0
 pydantic>=2.7.0
+
+
+#------------------------------------
+pip install openai
+
+pip install "mcp[cli]==1.30.0"
+
+pip install -U langgraph langchain langchain-openai langchain-core langchain-tavily python-dotenv
+
+pip install langchain-mcp-adapters langchain-chroma chromadb langchain-community langchain-text-splitters pymupdf httpx
+
+pip install flask flask-cors
+
+python -m pip install "sentence-transformers>=3.0.0" "Flask-SQLAlchemy>=3.1.0" "SQLAlchemy>=2.0.0" "waitress>=3.0.0" "oracledb>=2.0.0" "tabulate>=0.9.0" "numpy>=1.26.0" "requests>=2.31.0" "pydantic>=2.7.0"
