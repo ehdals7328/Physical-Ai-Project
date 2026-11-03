@@ -10,17 +10,16 @@ from .retriever_tools import (
     build_safety_retriever_tool,
 )
 
-# 2. 물리·환경 안전 규칙 및 파일 출력 도구
 from .domain_tools import validate_environmental_rules
-from .document_tools import export_work_order_file
-
-# 3. 실시간 FastMCP 기상 클라이언트
+from .document_tools import export_work_order_file, log_inspection_history
+from .retriever_tools import wps_retriever_tool, safety_retriever_tool
 from .weather_mcp_client import get_realtime_weather_from_mcp
 
 __all__ = [
-    "wps_retriever_tool",
-    "safety_retriever_tool",
     "validate_environmental_rules",
     "export_work_order_file",
+    "log_inspection_history",
+    "wps_retriever_tool",
+    "safety_retriever_tool",
     "get_realtime_weather_from_mcp",
 ]

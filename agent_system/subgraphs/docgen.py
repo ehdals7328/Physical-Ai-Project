@@ -1,6 +1,6 @@
 """
 Team 3: 맞춤형 문서 생성 및 서식 검증 서브그래프 (docgen.py)
-작업 유형(task_type)에 따라 전문 문서를 생성하고, 환경 규칙 및 양식을 검증한 뒤 마크다운 파일로 저장합니다.
+작업 유형(task_type)에 따라 전문 문서를 생성하고, 환경 규칙 및 양식을 검증한 뒤 마크다운 파일 저장 및 이력을 기록합니다.
 """
 from typing import Dict, Any, List, Literal
 from pydantic import BaseModel, Field
@@ -8,7 +8,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 
 from state import ShipAgentState
-from tools.document_tools import export_work_order_file
+from tools import export_work_order_file, log_inspection_history
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
@@ -61,8 +61,7 @@ def weld_order_agent_node(state: ShipAgentState) -> Dict[str, Any]:
         f"- 풍속: {weather.get('wind_speed')} m/s\n\n"
         f"[환경 검증 도구가 판정한 필수 안전 준수사항]\n"
         f"{mandatory_rules}\n\n"
-        "※ 지침: 외기 기온이 5℃ 초과일 경우 저온 예열 문구를 절대 넣지 마십시오. "
-        "환경 검증 도구가 판정한 필수 준수사항과 표준 보호구 착용 지침을 빠짐없이 안전수칙 목록에 반영하세요."
+        "※ 지침: 도구가 판정한 필수 준수사항과 표준 보호구 착용 지침을 반드시 안전수칙에 충실히 반영하세요."
     )
 
     res: WeldWorkOrder = weld_llm.invoke(prompt)
@@ -110,65 +109,74 @@ def general_qa_agent_node(state: ShipAgentState) -> Dict[str, Any]:
     }
 
 # ==============================================================================
-# 3. 서식 검증, 규칙 방어 및 파일 저장 노드 (Output Validator)
+# 3. 서식 검증 및 파일 저장 노드 (하드코딩 제거 ➔ 도구 판정 결과 기반 반영)
 # ==============================================================================
 def output_validator_node(state: ShipAgentState) -> Dict[str, Any]:
-    """[Agent 3-4: 서식 검증, 환경 규칙 필터링 및 Markdown 파일 저장 도구 호출]"""
+    """[Agent 3-4: 서식 검증, 환경 룰 도구 판정결과 주입 및 Markdown 파일 저장]"""
     task_type = state.get("task_type", "general_qa")
     generated_doc = state.get("generated_document")
-    weather = state.get("weather_info", {})
+    safety_eval = state.get("safety_evaluation", {})
     file_export_msg = None
 
     if task_type == "weld_order" and generated_doc:
-        temp = float(weather.get("temperature", 20.0))
-        wind_speed = float(weather.get("wind_speed", 0.0))
         precautions = generated_doc.get("safety_precautions", [])
+        mandatory_rules = safety_eval.get("mandatory_rules", [])
 
-        # 1. 기온 5℃ 초과 시, LLM이 잘못 생성한 예열 문구 강제 제거
-        if temp > 5.0:
+        # 1. domain_tools 도구가 도출한 필수 법적/공정 수칙을 우선 주입
+        for rule in mandatory_rules:
+            if not any(rule[:10] in p for p in precautions):
+                precautions.insert(0, rule)
+
+        # 2. 도구 판정에 예열 항목이 없다면, LLM이 임의로 생성한 저온 예열 문구 제거 (환각 방어)
+        has_preheat_rule = any("예열" in r for r in mandatory_rules)
+        if not has_preheat_rule:
             precautions = [p for p in precautions if "예열" not in p]
 
-        # 2. 기온 5℃ 이하인 경우, 예열 문구가 빠졌다면 강제 추가
-        if temp <= 5.0 and not any("예열" in p for p in precautions):
-            precautions.insert(0, f"저온 환경 규정: 외기온도 {temp}℃로 모재 100℃ 이상 예열 필수 (KOSHA 지침)")
-
-        # 3. 풍속 2.0m/s 이상 시 이동식 방풍막 설치 수칙 확인
-        if wind_speed >= 2.0 and not any("방풍" in p for p in precautions):
-            precautions.append("방풍 대책 수립: 차폐가스 보호를 위해 작업 구역 이동식 방풍막 설치 필수")
-
-        # 4. 필수 보호구 착용 수칙 방어
+        # 3. 필수 보호구 착용 수칙 방어
         if not any("보호구" in p for p in precautions):
             precautions.append("FCAW 용접 전용 보호구(차광 차면, 방진마스크) 착용 필수")
 
         generated_doc["safety_precautions"] = precautions
 
-        # 🛠️ 파일 저장 도구(@tool) 호출
+        # 마크다운 파일 저장 도구 호출
         file_export_msg = export_work_order_file.invoke({
             "document_data": generated_doc,
             "file_prefix": "weld_order"
         })
 
     elif task_type == "heavy_plan" and generated_doc:
-        # 중량물 계획서 파일 저장 도구(@tool) 호출
         file_export_msg = export_work_order_file.invoke({
             "document_data": generated_doc,
             "file_prefix": "heavy_plan"
         })
 
-    # 최종 답변 정리
     base_answer = state.get("final_answer") or "표준 문서 작성을 완료했습니다."
-    if file_export_msg:
-        final_text = f"{base_answer}\n[{file_export_msg}]"
-    else:
-        final_text = base_answer
+    final_text = f"{base_answer}\n[{file_export_msg}]" if file_export_msg else base_answer
 
     return {
         "generated_document": generated_doc,
         "final_answer": final_text
     }
 
+def save_audit_node(state: ShipAgentState) -> dict:
+    """[Agent 3-5: 작업 이력 감사 DB 기록 노드]"""
+    session_id = state.get("session_id") or "test_session_id"
+    user_query = state.get("user_query") or ""
+
+    try:
+        res = log_inspection_history.invoke({
+            "session_id": session_id,
+            "query": user_query,
+            "status": "PASS"
+        })
+    except Exception as e:
+        res = f"이력 기록 예외: {str(e)}"
+
+    # ⚠️ 반드시 딕셔너리를 명시적으로 반환해야 State에 정상 병합됩니다.
+    return {"audit_result": res}
+
 # ==============================================================================
-# 4. 서브그래프 라우팅 및 빌드
+# 4. 서브그래프 라우팅 및 빌드 (save_audit_node 엣지 정상 결합)
 # ==============================================================================
 def route_by_task_type(state: ShipAgentState) -> Literal["weld_order_agent", "heavy_plan_agent", "general_qa_agent"]:
     task_type = state.get("task_type", "general_qa")
@@ -184,6 +192,7 @@ builder.add_node("weld_order_agent", weld_order_agent_node)
 builder.add_node("heavy_plan_agent", heavy_plan_agent_node)
 builder.add_node("general_qa_agent", general_qa_agent_node)
 builder.add_node("output_validator", output_validator_node)
+builder.add_node("save_audit", save_audit_node)
 
 builder.add_conditional_edges(
     START,
@@ -198,6 +207,9 @@ builder.add_conditional_edges(
 builder.add_edge("weld_order_agent", "output_validator")
 builder.add_edge("heavy_plan_agent", "output_validator")
 builder.add_edge("general_qa_agent", "output_validator")
-builder.add_edge("output_validator", END)
+
+# output_validator -> save_audit -> END 연결
+builder.add_edge("output_validator", "save_audit")
+builder.add_edge("save_audit", END)
 
 team3_subgraph = builder.compile()

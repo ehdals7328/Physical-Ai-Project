@@ -1,8 +1,5 @@
-# agent_system/tools/document_tools.py
-"""
-Document Tools Package
-생성된 지시서/계획서 JSON을 공식 서식 Markdown 파일로 렌더링하고 저장하는 로컬 @tool
-"""
+# C:\Physical-Ai-Project\agent_system\tools\document_tools.py
+
 import json
 from pathlib import Path
 from typing import Dict, Any
@@ -16,13 +13,6 @@ OUTPUT_DIR = Path("./generated_docs")
 def export_work_order_file(document_data: Dict[str, Any], file_prefix: str = "work_order") -> str:
     """
     구조화된 작업지시서 또는 안전계획서 데이터를 표준 Markdown 문서 파일로 렌더링하고 저장합니다.
-    
-    Args:
-        document_data: 에이전트가 생성한 지시서/계획서 JSON 딕셔너리
-        file_prefix: 저장할 파일 접두사 ('work_order', 'heavy_plan' 등)
-        
-    Returns:
-        저장 완료 메시지 및 파일 저장 경로
     """
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -72,8 +62,25 @@ def export_work_order_file(document_data: Dict[str, Any], file_prefix: str = "wo
 
     md_content += "\n---\n*본 문서는 조선 스마트 제조 멀티에이전트 시스템에 의해 자동 생성 및 검증되었습니다.*"
 
-    # 파일 디스크 저장
     with file_path.open("w", encoding="utf-8") as f:
         f.write(md_content)
 
     return f"문서 파일 생성 완료: {file_path.resolve()}"
+
+
+# 👇 [이 도구 함수를 새로 추가합니다]
+@tool
+def log_inspection_history(session_id: str, query: str, status: str = "PASS") -> str:
+    """
+    공정 판정 결과 및 작업 문서 발행 이력을 감사(Audit) 로그 파일/DB에 기록합니다.
+    """
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    audit_file = OUTPUT_DIR / "audit_history.log"
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    log_line = f"[{timestamp}] [SESSION: {session_id}] [STATUS: {status}] 질의: {query}\n"
+    
+    with audit_file.open("a", encoding="utf-8") as f:
+        f.write(log_line)
+        
+    return f"감사 이력 기록 성공 (세션: {session_id}, 상태: {status})"
