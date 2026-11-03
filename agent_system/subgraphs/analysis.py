@@ -1,181 +1,126 @@
 # agent_system/subgraphs/analysis.py
-from typing import Any, Dict, List, Literal, Optional
+import json
+from typing import Dict, Any, List, Literal, Optional
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, ToolMessage
+from langchain_core.tools import tool
 from langgraph.graph import StateGraph, START, END
 
 from state import ShipAgentState
+from tools.weather_mcp_client import get_realtime_weather_from_mcp
+from tools.retriever_tools import wps_retriever_tool, safety_retriever_tool
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+# 1. 대화형 에이전트가 언제든 자유롭게 꺼내 쓸 수 있는 도구 정의
+@tool
+def get_weather_tool(location: str) -> str:
+    """특정 지역(예: 울산, 거제, 부산, 서울 등)의 실시간 기온, 풍속, 습도 날씨 정보를 조회할 때 호출하세요."""
+    data = get_realtime_weather_from_mcp(location)
+    return json.dumps(data, ensure_ascii=False)
 
-# --------------------------------------------------------------------------
-# 1. Pydantic 구조화 출력 스키마 정의
-# --------------------------------------------------------------------------
-class IntentClassification(BaseModel):
-    task_type: Literal["general_qa", "weld_order", "heavy_plan"] = Field(
-        ...,
-        description="사용자 질의의 핵심 의도 (general_qa: 도메인 단순질의, weld_order: 용접작업지시서, heavy_plan: 중량물인양계획서)"
+@tool
+def search_shipyard_docs_tool(query: str) -> str:
+    """조선소 용접 규격(WPS), 전류/전압 조건, 결함 대책, 크레인/안전 규정을 찾아볼 때 호출하세요."""
+    wps_res = wps_retriever_tool.invoke({"query": query})
+    safe_res = safety_retriever_tool.invoke({"query": query})
+    return f"[WPS 규격]: {wps_res}\n[안전 규정]: {safe_res}"
+
+conversational_tools = [get_weather_tool, search_shipyard_docs_tool]
+tool_map = {t.name: t for t in conversational_tools}
+
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+llm_with_tools = llm.bind_tools(conversational_tools)
+
+
+# 2. 대화 후 상태 정리 스키마
+class ConversationStateUpdate(BaseModel):
+    task_type: Literal["weld_order", "heavy_plan", "general_qa", "chitchat"] = Field(
+        description="현재 맥락의 주된 성격 (단순 대화나 날씨 질문 등은 chitchat 또는 general_qa)"
     )
-
-class QueryOptimization(BaseModel):
-    extracted_params: Dict[str, Any] = Field(
+    updated_params: Dict[str, Any] = Field(
         default_factory=dict,
-        description=(
-            "질문에서 추출된 조선/용접 엔티티 딕셔너리. "
-            "주요 키: material(강종), thickness(두께), joint_type(이음형상), welding_process(용접공정), "
-            "welding_position(자세), root_gap(루트간격), location(지역/독), wind_speed(풍속), equipment(장비명) 등. "
-            "질문에 언급되지 않은 항목은 절대로 키를 생성하지 마세요."
-        )
+        description="대화 중 파악되거나 수정된 작업 조건 (material, thickness, location, equipment 등)"
     )
-    search_queries: List[str] = Field(
-        default_factory=list,
-        description="규격서 검색에 사용할 표준 공학 검색 키워드 목록 (1~3개)"
+    trigger_document_generation: bool = Field(
+        default=False,
+        description="오직 작업지시서(weld_order)나 인양계획서(heavy_plan)의 필수 조건이 모두 모였고, 사용자에게 조건을 브리핑한 뒤 최종 발행 동의('응 뽑아줘', '진행해')까지 받았을 때만 True로 설정. 그 외 모든 대화/질문/날씨조회는 False."
     )
 
-# 태스크별 작업 수행을 위한 필수 파라미터 기준
-REQUIRED_PARAMS = {
-    "weld_order": ["material", "thickness"],      # 용접지시서는 모재 강종과 두께 필수
-    "heavy_plan": ["equipment", "wind_speed"],    # 중량물계획서는 인양장비와 풍속 필수
-    "general_qa": []                              # 단순 질의응답은 제약 없음
-}
 
-# --------------------------------------------------------------------------
-# 2. 세부 에이전트 노드 정의
-# --------------------------------------------------------------------------
-def intent_classifier_node(state: ShipAgentState) -> Dict:
-    """[Agent 1: 의도 분류] 사용자 질문의 목적을 전문 도메인 태스크로 분류"""
-    user_query = state.get("user_query", "")
+def interactive_agent_node(state: ShipAgentState) -> dict:
+    """도구(날씨, 규격 검색)를 자유롭게 사용하며 사용자와 자연스럽게 대화하는 에이전트 노드"""
+    messages = list(state.get("messages", []))
+    current_params = state.get("extracted_params") or {}
 
-    system_prompt = (
-        "당신은 조선소 스마트 공정의 요구사항 분석 전문가입니다.\n"
-        "작업자의 질의를 바탕으로 수행해야 할 업무 유형을 하나만 분류하세요:\n"
-        "- 'weld_order': 강재 용접, 맞대기/필렛 용접 조건, 용접 작업지시서 작성 요청\n"
-        "- 'heavy_plan': 블록 인양, 크레인 작업, 샤클/와이어로프 중량물 취급계획서 요청\n"
-        "- 'general_qa': 단순 규정 질문, 용어 설명, 결함 방지 수칙 질문"
+    sys_msg = SystemMessage(content=(
+        "당신은 조선소 현장을 지원하는 유연하고 유능한 AI 파트너입니다.\n"
+        f"현재까지 파악된 작업 조건: {current_params}\n\n"
+        "[대화 및 행동 원칙]\n"
+        "1. 일상적인 인사나 안부에는 친구나 동료처럼 자연스럽게 대화를 이어가세요.\n"
+        "2. 사용자가 날씨를 물어보면 거부하지 말고 `get_weather_tool`을 호출해 실시간 날씨를 알려주세요. (만약 어느 지역인지 모르면 어느 지역 날씨를 알려줄지 물어보거나 이전 작업 지역을 활용하세요.)\n"
+        "3. 용접 기술이나 안전 기준을 물어보면 `search_shipyard_docs_tool`로 찾아보고 친절히 설명해 주세요.\n"
+        "4. 사용자가 '용접 작업지시서'나 '인양 계획서' 작성을 원할 경우:\n"
+        "   - 필요한 정보(예: 모재 강종, 두께, 작업 지역 / 또는 장비명, 작업 지역)가 부족하면 대화하면서 자연스럽게 물어보세요.\n"
+        "   - 정보가 다 모이면 바로 문서를 발행하지 말고, 수집된 조건을 한 번 정리해서 보여준 뒤 '이대로 작업지시서를 발행할까요, 아니면 수정할 부분이 있나요?'라고 먼저 물어보세요.\n"
+        "   - 사용자가 최종 동의하면 '네, 해당 조건으로 표준 문서를 발행하겠습니다.'라고 응답하세요."
+    ))
+
+    # 1차 LLM 추론 (필요시 스스로 도구 호출 결정)
+    ai_msg = llm_with_tools.invoke([sys_msg] + messages)
+
+    # 만약 LLM이 날씨나 규격 검색 도구를 호출하기로 결정했다면 즉시 실행
+    tool_History = [sys_msg] + messages + [ai_msg]
+    if ai_msg.tool_calls:
+        for tc in ai_msg.tool_calls:
+            tool_fn = tool_map.get(tc["name"])
+            if tool_fn:
+                tool_output = tool_fn.invoke(tc["args"])
+                tool_History.append(ToolMessage(content=str(tool_output), tool_call_id=tc["id"]))
+        # 도구 결과를 보고 최종 자연어 답변 생성
+        final_ai_msg = llm.invoke(tool_History)
+        response_text = final_ai_msg.content
+    else:
+        response_text = ai_msg.content
+
+    # 대화 결과를 바탕으로 내부 파라미터 및 '정식 문서 발행 착수 여부'만 판단
+    state_extractor = llm.with_structured_output(
+        ConversationStateUpdate, method="function_calling"
+    )
+    status: ConversationStateUpdate = state_extractor.invoke(
+        f"기존 조건: {current_params}\n"
+        f"사용자 입력: {state.get('user_query')}\n"
+        f"에이전트 답변: {response_text}\n"
+        "위 대화를 바탕으로 최신 작업 조건(updated_params)과 정식 문서 생성 파이프라인 가동 여부(trigger_document_generation)를 판단하세요."
     )
 
-    decision = llm.with_structured_output(
-        IntentClassification,
-        method="function_calling"
-    ).invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_query)
-    ])
+    # 아직 대화 중이거나(일상 대화, 날씨 질문, 조건 수집 중, 승인 대기 중)
+    if not status.trigger_document_generation:
+        return {
+            "task_type": status.task_type,
+            "extracted_params": status.updated_params,
+            "is_param_complete": "no",  # Team 2/3(문서 생성)으로 넘어가지 않고 대화 응답 즉시 반환
+            "final_answer": response_text
+        }
 
-    return {"task_type": decision.task_type}
-
-
-def query_optimizer_node(state: ShipAgentState) -> Dict:
-    """[Agent 2: 파라미터 추출 및 쿼리 정제] 대화 맥락과 기존 조건을 누적하여 정제"""
-    user_query = state.get("user_query", "")
-    task_type = state.get("task_type", "general_qa")
-    prev_params = state.get("extracted_params") or {}
-    
-    # 이전 대화 문맥 참조
-    messages = state.get("messages", [])
-    history_context = ""
-    if messages:
-        history_context = "\n".join(
-            [f"{msg.type}: {msg.content}" for msg in messages[-6:]]
-        )
-
-    system_prompt = (
-        "당신은 조선·해양 생산기술 및 공정설계 수석 엔지니어입니다.\n"
-        "이전 대화 맥락과 현재 작업자의 질의를 종합하여 전문 엔지니어링 파라미터를 추출하고 벡터 검색 쿼리를 도출하세요.\n\n"
-        "※ 엔티티 추출 규칙:\n"
-        "1. 이전 대화에서 이미 언급된 조건(강종, 두께, 위치 등)은 이번 질문에서 바뀌지 않는 한 그대로 유지(누적)하세요.\n"
-        "2. 질문에서 새롭게 언급되거나 수정된 조건만 덮어쓰거나 추가하세요.\n"
-        "3. 전혀 언급되지 않은 속성은 None으로 채우지 말고 키를 생성하지 마세요.\n\n"
-        f"[확정된 태스크 유형]: {task_type}\n"
-        f"[이전까지 누적된 파라미터]: {prev_params}\n"
-        f"[최근 대화 기록]:\n{history_context}"
-    )
-
-    result = llm.with_structured_output(
-        QueryOptimization,
-        method="function_calling"
-    ).invoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_query)
-    ])
-
-    # 기존 누적 파라미터에 새 파라미터 덮어쓰기 병합
-    merged_params = dict(prev_params)
-    for k, v in result.extracted_params.items():
-        if v is not None:
-            merged_params[k] = v
+    # 사용자가 최종 문서 발행을 승인한 경우 -> Team 2 & Team 3 문서 발행 파이프라인 가동!
+    mat = status.updated_params.get("material", "")
+    thk = status.updated_params.get("thickness", "")
+    eq = status.updated_params.get("equipment", "")
+    search_q = f"{mat} {thk} {eq} 표준 규격 및 안전 지침".strip()
 
     return {
-        "extracted_params": merged_params,
-        "search_queries": result.search_queries
+        "task_type": status.task_type,
+        "extracted_params": status.updated_params,
+        "search_queries": [search_q],
+        "is_param_complete": "yes",  # 이제 정식 문서 발행으로 이동!
+        "final_answer": None,
+        "retry_count": 0
     }
 
 
-def parameter_checker_node(state: ShipAgentState) -> Dict:
-    """[Agent 3: 필수 파라미터 누락 검증 및 사용자 역질문 생성]"""
-    task_type = state.get("task_type", "general_qa")
-    params = state.get("extracted_params") or {}
-    
-    required = REQUIRED_PARAMS.get(task_type, [])
-    missing = [p for p in required if not params.get(p)]
-
-    # 필수 정보가 누락된 경우 -> 친절한 한국어 안내문 생성
-    if missing:
-        field_names_kor = {
-            "material": "모재 강종(예: SS400, AH36)",
-            "thickness": "모재 두께(예: 10T, 20T)",
-            "equipment": "인양 장비명(예: 타워크레인, 지브크레인)",
-            "wind_speed": "작업 현장 풍속(m/s)"
-        }
-        missing_desc = ", ".join([field_names_kor.get(m, m) for m in missing])
-        
-        clarification_text = (
-            f"정확한 {task_type} 작성을 위해 필수 조건이 누락되었습니다.\n"
-            f"▶ 추가 확인 필요 항목: [{missing_desc}]\n"
-            f"해당 정보를 알려주시면 사내 규격을 조회하여 표준 지시서를 즉시 작성해 드리겠습니다."
-        )
-        return {
-            "final_answer": clarification_text,
-            "is_param_complete": "no"
-        }
-
-    return {"is_param_complete": "yes"}
-
-
-def route_param_check(state: ShipAgentState) -> str:
-    """필수 파라미터 검증 필요 여부 라우팅"""
-    task_type = state.get("task_type", "general_qa")
-    params = state.get("extracted_params") or {}
-    required = REQUIRED_PARAMS.get(task_type, [])
-    
-    # 필수 파라미터가 비어있으면 checker 노드로 보내서 역질문 생성
-    if any(not params.get(p) for p in required):
-        return "parameter_checker"
-    
-    return END
-
-# --------------------------------------------------------------------------
-# 3. Team 1 서브그래프 빌드
-# --------------------------------------------------------------------------
 builder = StateGraph(ShipAgentState)
-
-builder.add_node("intent_classifier", intent_classifier_node)
-builder.add_node("query_optimizer", query_optimizer_node)
-builder.add_node("parameter_checker", parameter_checker_node)
-
-builder.add_edge(START, "intent_classifier")
-builder.add_edge("intent_classifier", "query_optimizer")
-
-# 파라미터 충족 시 바로 통과, 부족하면 역질문 생성 후 종료
-builder.add_conditional_edges(
-    "query_optimizer",
-    route_param_check,
-    {
-        "parameter_checker": "parameter_checker",
-        END: END
-    }
-)
-builder.add_edge("parameter_checker", END)
+builder.add_node("interactive_agent", interactive_agent_node)
+builder.add_edge(START, "interactive_agent")
+builder.add_edge("interactive_agent", END)
 
 team1_subgraph = builder.compile()

@@ -1,116 +1,110 @@
 # agent_system/subgraphs/search.py
-from typing import Literal, Dict, Any
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START, END
 
 from state import ShipAgentState
-from tools import (
-    wps_retriever_tool, 
-    safety_retriever_tool, 
-    get_realtime_weather_from_mcp, 
-    validate_environmental_rules
-)
+from tools.retriever_tools import wps_retriever_tool, safety_retriever_tool
+from tools.weather_mcp_client import get_realtime_weather_from_mcp
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-# ----------------------------------------------------
-# 1. RAG 규격 검색 노드
-# ----------------------------------------------------
-def rag_retriever_node(state: ShipAgentState) -> dict:
-    """
-    RAG 도구(BaseTool)를 명시적으로 호출(invoke)하여 사내 규격 및 안전 지침을 검색하는 노드
-    """
-    queries = state.get("search_queries") or [state["user_query"]]
-    task_type = state.get("task_type", "general_qa")
-    all_docs = []
 
+class WeatherNeedDecision(BaseModel):
+    needs_weather: bool = Field(
+        description="현재 작업이나 질문 해결을 위해 실시간 야외 기상 정보(기온, 풍속, 습도) 조회가 필요한지 여부"
+    )
+    target_location: Optional[str] = Field(
+        None,
+        description="기상 조회가 필요할 경우 조회할 지역명(예: 거제, 울산, 부산, 목포 등). 지역을 알 수 없으면 None"
+    )
+
+
+class GradeDecision(BaseModel):
+    is_relevant: Literal["yes", "no"] = Field(
+        description="검색된 사내 규격 문서가 사용자의 질의 및 작업 조건을 처리하기에 적합한지 여부"
+    )
+
+
+class RewriteQuery(BaseModel):
+    rewritten_query: str = Field(description="검색 정확도를 높이기 위해 재작성한 검색 쿼리")
+
+
+def rag_retriever_node(state: ShipAgentState) -> dict:
+    """사내 규격 및 안전 지침 RAG 검색 노드"""
+    queries = state.get("search_queries") or [state.get("user_query", "")]
+    task_type = state.get("task_type", "general_qa")
+
+    docs = []
     for q in queries:
         if task_type == "heavy_plan":
-            # 중량물 인양 안전계획서는 안전 수칙 도구 호출
-            doc_result = safety_retriever_tool.invoke(q)
-            all_docs.append(str(doc_result))
-        elif task_type == "weld_order":
-            # 용접 작업지시서는 사내 WPS 표준 도구 호출
-            doc_result = wps_retriever_tool.invoke(q)
-            all_docs.append(str(doc_result))
+            res = safety_retriever_tool.invoke({"query": q})
         else:
-            # 일반 기술 질의는 두 도구 모두 참조
-            doc_wps = wps_retriever_tool.invoke(q)
-            doc_safety = safety_retriever_tool.invoke(q)
-            all_docs.extend([str(doc_wps), str(doc_safety)])
+            res = wps_retriever_tool.invoke({"query": q})
+        if res:
+            docs.append(str(res))
 
-    # 중복 제거 및 공백 정리
-    unique_docs = list(dict.fromkeys([d.strip() for d in all_docs if d.strip()]))
-    return {"retrieved_docs": unique_docs}
+    return {"retrieved_docs": docs}
 
-# ----------------------------------------------------
-# 2. 기상 수집 및 도메인 안전 룰 판정 노드 (Tool Invoke 적용)
-# ----------------------------------------------------
+
 def weather_collector_node(state: ShipAgentState) -> dict:
-    loc = state.get("extracted_params", {}).get("location") or "울산 야외 독"
-    task_type = state.get("task_type", "weld_order")
-    
-    # 기상 수집 (현재 mock, 추후 303호 MCP 연결)
-    weather = get_realtime_weather_from_mcp(loc)
-    
-    # 🛠️ 도구 호출: 기상 데이터와 태스크 기반 안전 규정 자동 판정
-    safety_result = validate_environmental_rules.invoke({
-        "temperature": float(weather.get("temperature", 20.0)),
-        "wind_speed": float(weather.get("wind_speed", 0.0)),
-        "task_type": task_type
-    })
-    
-    return {
-        "weather_info": weather,
-        "safety_evaluation": safety_result  # 👈 도구 실행 결과를 상태에 기록
-    }
+    """LLM이 기상 정보 필요 여부를 자율 판단하여 FastMCP를 호출하는 노드"""
+    user_query = state.get("user_query", "")
+    task_type = state.get("task_type", "")
+    params = state.get("extracted_params") or {}
 
-# ----------------------------------------------------
-# 3. 문서 적합성 평가 노드 (Grader)
-# ----------------------------------------------------
-class DocumentGrade(BaseModel):
-    is_relevant: Literal["yes", "no"] = Field(
-        description="인출된 사내 규격 문서가 사용자의 질문/조건을 해결하기에 적합한지 여부"
+    prompt = (
+        f"작업 유형: {task_type}\n"
+        f"파악된 작업 조건: {params}\n"
+        f"사용자 최신 입력: {user_query}\n\n"
+        "이 작업을 수행하기 위해 실시간 기상 데이터를 조회해야 하는지, 조회한다면 어느 지역인지 판단하세요."
     )
+    decision: WeatherNeedDecision = llm.with_structured_output(WeatherNeedDecision).invoke(prompt)
 
-grade_llm = llm.with_structured_output(DocumentGrade, method="function_calling")
+    if not decision.needs_weather or not decision.target_location:
+        return {"weather_info": None}
+
+    weather_data = get_realtime_weather_from_mcp(decision.target_location)
+    return {"weather_info": weather_data}
+
 
 def doc_grader_node(state: ShipAgentState) -> dict:
-    docs_text = "\n\n".join(state.get("retrieved_docs", []))
+    """검색된 문서의 적합성을 평가하는 노드"""
+    docs = state.get("retrieved_docs") or []
+    if not docs:
+        return {"is_docs_relevant": "no"}
+
     prompt = (
-        f"사용자 질문: {state['user_query']}\n\n"
-        f"인출된 규격 문서들:\n{docs_text}\n\n"
-        "이 문서들이 사용자의 질문에 답하거나 작업 문서를 작성하기에 적합하고 충분한 내용을 담고 있습니까? (yes/no)"
+        f"작업 목표: {state.get('task_type')}\n"
+        f"작업 조건: {state.get('extracted_params')}\n"
+        f"검색된 규격 문서:\n{docs}\n\n"
+        "검색된 문서가 해당 작업 조건이나 질문에 답변하기에 유의미한 정보를 포함하고 있는지 평가하세요."
     )
-    res: DocumentGrade = grade_llm.invoke(prompt)
+    res: GradeDecision = llm.with_structured_output(GradeDecision).invoke(prompt)
     return {"is_docs_relevant": res.is_relevant}
 
-# ----------------------------------------------------
-# 4. 쿼리 재작성 노드 (Rewriter)
-# ----------------------------------------------------
+
 def query_rewriter_node(state: ShipAgentState) -> dict:
+    """부적합 판정 시 검색어를 스스로 개선하는 노드"""
+    retry = state.get("retry_count", 0) + 1
     prompt = (
-        f"사내 규격집에서 원하는 내용을 찾지 못했습니다. 검색어를 더 적절한 표준 기술 용어로 보완하세요.\n"
-        f"기존 질문: {state['user_query']}\n"
-        f"기존 검색어: {state.get('search_queries')}"
+        f"기존 검색어 {state.get('search_queries')}로 적합한 사내 규격을 찾지 못했습니다.\n"
+        f"작업 조건({state.get('extracted_params')})과 질문({state.get('user_query')})을 바탕으로 "
+        "더 핵심적인 기술 키워드 중심의 검색어를 새로 작성하세요."
     )
-    res = llm.invoke(prompt)
-    current_retry = state.get("retry_count", 0)
+    res: RewriteQuery = llm.with_structured_output(RewriteQuery).invoke(prompt)
     return {
-        "search_queries": [res.content.strip()],
-        "retry_count": current_retry + 1
+        "search_queries": [res.rewritten_query],
+        "retry_count": retry
     }
 
-# ----------------------------------------------------
-# 분기 및 서브그래프 빌드
-# ----------------------------------------------------
-def check_grade_result(state: ShipAgentState) -> Literal["pass", "retry", "exit"]:
-    if state.get("is_docs_relevant") == "yes":
+
+def check_relevance(state: ShipAgentState) -> str:
+    if state.get("is_docs_relevant") == "yes" or state.get("retry_count", 0) >= 2:
         return "pass"
-    if state.get("retry_count", 0) >= 2:
-        return "exit"
     return "retry"
+
 
 builder = StateGraph(ShipAgentState)
 builder.add_node("rag_retriever", rag_retriever_node)
@@ -123,10 +117,9 @@ builder.add_edge("rag_retriever", "weather_collector")
 builder.add_edge("weather_collector", "doc_grader")
 builder.add_conditional_edges(
     "doc_grader",
-    check_grade_result,
+    check_relevance,
     {
         "pass": END,
-        "exit": END,
         "retry": "query_rewriter"
     }
 )
