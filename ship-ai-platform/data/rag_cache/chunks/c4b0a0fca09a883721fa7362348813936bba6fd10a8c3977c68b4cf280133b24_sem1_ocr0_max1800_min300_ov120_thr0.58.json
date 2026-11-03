@@ -1,0 +1,988 @@
+{
+  "chunks": [
+    {
+      "text": "WELDING OF MILD AND LOW-ALLOY STEELS",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "WELDING OF MILD AND LOW-ALLOY STEELS\n1. Materials This section contains information on selecting 2.2 Preheating, Interpass Temperature the appropriate welding consumable for unalloyed and Post-Weld Heat Treatment steels and fine-grained steels with minimum yield The preheating must be selected with strengths up to 485 MPa. consideration for the carbon equivalent, metal thickness, cross-sectional area and heat input. Preheating is primarily used to avoid brittle 2. Welding and Heat Treatment hardening zones in the HAZ. For low temperature 2.1 General applications even with relatively low material thickness (from approx. 12 mm) preheating toThe general rules of engineering apply; during approx. 80 - 150°C is recommended.processing, take greater care as the yield strength and material thickness increase. When welding In many standards, the minimum preheating begins, the weld joints must be dry and free of temperature is defined to avoid cold cracking, slag, rust, scale and contaminants. For better however, this does not guarantee sufficient resistance to cold cracking, welding consumables toughness of the heat-affected zone (HAZ). that generate a low hydrogen content in the On the other hand, maintaining the maximum weld metal should be used for steels with yield interpass temperature serves to prevent grain strengths > 355 MPa; for example, the use of growth in the HAZ. Coarse grain formation is rutile or rutile cellulose-coated electrodes is not associated with a decrease in toughness and suitable. a slight increase in hardness. The interpass High-quality basic welding consumables meet temperature is usually at least 50°C above the all requirements. These should be stored in a preheating temperature, but max. 250°C. dry place and, if necessary, dried again before Very low heat input (e.g.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "d in a preheating temperature, but max. 250°C. dry place and, if necessary, dried again before Very low heat input (e.g.\nshort, thin tacks on thick use. Using stick electrodes in vacuum packaging sheets without preheating) leads to fast cooling (VacPac™) can eliminate these time and cost and thus hardening and the risk of cracking. expenditures. If welding is \"too hot\" (e.g. very wide weave For severe environments such as acids and beads in the vertically up position), this can lead ammonia, special attention must be paid to to coarse grain formation and a decrease in the chemical composition and the mechanical toughness. and corrosion resistant properties of the grade For the steels listed below, stress relieving is of electrode selected. ESAB consultants are usually the only heat treatment that can be available to assist in selecting the optimal considered. Before a welding consumable is solution for your needs. selected, the resulting impact on the weld metal properties (decrease in strength and toughness, if applicable) must be taken into consideration.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mpact on the weld metal properties (decrease in strength and toughness, if applicable) must be taken into consideration.\nesab.com/fillermetals\n1-4",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "WELDING OF MILD AND LOW-ALLOY STEELS\n2.3 Notes on welding For further information, refer to:\n Welding consumables whose strength is not  Steel-Iron Material Data Sheet SEW 088: Weldable necessarily high compared to the parent material fine-grain steels and SEW 088 supplements, should be selected. SEW 063, SEW 086, SEW 090  Tack and root welding is often performed with “softer”  DVS leaflet 0916: Metal gas-shielded arc welding welding consumables to avoid cracking. of fine-grain structural steels  If the demands placed on the Charpy V-notch  DVS leaflet 0918: Submerged-arc welding of fine- properties are higher, the multi-run technique should grain structural steels be used.  EN 1011: Welding – Recommendations for welding  The weld build-up should be started at the weld of metallic materials edges; the subsequent bead has a positive effect  Part 1: General instructions for Arc welding on the heat-affected zone.  Part 2: Arc welding of Ferritic steels  Smaller electrode diameters must be used when welding vertical seams.  If the component temperature is below +5°C, preheating is always required prior to welding.  If tack welds form part of the weld joint, the welding consumables used must be adapted to the parent material. These welds must be checked for cracks before being welded over.  The arc must be ignited on the component in the weld groove.",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "elds must be checked for cracks before being welded over.  The arc must be ignited on the component in the weld groove.\nesab.com/fillermetals\n1-5",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 3] welding applications.\n| Specifications | Specifications |\n| --- | --- |\n| Classifications | EN ISO 14341-A : G 38 3 C1 3Si1 EN ISO 14341-A : G 42 4 M20 3Si1 EN ISO 14341-A : G 42 4 M21 3Si1 EN ISO 14341-A : G 3Si1 SFA/AWS A5 .18 : ER70S-6 CSA W48 : B-G 49A 3 C1 S6 JIS Z 3312 : YGW 12 (C1) |\n| Approvals | ABS : 3Y SA BV : SA3YM CE : EN 13479 CWB : B-G 49A 3 C1 S6 DB : 42 .039 .29 DNV-GL : III YMS LR : 3YS H15 PRS : 3YS (C1 , M21) UKCA : EN 13479 VdTÜV : 10052 CWB : B-G 49A 3 C1 S6 JIS : YGW12 (C1) RINA : 3Y S |",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "welding applications."
+    },
+    {
+      "text": "[PDF 표 2, 페이지 3] Approvals are based on factory location. Please contact ESAB for more information.\n| Alloy Type Shielding Gas | Carbon-manganese steel (Mn/Si-alloyed) M20M21C1(ENISO14175) , , |\n| --- | --- |\n| Typical Tensile Properties | - |\n| Condition Yield Strength Tensile Strength Elongation AWSC1 As Welded 430 MPa 530 MPa 30 % ENC1 As Welded 440 MPa 540 MPa 25 % ENM21 As Welded 470 MPa 560 MPa 26 % Stress Relieved 370 MPa 495 MPa 28 % 15 hour(s) 620 °C | - |\n| Typical Charpy V-Notch Properties | - |\n| Condition | Testing Temperature Impact Value |\n| AWSC1 As Welded ENC1 As Welded As Welded ENM21 As Welded | -30 °C 75 J 20°C 110J -30 °C 75 J 20°C 130J |",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Approvals are based on factory location. Please contact ESAB for more information."
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK AristoRod 12.50\nThe non copper coated OK AristoRod 12.50 is a manganese-silicon alloyed solid wire for GMAW of unalloyed steels, such as general structural, pressure vessel, ship building and for fine-grained carbon-manganese steels for the same purpose with a minimum yield strength of max 420 MPa. The electrode can be welded with either a gas mixture or with pure CO2 as the shielding gas. The AristoRod wires are suitable for operating at high currents with maintained disturbance free wire feeding giving a stable arc with a low amount of spatter. OK AristoRod 12.50 delivered in the unique Esab Octagonal Marathon Pac is excellent in mechanised welding applications.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "OK AristoRod 12.50 delivered in the unique Esab Octagonal Marathon Pac is excellent in mechanised welding applications.\nApprovals are based on factory location. Please contact ESAB for more information.\nesab.com/fillermetals\nesab.com/fillermetals\n1-32",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 4] OK AristoRod 12.50\n| Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties |\n| --- | --- | --- | --- | --- | --- | --- |\n| Condition Stress Relieved 15 hour(s) 620 °C As Welded Stress Relieved 15 hour(s) 620 °C As Welded As Welded As Welded | - | - | Testing Temperature 20°C -20 °C -20 °C -30 °C -40 °C -50 °C | - | Impact Value 120J 120J 90J 100J 90J 70J | - |\n| Typical Weld Metal Analysis % | - | - | Testing Temperature 20°C -20 °C -20 °C -30 °C -40 °C -50 °C | - | Impact Value 120J 120J 90J 100J 90J 70J | - |\n| C Mn C1 008 094 . . M21 010 111 . . | - | Si 063 . 072 . | S 0012 . 0012 . | P Cu 0013 007 . . 0013 007 . . | Impact Value 120J 120J 90J 100J 90J 70J | Ti+Zr <0 .01 <0 .01 |\n| Typical Wire Composition | % | Si 063 . 072 . | S 0012 . 0012 . | P Cu 0013 007 . . 0013 007 . . | Impact Value 120J 120J 90J 100J 90J 70J | Ti+Zr <0 .01 <0 .01 |\n| C 008 . | % | Si 063 . 072 . | Mn 146 . | P Cu 0013 007 . . 0013 007 . . | Si 085 . | Ti+Zr <0 .01 <0 .01 |\n| Deposition Data | % | Si 063 . 072 . | Mn 146 . | P Cu 0013 007 . . 0013 007 . . | Si 085 . | Ti+Zr <0 .01 <0 .01 |\n| Diameter | Current | Si 063 . 072 . | Voltage | P Cu 0013 007 . . 0013 007 . . | Wire Feed Speed | Deposition Rate |\n| 0 .8 mm | 60-200 A | Si 063 . 072 . | 18-24 V | P Cu 0013 007 . . 0013 007 . . | 3 .2-10 .0 m/min | 0 .8-2 .3 kg/h |\n| 0 .9 mm | 70-250 A | Si 063 . 072 . | 18-26 V | P Cu 0013 007 . . 0013 007 . . | 3 .0-12 .0 m/min | 0 .9-3 .5 kg/h |\n| 1 .0 mm | 80-300 A | Si 063 . 072 . | 18-32 V | P Cu 0013 007 . . 0013 007 . . | 2 .7-15 .0 m/min | 1 .0-5 .5 kg/h |\n| 1 .14 mm | 100-350 A | Si 063 . 072 . | 18-34 V | P Cu 0013 007 . . 0013 007 . . | 2 .6-15 .0 m/min | 1 .2-7 .0 kg/h |\n| 1 .2 mm | 120-380 A | Si 063 . 072 . | 18-35 V | P Cu 0013 007 . . 0013 007 . . | 2 .5-15 .0 m/min | 1 .3-8 .0 kg/h |\n| 1 .32 mm | 130-400 A | Si 063 . 072 . | 19-35 V | P Cu 0013 007 . . 0013 007 . . | 2 .4-15 .0 m/min | 1 .5-8 .5 kg/h |\n| 1 .4 mm | 150-420 A | Si 063 . 072 . | 22-36 V | P Cu 0013 007 . . 0013 007 . . | 2 .3-12 .0 m/min | 1 .6-8 .7 kg/h |\n| 1 .6 mm | 225-550 A | Si 063 . 072 . | 28-38 V | P Cu 0013 007 . . 0013 007 . . | 2 .3-10 .0 m/min | 2 .1-9 .4 kg/h |\n| 2 .0 mm | 300-650 A | Si 063 . 072 . | 32-44 V | P Cu 0013 007 . . 0013 007 . . | 3 .0-7 .0 m/min | 4 .4-10 .2 kg/h |",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "OK AristoRod 12.50"
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK AristoRod 12.50\nesab.com/fillermetals\nesab.com/fillermetals\n1-33",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "MILD STEEL MIG WIRES / TIG RODS (GMAW/GTAW)\nOK AristoRod 12.63\nA non copper coated G4Si1/ER70S-6 solid wire with a carefully controlled wire chemistry and a unique surface technology that serves for high feeding and welding performance providing a superior weld metal quality at high currents. Compared with OK AristoRod 12.50, OK AristoRod 12.63 has a slightly higher silicon and manganese content, which increases the weld metal strength. The high silicon content promotes low sensitivity to surface impurities and contributes to smooth, sound welds. The wire is designed for welding of all general structural and engineering unalloyed and low-alloyed carbon-manganese steels. OK AristoRod 12.63 delivered in the unique Esab Octagonal Marathon Pac is an excellent choice in mechanised welding applications",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "oRod 12.63 delivered in the unique Esab Octagonal Marathon Pac is an excellent choice in mechanised welding applications\nSpecifications Classifications EN ISO 14341-A : G 42 3 C1 4Si1 EN ISO 14341-A : G 46 5 M20 4Si1 EN ISO 14341-A : G 46 5 M21 4Si1 EN ISO 14341-B : G 55A 5 M21 S6 EN ISO 14341-A : G 4Si1 SFA/AWS A5.18 : ER70S-6 CSA W48 : B-G 49A 3 C1 S6 EN ISO 14341-B : G S6 Approvals ABS : 3Y SA BV : SA3YM (C1, M21) CE : EN 13479 CWB : B-G 49A 3 C1 S6 DB : 42.039.30 DNV-GL : III YMS (C1, M21) LR : 3YS H15 (C1, M21) UKCA : EN 13479 VdTÜV : 10051 Approvals are based on factory location. Please contact ESAB for more information.\nAlloy Type Carbon-Manganese steel (Mn/Si-alloyed) Shielding Gas M20, M21, C1 (EN ISO 14175)",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "t ESAB for more information.\nAlloy Type Carbon-Manganese steel (Mn/Si-alloyed) Shielding Gas M20, M21, C1 (EN ISO 14175)\nTypical Tensile Properties Condition Yield Strength Tensile Strength Elongation AWS C1 As Welded 450 MPa 550 MPa 30 % EN C1 As Welded 460 MPa 570 MPa 28 % EN M20 As Welded 528 MPa 617 MPa 22 % EN M21 As Welded 490 MPa 590 MPa 29 % Stress Relieved 385 MPa 520 MPa - 15 hour(s) 650 °C\nTypical Charpy V-Notch Properties Condition Testing Temperature Impact Value AWS C1 As Welded -30 °C 100 J EN C1 As Welded 20 °C 110 J As Welded -30 °C 75 J EN M20 As Welded -50 °C 102 J EN M21 As Welded 20 °C 130 J",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "30 °C 100 J EN C1 As Welded 20 °C 110 J As Welded -30 °C 75 J EN M20 As Welded -50 °C 102 J EN M21 As Welded 20 °C 130 J\nesab.com/fillermetalsesab.com/fillermetals\n1-37",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 6] OK AristoRod 12.63\n| Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties |\n| --- | --- | --- | --- | --- |\n| Condition Stress Relieved 15 hour(s) 650 °C As Welded Stress Relieved 15 hour(s) 650 °C As Welded As Welded As Welded | Testing Temperature 20°C -20 °C -20 °C -30 °C -40 °C -50 °C | - | Impact Value 120J 120J 90J 100J 90J 80J | - |\n| Typical Weld Metal Analysis % | Testing Temperature 20°C -20 °C -20 °C -30 °C -40 °C -50 °C | - | Impact Value 120J 120J 90J 100J 90J 80J | - |\n| C Mn C1 009 108 . . M20 007 139 . . M21 010 128 . . | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | P 0013 . 001 . 0013 . | Cu 005 . 004 . 005 . |\n| Typical Wire Composition % | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | P 0013 . 001 . 0013 . | Cu 005 . 004 . 005 . |\n| C 0074 . | Mn 168 . | S 0013 . 0009 . 0013 . | Si 095 . | Cu 005 . 004 . 005 . |\n| Deposition Data | Mn 168 . | S 0013 . 0009 . 0013 . | Si 095 . | Cu 005 . 004 . 005 . |\n| Diameter Current | Voltage | S 0013 . 0009 . 0013 . | Wire Feed Speed | Deposition Rate |\n| 0 .8 mm 60-185 A | 18-24 V | S 0013 . 0009 . 0013 . | 3 .2-10 .0 m/min | 0 .8-2 .5 kg/h |\n| 0 .9 mm 70-250 A | 18-26 V | S 0013 . 0009 . 0013 . | 3 .0-12 .0 m/min | 0 .8-3 .3 kg/h |\n| 1 .0 mm 80-300 A | 18-32 V | S 0013 . 0009 . 0013 . | 2 .7-15 .0 m/min | 1 .0-5 .5 kg/h |\n| 1 .2 mm 120-380 A | 18-35 V | S 0013 . 0009 . 0013 . | 2 .3-15 .0 m/min | 1 .2-8 .0 kg/h |\n| 1 .4 mm 150-420 A 1 .6 mm 225-550 A | 22-36 V 28-38 V | S 0013 . 0009 . 0013 . | 2 .3-12 .0 m/min 2 .3-12 .0 m/min | 1 .6-8 .7 kg/h 2 .1-11 .4 kg/h |",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "OK AristoRod 12.63"
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK AristoRod 12.63\nesab.com/fillermetals\nesab.com/fillermetals\n1-38",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 7] excellent choice in mechanised welding applications\n| Specifications | Specifications |\n| --- | --- |\n| Classifications | EN ISO 14341-A : G 38 3 C1 3Si1 EN ISO 14341-A : G 42 4 M20 3Si1 EN ISO 14341-A : G 42 4 M21 3Si1 EN ISO 14341-A : G 3Si1 SFA/AWS A5 .18 : ER70S-6 CSA W48 : B-G 49A 3 C1 S6 JIS Z 3312 : YGW 12(C1) |\n| Approvals | ABS : 3YSA , 3 BV : SA3YM (C1 ,M21) CE : EN 13479 DB : 42 .039 .06 DNV-GL : III YMS LR : 3YS H15 UKCA : EN 13479 VdTÜV : 00899 CWB : B-G 49A 3 C1 S6 JIS : YGW12 PRS : 3YS RINA : 3YS RINA : 3YS |\n| Approvals are based on factory location. Please contact ESAB for more information. Alloy Type Carbon-manganese steel (Mn/Si-alloyed) Shielding Gas M20 M21 C1 (EN ISO 14175) , , | ABS : 3YSA , 3 BV : SA3YM (C1 ,M21) CE : EN 13479 DB : 42 .039 .06 DNV-GL : III YMS LR : 3YS H15 UKCA : EN 13479 VdTÜV : 00899 CWB : B-G 49A 3 C1 S6 JIS : YGW12 PRS : 3YS RINA : 3YS RINA : 3YS |\n| Typical Tensile Properties | ABS : 3YSA , 3 BV : SA3YM (C1 ,M21) CE : EN 13479 DB : 42 .039 .06 DNV-GL : III YMS LR : 3YS H15 UKCA : EN 13479 VdTÜV : 00899 CWB : B-G 49A 3 C1 S6 JIS : YGW12 PRS : 3YS RINA : 3YS RINA : 3YS |\n| Condition Yield Strength ENM21 As Welded 460 MPa Stress Relieved 370 MPa 15 hour(s) 620 °C ENC1 As Welded 440 MPa AWSC1 As Welded 430 MPa | Tensile Strength Elongation 560 MPa 26 % 495 MPa 28 % 540 MPa 25 % 530 MPa 30 % |\n| Typical Charpy V-Notch Properties | Tensile Strength Elongation 560 MPa 26 % 495 MPa 28 % 540 MPa 25 % 530 MPa 30 % |\n| Condition Testing | Temperature Impact Value |\n| ENM21 As Welded 20 °C Stress Relieved 20 °C 15 hour(s) 620 °C As Welded -20 °C Stress Relieved -20 °C 15 hour(s) 620 °C As Welded -30 °C As Welded -40 °C ENC1 | 130J 120J 120J 90J 100J 90J |",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "excellent choice in mechanised welding applications"
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK Autrod 12.51\nA copper coated, G3Si1/ER70S-6 solid wire for GMAW of all general structural and engineering unalloyed and low-alloyed carbon-manganese steels. The electrode may be welded with either a gas mixture or with pure CO2 as the shielding gas. OK Autrod 12.51 delivered in the unique Esab Octagonal Marathon Pac is an excellent choice in mechanised welding applications",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "trod 12.51 delivered in the unique Esab Octagonal Marathon Pac is an excellent choice in mechanised welding applications\nesab.com/fillermetals\nesab.com/fillermetals\n1-41",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 8] OK Autrod 12.51\n| Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties |\n| --- | --- | --- | --- | --- | --- |\n| Condition As Welded As Welded AWSC1 As Welded | - | Testing 20°C -30 °C -30 °C | Temperature | Impact Value 110J 75J 75J | - |\n| Typical Weld Metal Analysis % | - | Testing 20°C -30 °C -30 °C | Temperature | Impact Value 110J 75J 75J | - |\n| C C1 008 . M21 010 . | Mn 094 . 111 . | Testing 20°C -30 °C -30 °C | Si 063 . 072 . | S 0012 . 0012 . | P 0013 . 0013 . |\n| Typical Wire Composition % | Mn 094 . 111 . | Testing 20°C -30 °C -30 °C | Si 063 . 072 . | S 0012 . 0012 . | P 0013 . 0013 . |\n| C 0078 . | Mn 094 . 111 . | Mn 146 . | Si 063 . 072 . | Si 085 . | P 0013 . 0013 . |\n| Deposition Data | Mn 094 . 111 . | Mn 146 . | Si 063 . 072 . | Si 085 . | P 0013 . 0013 . |\n| Diameter | Current | Mn 146 . | Voltage | Wire Feed Speed | Deposition Rate |\n| 0 .6 mm | 30-100 A | Mn 146 . | 15-20 V | 5 .5-13 .0 m/min | 0 .7-1 .7 kg/h |\n| 0 .8 mm | 60-200 A | Mn 146 . | 18-24 V | 3 .2-10 .0 m/min | 0 .8-2 .3 kg/h |\n| 0 .9 mm | 70-250 A | Mn 146 . | 18-26 V | 3 .0-12 .0 m/min | 0 .9-3 .5 kg/h |\n| 1 .0 mm | 80-300 A | Mn 146 . | 18-32 V | 2 .7-15 .0 m/min | 1 .0-5 .5 kg/h |\n| 1 .14 mm | 100-350 A | Mn 146 . | 18-34 V | 2 .6-15 .0 m/min | 1 .2-7 .0 kg/h |\n| 1 .2 mm | 120-380 A | Mn 146 . | 18-35 V | 2 .5-15 .0 m/min | 1 .3-8 .0 kg/h |\n| 1 .32 mm | 130-400 A | Mn 146 . | 19-35 V | 2 .4-15 .0 m/min | 1 .5-8 .5 kg/h |\n| 1 .4 mm 1 .6 mm | 150-420 A 225-550 A | Mn 146 . | 22-36 V 28-38 V | 2 .3-12 .0 m/min 2 .3-10 .0 m/min | 1 .6-8 .7 kg/h 2 .1-9 .4 kg/h |",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "OK Autrod 12.51"
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK Autrod 12.51\nesab.com/fillermetals\nesab.com/fillermetals\n1-42",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 9] applications.\n| Specifications | Specifications | Specifications |\n| --- | --- | --- |\n| Classifications EN ISO 636-A : W 46 3 4Si1 EN ISO 14341-A : G 42 3 C1 4Si1 EN ISO 14341-A : G 46 5 M20 4Si1 EN ISO 14341-A : G 46 5 M21 4Si1 EN ISO 636-A : W4Si1 EN ISO 14341-A : G 4Si1 SFA/AWS A5 .18 : ER70S-6 Approvals ABS : 3Y SA BV : SA3YM (C1 ,M21) CE : EN 13479 CWB : B-G 49A 3 C1 S6 DB : 42 .039 .11 DNV-GL : III YMS (C1 , M21) LR : 3YS H15 (C1 , M21) UKCA : EN 13479 VdTÜV : 04294 Approvals are based on factory location. Please contact ESAB for more information. Alloy Type Carbon-manganese steel (Mn/Si-alloyed) Shielding Gas M20 M21 C1 (EN ISO 14175) , , | - | - |\n| Typical Tensile Properties | - | - |\n| Condition | Yield Strength Tensile Strength | Elongation |\n| AWSC1 As Welded ENM21 Stress Relieved 15 hour(s) 620 °C ENC1 As Welded ENM20 As Welded ENM21 As Welded | 450 MPa 550 MPa 385 MPa 520 MPa 460 MPa 570 MPa 528 MPa 617 MPa 490 MPa 590 MPa | 30% - 28% 22% 29% |\n| Typical Charpy V-Notch Properties | 450 MPa 550 MPa 385 MPa 520 MPa 460 MPa 570 MPa 528 MPa 617 MPa 490 MPa 590 MPa | 30% - 28% 22% 29% |\n| Condition | Testing Temperature Impact Value | 30% - 28% 22% 29% |\n| AWSC1 As Welded ENM21 Stress Relieved | -30 °C 100 J 20°C 120J | 30% - 28% 22% 29% |\n| 15 hour(s) 620 °C | -30 °C 100 J 20°C 120J | 30% - 28% 22% 29% |\n| Stress Relieved 15 hour(s) 620 °C | -20 °C 90 J | 30% - 28% 22% 29% |\n| ENC1 As Welded | 20°C 110J | 30% - 28% 22% 29% |",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "applications."
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK Autrod 12.64\nA copper coated, G4Si1/ER70S-6 solid wire for GMAW of general structural and engineering unalloyed and low-alloyed carbon-manganese steels. Compared with OK Autrod 12.51, OK Autrod 12.64 has a slightly higher silicon and manganese content, which increases the weld metal strength. The high silicon content promotes low sensitivity to surface impurities and contributes to smooth, sound welds. The electrode may be welded with either a gas mixture or with pure CO2 as the shielding gas. OK Autrod 12.64 can even be delivered in the unique Esab Octagonal Marathon Pac, which is an excellent choice in mechanised welding applications.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "be delivered in the unique Esab Octagonal Marathon Pac, which is an excellent choice in mechanised welding applications.\nesab.com/fillermetals\nesab.com/fillermetals\n1-46",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 10] OK Autrod 12.64\n| Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties | Typical Charpy V-Notch Properties |\n| --- | --- | --- | --- | --- | --- | --- |\n| Condition As Welded ENM20 As Welded ENM21 As Welded As Welded As Welded As Welded As Welded | - | Testing -30 °C -50 °C 20°C -20 °C -30 °C -40 °C -50 °C | Temperature | - | Impact Value 75J 105J 130J 120J 100J 90J 80J | - |\n| Typical Weld Metal Analysis % | - | Testing -30 °C -50 °C 20°C -20 °C -30 °C -40 °C -50 °C | Temperature | - | Impact Value 75J 105J 130J 120J 100J 90J 80J | - |\n| C C1 009 . M20 007 . M21 010 . | Mn 108 . 139 . 128 . | Testing -30 °C -50 °C 20°C -20 °C -30 °C -40 °C -50 °C | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | Impact Value 75J 105J 130J 120J 100J 90J 80J | P 0013 . 001 . 0013 . |\n| Typical Wire Composition % | Mn 108 . 139 . 128 . | Testing -30 °C -50 °C 20°C -20 °C -30 °C -40 °C -50 °C | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | Impact Value 75J 105J 130J 120J 100J 90J 80J | P 0013 . 001 . 0013 . |\n| C | Mn 108 . 139 . 128 . | Mn | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | Si | P 0013 . 001 . 0013 . |\n| 0074 . | Mn 108 . 139 . 128 . | 168 . | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | 095 . | P 0013 . 001 . 0013 . |\n| Deposition Data | Mn 108 . 139 . 128 . | 168 . | Si 070 . 067 . 080 . | S 0013 . 0009 . 0013 . | 095 . | P 0013 . 001 . 0013 . |\n| Diameter | Current | 168 . | Voltage | Wire Feed Speed | 095 . | Deposition Rate |\n| 0 .8 mm | 60-185 A | 168 . | 18-24 V | 3 .2-10 .0 | m/min | 0 .8-2 .5 kg/h |\n| 0 .9 mm | 70-250 A | 168 . | 18-26 V | 3 .0-12 .0 | m/min | 0 .8-3 .3 kg/h |\n| 1 .0 mm | 80-300 A | 168 . | 18-32 V | 2 .7-15 .0 | m/min | 1 .0-5 .5 kg/h |\n| 1 .2 mm | 120-380 A | 168 . | 18-35 V | 2 .3-15 .0 | m/min | 1 .2-8 .0 kg/h |\n| 1 .4 mm | 150-420 A | 168 . | 22-36 V | 2 .5-12 .0 | m/min | 1 .7-8 .5 kg/h |\n| 1 .6 mm 2 .0 mm | 225-550 A 300-650 A | 168 . | 28-38 V 32-44 V | 2 .3-12 .0 4 .0-15 .0 | m/min m/min | 2 .1-11 .4 kg/h 3 .2-12 .5 kg/h |",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "OK Autrod 12.64"
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK Autrod 12.64\nesab.com/fillermetals\nesab.com/fillermetals\n1-47",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 11] for robotic welding applications.\n| Specifications Classifications EN ISO 14341-A : G 42 3 M20 Z EN ISO 14341-A : G 42 3 M21 Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : G 49A 5 M20 SZ EN ISO 14341-A : G Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : SZ Alloy Type Carbon-manganese steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ENISOM20 As Welded 470 MPa 555 MPa 23 % AWSM20 As Welded 460 MPa 550 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ENISOM20 As Welded -30 °C 160 J As Welded -50 °C 130 J AWSM20 As Welded -30 °C 125 J Typical Wire Composition % C Mn Si S P 008 16 007 0005 001 . . . . . | Specifications Classifications EN ISO 14341-A : G 42 3 M20 Z EN ISO 14341-A : G 42 3 M21 Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : G 49A 5 M20 SZ EN ISO 14341-A : G Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : SZ Alloy Type Carbon-manganese steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ENISOM20 As Welded 470 MPa 555 MPa 23 % AWSM20 As Welded 460 MPa 550 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ENISOM20 As Welded -30 °C 160 J As Welded -50 °C 130 J AWSM20 As Welded -30 °C 125 J Typical Wire Composition % C Mn Si S P 008 16 007 0005 001 . . . . . | Specifications Classifications EN ISO 14341-A : G 42 3 M20 Z EN ISO 14341-A : G 42 3 M21 Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : G 49A 5 M20 SZ EN ISO 14341-A : G Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : SZ Alloy Type Carbon-manganese steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ENISOM20 As Welded 470 MPa 555 MPa 23 % AWSM20 As Welded 460 MPa 550 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ENISOM20 As Welded -30 °C 160 J As Welded -50 °C 130 J AWSM20 As Welded -30 °C 125 J Typical Wire Composition % C Mn Si S P 008 16 007 0005 001 . . . . . | Specifications Classifications EN ISO 14341-A : G 42 3 M20 Z EN ISO 14341-A : G 42 3 M21 Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : G 49A 5 M20 SZ EN ISO 14341-A : G Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : SZ Alloy Type Carbon-manganese steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ENISOM20 As Welded 470 MPa 555 MPa 23 % AWSM20 As Welded 460 MPa 550 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ENISOM20 As Welded -30 °C 160 J As Welded -50 °C 130 J AWSM20 As Welded -30 °C 125 J Typical Wire Composition % C Mn Si S P 008 16 007 0005 001 . . . . . | Specifications Classifications EN ISO 14341-A : G 42 3 M20 Z EN ISO 14341-A : G 42 3 M21 Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : G 49A 5 M20 SZ EN ISO 14341-A : G Z AWS A5 .18 : ER70S-9 EN ISO 14341-B : SZ Alloy Type Carbon-manganese steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ENISOM20 As Welded 470 MPa 555 MPa 23 % AWSM20 As Welded 460 MPa 550 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ENISOM20 As Welded -30 °C 160 J As Welded -50 °C 130 J AWSM20 As Welded -30 °C 125 J Typical Wire Composition % C Mn Si S P 008 16 007 0005 001 . . . . . |\n| --- | --- | --- | --- | --- |\n| Typical Wire Composition % | - | - | - | - |\n| C | Mn | Si | S | P |\n| 008 . | 16 . | 007 . | 0005 . | 001 . |",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "for robotic welding applications."
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nOK Autrod 42 LSW\nCopper coated OK Autrod 42 LSW is an engineered chemistry filler metal designed to create minimal slag and silica islands on the weld bead. It is recommended for robotic welding applications.\nesab.com/fillermetals\nesab.com/fillermetals\n1-51",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 12] requirements the electrode is a \"clean\" type of EN ISO 14341-A G4Si1 as regards chemical analysis.\n| Specifications Classifications EN ISO 636-A : W 46 3 4Si1 EN ISO 14341-A : G 42 2 C1 4Si1 EN ISO 14341-A : G 46 3 M21 4Si1 EN ISO 636-A : W 4Si1 EN ISO 14341-A : G4Si1 SFA/AWS A5 .18 : ER70S-6 Approvals VdTÜV : 12430 Approvals are based on factory location. Please contact ESAB for more information. Alloy Type Carbon-manganese steel (Mn/Si-alloyed) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation AWSC1 As Welded 470 MPa 575 MPa 29 % ENC1 As Welded 485 MPa 575 MPa 25 % ENM21 As Welded 535 MPa 600 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value AWSC1 As Welded -20 °C 100 J As Welded -29 °C 80 J ENC1 As Welded 20 °C 120 J As Welded -20 °C 80 J ENM21 As Welded 20 °C 140 J As Welded -20 °C 100 J As Welded -30 °C 80 J Typical Weld Metal Analysis % C Mn Si S P C1 006 105 072 0009 0009 . . . . . M21 007 125 082 0009 0009 . . . . . Typical Wire Composition % C Mn Si 009 165 097 . . . | Specifications Classifications EN ISO 636-A : W 46 3 4Si1 EN ISO 14341-A : G 42 2 C1 4Si1 EN ISO 14341-A : G 46 3 M21 4Si1 EN ISO 636-A : W 4Si1 EN ISO 14341-A : G4Si1 SFA/AWS A5 .18 : ER70S-6 Approvals VdTÜV : 12430 Approvals are based on factory location. Please contact ESAB for more information. Alloy Type Carbon-manganese steel (Mn/Si-alloyed) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation AWSC1 As Welded 470 MPa 575 MPa 29 % ENC1 As Welded 485 MPa 575 MPa 25 % ENM21 As Welded 535 MPa 600 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value AWSC1 As Welded -20 °C 100 J As Welded -29 °C 80 J ENC1 As Welded 20 °C 120 J As Welded -20 °C 80 J ENM21 As Welded 20 °C 140 J As Welded -20 °C 100 J As Welded -30 °C 80 J Typical Weld Metal Analysis % C Mn Si S P C1 006 105 072 0009 0009 . . . . . M21 007 125 082 0009 0009 . . . . . Typical Wire Composition % C Mn Si 009 165 097 . . . | Specifications Classifications EN ISO 636-A : W 46 3 4Si1 EN ISO 14341-A : G 42 2 C1 4Si1 EN ISO 14341-A : G 46 3 M21 4Si1 EN ISO 636-A : W 4Si1 EN ISO 14341-A : G4Si1 SFA/AWS A5 .18 : ER70S-6 Approvals VdTÜV : 12430 Approvals are based on factory location. Please contact ESAB for more information. Alloy Type Carbon-manganese steel (Mn/Si-alloyed) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation AWSC1 As Welded 470 MPa 575 MPa 29 % ENC1 As Welded 485 MPa 575 MPa 25 % ENM21 As Welded 535 MPa 600 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value AWSC1 As Welded -20 °C 100 J As Welded -29 °C 80 J ENC1 As Welded 20 °C 120 J As Welded -20 °C 80 J ENM21 As Welded 20 °C 140 J As Welded -20 °C 100 J As Welded -30 °C 80 J Typical Weld Metal Analysis % C Mn Si S P C1 006 105 072 0009 0009 . . . . . M21 007 125 082 0009 0009 . . . . . Typical Wire Composition % C Mn Si 009 165 097 . . . |\n| --- | --- | --- |\n| Typical Wire Composition % | - | - |\n| C | Mn | Si |\n| 009 . | 165 . | 097 . |",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "requirements the electrode is a \"clean\" type of EN ISO 14341-A G4Si1 as regards chemical analysis."
+    },
+    {
+      "text": "MILD STEEL\nMIG WIRES / TIG RODS (GMAW/GTAW)\nPipeweld 70S-6\nA copper coated solid wire especially designed for downhill circumferential GMAW on pipes in materials such as APi 5L (grade 52 up to grade 70). The main applications are pipelines, compressor stations and associated works in the oil and gas distribution industries with special requirements. To meet these requirements the electrode is a \"clean\" type of EN ISO 14341-A G4Si1 as regards chemical analysis.",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ements. To meet these requirements the electrode is a \"clean\" type of EN ISO 14341-A G4Si1 as regards chemical analysis.\nesab.com/fillermetals\nesab.com/fillermetals\n1-52",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 13] A multi-purpose all positional rutile cored wire for use with C1 or M21 shielding gas.\n| Specifications | Specifications |\n| --- | --- |\n| Classifications | SFA/AWS A5 .20 : E71T-1C H4 SFA/AWS A5 .20 : E71T-1M H8 EN ISO 17632-A : T 42 3 P C1 1 H5 EN ISO 17632-A : T 46 4 P M21 1 H5 EN ISO 17632-A : T 46 4 P M24 1 H5 |\n| Approvals | ABS : 3YSA H5 (C1) ABS : 4YSA H10 (M21) BV : SA3M , SA3YM H5 (C1) BV : SA4YM H5 (M21) CE : EN 13479 DB : 42 .105 .07 DNV : III YMS(H5) DNV : IV YMS(H5) LR : 3YM H5 LR : 3YS H5 LR : 4YM H10 LR : 4YS H10 PRS : 3YS H5 (C1) PRS : 4YS H10 (M21) RINA : 2Y S H5 RINA : 4Y S H10 UKCA : EN 13479 VdTÜV : 04902 |",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A multi-purpose all positional rutile cored wire for use with C1 or M21 shielding gas."
+    },
+    {
+      "text": "[PDF 표 2, 페이지 13] Approvals are based on factory location. Please contact ESAB for more information.\n| Typical Tensile Properties | Typical Tensile Properties | Typical Tensile Properties | Typical Tensile Properties | Typical Tensile Properties | Typical Tensile Properties | Typical Tensile Properties |\n| --- | --- | --- | --- | --- | --- | --- |\n| Condition | Yield Strength | - | Tensile Strength | - | Elongation | - |\n| M21 Shielding gas As Welded C1 Shielding gas As Welded | 535 MPa 495 MPa | - | 601 MPa 585 MPa | - | 25% 25% | - |\n| Typical Charpy V-Notch Properties | 535 MPa 495 MPa | - | 601 MPa 585 MPa | - | 25% 25% | - |\n| Condition M21 Shielding gas As Welded C1 Shielding gas As Welded | 535 MPa 495 MPa | Testing Temperature -40 °C -30 °C | 601 MPa 585 MPa | Impact Value 70J 65J | 25% 25% | - |\n| Typical Weld Metal Analysis % | 535 MPa 495 MPa | Testing Temperature -40 °C -30 °C | 601 MPa 585 MPa | Impact Value 70J 65J | 25% 25% | - |\n| C C1 shielding gas 006 . | 535 MPa 495 MPa | Mn 120 . | 601 MPa 585 MPa | Si 040 . | 25% 25% | - |\n| Deposition Data | 535 MPa 495 MPa | Mn 120 . | 601 MPa 585 MPa | Si 040 . | 25% 25% | - |\n| Diameter Current | 535 MPa 495 MPa | Voltage | 601 MPa 585 MPa | Wire Feed Speed | 25% 25% | Deposition Rate |\n| 1 .0 mm 100-300 A | 535 MPa 495 MPa | 22-35 V | 601 MPa 585 MPa | 4 .5-23 .0 m/min | 25% 25% | 1 .2-6 .2 kg/h |\n| 1 .2 mm 150-350 A | 535 MPa 495 MPa | 23-35 V | 601 MPa 585 MPa | 5 .8-20 .7 m/min | 25% 25% | 2 .1-7 .5 kg/h |\n| 1 .4 mm 150-350 A | 535 MPa 495 MPa | 22-34 V | 601 MPa 585 MPa | 3 .3-11 .6 m/min | 25% 25% | 1 .8-6 .3 kg/h |",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Approvals are based on factory location. Please contact ESAB for more information."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nFILARC PZ6113\nA multi-purpose all positional rutile cored wire for use with C1 or M21 shielding gas.\nApprovals are based on factory location. Please contact ESAB for more information.\nesab.com/fillermetals\nesab.com/fillermetals\n1-69",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 14] FILARC PZ6113\n| Deposition Data | Deposition Data | Deposition Data | Deposition Data | Deposition Data |\n| --- | --- | --- | --- | --- |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 1 .6 mm | 150-450 A | 22-36 V | 2 .8-12 .4 m/min | 1 .8-8 .1 kg/h |",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "FILARC PZ6113"
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nFILARC PZ6113\nesab.com/fillermetals\nesab.com/fillermetals\n1-70",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 15] A multi-purpose all-positional rutile cored wire for use with C1 shielding gas. Diameters less than 1.4mm are all-positional except vertical down.\n| Specifications Classifications SFA/AWS A5 .20 : E71T-9C H4 EN ISO 17632-A : T 46 3 P C1 2 H5 Approvals CE : EN 13479 DNV : III YMS(H10) UKCA : EN 13479 VdTÜV : 07085 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Alloy Type CMn Shielding Gas C1 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 shielding gas As Welded 560 MPa 628 MPa 23 .3 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 shielding gas As Welded 0 °C 140 J As Welded -20 °C 125 J As Welded -30 °C 109 J Typical Weld Metal Analysis % C Mn Si C1 shielding gas 0065 127 043 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 150-350 A 27-38 V 5 .8-20 .7 m/min 2 .1-7 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-9C H4 EN ISO 17632-A : T 46 3 P C1 2 H5 Approvals CE : EN 13479 DNV : III YMS(H10) UKCA : EN 13479 VdTÜV : 07085 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Alloy Type CMn Shielding Gas C1 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 shielding gas As Welded 560 MPa 628 MPa 23 .3 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 shielding gas As Welded 0 °C 140 J As Welded -20 °C 125 J As Welded -30 °C 109 J Typical Weld Metal Analysis % C Mn Si C1 shielding gas 0065 127 043 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 150-350 A 27-38 V 5 .8-20 .7 m/min 2 .1-7 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-9C H4 EN ISO 17632-A : T 46 3 P C1 2 H5 Approvals CE : EN 13479 DNV : III YMS(H10) UKCA : EN 13479 VdTÜV : 07085 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Alloy Type CMn Shielding Gas C1 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 shielding gas As Welded 560 MPa 628 MPa 23 .3 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 shielding gas As Welded 0 °C 140 J As Welded -20 °C 125 J As Welded -30 °C 109 J Typical Weld Metal Analysis % C Mn Si C1 shielding gas 0065 127 043 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 150-350 A 27-38 V 5 .8-20 .7 m/min 2 .1-7 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-9C H4 EN ISO 17632-A : T 46 3 P C1 2 H5 Approvals CE : EN 13479 DNV : III YMS(H10) UKCA : EN 13479 VdTÜV : 07085 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Alloy Type CMn Shielding Gas C1 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 shielding gas As Welded 560 MPa 628 MPa 23 .3 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 shielding gas As Welded 0 °C 140 J As Welded -20 °C 125 J As Welded -30 °C 109 J Typical Weld Metal Analysis % C Mn Si C1 shielding gas 0065 127 043 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 150-350 A 27-38 V 5 .8-20 .7 m/min 2 .1-7 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-9C H4 EN ISO 17632-A : T 46 3 P C1 2 H5 Approvals CE : EN 13479 DNV : III YMS(H10) UKCA : EN 13479 VdTÜV : 07085 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Alloy Type CMn Shielding Gas C1 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 shielding gas As Welded 560 MPa 628 MPa 23 .3 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 shielding gas As Welded 0 °C 140 J As Welded -20 °C 125 J As Welded -30 °C 109 J Typical Weld Metal Analysis % C Mn Si C1 shielding gas 0065 127 043 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 150-350 A 27-38 V 5 .8-20 .7 m/min 2 .1-7 .5 kg/h |\n| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 1 .2 mm | 150-350 A | 27-38 V | 5 .8-20 .7 m/min | 2 .1-7 .5 kg/h |",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A multi-purpose all-positional rutile cored wire for use with C1 shielding gas. Diameters less than 1.4mm are all-positional except vertical down."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nFILARC PZ6113S\nA multi-purpose all-positional rutile cored wire for use with C1 shielding gas. Diameters less than 1.4mm are all-positional except vertical down.\nesab.com/fillermetals\nesab.com/fillermetals\n1-71",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 16] carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire.",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M20 2 H5 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals ABS : 4Y400M H5 BV : 4Y40 H5 (M20 & M21) BV : 4Y40 H5 CE : EN 13479 DB : 42 .039 .38 DNV : IV Y40MS(H5) (M20 & M21) DNV : IV Y40MS(H5) UKCA : EN 13479 VdTÜV : 12152 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 485 MPa 545 MPa 29 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -40 °C 72 J Typical Weld Metal Analysis % C Mn Si Ni 004 125 063 035 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h 1 .4 mm 150-380 A 18-34 V 2 .5-9 .0 m/min 1 .8-7 .0 kg/h 1 .6 mm 150-450 A 17-36 V 2 .0-9 .3 m/min 1 .7-7 .8 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M20 2 H5 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals ABS : 4Y400M H5 BV : 4Y40 H5 (M20 & M21) BV : 4Y40 H5 CE : EN 13479 DB : 42 .039 .38 DNV : IV Y40MS(H5) (M20 & M21) DNV : IV Y40MS(H5) UKCA : EN 13479 VdTÜV : 12152 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 485 MPa 545 MPa 29 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -40 °C 72 J Typical Weld Metal Analysis % C Mn Si Ni 004 125 063 035 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h 1 .4 mm 150-380 A 18-34 V 2 .5-9 .0 m/min 1 .8-7 .0 kg/h 1 .6 mm 150-450 A 17-36 V 2 .0-9 .3 m/min 1 .7-7 .8 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M20 2 H5 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals ABS : 4Y400M H5 BV : 4Y40 H5 (M20 & M21) BV : 4Y40 H5 CE : EN 13479 DB : 42 .039 .38 DNV : IV Y40MS(H5) (M20 & M21) DNV : IV Y40MS(H5) UKCA : EN 13479 VdTÜV : 12152 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 485 MPa 545 MPa 29 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -40 °C 72 J Typical Weld Metal Analysis % C Mn Si Ni 004 125 063 035 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h 1 .4 mm 150-380 A 18-34 V 2 .5-9 .0 m/min 1 .8-7 .0 kg/h 1 .6 mm 150-450 A 17-36 V 2 .0-9 .3 m/min 1 .7-7 .8 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M20 2 H5 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals ABS : 4Y400M H5 BV : 4Y40 H5 (M20 & M21) BV : 4Y40 H5 CE : EN 13479 DB : 42 .039 .38 DNV : IV Y40MS(H5) (M20 & M21) DNV : IV Y40MS(H5) UKCA : EN 13479 VdTÜV : 12152 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 485 MPa 545 MPa 29 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -40 °C 72 J Typical Weld Metal Analysis % C Mn Si Ni 004 125 063 035 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h 1 .4 mm 150-380 A 18-34 V 2 .5-9 .0 m/min 1 .8-7 .0 kg/h 1 .6 mm 150-450 A 17-36 V 2 .0-9 .3 m/min 1 .7-7 .8 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M20 2 H5 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals ABS : 4Y400M H5 BV : 4Y40 H5 (M20 & M21) BV : 4Y40 H5 CE : EN 13479 DB : 42 .039 .38 DNV : IV Y40MS(H5) (M20 & M21) DNV : IV Y40MS(H5) UKCA : EN 13479 VdTÜV : 12152 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M20 M21 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 485 MPa 545 MPa 29 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -40 °C 72 J Typical Weld Metal Analysis % C Mn Si Ni 004 125 063 035 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h 1 .4 mm 150-380 A 18-34 V 2 .5-9 .0 m/min 1 .8-7 .0 kg/h 1 .6 mm 150-450 A 17-36 V 2 .0-9 .3 m/min 1 .7-7 .8 kg/h |",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 1 .2 mm | 100-360 A | 16-32 V | 1 .8-13 .0 m/min | 1 .3-8 .0 kg/h |\n| 1 .4 mm | 150-380 A | 18-34 V | 2 .5-9 .0 m/min | 1 .8-7 .0 kg/h |\n| 1 .6 mm | 150-450 A | 17-36 V | 2 .0-9 .3 m/min | 1 .7-7 .8 kg/h |",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nCoreweld 46 LS\nA metal cored wire which gives a very low amount of silica on the weld surface. Designed for welding thin plate (>1mm) as well as thicker sections.with argon / carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire.",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "on / carbon dioxide shielding gas. The wider welding arc produced means larger gaps can be bridged than with solid wire.\nesab.com/fillermetals\nesab.com/fillermetals\n1-72",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 17] Designed for use with Ar/CO2 shielding gas mixtures.\n| Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals CE : EN 13479 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M21 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 475 MPa 535 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -20 °C 120 J As Welded -40 °C 110 J Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals CE : EN 13479 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M21 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 475 MPa 535 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -20 °C 120 J As Welded -40 °C 110 J Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals CE : EN 13479 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M21 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 475 MPa 535 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -20 °C 120 J As Welded -40 °C 110 J Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals CE : EN 13479 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M21 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 475 MPa 535 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -20 °C 120 J As Welded -40 °C 110 J Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h | Specifications Classifications SFA/AWS A5 .18 : E70C-6M H4 EN ISO 17632-A : T 46 4 M M21 2 H5 Approvals CE : EN 13479 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn steel Shielding Gas M21 (EN ISO 14175) Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation As Welded 475 MPa 535 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value As Welded -20 °C 120 J As Welded -40 °C 110 J Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .2 mm 100-360 A 16-32 V 1 .8-13 .0 m/min 1 .3-8 .0 kg/h |\n| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 1 .2 mm | 100-360 A | 16-32 V | 1 .8-13 .0 m/min | 1 .3-8 .0 kg/h |",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Designed for use with Ar/CO2 shielding gas mixtures."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nCoreweld 46 RMn\nA metal cored wire designed to give both low Mn as well as total welding fume levels. This wire, along with other measures, will assist in meeting new, stricter Health and Safety regulations. The excellent mechanical properties and welding performance associated with ESAB metal cored wires are not comprised at all. Designed for use with Ar/CO2 shielding gas mixtures.",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ce associated with ESAB metal cored wires are not comprised at all. Designed for use with Ar/CO2 shielding gas mixtures.\nesab.com/fillermetals\nesab.com/fillermetals\n1-73",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "MILD STEEL GAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nDual Shield Prime 71 LT H4\nA seamless, copper free, cored wire designed to weld thick steel components The diffusible hydrogen level is consistently below 4ml/100g of deposited weld metal and with the seam of the wire being laser welded this ensures no moisture pick up. The wire is not copper coated which means there is no chance of copper flakes contaminating feed liners, torches and contact tips. Dual Shield Prime 71 LT H4 is designed to weld medium strength steels (>420 MPa, >61 ksi yield strength) and provides excellent impact toughness down to -40 degrees C. Dual Shield Prime 71 LT H4 is designed to be used with either CO2 (C1) or Ar/CO2 (M21) shielding gas mixtures.",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "egrees C. Dual Shield Prime 71 LT H4 is designed to be used with either CO2 (C1) or Ar/CO2 (M21) shielding gas mixtures.\nSpecifications Classifications EN ISO 17632-B : T494T12 1C1A H5 EN ISO 17632-B : T494T12 1M21A H5 SFA/AWS A5.20 : E71T-1C/1M/9C-J/9M-J-H4 SFA/AWS A5.20 : E71T-12C-J/12M-J-H4 JIS Z 3313 : T49 4 T1-1 C/M A-H5 KS D 7104 : YFL-A503R/YFL-C503R EN ISO 17632-A : T42 4 P C1 1 H5 EN ISO 17632-A : T42 4 P M21 1 H5 Approvals ABS : 4Y400SA H5 CE : EN 13479 CWB : E491T1-C1A4-CS2-H4 (E491T-12J-H4) CWB : E491T1-M21A4-CS2-H4 (E491T-12MJ-H4) DNV : IV Y40MS H5 (C1) DNV : IV Y40MS H5 (M21) LR : 4Y40S H5 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information.",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "5 (M21) LR : 4Y40S H5 UKCA : EN 13479 Approvals are based on factory location. Please contact ESAB for more information.\nWelding Current DC+ Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21, C1 (EN ISO 14175)\nTypical Tensile Properties Condition Yield Strength Tensile Strength Elongation C1 Shielding gas According to AWS As Welded 450 MPa 525 MPa 32 % M21 Shielding gas According to AWS As Welded 480 MPa 540 MPa 32 %\nTypical Charpy V-Notch Properties Condition Testing Temperature Impact Value C1 Shielding gas According to AWS As Welded -30 °C 97 J As Welded -40 °C 54 J M21 Shielding gas According to AWS As Welded -30 °C 117 J As Welded -40 °C 78 J\nTypical Weld Metal Analysis % C Mn Si Ni 0.04 1.30 0.40 0.45",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "cording to AWS As Welded -30 °C 117 J As Welded -40 °C 78 J\nTypical Weld Metal Analysis % C Mn Si Ni 0.04 1.30 0.40 0.45\nesab.com/fillermetalsesab.com/fillermetals\n1-74",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 19] A basic cored wire for use with M21 or C1 shielding gas. Diameters less than 1.4mm are all-positional.",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for use with M21 or C1 shielding gas. Diameters less than 1.4mm are all-positional."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .20 : E71T-5C H4 SFA/AWS A5 .20 : E71T-5M H4 EN ISO 17632-A : T 42 3 B C1 2 H5 EN ISO 17632-A : T 42 3 B M21 2 H5 Approvals CE : EN 13479 DB : 42 .039 .12 DB : 81 .039 .03 DNV-GL : III YMS(H5) LR : 3YS H5 (M21) RINA : 3Y S H5 (M21) UKCA : EN 13479 VdTÜV : 02181 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21 C1 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation M21 shielding gas EN As Welded 456 MPa 569 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value M21 shielding gas EN As Welded -20 °C 145 J As Welded -30 °C 129 J Typical Weld Metal Analysis % C Mn Si M21 shielding gas 006 144 070 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .0 mm 100-230 A 14-30 V 4 .5-13 .0 m/min 1 .2-4 .0 kg/h 1 .2 mm 120-300 A 16-32 V 4 .0-15 .0 m/min 1 .7-6 .5 kg/h 1 .6 mm 140-400 A 24-34 V 3 .0-10 .5 m/min 2 .0-8 .0 kg/h 2 .4 mm 250-500 A 28-38 V 1 .5-6 .0 m/min 3 .5-9 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-5C H4 SFA/AWS A5 .20 : E71T-5M H4 EN ISO 17632-A : T 42 3 B C1 2 H5 EN ISO 17632-A : T 42 3 B M21 2 H5 Approvals CE : EN 13479 DB : 42 .039 .12 DB : 81 .039 .03 DNV-GL : III YMS(H5) LR : 3YS H5 (M21) RINA : 3Y S H5 (M21) UKCA : EN 13479 VdTÜV : 02181 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21 C1 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation M21 shielding gas EN As Welded 456 MPa 569 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value M21 shielding gas EN As Welded -20 °C 145 J As Welded -30 °C 129 J Typical Weld Metal Analysis % C Mn Si M21 shielding gas 006 144 070 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .0 mm 100-230 A 14-30 V 4 .5-13 .0 m/min 1 .2-4 .0 kg/h 1 .2 mm 120-300 A 16-32 V 4 .0-15 .0 m/min 1 .7-6 .5 kg/h 1 .6 mm 140-400 A 24-34 V 3 .0-10 .5 m/min 2 .0-8 .0 kg/h 2 .4 mm 250-500 A 28-38 V 1 .5-6 .0 m/min 3 .5-9 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-5C H4 SFA/AWS A5 .20 : E71T-5M H4 EN ISO 17632-A : T 42 3 B C1 2 H5 EN ISO 17632-A : T 42 3 B M21 2 H5 Approvals CE : EN 13479 DB : 42 .039 .12 DB : 81 .039 .03 DNV-GL : III YMS(H5) LR : 3YS H5 (M21) RINA : 3Y S H5 (M21) UKCA : EN 13479 VdTÜV : 02181 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21 C1 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation M21 shielding gas EN As Welded 456 MPa 569 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value M21 shielding gas EN As Welded -20 °C 145 J As Welded -30 °C 129 J Typical Weld Metal Analysis % C Mn Si M21 shielding gas 006 144 070 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .0 mm 100-230 A 14-30 V 4 .5-13 .0 m/min 1 .2-4 .0 kg/h 1 .2 mm 120-300 A 16-32 V 4 .0-15 .0 m/min 1 .7-6 .5 kg/h 1 .6 mm 140-400 A 24-34 V 3 .0-10 .5 m/min 2 .0-8 .0 kg/h 2 .4 mm 250-500 A 28-38 V 1 .5-6 .0 m/min 3 .5-9 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-5C H4 SFA/AWS A5 .20 : E71T-5M H4 EN ISO 17632-A : T 42 3 B C1 2 H5 EN ISO 17632-A : T 42 3 B M21 2 H5 Approvals CE : EN 13479 DB : 42 .039 .12 DB : 81 .039 .03 DNV-GL : III YMS(H5) LR : 3YS H5 (M21) RINA : 3Y S H5 (M21) UKCA : EN 13479 VdTÜV : 02181 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21 C1 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation M21 shielding gas EN As Welded 456 MPa 569 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value M21 shielding gas EN As Welded -20 °C 145 J As Welded -30 °C 129 J Typical Weld Metal Analysis % C Mn Si M21 shielding gas 006 144 070 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .0 mm 100-230 A 14-30 V 4 .5-13 .0 m/min 1 .2-4 .0 kg/h 1 .2 mm 120-300 A 16-32 V 4 .0-15 .0 m/min 1 .7-6 .5 kg/h 1 .6 mm 140-400 A 24-34 V 3 .0-10 .5 m/min 2 .0-8 .0 kg/h 2 .4 mm 250-500 A 28-38 V 1 .5-6 .0 m/min 3 .5-9 .5 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-5C H4 SFA/AWS A5 .20 : E71T-5M H4 EN ISO 17632-A : T 42 3 B C1 2 H5 EN ISO 17632-A : T 42 3 B M21 2 H5 Approvals CE : EN 13479 DB : 42 .039 .12 DB : 81 .039 .03 DNV-GL : III YMS(H5) LR : 3YS H5 (M21) RINA : 3Y S H5 (M21) UKCA : EN 13479 VdTÜV : 02181 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Diffusible Hydrogen < 4 ml/100g Alloy Type C Mn Shielding Gas M21 C1 (EN ISO 14175) , Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation M21 shielding gas EN As Welded 456 MPa 569 MPa 28 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value M21 shielding gas EN As Welded -20 °C 145 J As Welded -30 °C 129 J Typical Weld Metal Analysis % C Mn Si M21 shielding gas 006 144 070 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 1 .0 mm 100-230 A 14-30 V 4 .5-13 .0 m/min 1 .2-4 .0 kg/h 1 .2 mm 120-300 A 16-32 V 4 .0-15 .0 m/min 1 .7-6 .5 kg/h 1 .6 mm 140-400 A 24-34 V 3 .0-10 .5 m/min 2 .0-8 .0 kg/h 2 .4 mm 250-500 A 28-38 V 1 .5-6 .0 m/min 3 .5-9 .5 kg/h |",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for use with M21 or C1 shielding gas. Diameters less than 1.4mm are all-positional."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 1 .0 mm | 100-230 A | 14-30 V | 4 .5-13 .0 m/min | 1 .2-4 .0 kg/h |\n| 1 .2 mm | 120-300 A | 16-32 V | 4 .0-15 .0 m/min | 1 .7-6 .5 kg/h |\n| 1 .6 mm | 140-400 A | 24-34 V | 3 .0-10 .5 m/min | 2 .0-8 .0 kg/h |\n| 2 .4 mm | 250-500 A | 28-38 V | 1 .5-6 .0 m/min | 3 .5-9 .5 kg/h |",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for use with M21 or C1 shielding gas. Diameters less than 1.4mm are all-positional."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nOK Tubrod 15.00\nA basic cored wire for use with M21 or C1 shielding gas. Diameters less than 1.4mm are all-positional.\nesab.com/fillermetals\nesab.com/fillermetals\n1-83",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 20] A basic cored wire for submerged arc welding.",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h |",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 2 .4 mm | 250-350 A | 28-38 V | 1 .5-2 .5 m/min | 3 .5-9 .5 kg/h |\n| 3 .0 mm | 400-800 A | 28-40 V | 2 .5-6 .0 m/min | 6 .0-14 .5 kg/h |\n| 4 .0 mm | 500-900 A | 28-40 V | 2 .0-5 .5 m/min | 7 .0-18 .0 kg/h |",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "MILD STEEL\nGAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nOK Tubrod 15.00S\nA basic cored wire for submerged arc welding.\nesab.com/fillermetals\nesab.com/fillermetals\n1-84",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "MILD STEEL GAS-SHIELDED FLUX-CORED WIRES (FCAW/MCAW)\nOK Tubrod 15.14\nA multi-purpose all positional rutile cored wire for use with C1 or M21 shielding gas. Diameters less than 1.4mm are all-positional except vertical down.\nSpecifications Classifications SFA/AWS A5.20 : E71T-1C H8 SFA/AWS A5.20 : E71T-1M H8 EN ISO 17632-A : T 46 2 P C1 1 H5 EN ISO 17632-A : T 46 3 P M21 2 H5 Approvals ABS : 3YSA H5 (C1, M21) BV : SA3YM (C1, M21) CE : EN 13479 DB : 42.039.05 DNV : III YMS (C1, M21) LR : 3YM H5 LR : 3YS H5 PRS : 3YS H10 (C1, M21) RINA : 2Y S H5 RINA : 3Y S H5 UKCA : EN 13479 VdTÜV : 07651 Approvals are based on factory location. Please contact ESAB for more information.\nWelding Current DC+ Diffusible Hydrogen < 5 ml/100g Alloy Type C Mn Shielding Gas M21, C1 (EN ISO 14175)\nTypical Tensile Properties Condition Yield Strength Tensile Strength Elongation AWS C1 PWHT 523 MPa 601 MPa 25.4 % 3 hour(s) 620 °C C1 As Welded 497 MPa 588 MPa 27 % M21 As Welded 590 MPa 661 MPa 23 %\nTypical Charpy V-Notch Properties Condition Testing Temperature Impact Value AWS C1 PWHT -20 °C 166 J 3 hour(s) 620 °C C1 As Welded -20 °C 110 J M21 As Welded -20 °C 120 J As Welded -30 °C 90 J\nTypical Weld Metal Analysis % C Mn Si M21 shielding gas 0.06 1.40 0.40",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "M21 As Welded -20 °C 120 J As Welded -30 °C 90 J\nTypical Weld Metal Analysis % C Mn Si M21 shielding gas 0.06 1.40 0.40\nesab.com/fillermetalsesab.com/fillermetals\n1-85",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 22] An all positional self-shielded cored wire ideal for welding outdoor structural steelwork.",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "An all positional self-shielded cored wire ideal for welding outdoor structural steelwork."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h | Specifications Classifications SFA/AWS A5 .20 : E71T-8 EN ISO 17632-A : T 42 2 Y N 2 Approvals ABS : 2YSA H10 BV : S2YM HH CE : EN 13479 CWB : E491T8-A3-CS3-H8 DB : 42 .039 .35 DNV-GL : II YMS(H10) LR : 2YS H10 UKCA : EN 13479 VdTÜV : 10019 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC- Alloy Type C Mn Shielding Gas None Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation No shielding gas As Welded 457 MPa 552 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value No shielding gas As Welded -20 °C 75 J As Welded -29 °C 63 J Typical Weld Metal Analysis % C Mn Si Al No shielding gas 017 045 012 050 . . . . Deposition Data Diameter Current Voltage Wire Feed Speed TTW Dist. Deposition Rate 1 .6 mm 135-230 A 18-25 V 3 .0-5 .8 m/min 13 .0 mm 1 .77-3 .72 kg/h 1 .8 mm 150-280 A 18-25 V 2 .8-7 .1 m/min 19 .0 mm 1 .86-5 .0 kg/h 2 .0 mm 175-230 A 18-25 V 3 .0-5 .8 m/min 19 .0 mm 2 .18-4 .76 kg/h |",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "An all positional self-shielded cored wire ideal for welding outdoor structural steelwork."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | TTW Dist. | Deposition Rate |\n| 1 .6 mm | 135-230 A | 18-25 V | 3 .0-5 .8 m/min | 13 .0 mm | 1 .77-3 .72 kg/h |\n| 1 .8 mm | 150-280 A | 18-25 V | 2 .8-7 .1 m/min | 19 .0 mm | 1 .86-5 .0 kg/h |\n| 2 .0 mm | 175-230 A | 18-25 V | 3 .0-5 .8 m/min | 19 .0 mm | 2 .18-4 .76 kg/h |",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "An all positional self-shielded cored wire ideal for welding outdoor structural steelwork."
+    },
+    {
+      "text": "MILD STEEL\nSELF-SHIELDED FLUX-CORED WIRES (FCAW)\nCoreshield 8\nAn all positional self-shielded cored wire ideal for welding outdoor structural steelwork.\nesab.com/fillermetals\nesab.com/fillermetals\n1-86",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 23] A metal cored wire for submerged arc welding.",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A metal cored wire for submerged arc welding."
+    },
+    {
+      "text": "| Specifications Classifications EN ISO 14174 : SA AB 1 67 AC H5 SFA/AWS A5 .17 : F7A2-EC1 Approvals ABS : 3YM (10 .71) BV : 3YM (10 .71) CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .13 - 51 .039 .05 (10 .71) DNV : III YM (10 .71) GL : 3YM (10 .71) LR : 3YM (10 .71) VdTÜV : 09143 (10 .71) Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen < 10 ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation EN with OK Flux 10 .71 As Welded 454 MPa 538 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value EN with OK Flux 10 .71 As Welded -20 °C 132 J Typical Weld Metal Analysis % C Mn Si with OK Flux 10 .71 006 152 047 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-450 A 28-38 V 2 .0-5 .0 m/min 4 .0-9 .0 kg/h 3 .0 mm 400-700 A 28-40 V 2 .5-5 .5 m/min 5 .5-12 .0 kg/h 4 .0 mm 500-850 A 28-40 V 2 .0-5 .0 m/min 6 .5-12 .5 kg/h | Specifications Classifications EN ISO 14174 : SA AB 1 67 AC H5 SFA/AWS A5 .17 : F7A2-EC1 Approvals ABS : 3YM (10 .71) BV : 3YM (10 .71) CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .13 - 51 .039 .05 (10 .71) DNV : III YM (10 .71) GL : 3YM (10 .71) LR : 3YM (10 .71) VdTÜV : 09143 (10 .71) Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen < 10 ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation EN with OK Flux 10 .71 As Welded 454 MPa 538 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value EN with OK Flux 10 .71 As Welded -20 °C 132 J Typical Weld Metal Analysis % C Mn Si with OK Flux 10 .71 006 152 047 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-450 A 28-38 V 2 .0-5 .0 m/min 4 .0-9 .0 kg/h 3 .0 mm 400-700 A 28-40 V 2 .5-5 .5 m/min 5 .5-12 .0 kg/h 4 .0 mm 500-850 A 28-40 V 2 .0-5 .0 m/min 6 .5-12 .5 kg/h | Specifications Classifications EN ISO 14174 : SA AB 1 67 AC H5 SFA/AWS A5 .17 : F7A2-EC1 Approvals ABS : 3YM (10 .71) BV : 3YM (10 .71) CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .13 - 51 .039 .05 (10 .71) DNV : III YM (10 .71) GL : 3YM (10 .71) LR : 3YM (10 .71) VdTÜV : 09143 (10 .71) Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen < 10 ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation EN with OK Flux 10 .71 As Welded 454 MPa 538 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value EN with OK Flux 10 .71 As Welded -20 °C 132 J Typical Weld Metal Analysis % C Mn Si with OK Flux 10 .71 006 152 047 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-450 A 28-38 V 2 .0-5 .0 m/min 4 .0-9 .0 kg/h 3 .0 mm 400-700 A 28-40 V 2 .5-5 .5 m/min 5 .5-12 .0 kg/h 4 .0 mm 500-850 A 28-40 V 2 .0-5 .0 m/min 6 .5-12 .5 kg/h | Specifications Classifications EN ISO 14174 : SA AB 1 67 AC H5 SFA/AWS A5 .17 : F7A2-EC1 Approvals ABS : 3YM (10 .71) BV : 3YM (10 .71) CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .13 - 51 .039 .05 (10 .71) DNV : III YM (10 .71) GL : 3YM (10 .71) LR : 3YM (10 .71) VdTÜV : 09143 (10 .71) Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen < 10 ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation EN with OK Flux 10 .71 As Welded 454 MPa 538 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value EN with OK Flux 10 .71 As Welded -20 °C 132 J Typical Weld Metal Analysis % C Mn Si with OK Flux 10 .71 006 152 047 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-450 A 28-38 V 2 .0-5 .0 m/min 4 .0-9 .0 kg/h 3 .0 mm 400-700 A 28-40 V 2 .5-5 .5 m/min 5 .5-12 .0 kg/h 4 .0 mm 500-850 A 28-40 V 2 .0-5 .0 m/min 6 .5-12 .5 kg/h | Specifications Classifications EN ISO 14174 : SA AB 1 67 AC H5 SFA/AWS A5 .17 : F7A2-EC1 Approvals ABS : 3YM (10 .71) BV : 3YM (10 .71) CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .13 - 51 .039 .05 (10 .71) DNV : III YM (10 .71) GL : 3YM (10 .71) LR : 3YM (10 .71) VdTÜV : 09143 (10 .71) Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen < 10 ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation EN with OK Flux 10 .71 As Welded 454 MPa 538 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value EN with OK Flux 10 .71 As Welded -20 °C 132 J Typical Weld Metal Analysis % C Mn Si with OK Flux 10 .71 006 152 047 . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-450 A 28-38 V 2 .0-5 .0 m/min 4 .0-9 .0 kg/h 3 .0 mm 400-700 A 28-40 V 2 .5-5 .5 m/min 5 .5-12 .0 kg/h 4 .0 mm 500-850 A 28-40 V 2 .0-5 .0 m/min 6 .5-12 .5 kg/h |",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A metal cored wire for submerged arc welding."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 2 .4 mm | 250-450 A | 28-38 V | 2 .0-5 .0 m/min | 4 .0-9 .0 kg/h |\n| 3 .0 mm | 400-700 A | 28-40 V | 2 .5-5 .5 m/min | 5 .5-12 .0 kg/h |\n| 4 .0 mm | 500-850 A | 28-40 V | 2 .0-5 .0 m/min | 6 .5-12 .5 kg/h |",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A metal cored wire for submerged arc welding."
+    },
+    {
+      "text": "MILD STEEL\nSUBARC (SAW)\nOK Tubrod 14.00S\nA metal cored wire for submerged arc welding.\nesab.com/fillermetals\nesab.com/fillermetals\n1-93",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 24] A basic cored wire for submerged arc welding.",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h | Specifications Classifications SFA/AWS A5 .17 : F7A4-EC1 (OK Flux 10 .71) SFA/AWS A5 .17 : F7A5-EC1 (OK Flux 10 .62) EN ISO 14171-A : S 42 4 AB T3 (OK Flux 10 .71) Approvals ABS : 3YM BV : A3YM CE : EN 13479 (10 .71) CE : EN 13479 DB : 52 .039 .14 DNV-GL : III YM LR : 3YM PRS : 3YM UKCA : EN 13479 VdTÜV : 09144 Approvals are based on factory location. Please contact ESAB for more information. Welding Current DC+, AC Diffusible Hydrogen <5ml/100g Alloy Type C Mn Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation OK Flux 10 .71 As Welded 463 MPa 556 MPa 29 % OK Flux 10 .62 As Welded 465 MPa 540 MPa 26 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value OK Flux 10 .71 As Welded -40 °C 114 J OK Flux 10 .62 As Welded -40 °C 140 J As Welded -60 °C 75 J Typical Weld Metal Analysis % C Mn Si S P OK Flux 10 .62 006 140 035 0010 0015 . . . . . OK Flux 10 .71 007 161 059 0010 0015 . . . . . Deposition Data Diameter Current Voltage Wire Feed Speed Deposition Rate 2 .4 mm 250-350 A 28-38 V 1 .5-2 .5 m/min 3 .5-9 .5 kg/h 3 .0 mm 400-800 A 28-40 V 2 .5-6 .0 m/min 6 .0-14 .5 kg/h 4 .0 mm 500-900 A 28-40 V 2 .0-5 .5 m/min 7 .0-18 .0 kg/h |",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - |\n| Diameter | Current | Voltage | Wire Feed Speed | Deposition Rate |\n| 2 .4 mm | 250-350 A | 28-38 V | 1 .5-2 .5 m/min | 3 .5-9 .5 kg/h |\n| 3 .0 mm | 400-800 A | 28-40 V | 2 .5-6 .0 m/min | 6 .0-14 .5 kg/h |\n| 4 .0 mm | 500-900 A | 28-40 V | 2 .0-5 .5 m/min | 7 .0-18 .0 kg/h |",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "A basic cored wire for submerged arc welding."
+    },
+    {
+      "text": "MILD STEEL\nSUBARC (SAW)\nOK Tubrod 15.00S\nA basic cored wire for submerged arc welding.\nesab.com/fillermetals\nesab.com/fillermetals\n1-94",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "1.2. MILDLOW ALLOYSTEEL\nTABLETABLE OFOF CONTENTSCONTENTS",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "1.2. MILDLOW ALLOYSTEEL\nTABLETABLE OFOF CONTENTSCONTENTS\nSTICK ELECTRODES (SMAW)......................................................................................................................................2-4 Filarc 118...........................................................................................................................................................................2-4 Filarc 76S...........................................................................................................................................................................2-5 Filarc 88S...........................................................................................................................................................................2-6 Filarc 98S...........................................................................................................................................................................2-8 OK 48.08...........................................................................................................................................................................2-9 OK 73.08 ........................................................................................................................................................................2-11 OK 73.15.........................................................................................................................................................................2-12 OK 73.68.........................................................................................................................................................................2-14 OK 73.79..................................................................................................................................................................",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "........................................................................................................................\n.......2-16 OK 74.46.........................................................................................................................................................................2-17 OK 74.70.........................................................................................................................................................................2-18 OK 74.78.........................................................................................................................................................................2-19 OK 74.86 Tensitrode........................................................................................................................................................2-20 OK 75.75 ........................................................................................................................................................................2-21 OK 75.78.........................................................................................................................................................................2-22 OK 76.18.........................................................................................................................................................................2-23 OK 76.28.........................................................................................................................................................................2-24 OK 76.35.........................................................................................................................................................................2-25 OK 76.96....................................................................................................................................................",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "........................................................................................................................\n.....................2-26 OK 76.98.........................................................................................................................................................................2-27 OK 78.16.........................................................................................................................................................................2-28 OK B2 SC........................................................................................................................................................................2-29 OK B3 SC........................................................................................................................................................................2-31 Pipeweld 90DH................................................................................................................................................................2-33 Pipeweld 7010 Plus.........................................................................................................................................................2-34 Pipeweld 8010 Plus.........................................................................................................................................................2-35 Pipeweld 9010 Plus.........................................................................................................................................................2-36 MIG WIRES/TIG RODS (GMAW/GTAW)......................................................................................................................2-37 OK AristoRod 13.08.........................................................................................................................................................2-37 OK AristoRod",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": ".......................................................................................................2-37 OK AristoRod\n13.09.........................................................................................................................................................2-38 OK AristoRod 13.12.........................................................................................................................................................2-40 OK AristoRod 13.16.........................................................................................................................................................2-42 OK AristoRod 13.22.........................................................................................................................................................2-44 OK AristoRod 13.26.........................................................................................................................................................2-45 OK AristoRod 55..............................................................................................................................................................2-47 OK AristoRod 69..............................................................................................................................................................2-49 OK AristoRod 79..............................................................................................................................................................2-51 OK AristoRod 89..............................................................................................................................................................2-52 OK Autrod 13.17..............................................................................................................................................................2-53 OK Autrod 13.23............................",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "........................................................................2-53 OK Autrod 13.23............................\n..................................................................................................................................2-54 OK Autrod 13.25..............................................................................................................................................................2-55 OK Autrod 13.28..............................................................................................................................................................2-56 OK Autrod 13.29..............................................................................................................................................................2-58 OK Autrod 13.37..............................................................................................................................................................2-60 OK Tigrod 13.08..............................................................................................................................................................2-61 OK Tigrod 13.09..............................................................................................................................................................2-62 OK Tigrod 13.12..............................................................................................................................................................2-64 OK Tigrod 13.16..............................................................................................................................................................2-65 OK Tigrod 13.17..............................................................................................................................................................2-66 OK Tigrod 13.22................................................",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "....................................................2-66 OK Tigrod 13.22................................................\n..............................................................................................................2-67 OK Tigrod 13.23..............................................................................................................................................................2-68 OK Tigrod 13.26..............................................................................................................................................................2-69 OK Tigrod 13.28..............................................................................................................................................................2-70 OK Tigrod 13.32..............................................................................................................................................................2-71 OK Tigrod 13.37..............................................................................................................................................................2-72 OK Tigrod 13.38..............................................................................................................................................................2-73 OK Tigrod 55...................................................................................................................................................................2-75 OK Tigrod B2 SC.............................................................................................................................................................2-76 OK Tigrod B3 SC.............................................................................................................................................................2-78",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "....................................................................................................................2-78\nesab.com/fillermetals\n2-1",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 26] permitted. Use DC- for root passes.\n| Specifications | Specifications | Specifications | Specifications |\n| --- | --- | --- | --- |\n| Classifications SFA/AWS A5 .5 : E8016-G H4R EN ISO 2560-A : E 50 6 Mn1Ni B 12 H5 Approvals ABS : E8016-G CE : EN 13479 DB : 10 .105 .16 DNV : 5 Y46H5 LR : 5Y46 UKCA : EN 13479 VdTÜV : 06107 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+(-) , Diffusible Hydrogen < 4 .0 ml/100g Alloy Type Low alloyed (0 .9 % Ni) Coating Type Basic covering Min AC OCV 65 | - | - | - |\n| Typical Tensile Properties | - | - | - |\n| Condition Yield Strength AWS As Welded 550 MPa PWHT 520 MPa 1 hour(s) 620 °C ISO As Welded 560 MPa | - | Tensile Strength 640 MPa 590 MPa 630 MPa | Elongation 27% 28% 26% |\n| Typical Charpy V-Notch Properties | - | Tensile Strength 640 MPa 590 MPa 630 MPa | Elongation 27% 28% 26% |\n| Condition | Testing | Temperature | Impact Value |\n| AWS PWHT 1 hour(s) 620 °C PWHT 1 hour(s) 620 °C ISO As Welded As Welded | -40 °C -60 °C -40 °C -60 °C | Temperature | 104J 65J 140J 80J |\n| Typical Weld Metal Analysis % | -40 °C -60 °C -40 °C -60 °C | Temperature | 104J 65J 140J 80J |\n| C Mn 006 177 . . | Si 027 . | Ni 09 . | Cr Mo 003 001 . . |",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "permitted. Use DC- for root passes."
+    },
+    {
+      "text": "LOW ALLOY\nSTICK ELECTRODES (SMAW)\nFILARC 88S\nA basic coated low hydrogen electrode alloyed with max 1% Ni for the positional welding of higher tensile steels, S460 steel and similar grades. Good CVN toughness down to -60°C ; CTOD tested in the AW and SR conditions. Many approved welding procedures are available. Use short arc. Weave slowly when permitted. Use DC- for root passes.",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ns. Many approved welding procedures are available. Use short arc. Weave slowly when permitted. Use DC- for root passes.\nesab.com/fillermetals\nesab.com/fillermetals\n2-6",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 27] FILARC 88S\n| Deposition Data | Deposition Data | Deposition Data | Deposition Data | Deposition Data | Deposition Data |\n| --- | --- | --- | --- | --- | --- |\n| Diameter | Current | Voltage | Efficiency (%) | Fusion time per | Deposition Rate |\n| 2 .5 x 350 mm | 65-100 A | 257V . | 61% | electrode at 90% I max 51 sec | 0 .96 kg/h |\n| 3 .2 x 350 mm | 90-150 A | 231V . | 40% | 67 sec | 1 .3 kg/h |\n| 4 .0 x 450 mm | 110-190 A | 233V . | 40% | 95 sec | 1 .59 kg/h |\n| 5 .0 x 450 mm | 185-235 A | 249V . | 40% | 110 sec | 2 .35 kg/h |",
+      "page_start": 27,
+      "page_end": 27,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "FILARC 88S"
+    },
+    {
+      "text": "LOW ALLOY\nSTICK ELECTRODES (SMAW)\nFILARC 88S\nesab.com/fillermetals\nesab.com/fillermetals\n2-7",
+      "page_start": 27,
+      "page_end": 27,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 28] steel and ship's hull structural steel. The weld metal has excellent mechanical properties.",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "steel and ship's hull structural steel. The weld metal has excellent mechanical properties."
+    },
+    {
+      "text": "| Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h | Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h | Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h | Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h | Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h | Specifications Classifications SFA/AWS A5 .5 : E8018-G EN ISO 2560-A : E 46 5 Z B 32 Approvals ABS : 3Y H10 BV : 3Y H10 CE : EN 13479 DB : 10 .039 .20 DNV-GL : 3 YH10 LR : 3Y H10 RS : 3Y H10 VdTÜV : 02115 Approvals are based on factory location. Please contact ESAB for more information. Welding Current AC DC+ , Diffusible Hydrogen < 10 .0 ml/100g Alloy Type Low alloyed (0 .7 % Ni 0 .4 % Cu) , Coating Type Basic covering Min AC OCV 65 Typical Tensile Properties Condition Yield Strength Tensile Strength Elongation ISO As Welded 520 MPa 610 MPa 30 % Typical Charpy V-Notch Properties Condition Testing Temperature Impact Value ISO As Welded -50 °C 100 J Typical Weld Metal Analysis % C Mn Si Ni Cu 006 11 04 07 04 . . . . . Deposition Data Diameter Current Voltage Efficiency (%) Fusion time per Deposition Rate electrode at 90% I max 2 .5 x 350 mm 80-115 A 21 V 62 % 59 sec 0 .9 kg/h 3 .2 x 350 mm 100-150 A 23 V 62 % 68 sec 1 .2 kg/h 3 .2 x 450 mm 100-150 A 22 V 66 % 90 sec 1 .3 kg/h 4 .0 x 450 mm 130-200 A 23 V 68 % 100 sec 1 .8 kg/h |",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "steel and ship's hull structural steel. The weld metal has excellent mechanical properties."
+    },
+    {
+      "text": "| --- | --- | --- | --- | --- | --- |\n| Deposition Data | - | - | - | - | - |\n| Diameter | Current | Voltage | Efficiency (%) | Fusion time per electrode at 90% I max | Deposition Rate |\n| 2 .5 x 350 mm | 80-115 A | 21V | 62% | 59 sec | 0 .9 kg/h |\n| 3 .2 x 350 mm | 100-150 A | 23V | 62% | 68 sec | 1 .2 kg/h |\n| 3 .2 x 450 mm | 100-150 A | 22V | 66% | 90 sec | 1 .3 kg/h |\n| 4 .0 x 450 mm | 130-200 A | 23V | 68% | 100 sec | 1 .8 kg/h |",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "steel and ship's hull structural steel. The weld metal has excellent mechanical properties."
+    },
+    {
+      "text": "LOW ALLOY\nSTICK ELECTRODES (SMAW)\nOK 73.08\nNiCu-alloyed electrode which deposits a weld metal with good corrosion resistance to sea water and flue gases, for the welding of weathering steels, e g Cor-Ten steel and ship's hull structural steel. The weld metal has excellent mechanical properties.\nesab.com/fillermetals\nesab.com/fillermetals",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "s hull structural steel. The weld metal has excellent mechanical properties.\nesab.com/fillermetals\nesab.com/fillermetals\n2-11",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0003_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0004_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0005_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 6,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0006_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 7,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0007_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0008_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0009_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0010_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0011_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0012_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 13,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0013_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0014_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0015_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0016_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0017_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0018_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0019_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 20,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0020_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0021_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 22,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0022_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0023_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 24,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0024_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_002_92f9495740fb.jpeg",
+      "file_hash": "92f9495740fb663ebb9ece8cd61d27b5c9d1528c30925094fd6075245fe83b10",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_003_9ce82a6bdcfd.jpeg",
+      "file_hash": "9ce82a6bdcfdf7c9e662b6500c2e197d2abd474cd1d52281141f69fcaeadc355",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_004_d8c83483eab7.jpeg",
+      "file_hash": "d8c83483eab7e1fe51639d2fd22dab346fcc664a7cb51e61794d0ad55949dd16",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_005_3b9fbf8cfa64.jpeg",
+      "file_hash": "3b9fbf8cfa64c3f5caf92c77a042060e97d053eb8129a092504ef21202e96565",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0026_image_006_57fda420aad4.jpeg",
+      "file_hash": "57fda420aad47c96b18f1289c0ff2f76c8dab1a17847f0db412b28b32e49273a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0027_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_001_164d00e17673.png",
+      "file_hash": "164d00e176737202516e8a8e0ea4ba6d8f85b8370f4e4b656368950ca872899f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_002_92f9495740fb.jpeg",
+      "file_hash": "92f9495740fb663ebb9ece8cd61d27b5c9d1528c30925094fd6075245fe83b10",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_003_9ce82a6bdcfd.jpeg",
+      "file_hash": "9ce82a6bdcfdf7c9e662b6500c2e197d2abd474cd1d52281141f69fcaeadc355",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_004_d8c83483eab7.jpeg",
+      "file_hash": "d8c83483eab7e1fe51639d2fd22dab346fcc664a7cb51e61794d0ad55949dd16",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_005_3b9fbf8cfa64.jpeg",
+      "file_hash": "3b9fbf8cfa64c3f5caf92c77a042060e97d053eb8129a092504ef21202e96565",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/c4b0a0fca09a883721fa/page_0028_image_006_57fda420aad4.jpeg",
+      "file_hash": "57fda420aad47c96b18f1289c0ff2f76c8dab1a17847f0db412b28b32e49273a",
+      "ocr_text": ""
+    }
+  ],
+  "block_count": 52
+}

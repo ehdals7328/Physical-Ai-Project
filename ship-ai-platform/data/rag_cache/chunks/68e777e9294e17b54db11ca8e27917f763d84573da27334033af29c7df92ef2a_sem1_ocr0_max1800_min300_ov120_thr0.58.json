@@ -1,0 +1,359 @@
+{
+  "chunks": [
+    {
+      "text": "Effect of environmental conditions on field welding of precast concrete connections\nClay Naito, Jason Zimpfer, Richard Sause, and Eric Kaufmann\nhe use of precast concrete enables year-round, high- quality construction of buildings and bridges. The individual components are typically manufactured T in an environmentally controlled facility. This allows for consistency of concrete production, steel installation, and concrete placement. Connections between precast concrete elements are often made by welding steel plates embedded in the precast concrete components. Figure 1 illustrates a standard double tee–to–inverted tee connection. When designed in accordance with PCI recommendations, these connections (PCI Connections Manual for Precast and Prestressed Concrete Construction)1 provide stability during erection and strength for service and ultimate-load cases.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Prestressed Concrete Construction)1 provide stability during erection and strength for service and ultimate-load cases.\nIn most cases, certain connections are welded initially dur- ■  A research study was conducted to investigate the quality of ing erection of the precast concrete component to provide welded connections between precast concrete components stability. The remaining embedded connections are com- made under environmental conditions typically encountered in pleted later to provide the full service and strength load precast concrete construction. capacity. Welding of the connections needed for erection stability is performed in the field under a variety of wind, ■  The effects of wind, humidity, temperature, and surface mois- humidity, and temperature conditions. Current American ture on the quality of shielded metal arc welds (SMAWs) on Welding Society (AWS) specifications2,3 are either restric- ASTM A36 Type 304 stainless steel and ASTM A36 galvanized tive or unclear about the conditions under which field steel plates were examined. welds can be made. A research program sponsored by PCI was conducted to investigate the effects of environmental ■  The results showed that good-quality SMAW welds can be conditions on the quality of field-welded precast concrete made in wind up to 35 mph (56 kph), in temperatures as low connections. as -10 °F (-23.3 °C), and under wet conditions.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "made in wind up to 35 mph (56 kph), in temperatures as low connections. as -10 °F (-23.3 °C), and under wet conditions.\n142 Spring 2012 | PCI Journal",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 1. Field welding of precast concrete connections.\nWelding requirements temperature is 32 °F (0 °C). If the base metal temperature for precast concrete systems is below 32 °F, the base metal must be preheated to at least 70 °F (21 °C). Field welds of steel connection plates embedded in pre- cast concrete components are commonly made using the For high wind velocities, a suitable shelter must be used to shielded metal arc welding (SMAW) method. This method, protect the weld.2 High wind velocity is defined as 5 mph also called stick welding, uses a flux-coated electrode (8 kph) for weld processes that use a gas shield to protect rod. During welding, the wire transmits current, creating the molten weld metal from the environment. These gas- an electric arc to the base metal. The rod melts and then shielded processes require a low wind condition to main- solidifies, becoming the weld metal (filler), while the flux tain the shield. Because the SMAW process does not use a shields the molten weld metal from the atmosphere. Flux gas shield, a wind velocity limit is not directly prescribed core arc welding (FCAW) is also used in precast concrete by AWS. construction; however, this method uses a continuous-feed electrode wire. The size of the equipment used to feed the AWS D1.6 similarly states that welding should not be wire often makes it difficult to use in multistory precast performed on surfaces that are wet or in wind that would concrete construction. Due to the limited use of the FCAW adversely affect shielding of the molten weld metal in the method in precast concrete construction, the research study welding process. The AWS D1.6 code does not quantify focused on the welds made using SMAW. the wind velocity that would affect the shielding process.",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "code does not quantify focused on the welds made using SMAW. the wind velocity that would affect the shielding process.\nLimits on environmental The American Petroleum Institute (API) has similar envi- conditions for welding ronmental restrictions within its document Welded Steel Tanks for Oil Storage.5 With respect to wind, field weld- The standards often used for welding in the United States ing is not allowed during periods of high wind unless the are produced by AWS. Two specifications apply for con- welder and weld are sheltered adequately. With respect to nections used in precast concrete construction: Structural moisture, welding is not allowed when surfaces are wet Welding Code–Steel (AWS D1.1)2 and Structural Welding from any form of precipitation or when precipitation is Code–Stainless Steel (AWS D1.6).3 AWS D1.1 provides falling. Finally, API requires preheat if the ambient tem- a summary of unacceptable environmental conditions for perature is between 0 °F and 32 °F (-18 °C and 0 °C), and welding in section 5.12.2: “Welding shall not be done (1) welding is forbidden if the temperature is below 0 °F. when the ambient temperature (temperature in immedi- ate vicinity of weld) is below 0 °F (-18 °C), or (2) when To summarize, current welding codes prohibit welding surfaces are wet or exposed to rain, snow, or (3) high wind at ambient temperatures under 0 °F (‑18 °C) and permit velocities, or (4) when welding personnel are exposed to welding, with associated preheat, at ambient temperatures inclement conditions.” between 0 °F and 32 °F (-18 °C and 0 °C). Limitations on welding using the SMAW process under high wind In accordance with AWS D1.1, preheat is required for conditions are ambiguous. Last, there are no limitations on ASTM A364 base metals with a thickness between 1/8 in. ambient moisture, but welding is prohibited when surfaces and 3/4 in.",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "A364 base metals with a thickness between 1/8 in. ambient moisture, but welding is prohibited when surfaces and 3/4 in.\n(3 mm and 19 mm) welded with low-hydrogen to be welded are wet. electrodes using the SMAW process. The minimum preheat\nPCI Journal | Spring 2012 143",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Electrode exposure to environment speed for many welding processes according to AWS D1.1. The greatest wind speed, 35 mph, was chosen as an upper Exposure of standard carbon steel electrodes is limited by bound under which welders would be willing to oper- AWS D1.1 to four hours outside a hermetically sealed con- ate. The 10 mph and 20 mph conditions were chosen to tainer or holding oven at 250 °F (121 °C), and electrodes provide adequate data to quantify the effects of wind on that have been wet are prohibited from use. AWS D1.1 also the welds. Table 1 summarizes the combinations of steel states that electrodes with the supplemental designation R types and actual environmental conditions under which test (such as the E7018-H4R electrodes used in this study) are welds were made. approved for nine hours of exposure to the environment. Three series of specimens were fabricated. The AWS D1.6 states that electrodes for the SMAW of stainless ASTM A36 (36 series) specimen and the stainless steel steel can be kept in a hermetically sealed container pro- (SS series) specimen were forensically examined through vided it is reclosed immediately after opening. Otherwise, sectioning and surface observations. The T series specimen electrodes must be stored in a holding oven. A maximum was evaluated for strength. Zimpfer et al.6 provides further exposure time is not defined. details on each specimen.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mum was evaluated for strength. Zimpfer et al.6 provides further exposure time is not defined. details on each specimen.\nResearch overview Forensic evaluation of welds",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "provides further exposure time is not defined. details on each specimen.\nResearch overview Forensic evaluation of welds\nA research program was initiated to evaluate the quality Fillet welds are susceptible to a variety of discontinuities of welded connections made under various environmental that can affect their strength. These include weld profile conditions. Welds were made under a variety of tem- irregularities, slag inclusions, porosity, and discontinuities perature, humidity, and wind conditions simulating those that are cracklike in nature. A brief description of each encountered in precast concrete construction. Three steel type of discontinuity follows. types used in precast concrete construction, ASTM A36, ASTM A36 galvanized, and Type 304 stainless steel, Weld profile irregularities include undercut, concavity or were examined. The study focused on the most com- convexity, and overlap. Figure 2 illustrates samples of monly used fillet weld sizes of 1/4 in. and 3/16 in. (6 mm and these irregularities. Undercut occurs parallel to the junction 5 mm) produced with the SMAW process. The welds were of weld metal and base metal at the top of the profile, and examined visually and microscopically and by destructive the associated stress concentration can reduce the strength testing to evaluate their adequacy with respect to the AWS of the weld. Convexity and concavity are specific forms of standards. The destructive testing was designed to evaluate oversized or undersized welds, respectively. Concavity is the strength of welds made under base conditions (71 °F detrimental from the reduction of the weld cross-section [22 °C], 35% relative humidity [RH], 0 mph wind) and less area, but weld passes can be added to increase the weld favorable environmental conditions. area.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": ", 0 mph wind) and less area, but weld passes can be added to increase the weld favorable environmental conditions. area.\nOversized welds are not inherently harmful to weld quality or strength but might interfere with the assembly The environmental conditions used in the study represented geometry and might produce excessive distortion of the extreme conditions encountered in U.S. construction. Three base metal plates. Overlap (not shown) is usually caused temperatures were chosen. Standard room temperature of by improper procedure or improper preparation of the base 71 °F (22 °C) was used as a base condition, 32 °F (0 °C) was metal due to interference of surface oxides with the fusion used as the temperature below which preheat is required by process. AWS, and 0 °F (-18 °C) was selected as a lower bound for practical construction conditions. Due to practical limita- Weld surface irregularities or ripples can be caused by im- tions, the ambient temperature varied marginally from the proper technique or by excessive wind acting on the mol- target value during welding. The humidity levels of 35%, ten weld pool. However, variations in weld dimensions, de- 50%, and 95% RH were chosen to represent low-, average-, pressions, nonuniformity of weld ripples, and other surface and near-saturation humidity. In addition, a surface wet irregularities are not classified as weld discontinuities.7 condition was included to examine the effect of liquid or frozen water on the base metal plate surfaces. The surface Incomplete fusion is a lack of fusion between the weld wet condition was achieved by misting with a spray bottle, metal and the base metal along one or more of the weld with the exception of one of the stainless specimens (SS-88), boundaries. It can result from improper preparation of the which achieved the surface wet condition by liquid droplets.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "boundaries. It can result from improper preparation of the which achieved the surface wet condition by liquid droplets.\nbase metal before welding (insufficient cleaning) or insuffi- Surface moisture was provided before welding only. No ad- cient welding current. It can result in crack formation (Fig. 3). ditional moisture was added during or after welding. Slag inclusions are nonmetallic solid materials trapped in Finally, the wind speeds were chosen as 0 mph, 5 mph, the weld metal or at the interface of the weld metal and 10 mph, 20 mph, and 35 mph, (8 kph, 16 kph, 32 kph, and base metal. With proper welding procedures and technique, 36 kph) with 5 mph being the maximum allowable wind slag should rise to the surface of the molten weld metal.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "technique, 36 kph) with 5 mph being the maximum allowable wind slag should rise to the surface of the molten weld metal.\n144 Spring 2012 | PCI Journal",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 4. Forensic weld specimen setup. Note: 1 in. = 25.4 mm.\nwas not to exceed 3/8 in. (10 mm) in any linear inch of For each test specimen, measurements were taken and weld or 1/4 in. (6 mm) in each 4 in. (100 mm) of weld recorded inside the chamber to verify the wind speed, hu- length. For cyclically loaded welds, the frequency of midity, and temperature. Relative humidity was measured piping porosity was not to exceed one in each 4 in. in the center of the chamber using a handheld meter with of weld length and the maximum diameter was not to an accuracy of ±3%. The temperature was measured in exceed 3/32 in. (2 mm). the air in the vicinity of the weld, as well as on the surface of the steel plates near the weld joint and on the concrete • Slag inclusion: Slag inclusions were identified and surface about an inch away from the plate recess. The wind measured on polished weld cross sections. The sum of speed was measured approximately 6 in. (150 mm) from greatest dimensions of the slag inclusions on a cross the opening of the blower with a device with an accuracy section must be less than 1/4 in. (6 mm). of ±3%.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ns on a cross the opening of the blower with a device with an accuracy section must be less than 1/4 in. (6 mm). of ±3%.\nExperimental program Strength evaluation setup",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "device with an accuracy section must be less than 1/4 in. (6 mm). of ±3%.\nExperimental program Strength evaluation setup\nThe specimen configuration was similar to a double- The fabrication setup used for the T series strength speci- tee–to–inverted-tee connection (Fig. 1). The specimen mens was modified from the forensic specimen setup to consisted of two base plates and one cover plate oriented facilitate testing. The top plate was offset to accommodate in a horizontal position (Fig. 4). The base plates were the necessary grip length in the tensile testing machine and recessed in a 4-in.-thick (100 mm) concrete block to rep- to ensure failure of the specimens through the weld metal licate plate embedment and heat sink conditions typical rather than a base metal fracture. The specimen involved of precast concrete construction. The plates were clamped lapping one 4 in. × 6 in. (100 mm × 150 mm) cover plate at all four corners to simulate a fully restrained condition. over one 4 in. × 6 in. base plate, with both plates oriented This restraint allowed residual stresses in the welded joint in the same direction such that the weld metal was depos- to develop on cooling of the weld metal. The cover plate ited along the 6 in. plate length. Restraint was maintained was held stationary as shown by a single, unobtrusive using the edge clamps as previously discussed. The start hold-down point in the center of the plate. This configu- and stop portions of the weld were not included in the ration was used for all 36 series and SS series forensic tested specimen because these portions typically contain a specimens. disproportionately high level of discontinuities and are not representative of the majority of the weld. Finally, a bolt The welding was performed in an environmentally con- was placed through holes drilled in the cover plate of these trolled chamber.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "g was performed in an environmentally con- was placed through holes drilled in the cover plate of these trolled chamber.\nWithin the chamber, ambient temperature two halves, as well as through a central 3/4 in. (19 mm) and relative humidity were controlled, with the ability to plate, which served as a grip for the testing machine create temperatures as low as ‑18 °F (‑28 °C) and relative through which tension could be applied concentrically and humidity from approximately 35% to 100%. Wind was distributed equally to the welds on either side. Figure 5 simulated with a variable powered centrifugal blower with illustrates the specimen and testing configuration. The air flow transverse to the fillet weld (normal to weld axis). tests were conducted at a quasi-static rate of 9.2 kip/min The fan was configured to achieve wind speeds ranging (41 kN/min). The specimens were loaded until a complete from 0 mph to 35 mph (56 kph) at the weld, with the wind loss in load-carrying capacity occurred. being applied at a nominal distance of 6 in. (150 mm) from the fillet weld.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ind loss in load-carrying capacity occurred. being applied at a nominal distance of 6 in. (150 mm) from the fillet weld.\n148 Spring 2012 | PCI Journal",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 5. Weld strength evaluation.\nBase metal and electrodes H4R electrodes were used in accordance with AWS D1.1 Table 3.1. Electrodes were stored and used in accordance The steel types in the experimental program include with the restrictions found in AWS D1.1 section 5.3.2, ASTM A36 (nongalvanized), ASTM A36 galvanized, and except in cases where the electrodes were exposed to the stainless steel Type 304. Fillet welds on three types of environment to evaluate the effects of this exposure on A36 were examined, one with a moderate carbon content weld quality. Namely, the E7018-H4R electrodes were pur- (A36-1) and two with relatively high carbon content (HC1 chased in hermetically sealed containers, stored in a hold- and HC2). This variation allowed for an assessment of the ing oven held at a nominal temperature of 250 °F (120 °C), effect of carbon content on the potential for cracking. The and not exposed to the environment for at least nine hours. material originated from three different manufacturers. Mill certificates were obtained for each steel type and a For the A36 and A36 galvanized welds, 5/32-in.-diameter sample of each steel type was sent for independent chemi- (3.9 mm), E7018-H4R electrodes were used to make 1/4 in. cal analysis. A spectrographic analysis was performed on (6 mm) fillet welds in a single pass. The E70 designation each of the samples, and the results of the independent indicates a nominal tensile strength of 70 ksi (480 MPa) analyses were compared with mill certificate values. for the weld metal.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "a nominal tensile strength of 70 ksi (480 MPa) analyses were compared with mill certificate values. for the weld metal.\nThe H4 designation indicates that the electrodes met the requirement of having less than 4 mL The sensitivity of the potential for cracking in the heat- (0.135 oz) average diffusible hydrogen in 100 g (0.22 lb) affected zone of the base metal to the steel carbon content of deposited weld metal when tested in the as-received can be summarized using the Graville diagram (Fig. 6). condition. The R identifies electrodes that pass the ab- Steel materials in zone I are unlikely to crack except when sorbed moisture test after exposure to an environment of high concentrations of hydrogen are introduced during 80 °F (26.7 °C) and 80% relative humidity for a period of welding and the weld joint is highly restrained against at least nine hours. local deformation. Steel materials in zones II and III have a greater potential for cracking in the heat-affected zone, One-eighth inch (3.2 mm) 308-16 electrodes were chosen which can be mitigated by using proper energy input at the beginning of the study for the purpose of producing or preheat. The classification of steels presented in the 1/4 in. (6 mm) fillet welds in a single pass on stainless steel Graville diagram depends on both the carbon content and specimens. The weld size was measured after the speci- the carbon equivalent (Fig. 6). All A36 steel materials used mens were sectioned, and the stainless steel welds were in the project are in zone II, meaning that there is some found to have a nominal size of 3/16 in. (5 mm). This was potential for cracking if proper energy input and/or preheat not the specified weld size but is acceptable for the 3/8 in. is not used. (10 mm) plate thickness used according to AWS D1.1 Table 5.8.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "d weld size but is acceptable for the 3/8 in. is not used. (10 mm) plate thickness used according to AWS D1.1 Table 5.8.\nRather than remake the specimens and welds, Standard welding electrodes typical of precast concrete all remaining stainless steel welds were made using 1/8 in. building erection were used in the experimental program. (3 mm) electrodes, and data were analyzed with respect to For the A36 and A36 galvanized steel base plates, E7018- a 3/16 in. weld instead of a 1/4 in. (6 mm) weld.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "th respect to For the A36 and A36 galvanized steel base plates, E7018- a 3/16 in. weld instead of a 1/4 in. (6 mm) weld.\nPCI Journal | Spring 2012 149",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 6. Graville diagram heat affected zone (HAZ) crack susceptibility. Note: C = carbon; Cr = chromium; Cu = copper; Mn = manganese; Mo = molybdenum; Ni = nickel; Si = silicon; V = vanadium.\nThe welding setup involved the use of a constant current After the welds were sectioned and polished, inspec- welding power source. Grounding was provided directly to tion was performed on the cross sections with the naked the restraint clamp, which was in contact with the plates. eye and a magnifying glass, by measurements made on The energy input for the 1/4 in. (6 mm) welds on the plain photographs taken of the cross section, and by microscope. A36 steel plates ranged from 33 kJ/in. to 48 kJ/in. Quantifiable weld discontinuities were measured using a (13 kJ/cm to 19 kJ/cm). The energy input for welds on the magnifying glass and digital caliper. The largest dimen- A36 galvanized plates ranged from 41 kJ/in. to sions of pores and inclusions were measured, and undercut 48 kJ/in. (16 kJ/cm to 19 kJ/cm), and the energy input was quantified as the distance from a line passing through for the smaller 3/16 in. (5 mm) welds on the stainless steel the original plate edge to the deepest point of the undercut plates ranged from 30 kJ/in. to 33 kJ/in. (12 kJ/cm to in the cross section. Discontinuities were further investi- 13 kJ/cm). The lower energy input for the stainless welds gated under the microscope, measured when appropriate, reflects the smaller electrode size and smaller weld sizes and recorded. The acceptability of the weld profiles was because less energy is required for smaller welds. determined from the cross-section photographs.",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "the weld profiles was because less energy is required for smaller welds. determined from the cross-section photographs.\nEvaluation procedure Experimental results\nTable 1 gives the environmental conditions under which the Effect of wind speed on weld profile welds were made. The welds were sectioned after at least 24 hours to allow cracks to develop. The outer faces of the Examination of welds made under different wind speeds center cut sections were polished with a 1200-grit grinding (Fig. 8) indicates that wind acting on the molten weld surface, buffed with a 0.3 μm (0.0001 in.) particle solution, pool results in ripples in the welds made under high wind and etched using an appropriate acid etching agent. The speeds. The effect is most noticeable for winds of 35 mph final product was a clean surface with a clear view of the (56 kph). Figure 8 shows that the effect was greater for weld in cross section (Fig. 7). A36 steel than for stainless steel. In addition, the high",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "hat the effect was greater for weld in cross section (Fig. 7). A36 steel than for stainless steel. In addition, the high\n150 Spring 2012 | PCI Journal",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 7. Specimen section procedure. Note: 1 mm = 0.0394 in.",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 7. Specimen section procedure. Note: 1 mm = 0.0394 in.\nwind caused the arc to behave erratically. Lowenburg et which the weld was made. The temperature and humidity al.10 reported in the context of pipeline fabrication that are held constant for each data set. Linear trends of the weld failure can be initiated from ripples on the weld sur- three data series conducted at 95% RH and three different face, which underscores the importance of maintaining the temperatures (‑10 °F, 32 °F, and 71 °F [‑23 °C, 0 °C, and weld profile. 22 °C]) are presented. The 32 °F condition (8 sections ex- amined) has the highest correlation, followed by the 71 °F In all cases, the wind direction was perpendicular to the condition (12 sections examined). The ‑10 °F condition (8 longitudinal axis of the weld. High wind speed did not sections examined) shows no correlation; however, this is cause any significant profile skew in the sections exam- attributed to the limited number of samples examined. In ined. The sensitivity of wind direction on the weld was not all cases the linear fit is poor. examined; however, it is hypothesized that head wind or tail wind in the direction of the welding axis may have a Slag inclusions were observed regularly in the sections greater effect on the formation of ripples and a lesser effect taken from the stainless steel specimens. In fact, 62 of the on concavity. This hypothesis should be verified through 100 sections examined exhibited at least one inclusion. additional experimentation. The presence and size of inclusions tended to increase with wind speed, as was the case for the A36 specimens Effect of wind speed (Fig. 9). on slag inclusions The majority of the slag was observed at the root of the Figure 9 plots the sum of the greatest dimensions of slag weld (Fig. 9).",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ity of the slag was observed at the root of the Figure 9 plots the sum of the greatest dimensions of slag weld (Fig. 9).\nThree possible reasons for this are hypoth- inclusions on a cross section versus the wind speed under esized:\nFigure 8. Weld quality under various wind speeds. Note: 1 mph = 1.6 kph.",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "oss section versus the wind speed under esized:\nFigure 8. Weld quality under various wind speeds. Note: 1 mph = 1.6 kph.\nPCI Journal | Spring 2012 151",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Figure 15. Root gap and microcracks in galvanized specimens. Note: 1 mm = 0.0394 in.\nA problem that arises from welding galvanized plates Research findings is that the gap between the base plates and cover plate appears susceptible to cracking at the root of the weld. Be- • Wind tends to produce rippling of the molten weld cause hot-dip galvanized coating is inherently irregular and pool and poor profiles. Increases in wind speeds tend creates a plate surface that is not smooth, large gaps result. to increase the presence and severity of slag inclu- The poor fit between plates produces inclusions or voids at sions, but not beyond AWS acceptability up to 35 mph the root, which can lead to microcracks (Fig. 15). (56 kph).",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ids at sions, but not beyond AWS acceptability up to 35 mph the root, which can lead to microcracks (Fig. 15). (56 kph).\nBased on the limited results obtained in the study, further • Undercut was observed in several specimens but research is recommended before conclusions can be drawn does not appear to correlate strongly with a specific on the susceptibility to cracking and discontinuities in environmental parameter. All observed undercut was welds made through galvanized coatings on A36 plates. within the AWS limit of 1/32 in. (0.8 mm). If weld quality is a concern, the procedures of the Ameri- can Galvanizers Association can be followed, namely, • Porosity increases when the electrodes used are ex- the removal of galvanic coatings 1 in. to 4 in. (25 mm to posed to a moist environment beyond AWS D1.1 code 100 mm) away from the weld joint before welding. recommendations (nine-hour exposure limit to moist environment). Conclusions and recommendations • Surface porosity is not significantly affected by weld- ing through surface wetness. Welding through surface The research examined the influence of wind, temperature, wetness has the potential to increase microdiscontinu- humidity, and moisture on the integrity of welded connec- ities and create visible cracking and should be further tions used in precast concrete construction. The conclu- investigated. Cracking as a result of welding through sions and recommendations are limited in application to surface wetness merits further investigation. In addi- the scope of the research study and may not be applicable tion, subsurface porosity was generated in the case of to variables beyond those examined. The bounds of the the surface wet specimen T-5 but did not reduce the study include: strength of the specimen.",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "examined. The bounds of the the surface wet specimen T-5 but did not reduce the study include: strength of the specimen.\n• single-pass fillet welds made with the SMAW process • Microcracking was widely observed and was more low-hydrogen electrodes (E7018-H4R) for Astm A36 prevalent in specimens welded using higher carbon steel plate material. The presence of these microcracks was not correlated with environmental conditions. • 308-16 electrodes for Type 304 stainless steel • Poor fit-up of plates as a result of the rough galvaniza- • plate thicknesses of 3/8 in. (10 mm) tion coating can contribute to root cracks where large plate gaps exist. Microcracking was observed at a • plate sizes typical of precast concrete connections on higher percentage in galvanized specimens compared the order of 4 in. × 6 in. (100 mm × 150 mm) with nongalvanized specimens. Few discontinuities were observed in the sections made on galvanized • static loading welds, indicating that the galvanized coating does not significantly increase porosity or slag inclusions.\n• Surface porosity was more widely observed in welds made on stainless steel plate than on carbon steel plate",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "nclusions.\n• Surface porosity was more widely observed in welds made on stainless steel plate than on carbon steel plate\n158 Spring 2012 | PCI Journal",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "but was acceptably low in all cases. Few microcracks Wind High wind speed had a negative effect on the profile were observed in stainless steel specimens. Micro- and surface geometry of the welds and increased the pres- cracking was not correlated with any environmental ence of slag inclusions. The amount of slag included, how- parameter. ever, was below AWS limits. In addition, successful SMAW welds were made in wind up to 35 mph (56 kph). If the cor- • The transverse shear strength of fillet welds made with rect weld profile and good weld surface conditions can be the SMAW process on A36 plates was not sensitive achieved by a welder in a high-wind condition, then weld- to the environmental conditions studied and was ac- ing should be permitted. The resulting profile must be veri- curately approximated using the AISC formulations. fied in accordance with the details set forth in AWS D1.1. Microcracking of the size and shape observed in the specimens did not have a significant effect on weld Strength The welds that were evaluated for strength strength. performed adequately and predictably. There was no appreciable reduction in strength for welds exhibiting dis- Research conclusions continuities of the type and severity seen in the forensic examination. Design codes are conservative with regard to The following conclusions are derived from the results of the prediction of strength for 1/4 in. (6 mm) fillet field welds the research and relate to the effect of environmental condi- made with the SMAW process. tions on the quality of welds simulating the welds used in precast concrete construction. Recommendations for precast concrete construction Humidity Ambient humidity is not correlated with the presence of weld discontinuities.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "for precast concrete construction Humidity Ambient humidity is not correlated with the presence of weld discontinuities.\nHigh humidity increases Based on the results presented in this report, 1/4 in. the presence of hydrogen in the vicinity of the weld; how- (6.3 mm) fillet welds made on 3/8-in.-thick (9.5 mm) ever, it was not found to affect the quality of the welds. The A36 base plates using E7018-H4R electrodes and 3/16 in. exposure of electrodes to humid conditions, however, did (4.8 mm) fillet welds made on 3/8-in.-thick Type 304 affect weld quality, increasing the potential for porosity stainless steel base plates using E308-16 electrodes can and cracking. The guidelines and restrictions in AWS D1.1 be performed under any of the following environmental regarding exposure of electrodes should be closely fol- conditions as long as the welder is able to create a weld lowed. meeting the AWS acceptability criteria:",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "be closely fol- conditions as long as the welder is able to create a weld lowed. meeting the AWS acceptability criteria:\nSurface wetness Welds made on wet plates did not • wind up to 35 mph (56 kph) exhibit greater surface porosity. The moisture was driven away from the weld joint as the weld metal was deposited. • ambient temperature of 0 °F (-18 °C) and above with- Welding through surface wetness also has the potential to out preheat treatment increase microcracking and create visible cracking and should be further investigated. The effect of moisture in the • relative humidity up to 100% form of falling rain entering the weld pool was not studied, and this condition should be examined further. Until such SMAW electrodes should be stored, handled, and used in research is performed, it is recommended that welding not accordance with manufacturer guidelines and AWS D1.1 be performed when the weld pool is subject to falling pre- and D1.6 requirements. Failure to follow these require- cipitation and, whenever possible, that surface moisture be ments might result in excess porosity and crack forma- eliminated from the plate surfaces before welding. tion in the weld. Due to limitations of the study, welding through surface wetness or in falling rain is not recom- Temperature Temperatures as low as -13 °F (-25 °C) mended. Excess moisture should be removed from the base were examined and found to have no effect on porosity metal before welding. or slag inclusions. Low temperatures have a tendency to increase cooling rates, increasing the propensity for high All of the ambient environmental conditions will have a hardness and crack formation. The hardness levels mea- direct effect on the welder and might decrease his or her sured in the specimens, however, were below a level that ability to successfully deposit a weld. Furthermore, skill would increase the propensity for cracking.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "elow a level that ability to successfully deposit a weld. Furthermore, skill would increase the propensity for cracking.\nMicrocracks level varies among welders; therefore, it is imperative that were observed in welds made over a variety of temperatures welders operate within their abilities. This may require the and are more sensitive to base metal composition, restraint, fabrication of a wind shield or covered structure in certain and hydrogen present than the ambient temperature during environmental conditions. welding.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "covered structure in certain and hydrogen present than the ambient temperature during environmental conditions. welding.\nPCI Journal | Spring 2012 159",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0002_image_001_533ac2b5acce.jpeg",
+      "file_hash": "533ac2b5accee761bc637ef1e9088cf57e09b2adf64f1b1355f4ae4b82dc3fde",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0002_image_002_8dd0e75d793e.jpeg",
+      "file_hash": "8dd0e75d793eebf9ae74daa211b2c641111af8b7a3060819d49530323338147b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0004_image_001_c16e88105d9c.jpeg",
+      "file_hash": "c16e88105d9c3ddf924619ab7fbd848112371998735a522996ced4a95c2dc4a4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0005_image_001_1f53a44d52c7.jpeg",
+      "file_hash": "1f53a44d52c73566ad7f36a58814ffa7583389a8deefd26953aa8dc9972f3945",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 6,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0006_image_001_97a932a46f33.png",
+      "file_hash": "97a932a46f337296605966032e8f175ff3e962314f3fbb77d1b0edae7b8f35e4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 7,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0007_image_001_11667caa61a9.jpeg",
+      "file_hash": "11667caa61a9ccc43e20077ad23b4c72f445788b9f373d85ea731b7dccb1d8f9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 7,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0007_image_002_c6cfb2f10ad6.jpeg",
+      "file_hash": "c6cfb2f10ad6aade0fc00c0dfe226d7dd3d336720013a1038aab26ce5e8cb950",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/68e777e9294e17b54db1/page_0008_image_001_9adf73068a81.jpeg",
+      "file_hash": "9adf73068a81e6994a4a9db5ff5aef8df3371c9f03be4c1e7e92d4ccf248033a",
+      "ocr_text": ""
+    }
+  ],
+  "block_count": 9
+}

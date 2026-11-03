@@ -1,0 +1,2276 @@
+{
+  "chunks": [
+    {
+      "text": "No.47 Shipbuilding and Repair Quality Standard (1996) (Rev. 1, 1999) (Rev.2, Dec. 2004) (Rev.3, Nov. 2006) (Rev.4, Aug. 2008) (Rev.5, Oct. 2010)\nPart A Shipbuilding and Remedial Quality Standard for New Construction\nPart B Repair Quality Standard for Existing Ships\nPART A - SHIPBUILDING AND REMEDIAL QUALITY STANDARDS FOR NEW CONSTRUCTION",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "t B Repair Quality Standard for Existing Ships\nPART A - SHIPBUILDING AND REMEDIAL QUALITY STANDARDS FOR NEW CONSTRUCTION\n1. Scope 2. General requirements for new construction 3. Qualification of personnel and procedures 3.1 Qualification of welders 3.2 Qualification of welding procedures 3.3 Qualification of NDE operators 4. Materials 4.1 Materials for structural members 4.2 Surface conditions 5. Gas Cutting 6. Fabrication and fairness 6.1 Flanged longitudinals and flanged brackets 6.2 Built-up sections 6.3 Corrugated bulkheads 6.4 Pillars, brackets and stiffeners 6.5 Maximum heating temperature on surface for line heating 6.6 Block assembly 6.7 Special sub-assembly 6.8 Shape 6.9 Fairness of plating between frames 6.10 Fairness of plating with frames 6.11 Preheating for welding hull steels at low temperature 7. Alignment 8. Welding Joint Details 8.1 Typical butt weld plate edge preparation (manual welding and semi-automatic welding) 8.2 Typical fillet weld plate edge preparation (manual welding and semi-automatic welding) 8.3 Butt and fillet weld profile (manual welding and semi-automatic welding) 8.4 Typical butt weld edge preparation (Automatic welding) 8.5 Distance between welds 9. Remedial 9.1 Typical misalignment remedial 9.2 Typical butt weld plate edge preparation remedial (manual welding and semi-automatic welding) 9.3 Typical fillet weld plate edge preparation remedial (manual welding and semi-automatic welding) 9.4 Typical fillet and butt weld profile remedial (manual welding and semi-automatic welding) 9.5 Distance between welds remedial 9.6 Erroneous hole remedial 9.7 Remedial by insert plate 9.8 Weld surface remedial 9.9 Weld remedial (short bead)",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "medial 9.6 Erroneous hole remedial 9.7 Remedial by insert plate 9.8 Weld surface remedial 9.9 Weld remedial (short bead)\n- 1 -",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "REFERENCES\n1. IACS “Bulk Carriers - Guidelines for Surveys, Assessment and Repair of Hull Structure” 2. TSCF “Guidelines for the inspection and maintenance of double hull tanker structures” 3. TSCF “Guidance manual for the inspection and condition assessment of tanker structures” 4. IACS UR W7 “Hull and machinery steel forgings” 5. IACS UR W8 “Hull and machinery steel castings” 6. IACS UR W11 “Normal and higher strength hull structural steel” 7. IACS UR W13 “Allowable under thickness tolerances of steel plates and wide flats” 8. IACS UR W14 “Steel plates and wide flats with improved through thickness properties” 9. IACS UR W17 “Approval of consumables for welding normal and higher strength hull structural steels” 10. IACS UR W28 “Welding procedure qualification tests of steels for hull construction and marine structures” 11. IACS UR Z10.1 “Hull surveys of oil tankers” and Z10.2 “Hull surveys of bulk carriers” Annex I 12. IACS UR Z23 “Hull survey for new construction” 13. IACS Recommendation No. 12 “Guidelines for surface finish of hot rolled plates and wide flats” 14. IACS Recommendation No. 20 “Non-destructive testing of ship hull steel welds”",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "h of hot rolled plates and wide flats” 14. IACS Recommendation No. 20 “Non-destructive testing of ship hull steel welds”\n- 2 -",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "1. Scope\nIt is intended that these standards provide guidance where established and recognized shipbuilding or national standards accepted by the Classification Society do not exist.\n1.1 This standard provides guidance on shipbuilding quality standards for the hull structure during new construction and the remedial standard where the quality standard is not met.\nWhereas the standard generally applies to - conventional merchant ship types, - parts of hull covered by the rules of the Classification Society, - hull structures constructed from normal and higher strength hull structural steel, the applicability of the standard is in each case to be agreed upon by the Classification Society.\nThe standard does generally not apply to the new construction of - special types of ships as e.g. gas tankers - structures fabricated from stainless steel or other, special types or grades of steel",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "pes of ships as e.g. gas tankers - structures fabricated from stainless steel or other, special types or grades of steel\n1.2 In this standard, both a \"Standard\" range and a \"Limit\" range are listed. The \"Standard\" range represents the target range expected to be met in regular work under normal circumstances. The \"Limit\" range represents the maximum allowable deviation from the \"Standard\" range. Work beyond the \"Standard\" range but within the \"Limit\" range is acceptable. In cases where no ‘limit’ value is specified, the value beyond the ‘standard’ range may be accepted subject to the consideration of the Classification Society.\n1.3 The standard covers typical construction methods and gives guidance on quality standards for the most important aspects of such construction. Unless explicitly stated elsewhere in the standard, the level of workmanship reflected herein will in principle be acceptable for primary and secondary structure of conventional designs. A more stringent standard may however be required for critical and highly stressed areas of the hull, and this is to be agreed with the Classification Society in each case. In assessing the criticality of hull structure and structural components, reference is made to ref. 1, 2 and 3.\n1.4 Details relevant to structures or fabrication procedures not covered by this standard are to be approved by the Classification Society on the basis of procedure qualifications and/or recognized national standards.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "be approved by the Classification Society on the basis of procedure qualifications and/or recognized national standards.\n1.5 For use of this standard, fabrication fit-ups, deflections and similar quality attributes are intended to be uniformly distributed about the nominal values. The shipyard is to take corrective action to improve work processes that produce measurements where a skew distribution is evident. Relying upon remedial steps that truncate a skewed distribution of the quality attribute is unacceptable.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "on is evident. Relying upon remedial steps that truncate a skewed distribution of the quality attribute is unacceptable.\n2. General requirements for new construction\n2.1 In general, the work is to be carried out in accordance with the Classification Society rules and under the supervision of the Surveyor to the Classification Society\n2.2 Welding operations are to be carried out in accordance with work instructions accepted by the Classification Society.\n2.3 Welding of hull structures is to be carried out by qualified welders, according to approved and qualified welding procedures and with welding consumables approved by the Classification Society, see Section 3. Welding operations are to be carried out under proper supervision by the shipbuilder. The working conditions for welding are to be monitored by the Classification Society in accordance with UR Z23.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "builder. The working conditions for welding are to be monitored by the Classification Society in accordance with UR Z23.\n3. Qualification of personnel and procedures\n3.1 Qualification of welders\n3.1.1 Welders are to be qualified in accordance with the procedures of the Classification Society or to a recognized national or international standard. Recognition of other standards is subject to submission to the",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ty or to a recognized national or international standard. Recognition of other standards is subject to submission to the\n- 3 -",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 4] 1, are permissible and may be left as they are.\n| ImperfectionsurfaceareaRatio(%) | 15～20% | 5～15% | 0～5% |\n| --- | --- | --- | --- |\n| t<20mm | 02mm . | 04mm . | 05mm . |\n| 20mm≤t<50mm | 02mm . | 06mm . | 07mm . |\n| 50mm≤t | 02mm . | 07mm . | 09mm . |",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "1, are permissible and may be left as they are."
+    },
+    {
+      "text": "Classification Society for evaluation. Subcontractors are to keep records of welders qualification and, when required, furnish valid approval test certificates.\n3.1.2 Welding operators using fully mechanized or fully automatic processes need generally not pass approval testing provided that the production welds made by the operators are of the required quality. However, operators are to receive adequate training in setting or programming and operating the equipment. Records of training and operation experience shall be maintained on individual operator’s files and records, and be made available to the Classification Society for inspection when requested.\n3.2 Qualification of welding procedures\nWelding procedures are to be qualified in accordance with URW28 or other recognized standard accepted by the Classification Society.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "edures are to be qualified in accordance with URW28 or other recognized standard accepted by the Classification Society.\n3.3 Qualification of NDE operators\nPersonnel performing non-destructive examination for the purpose of assessing quality of welds in connection with new construction covered by this standard, are to be qualified in accordance with Classification Society rules or to a recognized international or national qualification scheme. Records of operators and their current certificates are to be kept and made available to the Surveyor for inspection.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e. Records of operators and their current certificates are to be kept and made available to the Surveyor for inspection.\n4. Materials\n4.1 Materials for Structural Members\nAll materials, including weld consumables, to be used for the structural members are to be approved by the Classification Society as per the approved construction drawings and meet the respective IACS Unified Requirements. Additional recommendations are contained in the following paragraphs.\nAll materials used should be manufactured at a works approved by the Classification Society for the type and grade supplied.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "materials used should be manufactured at a works approved by the Classification Society for the type and grade supplied.\n4.2 Surface Conditions\n4.2.1 Definitions\nMinor Imperfections: Pitting, rolled-in scale, indentations, roll marks, scratches and grooves Defects: Cracks, shells, sand patches, sharp edged seams and minor imperfections not exceeding the limits of table 1 in case that the sum of the influenced area exceeds 5% of the total surface in question Depth of Imperfections or defects: Tthe depth is to be measured from the surface of the product",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "otal surface in question Depth of Imperfections or defects: Tthe depth is to be measured from the surface of the product\n4.2.2 Acceptance without remedies\nMinor imperfections, in accordance with the nominal thickness (t) of the product and the limits described in Table 1, are permissible and may be left as they are.\nTable 1 Acceptance lLimits for depth of minor imperfection, for acceptance without remedies",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "and may be left as they are.\nTable 1 Acceptance lLimits for depth of minor imperfection, for acceptance without remedies\n- 4 -",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Imperfection surface area Ratio (%) is obtained as influenced area / area under consideration (i.e. plate surface area) x 100%. For isolated surface discontinuities, influenced area is obtained by drawing a continuous line which follows the circumference of the discontinuity at a distance of 20 mm. (Figure 1) For surface discontinuities appearing in a cluster, influenced area is obtained by drawing a continuous line which follows the circumference of the cluster at a distance of 20 mm. (Figure 2)\nFigure 1 - Determination of the area influenced by an isolated discontinuity (Ref. Nr. EN 10163-1:2004+AC:2007 E)\nFigure 2 - Determination of the area influenced by clustered discontinuities (Ref. Nr. EN 10163-1:2004+AC:2007 E)",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "007 E)\nFigure 2 - Determination of the area influenced by clustered discontinuities (Ref. Nr. EN 10163-1:2004+AC:2007 E)\n- 5 -",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 6] The roughness of the cut edges is to meet the following requirements:\n| FreeEdges: | Standard | Limit |\n| --- | --- | --- |\n| StrengthMembers | 150µm | 300µm |\n| Others | 500µm | 1000µm |\n| WeldingEdges: | Standard | Limit |\n| StrengthMembers | 400µm | 800µm |\n| Others | 800µm | 1500µm |",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "The roughness of the cut edges is to meet the following requirements:"
+    },
+    {
+      "text": "4.2.3 Remedial of Defects\nDefects are to be remedied by grinding and/or welding in accordance with IACS Rec.12.\n4.2.4 Further Defects\n4.2.4.1 Lamination\nInvestigation to be carried out at the steelmill into the cause and extent of the detected laminations. Severe lamination is to be remedied by local insert plates. The minimum breadth or length of the plate to be replaced is to be:\n• 1600 mm for shell and strength deck plating in way of cruciform or T-joints, • 800 mm for shell, strength deck plating and other primary members, • 300 mm for other structural members.",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "or T-joints, • 800 mm for shell, strength deck plating and other primary members, • 300 mm for other structural members.\nLocal limited lamination may be remedied by chipping and/or grinding followed by welding in accordance with sketch (a). In case where the local limited lamination is near the plate surface, the remedial may be carried out as shown in sketch (b). For limitations see paragraph 4.2.2.",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "is near the plate surface, the remedial may be carried out as shown in sketch (b). For limitations see paragraph 4.2.2.\n(a) (b)\n4.2.4.2 Weld Spatters\nLoose weld spatters are to be removed by grinding or other measures to clean metal surface (see Table 9.13), as required by the paint system, on:\n• shell plating • deck plating on exposed decks • in tanks for chemical cargoes • in tanks for fresh water and for drinking water • in tanks for lubricating oil, hydraulic oil, including service tanks",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "• in tanks for fresh water and for drinking water • in tanks for lubricating oil, hydraulic oil, including service tanks\n5. Gas Cutting\nThe roughness of the cut edges is to meet the following requirements:\nFree Edges:\nStandard Limit Strength Members 400 µm 800 µm Others 800 µm 1500 µm\n6. Fabrication and fairness",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "equirements:\nFree Edges:\nStandard Limit Strength Members 400 µm 800 µm Others 800 µm 1500 µm\n6. Fabrication and fairness\n6.1 Flanged longitudinals and flanged brackets (see Table 6.1) 6.2 Built-up sections (see Table 6.2)\n- 6 -",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "6.3 Corrugated bulkheads (see Table 6.3) 6.4 Pillars, brackets and stiffeners (see Table 6.4) 6.5 Maximum heating temperature on surface for line heating (see Table 6.5) 6.6 Block assembly (see Table 6.6) 6.7 Special sub-assembly (see Table 6.7) 6.8 Shape (see Table 6.8 and 6.9) 6.9 Fairness of plating between frames (see Table 6.10) 6.10 Fairness of plating with frames (see Table 6.11) 6.11 Preheating for welding hull steels at low temperature (See Table 6.12)",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ness of plating with frames (see Table 6.11) 6.11 Preheating for welding hull steels at low temperature (See Table 6.12)\n7. Alignment\nThe quality standards for alignment of hull structural components during new construction are shown in Tables 7.1, 7.2 and 7.3. The Classification Society may require a closer construction tolerance in areas requiring special attention, as follows:",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "The Classification Society may require a closer construction tolerance in areas requiring special attention, as follows:\n• Regions exposed to high stress concentrations • Fatigue prone areas • Detail design block erection joints • High tensile steel regions\n8. Welding Joint Details\nEdge preparation is to be qualified in accordance with URW28 or other recognized standard accepted by the Classification Society.\nSome typical edge preparations are shown in Table 8.1, 8.2, 8.3, 8.4 and 8.6 for reference.\n8.1 Typical butt weld plate edge preparation (manual and semi-automatic welding) for reference - see Table 8.1 and 8.2 8.2 Typical fillet weld plate edge preparation (manual and semi-automatic welding) for reference - see Table 8.3 and 8.4 8.3 Butt and fillet weld profile (manual and semi-automatic welding) - see Table 8.5 8.4 Typical butt weld plate edge preparation (Automatic welding) for reference - see Table 8.6 8.5 Distance between welds - see Table 8.7",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "weld plate edge preparation (Automatic welding) for reference - see Table 8.6 8.5 Distance between welds - see Table 8.7\n9. Remedial\nAll the major remedial work is subject to reporting by shipbuilder to the Classification Society for approval in accordance with their work instruction for new building.",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ng by shipbuilder to the Classification Society for approval in accordance with their work instruction for new building.\nSome typical remedial works are shown in Tables 9.1 to 9.13.\n9.1 Typical misalignment remedial - see Tables 9.1 to 9.3 9.2 Typical butt weld plate edge preparation remedial (manual and semi-automatic welding) - see Table 9.4 and 9.5 9.3 Typical fillet weld plate edge preparation remedial (manual and semi-automatic welding) - see Tables 9.6 to 9.8 9.4 Typical fillet and butt weld profile remedial (manual and semi-automatic welding) - see Table 9.9 9.5 Distance between welds remedial - see Table 9.10 9.6 Erroneous hole remedial - see Table 9.11 9.7 Remedial by insert plate - see Table 9.12 9.8 Weld surface remedial - see Table 9.13 9.9 Weld remedial (short bead) - see Table 9.14",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "insert plate - see Table 9.12 9.8 Weld surface remedial - see Table 9.13 9.9 Weld remedial (short bead) - see Table 9.14\n- 7 -",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 8] TABLE 6.1 – Flanged Longitudinals and Flanged Brackets\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Breadthofflange comparedtocorrectsize | ±3mm | ±5mm | - |\n| Anglebetweenflangeand web comparedtotemplate | ±3mm | ±5mm | per100mmofa |\n| Straightnessinplaneof flangeandweb | ±10mm | ±25mm | per10m |",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.1 – Flanged Longitudinals and Flanged Brackets"
+    },
+    {
+      "text": "TABLE 6.1 – Flanged Longitudinals and Flanged Brackets\n- 8 -",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 9] TABLE 6.2 – Built Up Sections\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Framesandlongitudinal | ±15mm . | ±3mm | per100mmofa |\n| Distortionoffaceplate | d≤3+a/100mm | d≤5+a/100mm | per100mmofa |\n| Distortioninplaneofwebandflange ofbuiltuplongitudinalframe , transverseframe girderand , transverseweb . | ±10mm | ±25mm | per10minlength |",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.2 – Built Up Sections"
+    },
+    {
+      "text": "TABLE 6.2 – Built Up Sections\n- 9 -",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 10] TABLE 6.3 – Corrugated Bulkheads\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Mechanicalbending | R≥3tmm | 2tmm | Materialtobe suitableforcold flanging(forming) andweldinginway ofradius |\n| Depthofcorrugation | ±3mm | ±6mm | Materialtobe suitableforcold flanging(forming) andweldinginway ofradius |\n| Breadthofcorrugation | ±3mm | ±6mm | Materialtobe suitableforcold flanging(forming) andweldinginway ofradius |\n| Pitchanddepthofswedged corrugatedbulkheadcompared withcorrectvalue | h:±25mm . Whereitisnotalignedwith otherbulkheads P:±6mm Whereitisalignedwith otherbulkheads P:±2mm | h:±5mm Whereitisnotaligned withotherbulkheads P:±9mm Whereitisalignedwith otherbulkheads P:±3mm | Materialtobe suitableforcold flanging(forming) andweldinginway ofradius |",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.3 – Corrugated Bulkheads"
+    },
+    {
+      "text": "TABLE 6.3 – Corrugated Bulkheads\n- 10 -",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 11] TABLE 6.4 – Pillars, Brackets and Stiffeners\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Pillar(betweendecks) | 4mm | 6mm | - |\n| Cylindricalstructurediameter (pillars masts posts etc) , , , . | ±D/200mm max +5mm . | ±D/150mm max 75mm . . | - |\n| Trippingbracketandsmallstiffener , distortionatthepartoffreeedge | a≤t/2mm | t | - |\n| Ovalityofcylindricalstructure d min max d | a≤t/2mm | d max – d min ≤ 0 .02 × d max | - |",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.4 – Pillars, Brackets and Stiffeners"
+    },
+    {
+      "text": "TABLE 6.4 – Pillars, Brackets and Stiffeners\n- 11 -",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 12] TABLE 6.5 – Maximum Heating Temperature on Surface for Line Heating\n| Item | Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- | --- |\n| Conventional Process AH32 EH32& - AH36 EH36 - TMCPtype AH32 EH32& - AH36 EH36 - (Ceq>038%) . . | Watercoolingjust afterheating | Under650°C | - | - |\n| Conventional Process AH32 EH32& - AH36 EH36 - TMCPtype AH32 EH32& - AH36 EH36 - (Ceq>038%) . . | Aircoolingafter heating | Under900°C | - | - |\n| Conventional Process AH32 EH32& - AH36 EH36 - TMCPtype AH32 EH32& - AH36 EH36 - (Ceq>038%) . . | Aircoolingand subsequentwater coolingafter heating | Under900°C(starting temperatureofwater coolingtobeunder 500°C) | - | - |\n| TMCPtype AH32 DH32& - AH36 DH36 - (Ceq ≤038%) . . TMCPtype EH32&EH36 (Ceq ≤038%) . . | Watercoolingjust afterheatingorair cooling Watercoolingjust afterheatingorair cooling | Under1000°C Under900°C | - | - |\n| NOTE: Mn Cr+Mo+V Ni+Cu( ) Ceq = C+ + + % 6 5 15 | Watercoolingjust afterheatingorair cooling Watercoolingjust afterheatingorair cooling | Under1000°C Under900°C | - | - |",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.5 – Maximum Heating Temperature on Surface for Line Heating"
+    },
+    {
+      "text": "TABLE 6.5 – Maximum Heating Temperature on Surface for Line Heating\n- 12 -",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 13] TABLE 6.6 – Block Assembly\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| FlatPlateAssembly LengthandBreadth Distortion Squareness Deviationofinteriormembersfrom plate | ±4mm ±10mm ±5mm 5mm | ±6mm ±20mm ±10mm 10mm | - |\n| Curvedplateassembly LengthandBreadth Distortion Squareness Deviationofinteriormembersfrom plate | ±4mm ±10mm ±10mm 5mm | ±8mm ±20mm ±15mm 10mm | measuredalong thegirth |\n| Flatcubicassembly LengthandBreadth Distortion Squareness Deviationofinteriormembersfrom plate Twist Deviationbetweenupperandlowerplate | ±4mm ±10mm ±5mm 5mm ±10mm ±5mm | ±6mm ±20mm ±10mm 10mm ±20mm ±10mm | measuredalong thegirth |\n| Curvedcubicassembly LengthandBreadth Distortion Squareness Deviationofinteriormembersfrom plate Twist Deviationbetweenupperandlowerplate | ±4mm ±10mm ±10mm ±5mm ±15mm ±7mm | ±8mm ±20mm ±15mm ±10mm ±25mm ±15mm | measuredalong withgirth |",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.6 – Block Assembly"
+    },
+    {
+      "text": "TABLE 6.6 – Block Assembly\n- 13 -",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 14] TABLE 6.7 – Special Sub-Assembly\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Distancebetween upper/lowergudgeon | ±5mm | ±10mm | - |\n| Distancebetweenaftedge ofbossandaftpeak bulkhead | ±5mm | ±10mm | - |\n| Twist of sub -assembly of sternframe | 5mm | 10mm | - |\n| Deviationofrudderfrom shaftcenterline | 4mm | 8mm | - |\n| Twistofrudderplate | 6mm | 10mm | - |\n| Flatnessoftopplateofmain enginebed | 5mm | 10mm | - |\n| Breadthandlengthoftop plateofmainenginebed | ±4mm | ±6mm | - |\n| NOTE: Dimensionsandtoleranceshavetofulfillengineandequipmentmanufacturers’requirements ifany , . | ±4mm | ±6mm | - |",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.7 – Special Sub-Assembly"
+    },
+    {
+      "text": "TABLE 6.7 – Special Sub-Assembly\n- 14 -",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 15] TABLE 6.8 – Shape\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Deformationforthewholelength | ±50mm | - | per100magainstthe lineofkeelsighting |\n| Deformationforthedistancebetweentwo adjacentbulkheads | ±15mm | - | per100magainstthe lineofkeelsighting |\n| Cocking-up of fore body | ±30mm | - | Thedeviationisto bemeasuredfrom thedesignline . |\n| Cocking-up of aft -body | ±20mm | - | Thedeviationisto bemeasuredfrom thedesignline . |\n| Riseofflooramidships | ±15mm | - | Thedeviationisto bemeasuredfrom thedesignline . |",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.8 – Shape"
+    },
+    {
+      "text": "TABLE 6.8 – Shape\n- 15 -",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 16] TABLE 6.9 – Shape\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Lengthbetweenperpendiculars | ±L/1000 mmwhere L isinmm | - | Appliedtoshipsof 100metrelengthand above . Fortheconvenience ofthemeasurementthe pointwherethekeelis connectedtothecurveof thestemmaybe substitutedforthefore perpendicularinthe measurementofthelength . |\n| Mouldedbreadthatmidship | ±B/1000mmwhereB isinmm | - | Appliedtoshipsof15 metrebreadthandabove , measuredontheupper deck . |\n| Mouldeddepthatmidship | ±D/1000 mm where Disinmm | - | Appliedtoshipsof 10 metre depth and above , measured up to the upper deck . |",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.9 – Shape"
+    },
+    {
+      "text": "TABLE 6.9 – Shape\n- 16 -",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 17] TABLE 6.10 – Fairness of Plating Between Frames\n| Item | Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- | --- |\n| Shellplate | Parallelpart (side&bottomshell) | 4mm | 8mm | - |\n| Shellplate | Foreandaftpart | 5mm | 8mm | - |\n| Tanktopplate | Foreandaftpart | 4mm | 8mm | - |\n| Bulkhead | Longl Bulkhead . Trans Bulkhead . SwashBulkhead | 6mm | 8mm | - |\n| Strengthdeck | Parallelpart | 4mm | 8mm | - |\n| Strengthdeck | Foreandaftpart Coveredpart | 6mm 7mm | 9mm 9mm | - |\n| Seconddeck | Barepart | 6mm | 8mm | - |\n| Seconddeck | Coveredpart | 7mm | 9mm | - |\n| Forecastledeck poopdeck | Barepart | 4mm | 8mm | - |\n| Forecastledeck poopdeck | Coveredpart | 6mm | 9mm | - |\n| Superstructure deck | Barepart | 4mm | 6mm | - |\n| Superstructure deck | Coveredpart | 7mm | 9mm | - |\n| Housewall | Outsidewall | 4mm | 6mm | - |\n| Housewall | Insidewall | 6mm | 8mm | - |\n| Housewall | Coveredpart | 7mm | 9mm | - |\n| Interiormember(webofgirder etc) , | Coveredpart | 5mm | 7mm | - |\n| Floorandgirderindoublebottom | Coveredpart | 5mm | 8mm | - |",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.10 – Fairness of Plating Between Frames"
+    },
+    {
+      "text": "TABLE 6.10 – Fairness of Plating Between Frames\n- 17 -",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 18] TABLE 6.11 – Fairness of Plating with Frames\n| Item | Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- | --- |\n| Shellplate | Parallelpart | ±2l/1000mm | ±3l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |\n| Shellplate | Foreandaftpart | ±3l/1000mm | ±4l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |\n| Strengthdeck (excluding crossdeck)and topplateof doublebottom | - | ±3l/1000mm | ±4l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |\n| Bulkhead | - | ±3l/1000mm | ±5l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |\n| Accommodation above the strength deckandothers | - | ±5l/1000mm | ±6l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |\n| mm l=spanofframe (minimuml=3000mm) To be measured between one trans space . . | - | ±5l/1000mm | ±6l/1000mm | l=spanofframe(mm) Tobemeasured betweenontrans . space(min l=3000 . mm) |",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.11 – Fairness of Plating with Frames"
+    },
+    {
+      "text": "TABLE 6.11 – Fairness of Plating with Frames\n- 18 -",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 19] TABLE 6.12 – Preheating for welding hull steels at low temperature\n| 열1 | 열2 | 열3 | Standard | Standard | Standard | Limit | Remarks |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| Item | - | - | Basemetal temperatureneeded | - | Minimum preheating | - | - |\n| Item | - | - | preheating | - | temperature | - | - |\n| Normalstrength steels | - | A B D E , , , | Below -5 oC | - | temperature | - | - |\n| Higherstrength steels (TMCPtype) Higherstrength steels (Conventional type) | - | AH32 EH32 – AH36 EH36 – | Below0oC Below0oC | - | 20oC1) | - | - |",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 6.12 – Preheating for welding hull steels at low temperature"
+    },
+    {
+      "text": "TABLE 6.12 – Preheating for welding hull steels at low temperature\n(Note)\n1) This level of preheat is to be applied unless the approved welding procedure specifies a higher level.\n- 19 -",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 20] TABLE 7.1 – Alignment\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Alignmentofbuttwelds | - | a≤015tstrength . member a≤02tother . butmaximum40mm . | t is the lesser plate thickness |\n| Alignmentoffilletwelds t1/2 t1/2 t2/2 t2/2 t t 1 < 2 | - | Strengthmemberand higherstressmember: a ≤ t 1/3 Other: a ≤ t 1/2 | Alternatively heel , linecanbeusedto checkthealignment . Where t is less than 3 t then t should be 1, 3 substituted for t in 1 thestandard . |\n| Alignmentoffilletwelds t2/2 t2 t2/2 t3 t3/2 t3/2 t1/2 t1/2 | - | Strengthmemberand higherstressmember: a ≤ t 1/3 Other: a ≤ t 1/2 | Alternatively heel , line can be used to checkthealignment . Where t is less 3 than t then t 1, 3 shouldbesubstitute for t in the standard 1 . |",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 7.1 – Alignment"
+    },
+    {
+      "text": "TABLE 7.1 – Alignment\n- 20 -",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 21] TABLE 7.2 – Alignment\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Alignment of flange of T -longitudinal b(mm) | Strengthmember a≤004b(mm) . | a=80mm . | - |\n| Alignment of height of T -bar L -angle bar or , bulb | Strengthmember a≤015t . Other a≤020t . | a=30mm . | - |\n| Alignmentofpanelstiffener | d≤L/50 | a=30mm . | - |\n| Gapbetweenbracket/intercostaland stiffener | a≤20mm . | a=30mm . | - |\n| Alignmentoflapwelds | a≤20mm . | a=30mm . | - |",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 7.2 – Alignment"
+    },
+    {
+      "text": "TABLE 7.2 – Alignment\n- 21 -",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 22] TABLE 7.3 – Alignment\n| 열1 | Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- | --- |\n| Gapbetweenbeamandframe | - | - | - | - |\n| Gapbetweenbeamandframe | - | a≤20mm . | a=50mm . | - |\n| Gap around stiffener cut -out | - | a≤20mm . | a=50mm . | - |\n| Gap around stiffener cut -out | - | s≤20mm . | s=30mm . | - |",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 7.3 – Alignment"
+    },
+    {
+      "text": "TABLE 7.3 – Alignment\n- 22 -",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 23] Welding) for Reference\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Squarebutt t≤5mm | G≤3mm | G=5mm | seeNote1 |\n| Singlebevelbutt t>5mm | G≤3mm | G=5mm | seeNote1 |\n| Doublebevelbutt t>19mm | G≤3mm | G=5mm | seeNote1 |\n| Doubleveebutt uniformbevels , | G≤3mm | G=5mm | seeNote1 |\n| Double vee butt non-uniform bevel , | G≤3mm | G=5mm | seeNote1 |\n| NOTE1 Different plate edge preparation may be accepted or approved by the Classification Society in accordance with URW28orotherrecognizedstandardacceptedbytheClassificationSociety . Forweldingproceduresotherthanmanualwelding seeparagraph32Qualificationofweldprocedures , . . | G≤3mm | G=5mm | seeNote1 |",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Welding) for Reference"
+    },
+    {
+      "text": "TABLE 8.1 – Typical Butt Weld Plate Edge Preparation (Manual Welding and Semi-Automatic Welding) for Reference\n- 23 -",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 24] Welding) for Reference\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| SingleVeebutt onesideweldingwith , backingstrip(temporaryorpermanent) | G=3to9mm | G=16mm | seeNote1 |\n| Singleveebutt | G≤3mm | G=5mm | seeNote1 |\n| NOTE1 Different plate edge preparation may be accepted or approved by the Classification Society in accordance with URW28orotherrecognizedstandardacceptedbytheClassificationSociety . Forweldingproceduresotherthanmanualwelding seeparagraph32Qualificationofweldingprocedures , . . | G≤3mm | G=5mm | seeNote1 |",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Welding) for Reference"
+    },
+    {
+      "text": "TABLE 8.2 – Typical Butt Weld Plate Edge Preparation (Manual Welding and Semi-Automatic Welding) for Reference\n- 24 -",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 25] Welding) for Reference\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| TeeFillet | G≤2mm | G=3mm | seeNote1 |\n| Inclinedfillet | G≤2mm | G=3mm | seeNote1 |\n| Singlebevelteewithpermanentbacking | G≤4to6mm θ°=30°to45° | G=16mm | Notnormallyfor strength member alsoseeNote1 |\n| Singlebeveltee | G≤3mm | G=16mm | seeNote1 |\n| NOTE1 Different plate edge preparation may be accepted or approved by the Classification Society in accordance with URW28orotherrecognizedstandardacceptedbytheClassificationSociety . Forweldingproceduresotherthanmanualwelding seeparagraph32Qualificationofweldingprocedures , . . | G≤3mm | G=16mm | seeNote1 |",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Welding) for Reference"
+    },
+    {
+      "text": "Table 8.3 – Typical Fillet Weld Plate Edge Preparation (Manual Welding and Semi-Automatic Welding) for Reference\n- 25 -",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 26] Welding) for Reference\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Single‘J’beveltee | G=25to4mm . | - | seeNote1 |\n| Doublebevelteesymmetricalt>19mm | G≤3mm | - | seeNote1 |\n| Doublebevelteeasymmetricalt>19mm | G≤3mm | - | seeNote1 |\n| Double‘J’bevelteesymmetrical | G=25to4mm . | - | seeNote1 |\n| NOTE1 Different plate edge preparation may be accepted or approved by the Classification Society in accordance with URW28orotherrecognizedstandardacceptedbytheClassificationSociety . Forweldingproceduresotherthanmanualwelding seeparagraph32Qualificationofweldingprocedures , . . | G=25to4mm . | - | seeNote1 |",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Welding) for Reference"
+    },
+    {
+      "text": "Table 8.4 – Typical Fillet Weld Plate Edge Preparation (Manual Welding and Semi-Automatic Welding) for Reference\n- 26 -",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 27] Table 8.5 – Butt And Fillet Weld Profile (Manual Welding and Semi-Automatic Welding)\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Buttweldtoeangle | θ≤60° h≤6mm | θ≤90° | - |\n| Buttweldundercut | θ≤60° h≤6mm | D≤05mm . forstrengthmember D≤08mm . forother | - |\n| Filletweldleglength s=leglength;a=throatthickness | θ≤60° h≤6mm | s ≥ 0 .9sd a ≥ 0 .9ad overshortweld lengths | sd = design s ad = design a |\n| Filletweldtoeangle | θ≤60° h≤6mm | θ≤90° | Inareasofstress concentration andfatigue the , Classification Societymay requirealesser angle . |\n| Filletweldundercut | θ≤60° h≤6mm | D≤08mm . | Inareasofstress concentration andfatigue the , Classification Societymay requirealesser angle . |",
+      "page_start": 27,
+      "page_end": 27,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Table 8.5 – Butt And Fillet Weld Profile (Manual Welding and Semi-Automatic Welding)"
+    },
+    {
+      "text": "Table 8.5 – Butt And Fillet Weld Profile (Manual Welding and Semi-Automatic Welding)\n- 27 -",
+      "page_start": 27,
+      "page_end": 27,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 28] Table 8.6 – Typical Butt Weld Plate Edge Preparation (Automatic welding) for Reference\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| SubmergedArcWelding(SAW) | - | - | - |\n| SubmergedArcWelding(SAW) | 0≤G≤08mm . | G=2mm | SeeNote1 . |",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Table 8.6 – Typical Butt Weld Plate Edge Preparation (Automatic welding) for Reference"
+    },
+    {
+      "text": "Table 8.6 – Typical Butt Weld Plate Edge Preparation (Automatic welding) for Reference\nNOTE 1\nDifferent plate edge preparation may be accepted or approved by the Classification Society in accordance with URW28 or other recognized standard accepted by the Classification Society. For welding procedures other than manual welding, see paragraph 3.2 Qualification of welding procedures.",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "cation Society. For welding procedures other than manual welding, see paragraph 3.2 Qualification of welding procedures.\n- 28 -",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 29] Table 8.7 – Distance Between Welds\n| Detail | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Scallopsoverweldseams r d | - | forstrength member d≥5mm forother d≥0mm | The“d”istobe measuredfromthe toeofthefilletweld tothetoeofthebutt weld . |\n| Distancebetweentwobuttwelds | - | d≥0mm | The“d”istobe measuredfromthe toeofthefilletweld tothetoeofthebutt weld . |\n| Distancebetweenbuttweldandfilletweld | - | forstrength member d≥10mm forother d≥0mm | The“d”istobe measuredfromthe toeofthefilletweld tothetoeofthebutt weld . |\n| Distancebetweenbuttwelds | for cut -outs d≥30mm | forstrength member d≥10mm forother d≥0mm | The“d”istobe measuredfromthe toeofthefilletweld tothetoeofthebutt weld . |\n| Distancebetweenbuttwelds | formarginplates d≥300mm | 150mm | The“d”istobe measuredfromthe toeofthefilletweld tothetoeofthebutt weld . |",
+      "page_start": 29,
+      "page_end": 29,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Table 8.7 – Distance Between Welds"
+    },
+    {
+      "text": "Table 8.7 – Distance Between Welds\n- 29 -",
+      "page_start": 29,
+      "page_end": 29,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Table 9.1 – Typical Misalignment Remedial\nDetail Remedial Standard Remarks\nAlignment of butt joints Strength member t1 is lesser plate thickness a > 0.15t1 or a > 4 mm t1 release and adjust\nOther a > 0.2t1 or a > 4 mm release and adjust\nAlignment of fillet welds Strength member and higher stress member Alternatively, heel line can be t1/3 < a ≤ t1/2 - generally increase weld used to check the alignment. throat by 10% Where t3 is less than t1 then t3 a1 a > t1/2 - release and adjust over a should be substituted for t1 in t1/2 minimum of 50a standard t1/2 t2/2\nt2/2 Other a > t1/2 - release and adjust over a minimum of 30a",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "stituted for t1 in t1/2 minimum of 50a standard t1/2 t2/2\nt2/2 Other a > t1/2 - release and adjust over a minimum of 30a\nAlignment of flange of T-longitudinal When 0.04b < a ≤ 0.08b, max 8 mm: grind corners to smooth taper over a minimum distance L = 3a\nWhen a > 0.08b or 8 mm: grind corners to smooth taper over a minimum distance L = 50a",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "per over a minimum distance L = 3a\nWhen a > 0.08b or 8 mm: grind corners to smooth taper over a minimum distance L = 50a\nAlignment of height of T-bar, L-angle When 3 mm < a ≤ 6 mm:bar or bulb build up by welding\nWhen a > 6 mm: release and adjust over minimum L = 50a for strength member and L = 30a for other",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ulb build up by welding\nWhen a > 6 mm: release and adjust over minimum L = 50a for strength member and L = 30a for other\nAlignment of lap welds\n3 mm < a ≤ 5 mm: weld leg length to be increased by the same amount as increase in gap in excess of 3 mm\na > 5 mm: members to be re-aligned\n- 30 -",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Table 9.2 – Typical Misalignment Remedial\nDetail Remedial Standard Remarks\nGap between bracket/intercostal When 3 mm < a ≤ 5 mm: and stiffener weld leg length to be increased by increase in gap in excess of 3 mm\nWhen 5mm < a ≤ 10 mm: chamfer 30° to 40° and build up by welding with backing\nWhen a > 10 mm: increase gap to about 50 mm and fit collar plate\nb = (2t + 25) mm, min. 50 mm",
+      "page_start": 31,
+      "page_end": 31,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "up by welding with backing\nWhen a > 10 mm: increase gap to about 50 mm and fit collar plate\nb = (2t + 25) mm, min. 50 mm\nGap between beam and frame 3 mm < a ≤ 5 mm: weld leg length to be increased by the same amount as increase in gap in excess of 3 mm\na > 5 mm release and adjust\n- 31 -",
+      "page_start": 31,
+      "page_end": 31,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.3 – Misalignment Remedial\nDetail Remedial standard Remarks\nPosition of scallop When d < 75 mm web plate to be cut between scallop and slot, and collar plate to be fitted\nOr fit small collar over scallop\nOr fit collar plate over scallop\nGap around stiffener cut-out When 3 mm < s ≤ 5 mm weld leg length to be increased by the same amount as increase in gap in excess of 2 mm\nWhen 5 mm < s ≤ 10 mm nib to be chamfered and built up by welding\nWhen s > 10 mm cut off nib and fit collar plate of same height as nib",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "10 mm nib to be chamfered and built up by welding\nWhen s > 10 mm cut off nib and fit collar plate of same height as nib\n20 mm ≤ b ≤ 50 mm\n- 32 -",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.4 – Typical Butt Weld Plate Edge Preparation Remedial (Manual Welding and Semi-Automatic Welding)\nDetail Remedial standard Remarks\nSquare butt When G ≤ 10 mm chamfer to 45° and build up by welding\nWhen G > 10mm build up with backing strip; remove, back gouge and seal weld; or, insert plate, min. width 300 mm\nSingle bevel butt When 5 mm < G ≤ 1.5t (maximum 25 mm) build up gap with welding on one or both edges to maximum of 0.5t, using backing strip, if necessary.\nWhere a backing strip is used, the backing strip is to be removed, the weld back gouged, and a sealing weld made.\nDouble bevel butt Different welding arrangement by using backing material approved by the Classification Society may be accepted on the basis of an appropriate welding procedure specification.",
+      "page_start": 33,
+      "page_end": 33,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "l approved by the Classification Society may be accepted on the basis of an appropriate welding procedure specification.\nWhen G > 25 mm or 1.5t, whichever is smaller, use insert plate, of minimum width 300 mm\nDouble vee butt, uniform bevels\nMin.\nDouble vee butt, non-uniform bevel\n- 33 -",
+      "page_start": 33,
+      "page_end": 33,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 34] Semi-Automatic Welding)\n| 열1 | 열2 | Detail | Detail | Detail | Detail | Detail | RemedialStandard | RemedialStandard | Remarks |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | - | - | - | When 5 mm < G ≤ 15t mm (maximum 25 . | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | mm) buildupgapwithweldingon , one or both edges to maximum of 05t , . , using backing strip if necessary “Limit” , . | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | gapsizepreferablyto“Standard”gapsizeas | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | describedinTable82 . . | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | Whereabackingstripisused thebacking , stripistoberemoved theweldback , | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | gouged andasealingweldmade , . | - | - |\n| Singleveebutt onesidewelding , | - | - | - | - | - | - | Differentweldingarrangementbyusing backingmaterialapprovedbythe | - | - |\n| Singleveebutt | - | - | - | - | - | - | ClassificationSocietymaybeacceptedon thebasisofanappropriatewelding procedurespecification . max t/2 . | - | - |\n| Singleveebutt | - | - | - | - | - | - | LimitsseeTable82 . | - | - |\n| Singleveebutt | - | - | - | - | - | - | When G > 25 mm or 15t whichever is . , | - | - |\n| Singleveebutt | - | - | - | - | - | - | smaller use insert plate of minimum width , 300mm . | - | - |\n| Singleveebutt | - | - | - | - | - | - | Min . | - | - |",
+      "page_start": 34,
+      "page_end": 34,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Semi-Automatic Welding)"
+    },
+    {
+      "text": "TABLE 9.5 – Typical Butt Weld Plate Edge Preparation Remedial (Manual Welding and Semi-Automatic Welding)\n- 34 -",
+      "page_start": 34,
+      "page_end": 34,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.6 – Typical Fillet Weld Plate Edge Preparation Remedial (Manual Welding and Semi-Automatic Welding)\nDetail Remedial standard Remarks\nTee Fillet 3 mm < G ≤ 5 mm – leg length increased to Rule leg + (G-2)\n5 mm < G ≤ 16 mm or G ≤ 1.5t - chamfer by 30° to 45°, build up with welding, on one side, with backing strip if necessary, grind and weld.",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "r G ≤ 1.5t - chamfer by 30° to 45°, build up with welding, on one side, with backing strip if necessary, grind and weld.\n30° to 45°\nG > 16 mm or G > 1.5t use insert plate of minimum width 300 mm\nLiner treatment\nt2 ≤ t ≤ t1 Not to be used in G ≤ 2 mm cargo area or areas a = 5 mm + fillet leg length of tensile stress through the thickness of the liner",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e used in G ≤ 2 mm cargo area or areas a = 5 mm + fillet leg length of tensile stress through the thickness of the liner\n- 35 -",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.7 – Typical Fillet Weld Plate Edge Preparation Remedial (Manual Welding and Semi-Automatic Welding)\nDetail Remedial standard Remarks\nSingle bevel tee 3 mm < G ≤ 5 mm build up weld\n5 mm < G ≤ 16 mm - build up with welding, with backing strip if necessary, remove backing strip if used, back gouge and back weld.\nG > 16 mm new plate to be inserted of minimum width 300 mm",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "sary, remove backing strip if used, back gouge and back weld.\nG > 16 mm new plate to be inserted of minimum width 300 mm\n- 36 -",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.8 – Typical Fillet Weld Plate Edge Preparation Remedial (Manual Welding and Semi-Automatic Welding)\nDetail Remedial standard Remarks\nSingle ‘J’ bevel tee as single bevel tee\nDouble bevel tee symmetrical\nWhen 5 mm < G ≤ 16 mm build up with welding using ceramic or other approved backing bar, remove, back gouge and back weld.",
+      "page_start": 37,
+      "page_end": 37,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "en 5 mm < G ≤ 16 mm build up with welding using ceramic or other approved backing bar, remove, back gouge and back weld.\nDouble bevel tee asymmetrical\nWhen G > 16 mm-insert plate of minimum height 300 mm to be fitted.\nDouble ‘J’ bevel symmetrical\n- 37 -",
+      "page_start": 37,
+      "page_end": 37,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 38] Welding)\n| Detail | Remedialstandard | Remarks |\n| --- | --- | --- |\n| Filletweldleglength | Increaselegorthroatbyweldingover | Minimumshortbead tobereferredTable 914 . |\n| Filletweldtoeangle | θ>90°grinding andwelding where , , necessary tomakeθ≤90° , | Minimumshortbead tobereferredTable 914 . |\n| Buttweldtoeangle | θ>90°grinding andwelding where , , necessary tomakeθ≤90° , | Minimumshortbead tobereferredTable 914 . |\n| Buttweldundercut | For strength member where 05 < D ≤ 1 , . mm andforother where08<D≤1mm , , . , undercuttobegroundsmooth(localized only)ortobefilledbywelding WhereD>1mm undercuttobefilledbywelding | Minimumshortbead tobereferredTable 914 . |\n| Filletweldundercut | Where08<D≤1mm . undercuttobegroundsmooth(localized only)ortobefilledbywelding WhereD>1mm undercuttobefilledbywelding | Minimumshortbead tobereferredTable 914 . |",
+      "page_start": 38,
+      "page_end": 38,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Welding)"
+    },
+    {
+      "text": "TABLE 9.9 – Typical Fillet and Butt Weld Profile Remedial (Manual Welding and Semi-Automatic Welding)\n- 38 -",
+      "page_start": 38,
+      "page_end": 38,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 39] TABLE 9.10 – Distance Between Welds Remedial\n| Detail | Remedialstandard | Remarks |\n| --- | --- | --- |\n| Scallopsoverweldseams | - | - |\n| Scallopsoverweldseams | Holetobecutandgroundsmoothto obtaindistance | - |",
+      "page_start": 39,
+      "page_end": 39,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 9.10 – Distance Between Welds Remedial"
+    },
+    {
+      "text": "TABLE 9.10 – Distance Between Welds Remedial\nHole to be cut and ground smooth to obtain distance\n- 39 -",
+      "page_start": 39,
+      "page_end": 39,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.11 – Erroneous Hole Remedial\nDetail Remedial standard Remarks\nHoles made erroneously D < 200 mm Strength member open hole to minimum 75 mm dia., fit and weld spigot piece\nFillet weld to be made after butt weld\nθ = 30 – 40° G = 4 – 6 mm 1/2t ≤ t1 ≤ t l = 50 mm The fitting of spigot Or pieces in areas of high open hole to over 300 mm and fit insert plate stress concentration or fatigue is to be approved by the Classification Other Society. open hole to over 300 mm and fit insert plate",
+      "page_start": 40,
+      "page_end": 40,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ntration or fatigue is to be approved by the Classification Other Society. open hole to over 300 mm and fit insert plate\nOr fit lap plate\nt1 = t2 L = 50 mm, min\nStrength member Holes made erroneously D ≥200 open hole and fit insert plate mm\nOther open hole to over 300 mm and fit insert plate Or fit lap plate",
+      "page_start": 40,
+      "page_end": 40,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "rroneously D ≥200 open hole and fit insert plate mm\nOther open hole to over 300 mm and fit insert plate Or fit lap plate\nt1 = t2 L = 50 mm, min\n- 40 -",
+      "page_start": 40,
+      "page_end": 40,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "TABLE 9.12 – Remedial by Insert Plate\nDetail Remedial standard Remarks\nRemedial by insert plate\nL = 300 mm minimum\nB = 300 mm minimum\nR = 5t mm 100mm minimum\n(1) seam with insert piece is to be welded first\n(2) original seam is to be released and welded over for a minimum of 100 mm.\nRemedial of built section by insert plate",
+      "page_start": 41,
+      "page_end": 41,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "t\n(2) original seam is to be released and welded over for a minimum of 100 mm.\nRemedial of built section by insert plate\nL min ≥ 300 mm\nWelding sequence (1) →(2) →(3) →(4)\nWeb butt weld scallop to be filled during final pass (4)\n- 41 -",
+      "page_start": 41,
+      "page_end": 41,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 42] TABLE 9.13 – Weld Surface Remedial\n| Detail | Remedialstandard | Remarks |\n| --- | --- | --- |\n| Weldspatter | 1 Removespatterobservedbefore . blastingwithscraperorchipping hammer etc , . | Inprinciple nogrindingis , appliedtoweldsurface . |\n| Weldspatter | 2 Forspatterobservedafterblasting: . a) Remove with a chipping hammer , | Inprinciple nogrindingis , appliedtoweldsurface . |\n| Weldspatter | scraper etc , . b) For spatter not easily removed with a chipping hammer scraper etc , , ., grind the sharp angle of spatter to makeitobtuse . | Inprinciple nogrindingis , appliedtoweldsurface . |\n| Arcstrike (HT steel Cast steel Grade E of mild , , steel TMCP type HT steel Low temp , , steel) | Removethehardenedzonebygrinding orothermeasuressuchasoverlappedweld beadetc . | Minimum short bead to be referredTable914 . |",
+      "page_start": 42,
+      "page_end": 42,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 9.13 – Weld Surface Remedial"
+    },
+    {
+      "text": "TABLE 9.13 – Weld Surface Remedial\n- 42 -",
+      "page_start": 42,
+      "page_end": 42,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 43] TABLE 9.14 – Welding Remedial by Short Bead\n| Detail | Remedialstandard | Remarks |\n| --- | --- | --- |\n| Shortbeadforremedyingscar(scratch) | a) HT steel Cast steel TMCP type HT , , steel (Ceq > 036%) and Low temp . steel(Ceq>036%) . Lengthofshortbead≥50mm b)GradeEofmildsteel Lengthofshortbead≥30mm c) TMCP type HT steel (Ceq ≤ 036%) . andLowtempsteel(Ceq≤036%) . Lengthofshortbead≥10mm | Preheatingisnecessaryat 100±25°C |\n| Remedyingweldbead | a) HT steel Cast steel TMCP type HT , , steel (Ceq > 036%) and Low temp . steel(Ceq>036%) . Lengthofshortbead≥50mm b)GradeEofmildsteel Lengthofshortbead≥30mm c) TMCP type HT steel (Ceq ≤ 036%) . andLowtempsteel(Ceq≤036%) . Lengthofshortbead≥30mm | Preheatingisnecessaryat 100±25°C |\n| NOTE: 1 Whenshortbeadismadeerroneously removethebeadbygrinding . , . Mn Cr+Mo+V Ni+Cu( ) 2 . Ceq = C+ + + % 6 5 15 | a) HT steel Cast steel TMCP type HT , , steel (Ceq > 036%) and Low temp . steel(Ceq>036%) . Lengthofshortbead≥50mm b)GradeEofmildsteel Lengthofshortbead≥30mm c) TMCP type HT steel (Ceq ≤ 036%) . andLowtempsteel(Ceq≤036%) . Lengthofshortbead≥30mm | Preheatingisnecessaryat 100±25°C |",
+      "page_start": 43,
+      "page_end": 43,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "TABLE 9.14 – Welding Remedial by Short Bead"
+    },
+    {
+      "text": "TABLE 9.14 – Welding Remedial by Short Bead\n- 43 -",
+      "page_start": 43,
+      "page_end": 43,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "___________________________________________________________________________ Part B Repair Quality Standard for Existing Ships ___________________________________________________________________________",
+      "page_start": 44,
+      "page_end": 44,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "PART B -SHIPBUILDING AND REPAIR QUALITY STANDARD FOR EXISTING SHIPS\nCONTENTS:\n1. Scope 2. General requirements to repairs and repairers 3. Qualification of personnel 3.1 Qualification of welders 3.2 Qualification of welding procedures 3.3 Qualification of NDE operators 4. Materials 4.1 General requirements to materials 4.2 Equivalency of material grades 5. General requirements to welding 5.1 Correlation of welding consumables to hull structural steels 5.2 General requirements to preheating and drying out 5.3 Dry welding on hull plating below the waterline of vessels afloat 6. Repair quality standard 6.1 Welding, general 6.2 Renewal of plates 6.3 Doubler on plates 6.4 Renewal of internals/stiffeners 6.5 Renewal of internals/stiffeners - transitions inverted angles/bulb profiles 6.6 Termination of straps 6.7 Welding of pitting corrosion 6.8 Welding repairs of cracks 6.9 Grinding of shallow cracks",
+      "page_start": 45,
+      "page_end": 45,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "6.6 Termination of straps 6.7 Welding of pitting corrosion 6.8 Welding repairs of cracks 6.9 Grinding of shallow cracks\nREFERENCES\n1. IACS “Bulk Carriers - Guidelines for Surveys, Assessment and Repair of Hull Structure” 2. TSCF “Guidelines for the inspection and maintenance of double hull tanker structures” 3. TSCF “Guidance manual for the inspection and condition assessment of tanker structures” 4. IACS UR W 11 “Normal and higher strength hull structural steels” 5. IACS UR W 13 “Allowable under thickness tolerances of steel plates and wide flats” 6. IACS UR W 17 “Approval of consumables for welding normal and higher strength hull structural steels” 7. IACS Z 10.1 “Hull surveys of oil tankers” and Z 10.2 “Hull surveys of bulk carriers” Table IV 8. IACS UR Z 13 “Voyage repairs and maintenance” 9. IACS Recommendation 12 “Guidelines for surface finish of hot rolled steel plates and wide flats” 10. IACS Recommendation 20 “Guide for inspection of ship hull welds”",
+      "page_start": 45,
+      "page_end": 45,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e finish of hot rolled steel plates and wide flats” 10. IACS Recommendation 20 “Guide for inspection of ship hull welds”\n1. Scope\n1.1 This standard provides guidance on quality of repair of hull structures. The standard covers permanent repairs of existing ships.\nWhereas the standard generally applies to - conventional ship types, - parts of hull covered by the rules of the Classification Society, - hull structures constructed from normal and higher strength hull structural steel, the applicability of the standard is in each case to be agreed upon by the Classification Society.\nThe standard does generally not apply to repair of - special types of ships as e.g. gas tankers - structures fabricated from stainless steel or other, special types or grades of steel",
+      "page_start": 45,
+      "page_end": 45,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "1.2 The standard covers typical repair methods and gives guidance on quality standard on the most important aspects of such repairs. Unless explicitly stated elsewhere in the standard, the level of workmanship reflected herein will in principle be acceptable for primary and secondary structure of conventional design. A more stringent standard may however be required for critical and highly stressed areas of the hull, and is to be agreed with the Classification Society in each case. In assessing the criticality of hull structure and structural components, reference is made to ref. 1, 2 and 3.\n1.3 Restoration of structure to the original standard may not constitute durable repairs of damages originating from insufficient strength or inadequate detail design. In such cases strengthening or improvements beyond the original design may be required. Such improvements are not covered by this standard, however it is referred to ref. 1, 2 and 3.",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "l design may be required. Such improvements are not covered by this standard, however it is referred to ref. 1, 2 and 3.\n2. General requirements for repairs and repairers\n2.1 In general, when hull structure covered by classification is to be subjected to repairs, the work is to be carried out under the supervision of the Surveyor to the Classification Society. Such repairs are to be agreed prior to commencement of the work.\n2.2 Repairs are to be carried out by workshops, repair yards or personnel who have demonstrated their capability to carry out hull repairs of adequate quality in accordance with the Classification Society’s requirements and this standard.\n2.3 Repairs are to be carried out under working conditions that facilitate sound repairs. Provisions are to be made for proper accessibility, staging, lighting and ventilation. Welding operations are to be carried out under shelter from rain, snow and wind.\n2.4 Welding of hull structures is to be carried out by qualified welders, according to approved and qualified welding procedures and with welding consumables approved by the Classification Society, see Section 3. Welding operations are to be carried out under proper supervision of the repair yard.\n2.5 Where repairs to hull which affect or may affect classification are intended to be carried out during a voyage, complete repair procedure including the extent and sequence of repair is to be submitted to and agreed upon by the Surveyor to the Classification Society reasonably in advance of the repairs. See Ref. 8.",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "itted to and agreed upon by the Surveyor to the Classification Society reasonably in advance of the repairs. See Ref. 8.\n3. Qualification of personnel\n3.1 Qualification of welders 3.1.1 Welders are to be qualified in accordance with the procedures of the Classification Society or to a recognised national or international standard, e.g. EN 287, ISO 9606, ASME Section IX, ANSI/AWS D1.1. Recognition of other standards is subject to submission to the Classification Society for evaluation. Repair yards and workshops are to keep records of welders qualification and, when required, furnish valid approval test certificates.\n3.1.2 Welding operators using fully mechanised of fully automatic processes need generally not pass approval testing, provided that production welds made by the operators are of the required quality. However, operators are to receive adequate training in setting or programming and operating the equipment. Records of training and production test results shall be maintained on individual operator’s files and records, and be made available to the Classification Society for inspection when requested.\n3.2 Qualification of welding procedures Welding procedures are to be qualified in accordance with the procedures of the Classification Society or a recognised national or international standard, e.g. EN288, ISO 9956, ASME Section IX, ANSI/AWS D1.1. Recognition of other standards is subject to submission to the Classification Society for evaluation. The welding procedure should be supported by a welding procedure qualification record. The specification is to include the welding process, types of electrodes, weld shape, edge preparation, welding techniques and positions",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "3.3 Qualification of NDE operators 3.3.1 Personnel performing non destructive examination for the purpose of assessing quality of welds in connection with repairs covered by this standard, are to be qualified in accordance with the Classification Society rules or to a recognised international or national qualification scheme. Records of operators and their current certificates are to be kept and made available to the Surveyor for inspection.",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e. Records of operators and their current certificates are to be kept and made available to the Surveyor for inspection.\n4. Materials\n4.1. General requirements for materials 4.1.1 The requirements for materials used in repairs are in general the same as the requirements for materials specified in the Classification Society’s rules for new constructions, (ref. 5)\n4.1.2 Replacement material is in general to be of the same grade as the original approved material. Alternatively, material grades complying with recognised national or international standards may be accepted by the Classification Societies provided such standards give equivalence to the requirements of the original grade or are agreed by the Classification Society. For assessment of equivalency between steel grades, the general requirements and guidelines in Section 4.2 apply.\n4.1.3 Higher tensile steel is not to be replaced by steel of a lesser strength unless specially approved by the Classification Society.\n4.1.4 Normal and higher strength hull structural steels are to be manufactured at works approved by the Classification Society for the type and grade being supplied.\n4.1.5 Materials used in repairs are to be certified by the Classification Society applying the procedures and requirements in the rules for new constructions. In special cases, and normally limited to small quantities, materials may be accepted on the basis of alternative procedures for verification of the material’s properties. Such procedures are subject to agreement by the Classification Society in each separate case.",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "the material’s properties. Such procedures are subject to agreement by the Classification Society in each separate case.\n4.2. Equivalency of material grades\n4.2.1 Assessment of equivalency between material grades should at least include the following aspects; - heat treatment/delivery condition - chemical composition - mechanical properties - tolerances\n4.2.2 When assessing the equivalence between grades of normal or higher strength hull structural steels up to and including grade E40 in thickness limited to 50 mm, the general requirements in Table 4.1 apply.\n4.2.3 Guidance on selection of steel grades to certain recognised standards equivalent to hull structural steel grades specified in Classification Societies’ rules is given in Table 4.2",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "standards equivalent to hull structural steel grades specified in Classification Societies’ rules is given in Table 4.2\n5. General requirements to welding\n5.1 Correlation of welding consumables with hull structural steels\n5.1.1 For the different hull structural steel grades welding consummables are to be selected in accordance with IACS UR W17 (see Ref.5).",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "fferent hull structural steel grades welding consummables are to be selected in accordance with IACS UR W17 (see Ref.5).\n5.2 General requirements to preheating and drying out\n5.2.1 The need for preheating is to be determined based on the chemical composition of the materials, welding process and procedure and degree of joint restraint.\n5.2.2 A minimum preheat of 50o C is to be applied when ambient temperature is below 0°C. Dryness of the welding zone is in all cases to be ensured.",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 48] reduced by 50o C. For re-welding or repair of welds, the stipulated values are to be increased by 25 o C.\n| Itemstobe considered | Requirements | Comments |\n| --- | --- | --- |\n| Chemical composition | - C; equal or lower - P and S; equal or lower - Mn; approximately the same but notexceeding16% . - Fine grain elements; in same amount Deoxidation practice - | Thesumoftheelements eg Cu Ni CrandMo , . . , , shouldnotexceed08% . |\n| Mechanical properties | - Tensile strength; equal or higher - Yield strength; equal or higher - Elongation; equal or higher - Impact energy; equal or higher at sameorlowertemperature where , applicable | Actualyieldstrengthshouldnotexceed ClassificationSocietyRuleminimum requirementsbymorethan80N/mm2 |\n| Conditionof supply | Sameorbetter | Heattreatmentinincreasingorder; - as rolled (AR) controlled rolled (CR) - normalised (N) - thermo-mechanically rolled (TM)1) - quenched and tempered (QT)1) - 1) TM - and QT -steels are not suitable for hotforming |\n| Tolerances | - Same or stricter | Permissibleunderthicknesstolerances; - plates: 0 .3 mm sections: according to recognised - standards |",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "reduced by 50o C. For re-welding or repair of welds, the stipulated values are to be increased by 25 o C."
+    },
+    {
+      "text": "5.2.3 Guidance on recommended minimum preheating temperature for higher strength steel is given in Table 5.1. For automatic welding processes utilising higher heat input e.g. submerged arc welding, the temperatures may be reduced by 50o C. For re-welding or repair of welds, the stipulated values are to be increased by 25 o C.",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ratures may be reduced by 50o C. For re-welding or repair of welds, the stipulated values are to be increased by 25 o C.\nTable 4.1 Minimum extent and requirements to assessment of equivalency between normal or higher\nstrength hull structural steel grades\n5.3 Dry welding on hull plating below the waterline of vessels afloat\n5.3.1. Welding on hull plating below the waterline of vessels afloat is acceptable only on normal and higher strength steels with specified yield strength not exceeding 355 MPa and only for local repairs. Welding involving other high strength steels or more extensive repairs against water backing is subject to special consideration and approval by the Classification Society of the welding procedure.\n5.3.2. Low-hydrogen electrodes or welding processes are to be used when welding on hull plating against water backing. Coated low-hydrogen electrodes used for manual metal arc welding should be properly conditioned to ensure a minimum of moisture content.\n5.3.3 In order to ensure dryness and to reduce the cooling rate, the structure is to be preheated by a torch or similar prior to welding, to a temperature of minimum 5oC or as specified in the welding procedure.",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 49] 106 41B41B 50B 53B ith M41C) M50C) M53C) M58)\n| SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | SteelgradesaccordingtoClassificationSocieties’rules(ref 5) . | Comparablesteelgrades | Comparablesteelgrades | Comparablesteelgrades | Comparablesteelgrades |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| Grade | Yield stress R eH min . N/mm2 | Tensile strength R m N/mm2 | Elongation A 5 min . % | Averageimpact energy Temp J min . , . °C L T | - | ISO 630 80 - 4950/2/3 1981 | EN EN10025 93 - EN10113 93 - | ASTM A131 | JIS G3106 |\n| A B D E | 235 | 400 502 - | 22 | +20 0 20 - 40 - | - - 27 20 27 20 27 20 | Fe360B Fe360C Fe360D - | S235JRG2 S235J0 S235J2G3 S275NL/ML | A B D E | SM41B SM41B (SM41C) - |\n| A27 D27 E27 | 265 | 400 530 - | 22 | 0 20 - 40 - | 27 20 | Fe430C Fe430D - | S275J0G3 S275N/M S275NL/ML | - - - | - - - |\n| A32 D32 E32 | 315 | 440 590 - | 22 | 0 20 - 40 - | 31 22 | - - - | - - - | AH32 DH32 EH32 | SM50B (SM50C) - |\n| A36 D36 E36 | 355 | 490 620 - | 21 | 0 20 - 40 - | 34 24 | Fe510C Fe510D E355E | S355N/M S355N/M S355NL/ML | AH36 DH36 EH36 | SM53B (SM53C) - |\n| A40 D40 E40 | 390 | 510 650 - | 20 | 0 20 - 40 - | 41 27 | E390CC E390DD E390E | S420N/M S420N/M S420NL/ML | AH40 DH40 EH40 | (SM58) - - |",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "106     41B41B             50B     53B                 ith                       M41C)                      M50C)         M53C)   M58)"
+    },
+    {
+      "text": "Temp.\n°C\n+20\n0 -20\n-40\n0 -20\n-40 31 22\n0 -20\n-40 34 24\n0 -20\n-40 41 27\nenergy ISO\nA5\nmin.\nRm\nN/mm2\nstrength Elongation Average impact\nYield\nstress Tensile\nmin.\nN/mm2\n235 400 - 502 22\nTable 4.2 Guidance on steel grades comparable to the normal and high strength hull structural steel grades given in Classification Society rules\nSteel grades according to Classification Societies’ rules (ref. 5) Comparable steel grades",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Classification Society rules\nSteel grades according to Classification Societies’ rules (ref. 5) Comparable steel grades\nGrade ReH\nA 27\nE 27 265 400 - 530 22 0 -20\nD 27\nA 32\nD 32\nE 32 315 440 - 590 22\nA 36\nD 36\nE 36 355 490 - 620 21\nA 40\nD 40\nE 40 390 510 - 650 20\nNote : In selecting comparable steels from this table, attention should be given to the requirements of Table 4.1 and the dimension requirements of the product with respect",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e, attention should be given to the requirements of Table 4.1 and the dimension requirements of the product with respect\nto Classification Society rules.",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 50]\n| Carbonequivalent 1) | Recommendedminimumpreheattemperature(0C) | Recommendedminimumpreheattemperature(0C) | Recommendedminimumpreheattemperature(0C) |\n| --- | --- | --- | --- |\n| - | t comb ≤ 50 mm 2) | 50 mm<t comb ≤ 70 mm 2) | t comb >70 mm 2) |\n| Ceq≤039 . | - - | 50 | t comb >70 mm 2) |\n| Ceq≤041 . | - - | 75 | t comb >70 mm 2) |\n| Ceq≤043 . | - | 50 | 100 |\n| Ceq≤045 . | 50 | 100 | 125 |\n| Ceq≤047 . | 100 | 125 | 150 |\n| Ceq≤050 . | 125 | 150 | 175 |",
+      "page_start": 50,
+      "page_end": 50,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Table 5.1 Preheating temperature\nNOTES\n1) Ceq = C + Mn 6 + Cr + Mo + V 5 + Ni + Cu\n15 (%)\n2) Combined thickness tcomb = t1 + t2 + t3 + t4 , see figure\nt3\n= =\nt1 t2 t1 t2\nt4",
+      "page_start": 50,
+      "page_end": 50,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 51] Fig. 6.1 Groove roughness\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| MaterialGrade | Sameasoriginalor higher | - | SeeSection4 |\n| WeldingConsumables | IACSUR W17 - (ref 6) . | Approvalaccording to . equivalent internationalstandard | SeeSection4 |\n| Groove/roughness | Seenoteand Fig 61 . . | d<15mm . | Grindsmooth |\n| Pre-Heating | SeeTable51 . | Steeltemperaturenot lowerthan5oC | Grindsmooth |\n| Weldingwithwateron theoutside | SeeSection53 . | Acceptablefornormal andhighstrength steels | -Moisture to be removedbyaheating torch |\n| Alignment | Asfornew construction | Acceptablefornormal andhighstrength steels | -Moisture to be removedbyaheating torch |\n| Weldfinish | IACSguidefor inspectionofshiphull welds(ref 10) . | Acceptablefornormal andhighstrength steels | -Moisture to be removedbyaheating torch |\n| NDE | IACSguide(ref 10) . | Atrandomwithextent tobeagreedwith attendingsurveyors | -Moisture to be removedbyaheating torch |",
+      "page_start": 51,
+      "page_end": 51,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig. 6.1 Groove roughness"
+    },
+    {
+      "text": "6. Repair quality standard\n6.1 Welding, general\nFig. 6.1 Groove roughness\nNOTE : Slag, grease, loose mill scale, rust and paint, other than primer, to be removed.",
+      "page_start": 51,
+      "page_end": 51,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 52] Fig 6.2 Welding sequence for inserts\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Sizeinsert | Min 300x300mm . R=5xthickness Circularinserts: D min=200mm | Min 200x200mm . MinR=100mm | - |\n| Materialgrade | Sameasoriginalor higher | Min 200x200mm . MinR=100mm | SeeSection4 . |\n| EdgePreparation | Asfornew construction | Min 200x200mm . MinR=100mm | Incaseofnon complianceincrease theamountofNDE |\n| Weldingsequence | Seefig62 . . Weldsequenceis 1→2→3→4 | Min 200x200mm . MinR=100mm | Forprimarymembers sequence1and2 transversetothemain stressdirection |\n| Alignment | Asfornew construction | Min 200x200mm . MinR=100mm | Forprimarymembers sequence1and2 transversetothemain stressdirection |\n| Weldfinish | IACSguidefor inspectionofshiphull welds(ref 10) . | Min 200x200mm . MinR=100mm | Forprimarymembers sequence1and2 transversetothemain stressdirection |\n| NDE | IACSguide(ref 10) . | Min 200x200mm . MinR=100mm | Forprimarymembers sequence1and2 transversetothemain stressdirection |",
+      "page_start": 52,
+      "page_end": 52,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig 6.2 Welding sequence for inserts"
+    },
+    {
+      "text": "6.2 Renewal of plates\n3 2\n2 1\n1 4\n100mm 100mm\nR = 5 x plate thickness min. 100mm\nFig 6.2 Welding sequence for inserts",
+      "page_start": 52,
+      "page_end": 52,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 53] Fig. 6.3 Doublers on plates\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Existingplating | - | General:t>5mm | Forareaswhere existingplatingisless than5mmplatinga permanentrepairby insertistobecarried out . |\n| Extent/size | Roundedoffcorners . | min300x300mm R>50mm | Forareaswhere existingplatingisless than5mmplatinga permanentrepairby insertistobecarried out . |\n| Thicknessofdoubler(td) | td≤tp(tp=original thicknessofexisting plating) | td>tp/3 | Forareaswhere existingplatingisless than5mmplatinga permanentrepairby insertistobecarried out . |\n| Materialgrade | Sameasoriginalplate | td>tp/3 | SeeSection4 |\n| Edgepreparation | Asfor[newbuilding] newconstruction | td>tp/3 | Doublersweldedon primarystrength members:(L e:leg length) whent>Le+5mm , theedgetobetapered (1:4) |\n| Welding | Asfor[newbuilding] newconstruction | td>tp/3 | Weldingsequence similartoinsertplates . |\n| Weldsize(throatthickness) | Circumferencialandin slots:06xtd . | td>tp/3 | Weldingsequence similartoinsertplates . |\n| Slotwelding | Normalsizeofslot: (80 -100) x 2 td Distancefromdoubler edgeandbetweenslots: d< 15td | Maxpitchbetween slots200mm d max=500mm | Fordoublerextended overseveralsupporting elements seefigure63 , . |\n| NDE | IACS Recommendation20 (Ref 10) . | Maxpitchbetween slots200mm d max=500mm | Fordoublerextended overseveralsupporting elements seefigure63 , . |",
+      "page_start": 53,
+      "page_end": 53,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig. 6.3 Doublers on plates"
+    },
+    {
+      "text": "6.3 Doublers on plating\nLocal doublers are normally only allowed as temporary repairs, except as original compensation for openings, within the main hull structure.\nld\nSlot weld throat\nPitch\nSize of\nslot\nFig. 6.3 Doublers on plates",
+      "page_start": 53,
+      "page_end": 53,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 54] Fig 6.4 Welding sequence for inserts of stiffeners\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Sizeinsert | Min 300mm . | Min 200mm . | - |\n| Materialgrade | Sameasoriginalor higher | Min 200mm . | SeeSection4 . |\n| EdgePreparation | Asfornew construction . Filletweldstiffener web/platetobereleased over min . d = 150 mm | Min 200mm . | SeeSection4 . |\n| Weldingsequence | Seefig64 . . . Weldsequenceis 1→2→3 | Min 200mm . | SeeSection4 . |\n| Alignment | Asfornew construction | Min 200mm . | SeeSection4 . |\n| Weldfinish | IACSguidefor inspectionofshiphull welds(ref 10) . | Min 200mm . | SeeSection4 . |\n| NDE | IACSguide(ref 10) . | Min 200mm . | SeeSection4 . |",
+      "page_start": 54,
+      "page_end": 54,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig 6.4 Welding sequence for inserts of stiffeners"
+    },
+    {
+      "text": "6.4 Renewal of internals/stiffeners\nMin. size of insert\nRelease fillet weld over a distance d prior to welding sector 3\n1 2\nd d\nFig 6.4 Welding sequence for inserts of stiffeners",
+      "page_start": 54,
+      "page_end": 54,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 55] Fig. 6.5 Transition between inverted angle and bulb profile\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| (h h ) 1 - 2 | <025xb1 . | - | - |\n| |t t | 1 - 2 | 2mm | - | Withouttapering transition . |\n| Transitionangle | 15degrees | - | Atanyarbitrarysection |\n| Flanges | tf = tf 2 bf = bf 2 | - | Atanyarbitrarysection |\n| Lengthofflatbar | 4 x h 1 | - | Atanyarbitrarysection |\n| Material | 4 x h 1 | - | SeeSection4 . |",
+      "page_start": 55,
+      "page_end": 55,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig. 6.5 Transition between inverted angle and bulb profile"
+    },
+    {
+      "text": "6.5 Renewal of internals/stiffeners - transitions inverted angle/bulb profile\nThe application of the transition is allowed for secondary structural elements.\nb1\nh1\n1:4\nt1\n15 o\nt2\ntf\n15 o\nbf\n= =\nh2\ntf2\n1:4\nb2\nTransition angle\nFig. 6.5 Transition between inverted angle and bulb profile",
+      "page_start": 55,
+      "page_end": 55,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 56] Fig. 6.6 Termination of straps\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Tapering | /b>3 | - | Specialconsideration tobedrawn todesign ofstrapterminationsin fatiguesensitiveareas . |\n| Radius | 01xb . | min30mm | Specialconsideration tobedrawn todesign ofstrapterminationsin fatiguesensitiveareas . |\n| Material | 01xb . | min30mm | Seeparagraph20 . Generalrequirementto materials . |\n| Weldsize | 01xb . | min30mm | Dependingonnumber andfunctionofstraps . Throatthicknesstobe increased15%toward ends . |\n| Welding | Weldingsequence frommiddletowards thefreeends | min30mm | Seesketch For . weldingoflengths> 1000mmstepwelding tobeapplied . |",
+      "page_start": 56,
+      "page_end": 56,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig. 6.6 Termination of straps"
+    },
+    {
+      "text": "6.6 Termination of straps\nAssymmetrical arrangement\nStrap\nR b\nIncreased throat thickness\nTaper /b > 3\nSymmetrical arrangement\nIncreased throat thickness\nTaper /b > 3 b Strap t\nFig. 6.6 Termination of straps",
+      "page_start": 56,
+      "page_end": 56,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 57] Fig. 6.7 Welding of pits\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Extent/depth | Pits/groovesaretobe weldedflushwiththe originalsurface . | Ifdeeppitsorgrooves areclusteredtogether orremainingthickness islessthan6mm the , plateshouldbe renewed . | SeealsoIACS Recommendation 12 (Ref9) . |\n| Cleaning | Heavyrusttobe removed | Ifdeeppitsorgrooves areclusteredtogether orremainingthickness islessthan6mm the , plateshouldbe renewed . | SeealsoIACS Recommendation 12 (Ref9) . |\n| Pre-Heating | SeeTable51 . | Requiredwhen ambient temperature<5oC | Alwaysusepropane torchorsimilarto removeanymoisture |\n| Weldingsequence | Reversedirectionfor each layer | Requiredwhen ambient temperature<5oC | SeealsoIACSguide no 12 . |\n| Weldfinish | IACSguidefor inspectionofshiphull welds(ref 10) . | Requiredwhen ambient temperature<5oC | SeealsoIACSguide no 12 . |\n| NDE | IACSguide(ref 10) . | Min 10%extent . | PreferablyMPI |",
+      "page_start": 57,
+      "page_end": 57,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig. 6.7 Welding of pits"
+    },
+    {
+      "text": "6.7 Welding of pitting corrosion\nNOTES: Shallow pits may be filled by applying coating or pit filler. Pits can be defined as shallow when their depth is less than 1/3 of the orginal plate thickness.\nWelding direction\nGrind flush\nStart outside pit Finish outside pit\nFig. 6.7 Welding of pits\nReference is made to TSCF Guidelines, Ref. 2 & 3.",
+      "page_start": 57,
+      "page_end": 57,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 58] (U-groove left and V-groove right)\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Groovepreparation | θ=45 -60o r=5mm | - | Forthroughplatecracksas fornewbuilding Alsosee . fig68d . . |\n| Termination | Terminationtohave slope1:3 | - | Forcracksendingonedges weldtobeterminatedona tabseeFig68b . . |\n| Extent | Onplatemax 400mm . length Veeout50mm . pastendofcrack | Onplatemax500 mm Linearcrack . , notbranched | Forcracksendingonedges weldtobeterminatedona tabseeFig68b . . |\n| Weldingsequence | Seefig68cfor . . sequenceanddirection | Forcrackslonger than 300 mm step- backtechnique shouldbeusedFig 68a . . | Alwaysuselowhydrogen weldingconsumables |\n| Weldfinish | IACSguidefor inspectionofshiphull welds(ref 10) . | Forcrackslonger than 300 mm step- backtechnique shouldbeusedFig 68a . . | Alwaysuselowhydrogen weldingconsumables |\n| NDE | IACSguide(ref10) . | 100%MPorPEof groove | 100%surfacecrack detection+UEorREfor buttjoints |",
+      "page_start": 58,
+      "page_end": 58,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "(U-groove left and V-groove right)"
+    },
+    {
+      "text": "6. 8 Welding repairs for cracks\nTab\n3 2 1\nFig. 6.8.a Step back technique Fig 6.8.b End crack termination\n3 2 1\nFig 6.8.c Welding sequence for cracks with length less than 300 mm\nFig. 6.8.d Groove preparation (U-groove left and V-groove right)",
+      "page_start": 58,
+      "page_end": 58,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 59] Fig 6.9 Grinding\n| Item | Standard | Limit | Remarks |\n| --- | --- | --- | --- |\n| Extent | Forshortcracksonly max 4t . t=Platethickness | Max length . 100mm | SeealsoIACS recommendation12 , (ref 9) . |\n| Grindingdirection | Finalgrinding microgroovesparallel tomainstressdirection | Max length . 100mm | Grindingalwaystobe finishedbyarotating burrandnotadisk grinder |\n| Grindingdepth | Max 02t . . t=Platethickness | Max length . 100mm | Alwayssmooth transition |\n| NDE | IACSguidefor inspectionofshiphull welds(ref 10) . | Max length . 100mm | 100%MPI |",
+      "page_start": 59,
+      "page_end": 59,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Fig 6.9 Grinding"
+    },
+    {
+      "text": "6.9 Grinding of shallow cracks\nDisk grinder Rotary burr grinder\nMain stress direction\nFinal grinding direction\nMax. grinding depth\nFig 6.9 Grinding",
+      "page_start": 59,
+      "page_end": 59,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0005_image_001_ccf977f5c2c9.png",
+      "file_hash": "ccf977f5c2c91e3ae6e6af42085e7285fdc096da9dd2d750ebe6450cac472ecf",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0005_image_002_69d275e32e45.png",
+      "file_hash": "69d275e32e45c04d5b4c94b33e00a2ce2656ae0fa1912bc24bbe9b96d0bd5049",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0008_image_001_782c9affcc0a.png",
+      "file_hash": "782c9affcc0ac9f255cc5629615af2d9d7a5e59647fb72cfc7eeecc4ba21a2fc",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0008_image_002_fb5e6be18547.png",
+      "file_hash": "fb5e6be185476f7445363b90ab39cb4e3f719e4a7dbd3ec9b97ee1af40a1fe4d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0008_image_003_f455573e12cc.png",
+      "file_hash": "f455573e12ccfc031566d2d0d1a234ff6c642074af84928a241753632533d866",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0009_image_001_4cd440aa9e82.png",
+      "file_hash": "4cd440aa9e82453df08a478d076dd3891e18638927769a3a495d3a16c53a162c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0009_image_002_abd9a057843b.png",
+      "file_hash": "abd9a057843bb903774666c63a85d743557382feee6d528212456207508940d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0009_image_003_b6092d40ea42.png",
+      "file_hash": "b6092d40ea42ca6dddb47e50111be7c235ebbf364e9cfe572b389a64cf443605",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0009_image_004_6b49ba5b87fd.png",
+      "file_hash": "6b49ba5b87fd11506df6d8a0711136d8d81f2363471a257e9c227a9f990271ed",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0010_image_001_964632ec6dc9.png",
+      "file_hash": "964632ec6dc9f26a4ddc3dff7260336b3ebfabceb91274c1fdcd5206e1e0c2e9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0010_image_002_a903c7395fcf.png",
+      "file_hash": "a903c7395fcf0ddb8a5ff4995b31fb588992c00bbce55e19e2e62967ff760630",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0010_image_003_a59183d47281.png",
+      "file_hash": "a59183d47281353b39e2d5dd6d436a01bda0b841c8768aed63fa73416e4e93d9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0010_image_004_4cd032e10c00.png",
+      "file_hash": "4cd032e10c0062d386e5235735b53955e15534456148eae745c2185b397df30f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0011_image_001_da51dfe64eb1.png",
+      "file_hash": "da51dfe64eb1a3dd25c0d134c04fe9f597b66eae5deb4c5ea4483a2ecd9fe40b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0011_image_002_40fb5df030ee.png",
+      "file_hash": "40fb5df030eea3d5144ad0edcf150872fc7dcbc83ecfa3d667d8693ec441413c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0011_image_003_7de68224d43c.png",
+      "file_hash": "7de68224d43c698b7cc26973d5ac496e590f190afb659ec9b73c515ccd09661b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0015_image_001_3aafa7486d00.png",
+      "file_hash": "3aafa7486d0060a93dc9976c9595a3395d1b307609693a8280cd211aebab49a4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0015_image_002_ae42a2897135.png",
+      "file_hash": "ae42a2897135d59fbedc3797560caf52603ebf34e6cfe84193aa003d9622f2a1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0015_image_003_559b91fb390a.png",
+      "file_hash": "559b91fb390a0e32d8da5f4d1acba7366076ff514bbd0d5c6b8a027d66fdb529",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0015_image_004_7b35ba47bc4a.png",
+      "file_hash": "7b35ba47bc4a90b31ee148ebd6848c8a96895a838f5564a5c2934f323e20f231",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0015_image_005_501b7ad3be9a.png",
+      "file_hash": "501b7ad3be9ae786b0cecf11c483078d161c4cca004f60a4c2c61677465c40cd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0017_image_001_ebc52e1f7526.png",
+      "file_hash": "ebc52e1f75261b73a0f970f95871910e082eccf130f30d51ff612d58471730ca",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0018_image_001_ca22131187bc.png",
+      "file_hash": "ca22131187bc359aa193101cd0832e3715999aa502c3e70d6050d83634099bbe",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0018_image_002_686f367741ed.png",
+      "file_hash": "686f367741ed7b5e1b14c4db067e255c77422b1c3a925981cc96f7aee69d1367",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 20,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0020_image_001_494316fe19f6.png",
+      "file_hash": "494316fe19f67a0e977b5cd7f8c5deafec17ecbaa6d5793047c1cab5f22c9774",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 20,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0020_image_002_be6f20257a19.png",
+      "file_hash": "be6f20257a19e4ce9b159ab22cbf01cd975efa588a788fa2e29d18ac70b47a43",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 20,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0020_image_003_2a77b9c31e0f.png",
+      "file_hash": "2a77b9c31e0f993695afb4bdba0c672655a9c5ca1c81b55ac349ede0f9996623",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 20,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0020_image_004_ebdd2fbbe643.png",
+      "file_hash": "ebdd2fbbe643af12880baa50c1cfec392ebcecb4ddace13d7e4430d2470079de",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0021_image_001_3c8dc6af7fdd.png",
+      "file_hash": "3c8dc6af7fdd8c0d1c604b5e7979f824031d6a7044de43188a92776b210dd7bd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0021_image_002_d0b76f98df09.png",
+      "file_hash": "d0b76f98df09d100f5e603aea0018f30ff8c2c6b0e47a527d4e54e51f2c50978",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0021_image_003_4c3d6d44bec9.png",
+      "file_hash": "4c3d6d44bec9f9e4a426f6ad8bcbc3c002b73ed478521121e4d619cbe82a9071",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0021_image_004_d7a1b5283c67.png",
+      "file_hash": "d7a1b5283c677b424fdcb52130617ac0530ad566f8bd08170a520f7c4423ece0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 21,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0021_image_005_c58cf6d49bcd.png",
+      "file_hash": "c58cf6d49bcd073b0e49287a59bf1adb96b6ac5ba94fc4f90c36ede3debf3c8d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 22,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0022_image_001_38d34b08a1e1.png",
+      "file_hash": "38d34b08a1e1e27e4f8d9673fcf61dca02f09a32fabcbe47d3e5d31462cc8c4e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 22,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0022_image_002_e66b8685c608.png",
+      "file_hash": "e66b8685c608e6e5ee9b5274fe54c7dba938793f649f2c2a78d24525d79d0a88",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_001_e0f3578fefbd.png",
+      "file_hash": "e0f3578fefbd3e32e68c3ae493e3fadbd77e37b24dd6a7d19bd6d242c6a3379f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_002_7501779c9188.png",
+      "file_hash": "7501779c9188d6a72741c675431ba06ea605a18b7c9b10320ae351bbe6ca19b3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_003_0fdd17ac4bc7.png",
+      "file_hash": "0fdd17ac4bc7dee8bc85554e2849a85ca9961514ae02d163daeaa938a560cc49",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_004_e631abdbdea0.png",
+      "file_hash": "e631abdbdea089203a0a85ee5136527cd43d8eeb7e76f4f6f91a8dd257e8afe1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_005_ab2cbd0d4aa0.png",
+      "file_hash": "ab2cbd0d4aa09c68515315efbe1fe0e19b58603f4c3b9272e6b4777853395dac",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_006_c649168afe5d.png",
+      "file_hash": "c649168afe5d912bfc31c7c39ba5c1677c2c28a8e8ba731c840a8e809f8ee56a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_007_086c522b86ce.png",
+      "file_hash": "086c522b86cef2f81bc45d448f58b3b00c7fa5229b94642df5de4cde333334a0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 23,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0023_image_008_7dd2d9d4c4bd.png",
+      "file_hash": "7dd2d9d4c4bd395bd961f2ac0a66a22948ab554a62f0b499375e7647674dfc8e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 24,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0024_image_001_9218a17f72f7.png",
+      "file_hash": "9218a17f72f7ac83e1639b2b4aba80daa2d78b862fe45c35152ee9e99358ed28",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 24,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0024_image_002_f7f5ffe20db9.png",
+      "file_hash": "f7f5ffe20db95e3080cbb651787fec09f4a5b132a7c30370ac17eadb36a6676a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 24,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0024_image_003_7ea676cb44cb.png",
+      "file_hash": "7ea676cb44cb23ec5166bab358bf2698a37dba1b47e5038ea095469b60edfa44",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0025_image_001_ebb11e95409d.png",
+      "file_hash": "ebb11e95409d2103b8f846f39a2849933d0f077432f8e4deefcad48c59f576ac",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0025_image_002_5c26652766a9.png",
+      "file_hash": "5c26652766a92016a4aac53a25b7aa025aadacd6a8f04588e59ff22604fc1ee2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0025_image_003_558af90a8364.png",
+      "file_hash": "558af90a836482bc0bf46da64acf70b5d5735814ab3212b251f34442777b8d24",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0025_image_004_57ea453699d9.png",
+      "file_hash": "57ea453699d9040a93f4bbde8c167241fc4269901338676ef0a4e7ea9da49e0b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0025_image_005_68517fd431a5.png",
+      "file_hash": "68517fd431a5b3ba03a6dbcd482b3dd775b45d72b61c344559ee866eecd0619a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_001_8d6f2e89b344.png",
+      "file_hash": "8d6f2e89b344ec93348f42cf8f6a722b67d2ff19c86781b7b500b4add5327a37",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_002_dcd547c369e8.png",
+      "file_hash": "dcd547c369e8d40e7f9c5429a2754e7995c63d217e984eb6e1f21da39645d969",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_003_b42d62d00f58.png",
+      "file_hash": "b42d62d00f587499a08c3af0d5c32a71604d00f3384ad782bed06f3f652d7f8e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_004_0502b7642f95.png",
+      "file_hash": "0502b7642f95ded7fc91a56ebfc911783384058c8301629b24399d3ab4460190",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_005_b1a1f322d819.png",
+      "file_hash": "b1a1f322d8190ab32d7525529e06091555de6733dfe839d029160baf367465be",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_006_4c35fe565172.png",
+      "file_hash": "4c35fe565172a6bb1335cf4543f5d589cfd104d8eaba3ce6cb36da50b5fb6338",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_007_f269ecae6563.png",
+      "file_hash": "f269ecae65635c606818329972561e7dda397686dd7034252dde6d650150eaf1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_008_5365086b5e07.png",
+      "file_hash": "5365086b5e07ab4c57210f05ae02b6d0e19a8f528154e6cf8403d46fa24fb2e3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_009_69121923d2be.png",
+      "file_hash": "69121923d2be755bde9bbb7c7f5be9c24c60f6ac69e082f7a638dc8b63d74c14",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_010_fdea117f0f65.png",
+      "file_hash": "fdea117f0f65c4f0259466ea257dc81b35262c9623e742effc8d1e068f5b2be5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0026_image_011_95a736031f50.png",
+      "file_hash": "95a736031f507e71fff81b4383a2efdcc2fe73f9369b65f6df05fd6a83d716bd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0027_image_001_68ace293b7fa.png",
+      "file_hash": "68ace293b7fa38760e87985ead8be31e051ac54bc459590655444f78e00963b8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0027_image_002_c310f94ac8ef.png",
+      "file_hash": "c310f94ac8efa5568a30be9d958891049772e2a046f11b30c83e3fdf679e4572",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0027_image_003_1aab26c1404f.png",
+      "file_hash": "1aab26c1404fd084c6702fc14bdbaf9a4f9f6f71600de11b4edf425f1724f973",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0027_image_004_9b7e3ea23099.png",
+      "file_hash": "9b7e3ea23099fb84a07a3aa98f7c3c6089520d81a3e1ecc222dad7f7258e034c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0027_image_005_e1b8973702b4.png",
+      "file_hash": "e1b8973702b4ef2468586a03520f363f264b1a49645749db3b776b36c3741868",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0028_image_001_285620a556c1.png",
+      "file_hash": "285620a556c1e124a605d48dd34b803b76867888c29c819fd997ac73fce3a0ba",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 29,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0029_image_001_3b5fc147ad1c.png",
+      "file_hash": "3b5fc147ad1ca7bd4c7c864d664794fcb39b8571d6c0f7efcd38d70f36055981",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 29,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0029_image_002_c87631b3578d.png",
+      "file_hash": "c87631b3578da0927b3739220744d2237c9bac2b1cd5c36978c11a7136f46d08",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 29,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0029_image_003_d7a1cc12b8f6.png",
+      "file_hash": "d7a1cc12b8f69a0756560c5ce6e2a1ba3ab86e628dea4d88f6e1e8cf70a2823c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 29,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0029_image_004_a931328d078a.png",
+      "file_hash": "a931328d078acd84af2ec4bd24064ba3633ac36c210d86058e3cbe224d917941",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_001_7e62112714d0.png",
+      "file_hash": "7e62112714d0097c3192a9e443d0018cd9e61780bb27f09c39cbc49afad58a92",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_002_0a6cf3149640.png",
+      "file_hash": "0a6cf3149640687bc38e5c36b33255976ef303787972fb3ccedb6f07a5fb569a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_003_2f9ce02ffef5.png",
+      "file_hash": "2f9ce02ffef5a03515084ad701fc635f3d69bc765b3cf0779ed37d19757bbcae",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_004_e283d1a5fb90.png",
+      "file_hash": "e283d1a5fb9008b1042325619c9f2e489f567dc21b0483401cc1ad4428a9e13f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_005_808b0576b53b.png",
+      "file_hash": "808b0576b53b8e998b9fec3fdb33051c0032ce028c73eda919a10b0515c6dc12",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_006_6116f032e5ae.png",
+      "file_hash": "6116f032e5aeff28e9a06f334362dfa4aa9b4a42868f24434135402ba2efd511",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 30,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0030_image_007_66064990bfa0.png",
+      "file_hash": "66064990bfa07f91fd2364b0c838b374df1c19b80443bd804d2e33bba617cd07",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 31,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0031_image_001_dfca784c483f.png",
+      "file_hash": "dfca784c483fc8b76ce86d7b8ffaffb27e70bdedc8d301e732f4a7fb833a33f3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 31,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0031_image_002_7498ad174144.png",
+      "file_hash": "7498ad174144e62f6106733beeabe07993723f3c22dcd1b696f66cd1ad02ca0d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 31,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0031_image_003_e688eaa5df38.png",
+      "file_hash": "e688eaa5df38ec6aa663ed12dcc0bceecaf49ccefa741bbf7b7cc4284f5fcc10",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_001_f8f183b510e6.png",
+      "file_hash": "f8f183b510e6d6d8fe58c793366d809f5f749dceb84733fee11b7c840753a5b8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_002_682bda145cdf.png",
+      "file_hash": "682bda145cdfa181c7a462310b5f748f097c028875c8a8080869652382d1185e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_003_51a4c0b4e556.png",
+      "file_hash": "51a4c0b4e556a8c9e437eab08fddf3173671e11c4526de142208279f7f6d627a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_004_3e4f7168cea3.png",
+      "file_hash": "3e4f7168cea31dafabb2535a80f6dbc77ba15eeb0b73f7ca11507829110ef814",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_005_befe4dc6879f.png",
+      "file_hash": "befe4dc6879fa01305fcc4436a853a83bca4e3e95a6319147997a192c63f0577",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_006_8d472e1dd1d3.png",
+      "file_hash": "8d472e1dd1d3a8b1bc2bbb2e77c595ce98f7770e9488f53ab92621539bfa5d76",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_007_b2ca74683f09.png",
+      "file_hash": "b2ca74683f09439384dea2fd9df824784e04b13d0de1ffabd82e72c718d78df2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_008_3f4257b0a565.png",
+      "file_hash": "3f4257b0a565b34d5184e700bed99908f7c529931552b711f0051ab5638044fe",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_009_4e31ab088799.png",
+      "file_hash": "4e31ab08879959cb5db623deab8e727b9d2639963fb06aee81554ef2a0673ed9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_010_242bf8578ea8.png",
+      "file_hash": "242bf8578ea8c75ccb08f8b67aa7eb484c13697f821ab723a4e15a88c821fd2d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_011_5f93f74707b9.png",
+      "file_hash": "5f93f74707b93f903f34bd849eb568c3fc4ddd10f8ed16b964c71e1065e10142",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_012_dd522a817a43.png",
+      "file_hash": "dd522a817a43ad2f814de4ee8dd3cf0c9c6f6229cb1944dcf11301de70dd3e59",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_013_3709844b41fc.png",
+      "file_hash": "3709844b41fc9cb6f2e1d2c4ac7247982bcb7f5650e2c0392e837e8f59ffc2f6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_014_ea1a52c24ef2.png",
+      "file_hash": "ea1a52c24ef242add35390d7d0c63b27d2b5327b9bf89b21c99526cec187883c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_015_60f7f11e0c04.png",
+      "file_hash": "60f7f11e0c04797550153fd545c3d79596e205343ef46528fb66ae524085fdfd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_016_17030f12c286.png",
+      "file_hash": "17030f12c28661ee0d52ba5fcb58cca51c0e9acb8eeaeeb2440c525349de08e7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_017_32491bb6264b.png",
+      "file_hash": "32491bb6264b8562ae705d9fbe5403e924e0c17d81fd7032736f77fdc1ac9f49",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 32,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0032_image_018_a52f853fab6a.png",
+      "file_hash": "a52f853fab6affcd347c63f55e3ba253bb3179b758508590a76a89127f5a7b3f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_001_aacc1201514a.png",
+      "file_hash": "aacc1201514a2fe0d01a8f7177602026e377a62e6b4e7e6a3bcb2a2de5f858d5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_002_f3521d1f2524.png",
+      "file_hash": "f3521d1f252473ed11398fa1acdf20b5e349f90a1a349da17f67a70f25a33078",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_003_874bd7374490.png",
+      "file_hash": "874bd737449009c4868cf5d088fc6aed5c34576bc370ce84b4dad2d77c217aa7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_004_96b3e2ccccb8.png",
+      "file_hash": "96b3e2ccccb8425b4ba8ec2f9faf876f66e21a76862329e54c7faded4a923377",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_005_964dc44bbd63.png",
+      "file_hash": "964dc44bbd63095677ed2c20ffc36ea3ea20175001aa5dbb2cfc426c5bb37da1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_006_cfba53128b1e.png",
+      "file_hash": "cfba53128b1e7a38af6078a0a874396d7afeb9f5cd91fece2db4fb356b8f69c6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_007_2bd7781364eb.png",
+      "file_hash": "2bd7781364eb0144eb9e920f22f7f2d9637b2334beab7118543cb455ce2a6491",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_008_358ddf1b221b.png",
+      "file_hash": "358ddf1b221bfd883e96fdb7608c8fb520a22be677eaec7af51fe9bc695abc5e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_009_ce8a258246ea.png",
+      "file_hash": "ce8a258246ea82cb03d03aee3557fc6e0e916dea828a3f42b861cb8a64c3141c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_010_b86cb152fee8.png",
+      "file_hash": "b86cb152fee8c0b41eac933832d9a949e0a57276e27e784c21ddecc6b77ab542",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 33,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0033_image_011_b0f8740e973a.png",
+      "file_hash": "b0f8740e973ac766a27e4c9750910ba9504977e630b168206fed28dff934aaa6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 34,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0034_image_001_8353d4eb6e0b.png",
+      "file_hash": "8353d4eb6e0b004f274d326ecbc57891aa18f020f538ebf4e294423d1bb5a8da",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 34,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0034_image_002_8d5e23930121.png",
+      "file_hash": "8d5e239301219a5ced7d4776927caeb4f6186250ffc530e0f81fb498411e72c3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 34,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0034_image_003_91ad1b09318e.png",
+      "file_hash": "91ad1b09318e63bf880549c87e848a51745d729d1ac35a3b242536f50d1a9480",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 34,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0034_image_004_ceaf63398edf.png",
+      "file_hash": "ceaf63398edfb5faf3453983fd035f0652275c54973806e71b3bc27864353c72",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 34,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0034_image_005_06d679306e17.png",
+      "file_hash": "06d679306e1731db773c0d2f89906a962ab72e685ca5a6bc43c8de982c7771f4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 35,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0035_image_001_8fc7537e5c37.png",
+      "file_hash": "8fc7537e5c377574a326857bb7121aad730462b80e1f7168ba08373d5d30bca2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 35,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0035_image_002_4e68a91121e9.png",
+      "file_hash": "4e68a91121e9edfec4596f1ea12d39090ea7b77b7ed6e4624fc4c8abc8471c01",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 35,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0035_image_003_005cff318494.png",
+      "file_hash": "005cff3184949d50428c5d6ead673fcdeab47b10e18e8571d2a314b34f31ce4d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 35,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0035_image_004_15f983a99029.png",
+      "file_hash": "15f983a9902976d2634addc4e089ee204a628e2babef514c324fb05f679bef40",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 36,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0036_image_001_9b09db7861b6.png",
+      "file_hash": "9b09db7861b677cd827e438306b8e0fca3d7813ebaeb62fc1b40fd43abe75616",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 36,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0036_image_002_70660cebed1a.png",
+      "file_hash": "70660cebed1a60c86fe832413d504b05336cc8f1619df5962001c4e249529bc7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 36,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0036_image_003_490c11913389.png",
+      "file_hash": "490c11913389f552d21f2968b9a49a26df2541977d4a34f55980262c0d846b4d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 36,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0036_image_004_aea2e15eeb46.png",
+      "file_hash": "aea2e15eeb46fe727f6b89a53aa59da6dc5f3d32df2047494ab5a94a44be3c6a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_001_b4f9067480fe.png",
+      "file_hash": "b4f9067480fec068298f6d38227f682ba88dd29c85e4aba563f0a9ca323f61a5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_002_b1b68735bf44.png",
+      "file_hash": "b1b68735bf446607483f81eabd144b94c73c1b1ba9f8974a36a00978059bc886",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_003_cc79b264de93.png",
+      "file_hash": "cc79b264de9313d6e3b5e0e3b1cbeb572499d3794b2ee12f4f109b6cc3483afb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_004_bf20cb92385d.png",
+      "file_hash": "bf20cb92385d0813c0418d8f63c37e56d5ae5f3c10fecc7b8a3fb62a95d2ff6c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_005_33b9b0f30557.png",
+      "file_hash": "33b9b0f30557f823648cfe3eb1e9c6919b0c77171c8fb90b0ad8b36d49bdaf4b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_006_dc525404954a.png",
+      "file_hash": "dc525404954a7404d8147b4fac07c33622056672b095a35d579f3187bd0c80c1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_007_98ea3bcd4a19.png",
+      "file_hash": "98ea3bcd4a199b3bf17874aa85f5150ce9efb96f2235e0f89a7846e13939c462",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_008_eab86434c49c.png",
+      "file_hash": "eab86434c49cb0da9a567a076bcd8d166242da6de0202b8f82022a0a852d2138",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_009_96607b899ab5.png",
+      "file_hash": "96607b899ab555f937d10b544d5db279be6ff6caf59f8c290478ac86aaae49a8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_010_e25e89785847.png",
+      "file_hash": "e25e897858474a98e8498b32050f5c87e27fd60a29fc7a1e89a6f8105eb3647f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_011_0c95d22dbe4f.png",
+      "file_hash": "0c95d22dbe4f431d5feca2173f27662fc047b3d75ccb0693db4ca9fbc878074d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_012_a9b582d39253.png",
+      "file_hash": "a9b582d39253663ec03914cb35f3b760b35e58ec2d599424fc2cd732532a163e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 37,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0037_image_013_2b15a6b00df8.png",
+      "file_hash": "2b15a6b00df88328efc65cabd21ce581cc18c91691cdce32e27dd6809498e6c2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_001_270fe920f506.png",
+      "file_hash": "270fe920f506f3b60c6fc251c1843e5853c9a234ea50346c4e2bf468de1616d6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_002_842bcad3c28a.png",
+      "file_hash": "842bcad3c28a187ae587190c0b3db012e572d482cb50feb6ca11ee03bd46342c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_003_df232fbbd2fb.png",
+      "file_hash": "df232fbbd2fb0a984fe993a348fb499059aa84de4816a50859edf899fb4a258e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_004_5b3701a96836.png",
+      "file_hash": "5b3701a968368a2710ca719c37b6d85ce1bd7728769860b8c23575a7f9d77702",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_005_b7ed2944db22.png",
+      "file_hash": "b7ed2944db225b7f3e4f50cd485a7bea5ad9e480f8270eb9ec565cbe6d06bad2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_006_d919d7ccb5d9.png",
+      "file_hash": "d919d7ccb5d9366463d16d85d2fd280ac93d7b80689c694a072c779d53602909",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 38,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0038_image_007_b144e6d34ec2.png",
+      "file_hash": "b144e6d34ec2d441f01b0e105549b5633f09def4535f70e7db11420cc4464911",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 39,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0039_image_001_189a79350db6.png",
+      "file_hash": "189a79350db65e1c97944e1e2b541fb4d35f74e5044e78fc6eea9dd9d73bcd1a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 40,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0040_image_001_ce7b5c2cef15.png",
+      "file_hash": "ce7b5c2cef152b247cf0d849973300a7ba0daa58f8d3a607f5bd4445b770c084",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 40,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0040_image_002_b0ac603171fc.png",
+      "file_hash": "b0ac603171fc1abe22319e007eb494705234274a0953fc677b2f2f6dd1d6a97e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 40,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0040_image_003_c3e0c1e7fc3c.png",
+      "file_hash": "c3e0c1e7fc3ca74a7dbc521257b41d5fba8c7d2dc017d9b36fa420d843acab17",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 40,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0040_image_004_29d62a7131e5.png",
+      "file_hash": "29d62a7131e570766e6d3dfbaad5273429badb1685a48db20479f24f7b021a4d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 40,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0040_image_005_a7de95549b16.png",
+      "file_hash": "a7de95549b166b1b137ba008d8fec2d53f10481918d0c870519c601ce8eca0c0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 41,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0041_image_001_741877615ea3.png",
+      "file_hash": "741877615ea3edb02c4555849713752a6eaea7410113cf72dcafaa0d885620ed",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 41,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0041_image_002_aacb7ff2037d.png",
+      "file_hash": "aacb7ff2037d4b40829b75c61bd4765f04e38031d6befa975c775fbed04229b9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 41,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0041_image_003_5bead6ca35d6.png",
+      "file_hash": "5bead6ca35d6d262a8a774afd23838c19b2e817ae440f4c38ef8795f7d45401a",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 41,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0041_image_004_99e033fce052.png",
+      "file_hash": "99e033fce0522dc026b102614ae0be1d65c075b630d2055cb7e93317322148d1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 42,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/a9d4831c1afcab9f557a/page_0042_image_001_a229ee008769.png",
+      "file_hash": "a229ee00876934244f17ebdf30f1d2ab2ff6940ae6c9405efae901acc5e31f0d",
+      "ocr_text": ""
+    }
+  ],
+  "block_count": 100
+}

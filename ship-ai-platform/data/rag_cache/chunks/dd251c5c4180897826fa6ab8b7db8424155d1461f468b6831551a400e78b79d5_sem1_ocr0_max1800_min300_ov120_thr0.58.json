@@ -1,0 +1,1025 @@
+{
+  "chunks": [
+    {
+      "text": "3 3 서브머지드 아크 용접재료\n서브머지드 아크 용접용 플럭스•플럭스•스테인리스강•니켈합금 서브머지드 아크 W E L D I N G C O N S U M A B L E S G U I D E B O O K 용접 재료",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\nSAW용접에서는 와이어의 선택뿐 아니라 플럭스의 선택에도 상당한 주의를 기울여야 합니다. 일반적으로 플럭스는 용융금속의 보호 및 청정효과, 화학조성과 기계적 성질 및 용접 비드의 형상등을 결정하는 중요한 역할을 담당합니다.\n1. Submerged Arc Welding Flux의 분류3 •플럭스는 제조하는 방법의 차이에 따라 크게 두가지, 즉 용융형 플럭스와 소결형(소성형) 플럭스로 재료 나누고 소결형 플럭스는 다시 제조온도의 차이에 따라 고온소결형플럭스(Sintered Type Flux)와 용접 용접 저온소결형 플럭스(Bonded Type Flux)로 나누어 집니다. 아크 용융형 플럭스(Fused Type Flux) 아크 Flux 소결형 플럭스(Baked Type Flux) 고온소결형 플럭스(Sintered Type Flux) 서브머지드 Baked Type Flux 저온소결형 플럭스(Bonded Type Flux) 서브머지드 2. Flux의 제조방법 및 특성 1) 용융형 플럭스의 특성 •연강, 고장력강 및 저합금강의 단층, 다층용접과 박판의 고전류, 고속용접에 적용되는데 그 특성을 요약하면 아래와 같습니다. (a) 유리질로서 흡습이 거의 없음. (b) 구성성분들이 화학적으로 결합되어 있어 고속용접시 작업성이 대단히 좋음. (c) 와이어로 부터 합금원소를 첨가하고 각종 일반강재에 적용함. 2) 소결형 플럭스의 특징 •소결형 플럭스는 공정상 완전용융되지 않으므로 탈산제, 합금제의 첨가가 가능하며, 염기도가 높고 다음과 같은 특성이 있습니다. (a) 플럭스가 흡습되기 쉬우므로 주의를 요함. (b) 용접전류가 일정함. (c) 600A 이상의 중·고전류에서 작업성이 양호함. (d) 플럭스중에 Si, Mn이 첨가되어 있으므로 강력한 탈산이 가능함. (e) 플럭스에 합금제의 첨가가 가능하며 용접금속의 화학성분이나 기계적 성질의 조정이 용이함. (f) 활성(Active) 플럭스의 경우 용접조건의 변화에 따라 용접금속의 성분이 변동하기 쉬우므로 다층용접에는 부적합함.",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e) 플럭스에 합금제의 첨가가 가능하며 용접금속의 화학성분이나 기계적 성질의 조정이 용이함. (f) 활성(Active) 플럭스의 경우 용접조건의 변화에 따라 용접금속의 성분이 변동하기 쉬우므로 다층용접에는 부적합함.\n3. SAW용 Wire경에 따른 용접적정 전류 범위\n와이어경(mmØ) 2.4 3.2 4.0 4.8 6.4 7.2\n적 정 전 류 (A) 450이하 250~600 350~800 450~1,100 650~1,500 900이상\n186 주식회사 세아 ESAB",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "4. 플럭스의 산포고 및 산포량\n산 포 고 (mm) 산 포 량\n저 전 류 고 전 류 대략 비드 폭의 2배 정도 20~35 35~50 3 적정 STICK-OUT : 와이어경(mmØ)×8\n5. 최상의 Flux 선택법1) 두께 1 inch(25.4mm)이상의 다층용접에는 Active Flux(활성플럭스)가 아닌 Neutral Flux(중성 서브머지드 서브머지드 플럭스)가 더 적합합니다. 아크 아크2) Active Flux(활성 플럭스)는 특히 Rust 또는 Mill Scale 상태에서의 용접에 적합합니다. 용접 용접3) 고속용접용으로는 Acid Flux(산성 플럭스)가 적합합니다. 4) 고염기성계 플럭스(High Basic Flux)는 일반적으로 용착금속의 인성이 아주 높습니다. 재료 5) 1,000A이상의 대전류 용접시에는 용융형 플럭스(Fused Flux)가 소결형 플럭스(Bonded Flux)보다 적용성이 우수합니다. 6) 용착금속이 최대의 경도값을 요구하거나 응력부식균열(SCC)이 문제가 된다면 금속성분을 함유한 활성 플럭스의 사용은 가능한 억제하는 것이 좋습니다.\n6. 소결형 서브머지드 플럭스의 취급 및 보관 (주)세아ESAB 에서 공급하는 소결형(Bonded) SAW Flux는 건전한 용접부와 양호한 용접특성을 위 하여 수분함량 0.1% 이하로 관리, 생산된 제품입니다. 또한 흡습을 방지하기 위하여 Can 혹은 방습 처리 된 Paper-Bag 으로 포장하여 공급하고 있습니다. 부주의한 취급 및 운반, 보관 중 흡습된 Flux는 용접시 Slag 및 용접부위에 기공 등의 결함을 유발하므 로 아래의 요령에 따라 취급 및 보관하여 주시기 바랍니다. 1) 개봉하지 않은 Flux는 온도 20±10℃, 상대습도 60% 이하의 장소에 보관하고 눈, 비 등의 직접적인 수분의 영향을 받는 곳을 피해 주십시오. (Can의 경우 24개월, Paper-Bag의 경우 18개월 이내에 사용하여 주십시오) 2) 개봉 후 Flux의 대기 노출 시간은 가급적 6시간 이내로 하여주시고 사용하고 남은 Flux는 150±25℃의 온도에서 보관하여 주십시오. 3) Flux 가 수분의 직접적인 영향을 받을 경우 (눈, 비에 접촉되거나 이동,보관 중 포장파손 등으로 인 한 흡습 등) 300±25℃ 의 온도에서 1~2시간 동안 재 건조(Re-Baking)하여 사용하시기 바랍니다. 이상적인 재 건조를 위해 건조장치내의 Flux 살포높이는 50mm 이하로 관리해 주십시오. 재 건조한 Flux는 사용할 때까지 150±25℃의 온도에서 보관하여 주십시오. 4) 용접부에 적용한 후 재 사용하는(Re-Used) Flux는 사용하지 않은 Flux와 1:1로 혼합하여 재건조 과정 후에 사용하는 것을 추천하며 재 건조 과정이 용이하지 않을 경우 보관온도(150±25℃)에서 3시간 이상의 제습 과정 후 사용하시기 바랍니다.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ed) Flux는 사용하지 않은 Flux와 1:1로 혼합하여 재건조 과정 후에 사용하는 것을 추천하며 재 건조 과정이 용이하지 않을 경우 보관온도(150±25℃)에서 3시간 이상의 제습 과정 후 사용하시기 바랍니다.\nWelding Consumables Guide Book 187",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "연강 및 고장력강의 서브머지드 용접시 유의사항\n1. Flux는 될 수 있는 한 습기가 적은 장소에 보관하여 주시고 특히 Bonded Flux의 흡습에 유의해 주십시오. 만일 흡습되었을 경우 300±25℃에서 1~2시간 정도 재건조를 하여 주십시오. 2. 용접부 개선면내의 녹, 기름, 오물, 수분, 가접시의 Slag등은 가능한 한 제거하여 주십시오. 3. 개선각도는 될 수 있는 한 정확히 하여 주십시오. 4. 다층용접의 경우는 다음 사항에 주의하여 주십시오.3 1) 습도가 높고 기온이 낮을때 후판 용접시 용접하기 전에 적당한 예열을 행하여 주십시오. 재료 2) Wire는 가급적 세경을 사용하여 주십시오. 용접 3) 개선내의 초층용접은 가능한 저전류, 저속도에서 실시하여 주십시오. 용접 4) 초층용접부는 구속력이 커서 Root Crack이 생기기 쉬우므로 구속에 충분히 견딜 수 있는 용접 아크 아크 부 형상을 선택해 주십시오. 5) Slag 박리성을 좋게 하기 위해서는 특히 용접전압 선택에 유의해야 하며 가능한 28-30V 정도로 서브머지드 유지하여 주시고 저전류 중속용접을 행하여 주십시오. 서브머지드 5. 고장력강의 용접에는 모재와 유사한 우수한 인성을 가진 용접 금속을 얻기 위하여 Flux와 Wire의 선택에 신중을 기하여 주십시오. 6. 고장력강재는 열영향부의 경화, 취성화로 인하여 용접부 균열이 발생되므로 시공법에 각별히 주의 하여 주십시오. 7. 고장력강재 다층용접의 경우 균열방지를 위하여 50 및 60kgf/mm2급은 50~100℃, 70 및 80kgf/mm2급은 75~150℃의 예열 및 층간온도를 유지하여 주십시오.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "법에 각별히 주의 하여 주십시오. 7. 고장력강재 다층용접의 경우 균열방지를 위하여 50 및 60kgf/mm2급은 50~100℃, 70 및 80kgf/mm2급은 75~150℃의 예열 및 층간온도를 유지하여 주십시오.\n188 주식회사 세아 ESAB",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 5] 1. 판두께 20㎜ 이상의 다층용접\n| 판두께 (mm) | 와이어경 (mmØ) | 개 선 형 상 | 적층순서 | 전극 | 극성 | 전 압 (V ) | 전 류 (A ) | 속 도 (cm/ min ) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| ≧20 | 40 . | Q\u000e \u000e | 표면초층 | 1전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면육성 | 1전극 | DC+ | 32~36 | 500~600 | 30~50 |\n| ≧20 | 40 . | Q\u000e \u000e | - | 1전극 | BackGouging | 32~36 | 500~600 | 30~50 |\n| ≧20 | 40 . | Q\u000e \u000e | 이면초층 | 1전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 이면육성 | 1전극 | DC+ | 32~36 | 500~600 | 30~50 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면초층 | 2전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면육성 | 2전극 | DC+ AC | 30~34 32~35 | 500~600 600~700 | 60~80 |\n| ≧20 | 40 . | Q\u000e \u000e | - | 2전극 | BackGouging | 30~34 32~35 | 500~600 600~700 | 60~80 |\n| ≧20 | 40 . | Q\u000e \u000e | 이면초층 | 2전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 이면육성 | 2전극 | DC+ AC | 30~34 32~35 | 500~600 600~700 | 60~80 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면초층 | 3전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면육성 | 3전극 | DC+ AC AC | 30~34 32~35 34~38 | 500~600 600~700 600~700 | 70~90 |\n| ≧20 | 40 . | Q\u000e \u000e | - | 3전극 | BackGouging | 30~34 32~35 34~38 | 500~600 600~700 600~700 | 70~90 |\n| ≧20 | 40 . | Q\u000e \u000e | 이면초층 | 3전극 | DC+ | 28~32 | 450~500 | 30~40 |\n| ≧20 | 40 . | Q\u000e \u000e | 표면육성 | 3전극 | DC+ AC AC | 30~34 32~35 34~38 | 500~600 600~700 600~700 | 70~90 |",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "1. 판두께 20㎜ 이상의 다층용접"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 5] 2. 판두께 6~30mm의 양면 단층 용접\n| 판두께 (mm) | 와이어경 (mmØ) | 개 선 형 상 | FirstWeld | FirstWeld | FirstWeld | SecondWeld | SecondWeld | SecondWeld |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) |\n| 6 | 40 . | - | 500 | 34 | 60 | 600 | 36 | 60 |\n| 8 | 40 . | - | 550 | 34 | 60 | 650 | 36 | 60 |\n| 10 | 40 . | - | 600 | 34 | 60 | 700 | 36 | 60 |\n| 12 | 40 . | - | 650 | 34 | 60 | 750 | 36 | 60 |\n| 14 | 40 . | - | 700 | 34 | 35 | 800 | 36 | 60 |\n| 16 | 40 . | - | 750 | 34 | 35 | 825 | 36 | 60 |\n| 18 | 40 . | - | 800 | 34 | 30 | 850 | 36 | 55 |\n| 20 | 40 . | - | 850 | 34 | 30 | 875 | 36 | 50 |",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "2. 판두께 6~30mm의 양면 단층 용접"
+    },
+    {
+      "text": "개선형상에 따른 용접시공 요령\n1. 판두께 20㎜ 이상의 다층용접\n서브머지드 아크 용접\n서브머지드 아크 용접 재료\n2. 판두께 6~30mm의 양면 단층 용접\nWelding Consumables Guide Book 189",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 6]\n| 판두께 (mm) | 와이어경 (mmØ) | 개 선 형 상 | FirstWeld | FirstWeld | FirstWeld | SecondWeld | SecondWeld | SecondWeld |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) |\n| 22 | 48 . | - | 800 | 34 | 30 | 900 | 36 | 40 |\n| 25 | 48 . | - | 825 | 34 | 35 | 925 | 36 | 40 |\n| 28 | 48 . | - | 850 | 34 | 30 | 950 | 36 | 35 |\n| 30 | 48 . | - | 875 | 34 | 30 | 950 | 36 | 30 |",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 2, 페이지 6] 3. 하향 필렛 용접서브머지드\n| 각 장 (m m ) | 와이어경 (mmØ) | 개 선 형 상 | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) |\n| --- | --- | --- | --- | --- | --- |\n| 6 | 40 . | - | 500 | 30 | 60~70 |\n| 7 | 40 . | - | 600 | 32 | 60~70 |\n| 8 | 40 . | - | 700 | 32 | 60~70 |\n| 9 | 48 . | - | 650 | 34 | 50~60 |\n| 10 | 48 . | - | 700 | 34 | 50~60 |\n| 12 | 48 . | - | 750 | 34 | 40~50 |\n| 14 | 48 . | - | 800 | 34 | 30~40 |",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "3. 하향 필렛 용접서브머지드"
+    },
+    {
+      "text": "[PDF 표 3, 페이지 6] 4. 수평 필렛 용접\n| 각 장 (m m ) | 와이어경 (mmØ) | 개 선 형 상 | 전 류 (A ) | 전 압 (V ) | 속 도 (cm/ min ) |\n| --- | --- | --- | --- | --- | --- |\n| 3 | 32 . | - | 350~400 | 24~26 | 70~140 |\n| 5 | 32 40 . , . | - | 450~550 | 26~28 | 60~100 |\n| 65 . | 32 40 . , . | - | 500~600 | 26~30 | 50~90 |\n| 8 | 40 . | - | 550~700 | 27~33 | 45~70 |\n| 95 . | 40 . | - | 600~750 | 27~33 | 35~50 |",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "4. 수평 필렛 용접"
+    },
+    {
+      "text": "서브머지드 아크 용접\n3. 하향 필렛 용접\n서브머지드 아크 용접 재료\n4. 수평 필렛 용접\n190 주식회사 세아 ESAB",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 7] 용접부의 결함 발생원인 및 대책\n| 용접결함 | 원 인 | 대 책 |\n| --- | --- | --- |\n| (1)용락 | ①이음홈각도가너무클때 | 저전류용접을시행하던가 鐵鈑 銅받침재 , , 또는 Backing재사용을검토하던가또는 이음홈가공을재검토함 . |\n| (1)용락 | ②Root면이너무작을때 | 저전류용접을시행하던가 鐵鈑 銅받침재 , , 또는 Backing재사용을검토하던가또는 이음홈가공을재검토함 . |\n| (1)용락 | ③Rootgap이너무클때 | 용락방지용접을함 . |\n| (1)용락 | ④용접전류가너무높을때 | 덧살부족용임불량이안될정도로전류를낮춤 , . |\n| (2)비이드 표면거침 | ①플럭스입도선정의오류가있을때 | 전류에맞는것을선정함 |\n| (2)비이드 표면거침 | ②플럭스산포고가과대할때 | 산포고를얇게조정함 |\n| (3)Pock -Mark | ①이음홈면에녹 페인트 스케일등의 , , 오물이부착했을때 | 청결히함 |\n| (3)Pock -Mark | ②플럭스가흡습했을때 (BondedTypeFlux의경우) | 재건조함 . |\n| (3)Pock -Mark | ③플럭스에이물이혼입했을때 | 이물을제거함 |\n| (3)Pock -Mark | ④플럭스산포노즐이아크와너무가까울때 | 산포플럭스가아크를교란시키지않을위치에 노즐을Setting함 |\n| (3)Pock -Mark | ⑤용접속도가너무빠를때 | 용접속도를늦춤 |\n| (3)Pock -Mark | ⑥전압이너무낮을때 | 전압을높임 |\n| (3)Pock -Mark | ⑦용접재료가부적당할때 | ⅰ)탈산이충분치않을경우Si를함유하든가 Mn량이많은와이어를사용함 ⅱ)용접조건에적합한입도를사용함 |\n| (4)Herring Bone | ①이음홈면의녹 수분 페인트 기름 , , , , 스케일등의오물이부착했을때 | 청결히함 |\n| (4)Herring Bone | ②플럭스가흡습했을때 | 재건조함 . |\n| (5)Overlap | ①전류가과대할때 | 전류를내림 |\n| (5)Overlap | ②아크전압이너무낮을때 | 아크전압을조정함 |\n| (5)Overlap | ③용접속도가늦을때 | 용접속도를빠르게함 |\n| (6)Undercut | ①전극겨냥위치가부적당할때 (H-Fil의 경우) | 전극겨냥위치를조정함 |\n| (6)Undercut | ②전류•전압이부적할때 | 적정전류·전압으로조정함 |\n| (6)Undercut | ③용접속도가너무빠를때 | 용접속도를늦춤 |\n| (6)Undercut | ④BackStrip이부적절할때 | BackStrip을모재와밀착시킴 |",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용접부의 결함 발생원인 및 대책"
+    },
+    {
+      "text": "용접부의 결함 발생원인 및 대책\n서브머지드 아크 용접\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 191",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 8]\n| 용접결함 | 원 인 | 대 책 |\n| --- | --- | --- |\n| (7)덧살과대 | ①피용접물이수평으로놓이지않을때 (밑으로처질때) | 수평으로놓음 |\n| (7)덧살과대 | ②전류가과대할때 | 적정전류로내림 |\n| (7)덧살과대 | ③아크전압이너무낮을때 | 아크전압을올림 |\n| (7)덧살과대 | ④용접속도가너무늦을때 | 용접속도를빠르게함 |\n| (7)덧살과대 | ⑤BackStrip을쓸경우 간격이부족할때 , | 간격을넓힘 |\n| (8)덧살과소 | ①피용접물이위로경사질때 | 수평으로놓음 |\n| (8)덧살과소 | ②전류가너무낮을때 | 전류를올림 |\n| (8)덧살과소 | ③아크전압이너무높을때 | 아크전압을내림 |\n| (8)덧살과소 | ④용접속도가너무빠를때 | 용접속도를늦게함 |\n| (9)슬래그혼입 | ①용접시발점에서혼입될때 (Tab을붙일때생기기쉬움) | Tab의두께와이음홈형상을모재와같이함 |\n| (9)슬래그혼입 | ②플럭스산포고가부적당할때 | 노출아크가되지않을정도로적당한산포고 (散布高)를함 |\n| (9)슬래그혼입 | ③용접방향으로모재가경사져슬래그가선행 할때 | 모재를수평으로놓음 |\n| (9)슬래그혼입 | ④다층용접에서와이어가이음홈측면에너무 가까울때 | 이음홈면과와이어의간격을최소한와이어경 이상으로함 |\n| (9)슬래그혼입 | ⑤전류가과소할때 | 전류를올림 |\n| (9)슬래그혼입 | ⑥전압이너무높을때 | 전압을내리고광폭비이드1패스보다2패스로 용접함 |\n| (9)슬래그혼입 | ⑦용접속도가너무느려슬래그가선행할때 | 용접속도를올림 |\n| (9)슬래그혼입 | ⑧다층용접에서전층슬래그제거가불충분 할때 | 슬래그제거를충분히하든지전류를올려슬래그 를충분히녹임 |\n| (10)용입불량 | ①Root간격이너무벗어났을때 | Root간격을재조정함 |\n| (10)용입불량 | ②Root면이과대할때 | 용입을감안하여Root면을가공함 |\n| (10)용입불량 | ③와이어경이부적당할때 | 작은쪽으로선정함 |\n| (10)용입불량 | ④플럭스선정이부적당할때 | 적당한플럭스를선정함 |\n| (10)용입불량 | ⑤와이어중심선이벗어날때 | 벗어나지않게함 |\n| (10)용입불량 | ⑥경사질때 | 바르게함 |",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\n192 주식회사 세아 ESAB",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 9]\n| 용접결함 | 원 인 | 대 책 |\n| --- | --- | --- |\n| (10)용입불량 | ⑦전류가낮을때 | 전류를높임 |\n| (10)용입불량 | ⑧전압이너무높을때 | 전압을낮게함 |\n| (10)용입불량 | ⑨속도가너무빠를때 | 적당한속도로내림 |\n| (11)가공(Pit , Blowhole) | ①이음홈에녹 페인트등이오물이묻었을때 , | Grinding Brushing 절삭 화염등으로 , , , 청결히함 |\n| (11)가공(Pit , Blowhole) | ②플럭스가흡습했을때 (BondedTypeFlux의경우) | 재건조함 |",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 193",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 10] AWS Classifications (AS Welded)\n| AWS Aswelded(A) | Product/combination Flux | Wire |\n| --- | --- | --- |\n| F6A4EL12 - | OKFlux1071 . | OKAutrod1210 . |\n| F7AZEL12 - | OKFlux1081 . | OKAutrod1210 . |\n| F7AZEM12K - | OKFlux1081 . | OKAutrod1222 . |\n| F7A0EM12 - | OKFlux1081 . | OKAutrod1220 . |\n| F7A2EM12K - | OKFlux1073 . | OKAutrod1222 . |\n| F7A4EM12 - | OKFlux1071 . | OKAutrod1220 . |\n| F7A4EM12 - | OKFlux1077 . | OKAutrod1220 . |\n| F7A5EM12K - | OKFlux1071 . | OKAutrod1222 . |\n| F7A5EH12K - | OKFlux1071 . | OKAutrod1232 . |\n| F7A5EM12K - | OKFlux1077 . | OKAutrod1222 . |\n| F7A6EH14 - | OKFlux1062 . | OKAutrod1240 . |\n| F7A6ENi1Ni1 - - | OKFlux1062 . | OKAutrod1321 . |\n| F7A6EM12 - | OKFlux1074 . | OKAutrod1220 . |\n| F7A6EM12K - | OKFlux1074 . | OKAutrod1222 . |\n| F7A8EM12K - | OKFlux1062 . | OKAutrod1222 . |\n| F7A8EH12K - | OKFlux1062 . | OKAutrod1232 . |\n| F7A8EM12 - | OKFlux1072 . | OKAutrod1220 . |\n| F7A8EM12K - | OKFlux1072 . | OKAutrod1222 . |\n| F8A2EA2A4 - - | OKFlux1071 . | OKAutrod1224 . |\n| F8A2EGG - - | OKFlux1071 . | OKAutrod1336 . |\n| F8A2EA2A2 - - | OKFlux1073 . | OKAutrod1224 . |\n| F8A2EA2A4 - - | OKFlux1074 . | OKAutrod1224 . |\n| F8A4EA4A3 - - | OKFlux1071 . | OKAutrod1234 . |\n| F8A4EA4A4 - - | OKFlux1073 . | OKAutrod1234 . |\n| F8A4EA2A2 - - | OKFlux1077 . | OKAutrod1224 . |",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "AWS Classifications (AS Welded)"
+    },
+    {
+      "text": "AWS 규격에 따른 Flux와 Wire 선택\nAWS Classifications (AS Welded)\n서브머지드 아크 용접\n서브머지드 아크 용접 재료\n194 주식회사 세아 ESAB",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 11]\n| AWS Aswelded(A) | Product/combination Flux | Wire |\n| --- | --- | --- |\n| F8A4EA4A4 - - | OKFlux1077 . | OKAutrod1234 . |\n| F8A5EGG - - | OKFlux1071 . | OKAutrod1324 . |\n| F8A5EA2A3 - - | OKFlux1072 . | OKAutrod1224 . |\n| F8A6EA2A2 - - | OKFlux1062 . | OKAutrod1224 . |\n| F8A6EA4A4 - - | OKFlux1062 . | OKAutrod1234 . |\n| F8A6ENi2Ni2 - - | OKFlux1071 . | OKAutrod1327 . |\n| F8A10EGG - - | OKFlux1062 . | OKAutrod1324 . |\n| F8A10ENi2Ni2 - - | OKFlux1062 . | OKAutrod1327 . |\n| F8A15ENi3Ni3 - - | OKFlux1062 . | OKAutrod1349 . |\n| F9AZEA2A4 - - | OKFlux1081 . | OKAutrod1224 . |\n| F9A0EA2A3 - - | OKFlux1070 . | OKAutrod1224 . |\n| F9A0EGG - - | OKFlux1081 . | OKAutrod1336 . |\n| F9A2EA4A3 - - | OKFlux1074 . | OKAutrod1234 . |\n| F9A8EA3A3 - - | OKFlux1062 . | OKAutrod1244 . |\n| F9A8EGG - - | OKFlux1062 . | OKAutrod1344 . |\n| F10A8EGF3 - - | OKFlux1062 . | OKAutrod1340 . |\n| F11A8EGG - - | OKFlux1062 . | OKAutrod1343 . |",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 195",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 12] AWS Classifications (PWHT)\n| AWS PWHT(P) | Product/combination Flux | Wire |\n| --- | --- | --- |\n| F6P4EM12 - | OKFlux1071 . | OKAutrod1220 . |\n| F6P4EM12K - | OKFlux1073 . | OKAutrod1222 . |\n| F6P4EM12 - | OKFlux1077 . | OKAutrod1220 . |\n| F6P5EL12 - | OKFlux1071 . | OKAutrod1210 . |\n| F6P5EM12K - | OKFlux1071 . | OKAutrod1222 . |\n| F6P5EM12K - | OKFlux1077 . | OKAutrod1222 . |\n| F6P6EM12 - | OKFlux1074 . | OKAutrod1220 . |\n| F6P6EM12K - | OKFlux1074 . | OKAutrod1222 . |\n| F6P8EM12K - | OKFlux1062 . | OKAutrod1222 . |\n| F6P8EM12 - | OKFlux1072 . | OKAutrod1220 . |\n| F6P8EM12K - | OKFlux1072 . | OKAutrod1222 . |\n| F7PZEL12 - | OKFlux1081 . | OKAutrod1210 . |\n| F7PZEM12 - | OKFlux1081 . | OKAutrod1220 . |\n| F7PZEM12K - | OKFlux1081 . | OKAutrod1222 . |\n| F7P0EA2A4 - - | OKFlux1071 . | OKAutrod1224 . |\n| F7P0EA2A2 - - | OKFlux1073 . | OKAutrod1224 . |\n| F7P0EA2A4 - - | OKFlux1074 . | OKAutrod1224 . |\n| F7P2EA2A2 - - | OKFlux1077 . | OKAutrod1224 . |\n| F7P5EH12K - | OKFlux1071 . | OKAutrod1232 . |\n| F7P6EA2A2 - - | OKFlux1062 . | OKAutrod1224 . |\n| F7P6EH14 - | OKFlux1062 . | OKAutrod1240 . |\n| F7P6ENi2Ni2 - - | OKFlux1071 . | OKAutrod1327 . |\n| F7P8EH12K - | OKFlux1062 . | OKAutrod1232 . |\n| F7P8ENi1Ni1 - - | OKFlux1062 . | OKAutrod1321 . |\n| F8P0EB3RB3 - - | OKFlux1061 . | OKAutrod1320SC . |\n| F8P2EB2RB2 - - | OKFlux1061 . | OKAutrod1310SC . |\n| F8P2EB2RB2 - - | OKFlux1062 . | OKAutrod1310SC . |\n| F8P2EB3RB3 - - | OKFlux1062 . | OKAutrod1320SC . |",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "AWS Classifications (PWHT)"
+    },
+    {
+      "text": "AWS Classifications (PWHT)\n서브머지드 아크 용접\n서브머지드 아크 용접 재료\n196 주식회사 세아 ESAB",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 13]\n| AWS PWHT(P) | Product/combination Flux | Wire |\n| --- | --- | --- |\n| F8P2EA4A3 - - | OKFlux1071 . | OKAutrod1234 . |\n| F8P2EA4A4 - - | OKFlux1073 . | OKAutrod1234 . |\n| F8P2EA4A4 - - | OKFlux1077 . | OKAutrod1234 . |\n| F8P4EGG - - | OKFlux1071 . | OKAutrod1324 . |\n| F8P5EA2A3 - - | OKFlux1072 . | OKAutrod1224 . |\n| F8P6EA4A4 - - | OKFlux1062 . | OKAutrod1234 . |\n| F8P8EGG - - | OKFlux1062 . | OKAutrod1324 . |\n| F8P10ENi2Ni2 - - | OKFlux1062 . | OKAutrod1327 . |\n| F8P15ENi3Ni3 - - | OKFlux1062 . | OKAutrod1349 . |\n| F9PZEA2A4 - - | OKFlux1081 . | OKAutrod1224 . |\n| F9P0EA4A3 - - | OKFlux1074 . | OKAutrod1234 . |\n| F9P6EGF3 - - | OKFlux1062 . | OKAutrod1340 . |\n| F9P8EA3A3 - - | OKFlux1062 . | OKAutrod1244 . |\n| F11P8EGG - - | OKFlux1062 . | OKAutrod1343 . |",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아-크 용접 재료\nWelding Consumables Guide Book 197",
+      "page_start": 13,
+      "page_end": 13,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 14] Wire에 따른 Flux 선택\n| Wire | EN(Wire) | AWS(Wire) | OKFlux | OKFlux |\n| --- | --- | --- | --- | --- |\n| OKAutrod | - | - | - | - |\n| 1210 . | S1 | EL12 | 1071 . | 1081 . |\n| 1220 . | S2 | EM12 | 1071 . | 1072 . |\n| 1222 . | S2Si | EM12K | 1062 . | 1071 . |\n| 1224 . | S2Mo;SMo | EA2 | 1062 . | 1071 . |\n| 1230 . | S3 | EA2 | 1071 . | 1081 . |\n| 1232 . | S3Si | EH12K | 1062 . | 1071 . |\n| 1234 . | S3Mo;SMnMo | EA4 | 1062 . | 1071 . |\n| 1240 . | S4 | EH14 | 1062 . | 1071 . |\n| 1244 . | S4Mo | EA3 | 1062 . | 1071 . |\n| 1310SC . | SCrMo1 | EB2R | 1062 . | 1071 . |\n| 1320SC . | SCrMo2 | EB3R | 1062 . | 1071 . |\n| 1321 . | S2Ni1 | ENi1 | 1062 . | 1071 . |\n| 1324 . | SZ | EG | 1062 . | 1071 . |\n| 1327 . | S2Ni2 | ENi2 | 1062 . | 1071 . |\n| 1336 . | S2Ni1Cu | EG | 1071 . | 1081 . |\n| 1340 . | S3Ni1Mo | EG | 1062 . | 1081 . |\n| 1343 . | S3Ni2 5CrMo , | EG | 1062 . | 1081 . |\n| 1344 . | S3Ni1 5CrMo , | EG | 1062 . | 1081 . |\n| 1349 . | S2Ni3 | ENi3 | 1062 . | 1081 . |\n| 1364 . | SZ | EG | 1071 . | 1072 . |\n| ERNiCrMo-13 | SNi6059 (NiCr23Mo16) | ERNiCrMo-13 | 1090 . | 1072 . |\n| ERNiCrMo-3 | SNi6625 (NiCr22Mo9Nb) | ERNiCrMo-3 | 1016 . | 1090 . |\n| ERNiCrMo-4 | SNi6276 (NiCr15Mo16Fe6W4) | ERNiCrMo-4 | 1090 . | 1090 . |\n| ERNiCr-3 | SNi6082 (NiCr20Mn3Nb) | ERNiCr-3 | 1016 . | 1090 . |",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Wire에 따른 Flux 선택"
+    },
+    {
+      "text": "Wire에 따른 Flux 선택\n서브머지드 아크 용접\n서브머지드 아크 용접 재료\n198 주식회사 세아 ESAB",
+      "page_start": 14,
+      "page_end": 14,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 15]\n| 열1 | 열2 | 열3 | 열4 | OKFlux |\n| --- | --- | --- | --- | --- |\n| 1074 . 1072 . 1072 . 1073 . | 1077 . 1073 . 1073 . 1074 . | 1081 . 1074 . 1074 . 1077 . | 1077 . 1077 . | 1081 . 1081 . |\n| 1074 . | 1077 . | 1081 . 1074 . 1074 . 1077 . | 1077 . 1077 . | 1081 . 1081 . |",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 199",
+      "page_start": 15,
+      "page_end": 15,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 16]\n| Wire | EN(Wire) | AWS(Wire) | OKFlux | OKFlux |\n| --- | --- | --- | --- | --- |\n| OKAutrod | - | - | - | - |\n| 308H | S199H | ER308H | 1093 . | - |\n| 308L | S199L | ER308L | 1092 . | 1093 . |\n| 309L | S2312L | ER309L | 1093 . | 1093 . |\n| 309MoL | S2312L | (ER309MoL) | 1092 . | 1093 . |\n| 310MoL | S25222NL | (ER310MoL) | 1093 . | 1093 . |\n| 312 | S299 | ER312 | 1093 . | 1093 . |\n| 316H | S19123H | ER316H | 1093 . | 1093 . |\n| 316L | S19123L | ER316L | 1092 . | 1093 . |\n| 317L | S18153L | ER317L | 1093 . | 1093 . |\n| 318 | S19123Nb | ER318 | 1092 . | 1093 . |\n| 347 | S199Nb | ER347 | 1092 . | 1093 . |\n| 385 | S20255CuL | ER385 | 1093 . | 1093 . |\n| 2209 | S2293NL | ER2209 | 1093 . | 1093 . |\n| 2509 | S2594NL | ER2209 | 1093 . | 1094 . |",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\n200 주식회사 세아 ESAB",
+      "page_start": 16,
+      "page_end": 16,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 17]\n| 열1 | 열2 | 열3 | 열4 | OKFlux |\n| --- | --- | --- | --- | --- |\n| 1094 . 1094 . | - | - | - | - |\n| 1094 | - | - | - | - |",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서브머지드 아크 용접\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 201",
+      "page_start": 17,
+      "page_end": 17,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 18] 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합Wire | AWSClassification | AWSClassification | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | Cr | Ni |\n| OKAutrod1222 . | A517 . | F7A8-EM12K | 007 . | 03 . | 10 . | - | - |\n| OKAutrod1222 . | A517 . | F6P8-EM12K | 007 . | 03 . | 10 . | - | - |\n| OKAutrod1224 . | A523 . | F8A6-EA2-A2 | 007 . | 02 . | 10 . | - | - |\n| OKAutrod1224 . | A523 . | F7P6-EA2-A2 | 007 . | 02 . | 10 . | - | - |\n| OKAutrod1232 . | A517 . | F7A8-EH12K | 010 . | 03 . | 16 . | - | - |\n| OKAutrod1232 . | A517 . | F7P8-EH12K | 010 . | 03 . | 16 . | - | - |\n| OKAutrod1234 . | A523 . | F8A6-EA4-A4 | 010 . | 02 . | 14 . | - | - |\n| OKAutrod1234 . | A523 . | F8P6-EA4-A4 | 010 . | 02 . | 14 . | - | - |\n| OKAutrod1240 . | A517 . | F7A6-EH14 | 008 . | 01 . | 19 . | - | - |\n| OKAutrod1240 . | A517 . | F7P6-EH14 | 008 . | 01 . | 19 . | - | - |\n| OKAutrod1244 . | A523 . | F9A8-EA3-A3 | 008 . | 02 . | 19 . | - | - |\n| OKAutrod1244 . | A523 . | F9P8-EA3-A3 | 008 . | 02 . | 19 . | - | - |\n| OKAutrod1310SC . | A523 . | F8P2-EB2R-B2 | 008 . | 02 . | 07 . | 11 . | - |\n| OKAutrod1320SC . | A523 . | F8P2-EB3R-B3 | 008 . | 02 . | 06 . | 20 . | - |",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.62\n연강 및 50kgf/mm\n2이상 고장력강 다용도용\n특 성\n플럭스\n서브머지드 아크 용접 재료\n•OK Flux 10.62는 단전극 및 다전극 와이어를 이용한 후판의 다층용접에 적합한 고염기성계 소결형 플럭스(염기도 지수 : 3.4)로 고전류 AC, DC(+)에서 적용이 가능합니다. •연강, 중·고장력강, 저합금강 및 -40, -60℃에서 저온 충격인성이 요구되는 부위에 적용 가능하며, Iron Powder를 첨가 시킬 경우 생산성 증가 및 기계적 물성치가 증가되는 효과를 얻을 수 있습니다. •OK Fiux 10.62는 합금원소가 첨가되지 않는 비합금계 플럭스이므로 사용목적에 따라 적절한 와이어를 선택하여 사용할 수 있습니다. •원자력 구조물용 압력용기 및 해양구조물에 적용 가능하며, 슬래그 박리가 쉽고 협소부위의 내벽(Side Wall)에 부드럽게 용착되므로 협개선(Narrow Gab)용접에 아주 적합합니다. •고염기성의 플럭스이므로 용착금속은 낮은 산소함량(약 300ppm)과 수소함량(5㎖/100gr. 이하)을 가집니다.",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "내벽(Side Wall)에 부드럽게 용착되므로 협개선(Narrow Gab)용접에 아주 적합합니다. •고염기성의 플럭스이므로 용착금속은 낮은 산소함량(약 300ppm)과 수소함량(5㎖/100gr. 이하)을 가집니다.\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n202 주식회사 세아 ESAB",
+      "page_start": 18,
+      "page_end": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 19] 재료\n| (%) | 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 승인 > 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| Mo | - | - | - | -40℃ | -50℃ | -60℃ | - |\n| - | 410 | 500 | 33 | 90 | 70 | 40 | ABS BV DNV , , , GL LR , |\n| - | 360 | 480 | 34 | 130 | 75 | 40 | ABS BV DNV , , , GL LR , |\n| 05 . | 510 | 585 | 25 | 60 | 45 | - | BV |\n| 05 . | 470 | 530 | 26 | 55 | 40 | - | BV |\n| - | 475 | 560 | 28 | 110 | - | 75 | ABS BV DNV , , , GL LR , |\n| - | 410 | 510 | 28 | 110 | - | 65 | ABS BV DNV , , , GL LR , |\n| 05 . | 540 | 620 | 24 | 115 | 45 | - | ABS BV DNV , , , GL LR , |\n| 05 . | 540 | 620 | 25 | 70 | 40 | - | ABS BV DNV , , , GL LR , |\n| - | 530 | 620 | 26 | 50 | 40 | - | - |\n| - | 460 | 560 | 26 | 45 | 35 | - | - |\n| 05 . | 600 | 700 | 27 | 80 | 65 | 55 | - |\n| 05 . | 590 | 690 | 26 | 75 | 55 | 45 | - |\n| 05 . | 500 | 610 | 26 | 45( -30℃) | - | - | - |\n| 09 . | 525 | 620 | 25 | 50( -30℃) | - | - | - |",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "재료"
+    },
+    {
+      "text": "작업상 주의점\n•개선내의 녹, 기름, 오물, 수분, 가접시의 슬래그 등은 가능한 한 제거하여 주십시오. •플럭스는 사용전 필히 300℃ 전후에서 1~2시간 정도 건조하여 주십시오.\n플럭스\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 203",
+      "page_start": 19,
+      "page_end": 19,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 20] 3 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합Wire | AWSClassification | AWSClassification | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | Cr | Ni |\n| OKAutrod1321 . | A523 . | F7A6-ENi1-Ni1 | 006 . | 02 . | 10 . | - | 09 . |\n| OKAutrod1321 . | A523 . | F7P8-ENi1-Ni1 | 006 . | 02 . | 10 . | - | 09 . |\n| OKAutrod1324 . | A523 . | F8A10-EG-G | 008 . | 03 . | 14 . | - | 09 . |\n| OKAutrod1324 . | A523 . | F8P8-EG-G | 008 . | 03 . | 14 . | - | 09 . |\n| OKAutrod1327 . | A523 . | F8A10-ENi2-Ni2 | 006 . | 02 . | 10 . | - | 21 . |\n| OKAutrod1327 . | A523 . | F8P10-ENi2-Ni2 | 006 . | 02 . | 10 . | - | 21 . |\n| OKAutrod1340 . | A523 . | F10A8-EG-F3 | 007 . | 02 . | 15 . | - | 09 . |\n| OKAutrod1340 . | A523 . | F9P6-EG-F3 | 007 . | 02 . | 15 . | - | 09 . |\n| OKAutrod1343 . | A523 . | F11A8-EG-G | 011 . | 02 . | 15 . | 06 . | 22 . |\n| OKAutrod1343 . | A523 . | F11P8-EG-G | 011 . | 02 . | 15 . | 06 . | 22 . |\n| OKAutrod1344 . | A523 . | F9A8-EG-G | 008 . | 02 . | 14 . | 02 . | 16 . |\n| OKAutrod1349 . | A523 . | F8A15-ENi3-Ni3 | 006 . | 02 . | 10 . | - | 31 . |\n| OKAutrod1349 . | A523 . | F8P15-ENi3-Ni3 | 006 . | 02 . | 10 . | - | 31 . |",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "3        조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n플럭스\n서브머지드 아크 용접 재료\n204 주식회사 세아 ESAB",
+      "page_start": 20,
+      "page_end": 20,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 21] 3\n| (%) | 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 승인 > 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| Mo | - | - | - | -40℃ | -50℃ | -60℃ | - |\n| - | 470 | 560 | 28 | 70 | 60 | - | - |\n| - | 435 | 540 | 30 | 110 | 70 | 65 | - |\n| 02 . | 530 | 620 | 25 | 120 | 110 | 70 | - |\n| 02 . | 500 | 590 | 27 | 120 | 100 | 70 | - |\n| - | 490 | 570 | 27 | 110 | - | 80 | ABS BV DNV , , , GL LR , |\n| - | 490 | 580 | 29 | 100 | - | 90 | ABS BV DNV , , , GL LR , |\n| 05 . | 650 | 730 | 23 | 70 | 60 | - | ABS BV DNV , , , GL LR , |\n| 05 . | 610 | 690 | 24 | 60 | 45 | - | ABS BV DNV , , , GL LR , |\n| 05 . | 700 | 800 | 21 | 75 | 65 | 55 | ABS BV DNV , , , GL LR , |\n| 05 . | 695 | 790 | 21 | 60 | 50 | - | ABS BV DNV , , , GL LR , |\n| 04 . | 610 | 700 | 22 | 55 | - | - | - |\n| - | 500 | 600 | 27 | CVN at - 101℃:40J | - | - | - |\n| - | 510 | 570 | 29 | CVN at - 101℃:50J | - | - | - |",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "3"
+    },
+    {
+      "text": "플럭스\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 205",
+      "page_start": 21,
+      "page_end": 21,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 22] 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합Wire | AWSClassification | AWSClassification | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | Cr | Ni | Mo |\n| OKAutrod1210 . | A517 . | F6A4-EL12 | 004 . | 03 . | 10 . | - | - | - |\n| OKAutrod1210 . | A517 . | F6P5-EL12 | 004 . | 03 . | 10 . | - | - | - |\n| OKAutrod1220 . | A517 . | F7A4-EM12 | 005 . | 03 . | 14 . | - | - | - |\n| OKAutrod1220 . | A517 . | F6P4-EM12 | 005 . | 03 . | 14 . | - | - | - |\n| OKAutrod1222 . | A517 . | F7A5-EM12K | 005 . | 05 . | 14 . | - | - | - |\n| OKAutrod1222 . | A517 . | F6P5-EM12K | 005 . | 05 . | 14 . | - | - | - |\n| OKAutrod1232 . | A517 . | F7A5-EH12K | 009 . | 05 . | 20 . | - | - | - |\n| OKAutrod1232 . | A517 . | F7P5-EH12K | 009 . | 05 . | 20 . | - | - | - |\n| OKAutrod1224 . | A523 . | F8A2-EA2-A4 | 005 . | 04 . | 14 . | - | - | 05 . |\n| OKAutrod1224 . | A523 . | F7P0-EA2-A4 | 005 . | 04 . | 14 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F8A4-EA4-A3 | 009 . | 04 . | 16 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F8P2-EA4-A3 | 009 . | 04 . | 16 . | - | - | 05 . |\n| OKAutrod1324 . | A523 . | F8A5-EG-G | 007 . | 05 . | 15 . | - | 09 . | 02 . |\n| OKAutrod1324 . | A523 . | F8P4-EG-G | 007 . | 05 . | 15 . | - | 09 . | 02 . |\n| OKAutrod1327 . | A523 . | F8A6-ENi2-Ni2 | 005 . | 04 . | 14 . | - | 22 . | - |\n| OKAutrod1327 . | A523 . | F7P6-ENi2-Ni2 | 005 . | 04 . | 14 . | - | 22 . | - |\n| OKAutrod1336 . | A523 . | F8A2-EG-G | 008 . | 05 . | 19 . | 03 . | 07 . | Cu: 05 . |",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.71\n연강 및 50kgf/mm\n2이상 고장력강용\n특 성\n플럭스\n•OK Flux 10.71은 연강, 중•고장력강의 단층 및 다층 용접용의 염기성계 소결형 플럭스( 염기도 지수 : 1.6)로 고전류의 AC, DC(+)에서 적용이 가능합니다. •1전극 또는 다전극 System에서 슬래그 박리성 및 비드외관이 아주 미려하므로 고급강종의 파이프용접에 아주 적합합니다. •용착금속내 산소 함유량이 낮으며 -40℃이하에서의 저온 충격인성이 양호합니다. •플럭스내 Mn, Si등의 합금원소가 소량 함유되어 있으므로 원하는 강도값을 얻기 위해서는 적절한 와이어의 선택이 필요합니다. •슬래그 박리가 쉽고, 협소 부위의 내벽에 부드럽게 용착되므로 협개선(Narrow Gab) 부위의 용접에도 적합합니다.",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "원소가 소량 함유되어 있으므로 원하는 강도값을 얻기 위해서는 적절한 와이어의 선택이 필요합니다. •슬래그 박리가 쉽고, 협소 부위의 내벽에 부드럽게 용착되므로 협개선(Narrow Gab) 부위의 용접에도 적합합니다.\n서브머지드 아크 용접 재료\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n206 주식회사 세아 ESAB",
+      "page_start": 22,
+      "page_end": 22,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 23] 재료\n| 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 승인 > 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | -20℃ | -30℃ | -40℃ | - |\n| 360 | 465 | 30 | 95 | 75 | 65 | ABS BV DNV GL LR , , , , |\n| 320 | 430 | 32 | 90 | 75 | 60 | ABS BV DNV GL LR , , , , |\n| 410 | 510 | 29 | 80 | - | 55 | ABS BV DNV GL LR , , , , |\n| 390 | 500 | 30 | 55 | - | 35 | ABS BV DNV GL LR , , , , |\n| 425 | 520 | 29 | 100 | - | 60 | ABS BV DNV GL LR , , , , |\n| 390 | 500 | 32 | 80 | - | 55 | ABS BV DNV GL LR , , , , |\n| 480 | 580 | 28 | 95 | - | 65 | - |\n| 470 | 570 | 28 | 95 | - | 50 | - |\n| 500 | 580 | 25 | 60 | 35 | - | ABS BV DNV GL LR , , , , |\n| 480 | 565 | 28 | 40 | - | - | ABS BV DNV GL LR , , , , |\n| 535 | 620 | 26 | 70 | 60 | 45 | - |\n| 505 | 605 | 28 | 55 | 35 | - | - |\n| 560 | 630 | 25 | 85 | 70 | 60 | - |\n| 520 | 610 | 28 | 65 | 60 | 40 | - |\n| 500 | 600 | 28 | 100 | - | 60 | - |\n| 460 | 550 | 29 | 105 | - | 60 | - |\n| 490 | 580 | 27 | 70 | 50 | - | - |",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "재료"
+    },
+    {
+      "text": "작업상 주의점\n•가능한 한 모재부를 깨끗이 청소해 주십시오. •플럭스는 사용전 필히 300℃ 전후에서 1~2시간 정도 건조하여 주십시오.\n플럭스\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 207",
+      "page_start": 23,
+      "page_end": 23,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 24] 조합 Wire에 따른 용착금속 화학성분의 일례(%) (DC+)\n| 조합Wire | AWSClassification | AWSClassification | C | Si | Mn | Mo |\n| --- | --- | --- | --- | --- | --- | --- |\n| OKAutrod1220 . | A517 . | F7A8-EM12 | 005 . | 02 . | 15 . | - |\n| OKAutrod1220 . | A517 . | F6P8-EM12 | 005 . | 02 . | 15 . | - |\n| OKAutrod1222 . | A517 . | F7A8-EM12K | 005 . | 03 . | 15 . | - |\n| OKAutrod1222 . | A517 . | F6P8-EM12K | 005 . | 03 . | 15 . | - |\n| OKAutrod1224 . | A523 . | F8A5-EA2-A3 | 005 . | 02 . | 16 . | 05 . |\n| OKAutrod1224 . | A523 . | F8P5-EA2-A3 | 005 . | 02 . | 16 . | 05 . |",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속 화학성분의 일례(%) (DC+)"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 24] 조합 Wire에 따른 용착금속 기계적 성질의 일례(DC+)\n| 조합 Wire | AWSClassification | 항복강도 (N/㎟) | 인장강도 (N/㎟) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | - | -30℃ | -46℃ | -50℃ | -62℃ |\n| OKAutrod 1220 . | F7A8-EM12 | 415 | 500 | 30 | 125 | - | 70 | 50 |\n| OKAutrod 1220 . | F7P8-EM12 | 360 | 460 | 32 | 130 | - | 70 | 50 |\n| OKAutrod 1222 . | F7A8-EM12K | 415 | 500 | 30 | 120 | - | 70 | 50 |\n| OKAutrod 1222 . | F7P8-EM12K | 360 | 460 | 32 | 130 | - | 70 | 50 |\n| OKAutrod 1224 . | F8A5-EA2-A3 | 500 | 590 | 25 | 60 | 35 | - | - |\n| OKAutrod 1224 . | F8P5-EA2-A3 | 490 | 580 | 25 | 60 | 35 | - | - |",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속 기계적 성질의 일례(DC+)"
+    },
+    {
+      "text": "OK Flux 10.72\n특 성\n플럭스\n•OK Flux 10.72은 윈드타워제작용으로 설계된 염기성계 소결형 플럭스입니다. •일반적인 비합금계 SAW Wire와 조합시 고용착 효율을 가지고 다층 후판 용접에서 -50℃ 까지 충격인성을 보증할 수 있습니다. •싱글 또는 멀티 전극용으로 Butt와 Fillet용접에 사용이 가능합니다. •DC⊕와 AC에서 동등한 작업성능을 가지며, V-Joint에서 우수한 Slag 박리성을 가져 두께에 제한없이 적용이 가능합니다. •50mm두께 이상의 윈드타워, 압력용기 제작 등에 사용됩니다.\n작업상 주의사항",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "다. •DC⊕와 AC에서 동등한 작업성능을 가지며, V-Joint에서 우수한 Slag 박리성을 가져 두께에 제한없이 적용이 가능합니다. •50mm두께 이상의 윈드타워, 압력용기 제작 등에 사용됩니다.\n작업상 주의사항\n서브머지드 아크 용접 재료\n•가능한 한 모재부를 깨끗히 청소해 주십시오. •플럭스는 사용전 필히 300℃ 전후에서 1~2시간 정도 건조하여 주십시오.\n조합 Wire에 따른 용착금속 화학성분의 일례(%) (DC+)\n조합 Wire에 따른 용착금속 기계적 성질의 일례(DC+)\n208 주식회사 세아 ESAB",
+      "page_start": 24,
+      "page_end": 24,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 25] 재\n| 조합Wire | AWSClassification | AWSClassification | C | Si | Mn | Cr | Ni | Mo |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| OKAutrod1222 . | A517 . | F7A2-EM12K | 006 . | 06 . | 11 . | - | - | - |\n| OKAutrod1222 . | A517 . | F6P4-EM12K | 006 . | 06 . | 11 . | - | - | - |\n| OKAutrod1224 . | A523 . | F8A2-EA2-A2 | 005 . | 05 . | 11 . | - | - | 05 . |\n| OKAutrod1224 . | A523 . | F7P0-EA2-A2 | 005 . | 05 . | 11 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F8A4-EA4-A4 | 007 . | 06 . | 15 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F8P2-EA4-A4 | 007 . | 06 . | 15 . | - | - | 05 . |",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "재"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 25] 용착금속 기계적 성질의 일례 (DC+)\n| 조합Wire | 항복강도 (N/㎟) | 인장강도 (N/㎟) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) | AW/SR |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | -18℃ | -20℃ | -29℃ | -40℃ | - |\n| OKAutrod1222 . | 430 | 530 | 28 | - | 60 | 45 | 30 | AW |\n| OKAutrod1224 . | 500 | 580 | 25 | 55 | 50 | 35 | - | AW |\n| OKAutrod1234 . | 550 | 640 | 25 | - | 60 | 45 | 35 | AW |",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속 기계적 성질의 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.73\n특 성\n•OK Flux 10.73은 스파이럴 파이프(Spiral Pipe) 다전극 용접에 적합한 염기성계 소결형 플럭스입니다. •플럭스 내 Mn, Si 등의 합금원소가 함유되어 있고, DC와 AC에서 동일한 작업 성능을 가집니다. •OK Flux 10.73은 부드러운 비드 표면을 형성하고 미려한 비드 형태를 나타냅니다. •다양한 와이어와의 조합으로 모든 파이프 용접에 적합합니다.\n플럭스\n용착금속 화학성분의 일례(%) (DC+)\n서브머지드 아크 용접 재료\n용착금속 기계적 성질의 일례 (DC+)\nWelding Consumables Guide Book 209",
+      "page_start": 25,
+      "page_end": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 26] 용착금속 화학성분의 일례(%) (DC+)브머지드\n| 조합Wire | AWSClassification | AWSClassification | C | Si | Mn | Cr | Ni | Mo |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| OKAutrod1220 . | A517 . | F7A6-EM12 | 007 . | 03 . | 15 . | - | - | - |\n| OKAutrod1220 . | A517 . | F6P6-EM12 | 007 . | 03 . | 15 . | - | - | - |\n| OKAutrod1222 . | A517 . | F7A6-EM12K | 007 . | 05 . | 15 . | - | - | - |\n| OKAutrod1222 . | A517 . | F6P6-EM12K | 007 . | 05 . | 15 . | - | - | - |\n| OKAutrod1224 . | A523 . | F8A2-EA2-A4 | 005 . | 04 . | 14 . | - | - | 05 . |\n| OKAutrod1224 . | A523 . | F7P0-EA2-A4 | 005 . | 04 . | 14 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F9A2-EA4-A3 | 008 . | 04 . | 16 . | - | - | 05 . |\n| OKAutrod1234 . | A523 . | F9P0-EA4-A3 | 008 . | 04 . | 16 . | - | - | 05 . |",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속 화학성분의 일례(%) (DC+)브머지드"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 26] 용착금속 기계적 성질의 일례 (DC+)\n| 조합Wire | 항복강도 (N/㎟) | 인장강도 (N/㎟) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) | AW/SR |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | -18℃ | -20℃ | -40℃ | -51℃ | - |\n| OKAutrod1220 . | 440 | 540 | 30 | - | - | 60 | 40 | AW |\n| OKAutrod1222 . | 440 | 540 | 30 | - | - | 55 | 35 | AW |\n| OKAutrod1224 . | 520 | 590 | 24 | - | 65 | CVN at -29℃：50J | 35 | AW |\n| OKAutrod1234 . | 590 | 670 | 24 | 60 | 55 | CVN at -29℃：40J | 35 | AW |",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속 기계적 성질의 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.74\n특 성\n•OK Flux 10.74는 길이 방향 파이프 다전극 용접에 적합한 염기성계 소결형 플럭스입니다. •플럭스 내 Mn, Si 등의 합금원소가 함유되어 있고, DC와 AC에서 동일한 작업 성능을 가집니다. •OK Flux 10.74는 고속 용접에서도 평평한 비드를 형성하고 부드러운 표면을 형성하므로 별도의 가공이 필요하지 않아 코팅 작업 전 비용을 절감할 수 있습니다. •다양한 와이어와의 조합으로 모든 파이프 용접에 적합합니다.\n플럭스\n용착금속 화학성분의 일례(%) (DC+)\n서브머지드 아크 용접 재료\n용착금속 기계적 성질의 일례 (DC+)",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "팅 작업 전 비용을 절감할 수 있습니다. •다양한 와이어와의 조합으로 모든 파이프 용접에 적합합니다.\n플럭스\n용착금속 화학성분의 일례(%) (DC+)\n서브머지드 아크 용접 재료\n용착금속 기계적 성질의 일례 (DC+)\n210 주식회사 세아 ESAB",
+      "page_start": 26,
+      "page_end": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "3 서브머지드 플럭스 아크 용접 재료\nWelding Consumables Guide Book 211",
+      "page_start": 27,
+      "page_end": 27,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 28] 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합Wire | AWSClassification | AWSClassification | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | C | Ni |\n| OKAutrod1220 . | A517 . | F7A4-EM12 | 006 . | 03 . | 14 . | - | - |\n| OKAutrod1220 . | A517 . | F6P4-EM12 | 006 . | 03 . | 14 . | - | - |\n| OKAutrod1222 . | A517 . | F7A5-EM12K | 007 . | 04 . | 14 . | - | - |\n| OKAutrod1222 . | A517 . | F6P5-EM12K | 007 . | 04 . | 14 . | - | - |\n| OKAutrod1224 . | A523 . | F8A4-EA2-A2 | 007 . | 03 . | 13 . | - | - |\n| OKAutrod1224 . | A523 . | F7P2-EA2-A2 | 007 . | 03 . | 13 . | - | - |\n| OKAutrod1234 . | A523 . | F8A4-EA4-A4 | 008 . | 03 . | 15 . | - | - |\n| OKAutrod1234 . | A523 . | F8P2-EA4-A4 | 008 . | 03 . | 15 . | - | - |",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.77\n연강 및 50kgf/mm\n2 이상 고장력강용\n특 성\n플럭스\n•OK Flux 10.77은 스파이럴 파이프(Spiral Pipe) 라인의 단층 및 다층 용접용의 염기성계 소결형 플럭스로 고전류의 AC, DC(+)에서 적용이 가능합니다. •플럭스 내 Mn, Si 등의 합금원소가 함유되어 있고, DC와 AC에서 동일한 작업 성능을 가집니다. •1전극(Single Wire), 2전극(Tandem), 또는 3-Wire System에서 사용이 가능하며, 파이프의 길이 방향 용접에 적합합니다. •고속 용접에서도 평평한 비드를 형성하고 부드러운 표면을 형성하므로 별도의 가공이 필요 하지 않아 코팅 작업 전 비용 절감을 할 수 있습니다.",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "System에서 사용이 가능하며, 파이프의 길이 방향 용접에 적합합니다. •고속 용접에서도 평평한 비드를 형성하고 부드러운 표면을 형성하므로 별도의 가공이 필요 하지 않아 코팅 작업 전 비용 절감을 할 수 있습니다.\n서브머지드 아크 용접 재료\n작업상 주의점\n•가능한 한 모재부를 깨끗이 청소해 주십시오. •플럭스는 사용전 필히 300℃ 전후에서 1~2시간 정도 건조하여 주십시오.\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n212 주식회사 세아 ESAB",
+      "page_start": 28,
+      "page_end": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 29] 료\n| (%) > Mo | 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | -20℃ | -29℃ | -40℃ | -46℃ |\n| - | 420 | 500 | 28 | 80 | 65 | 55 | - |\n| - | - | - | - | - | - | - | - |\n| - | 420 | 520 | 26 | 130 | 110 | 80 | 50 |\n| - | - | - | - | - | - | - | - |\n| 05 . | 495 | 580 | 25 | 60 | 50 | 40 | - |\n| 05 . | - | - | - | - | - | - | - |\n| 05 . | 540 | 630 | 25 | 70 | 60 | 45 | - |\n| 05 . | - | - | - | - | - | - | - |",
+      "page_start": 29,
+      "page_end": 29,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "료"
+    },
+    {
+      "text": "플럭스\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 213",
+      "page_start": 29,
+      "page_end": 29,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 30] 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합Wire | AWS Classification | AWS Classification | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) | 용착금속의화학성분일례(%) |\n| --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn |\n| OKAutrod1210 . | A517 . | F7AZ-EL12 | 006 . | 08 . | 12 . |\n| OKAutrod1210 . | A517 . | F7PZ-EL12 | 006 . | 08 . | 12 . |\n| OKAutrod1220 . | A517 . | F7A0-EM12 | 007 . | 08 . | 14 . |\n| OKAutrod1220 . | A517 . | F7PZ-EM12 | 007 . | 08 . | 14 . |\n| OKAutrod1222 . | A517 . | F7AZ-EM12K | 007 . | 09 . | 15 . |\n| OKAutrod1222 . | A517 . | F7PZ-EM12K | 007 . | 09 . | 15 . |\n| OKAutrod1224 . | A523 . | F9AZ-EA2-A4 | 007 . | 08 . | 15 . Mo:05 . |\n| OKAutrod1224 . | A523 . | F9PZ-EA2-A4 | 007 . | 08 . | 15 . Mo:05 . |\n| OKAutrod1230 . | - | - | 008 . | 07 . | 17 . |\n| OKAutrod1230 . | - | - | 008 . | 07 . | 17 . |\n| OKAutrod1336 . | A523 . | F9A0-EG-G | 007 . | 09 . | 14 . |\n| OKAutrod1336 . | A523 . | F9A0-EG-G | Cr:03 Ni:07 Cu:05 . , . , . | 09 . | 14 . |",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.81\n박판 및 중판 고속용접용\n특 성\n플럭스\n•OK Flux 10.81은 산성계 소결형 플럭스로 맞대기 용접시 빠른 용접속도를 얻을 수 있어 얇은 파이프등의 스파이럴 파이프(Spiral Pipe)용접등에 사용되며, 필렛 용접에서도 비드가 미려 하고, 슬래그 박리성이 우수하며 용접 종료부의 표면 또한 매우 양호 합니다. •OK Flux 10.81은 모든 종류의 중•고장력강 용접 및 0℃이하에서 저온 충격인성이 요구 되는 부위에서 우수한 성능을 발휘하며 특히 OK Autrod 12.10 또는 OK Autrod 12.20과 조합하여 사용할 경우 더욱 우수한 성능을 발휘합니다. •주로 Si과 Mn을 함유한 플럭스로서 패스수가 적은 박판 및 중판의 필렛 또는 맞대기 용접시 모재와의 높은 희석율을 필요로 하는 부위의 용접에 적합합니다.",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "0과 조합하여 사용할 경우 더욱 우수한 성능을 발휘합니다. •주로 Si과 Mn을 함유한 플럭스로서 패스수가 적은 박판 및 중판의 필렛 또는 맞대기 용접시 모재와의 높은 희석율을 필요로 하는 부위의 용접에 적합합니다.\n서브머지드 아크 용접 재료\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n214 주식회사 세아 ESAB",
+      "page_start": 30,
+      "page_end": 30,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 31] 재료\n| 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 용착금속의기계적성질일례 > 충격치(J) | 승인 > 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | 20℃ | 0℃ | -18℃ | - |\n| 450 | 540 | 25 | 50 | 30 | - | - |\n| 420 | 520 | 27 | 45 | - | - | - |\n| 510 | 610 | 25 | 80 | 60 | 40 | ABS DNV G, LR, BV L , , |\n| 440 | 580 | 25 | 50 | 40 | - | ABS DNV G, LR, BV L , , |\n| 530 | 610 | 24 | 60 | - | - | - |\n| 500 | 590 | 27 | 50 | - | - | - |\n| 565 | 660 | 23 | 65 | 45 | - | - |\n| 555 | 650 | 22 | 55 | 40 | - | - |\n| 540 | 640 | 25 | 80 | 60 | - | - |\n| 500 | 610 | 24 | 70 | 50 | - | - |\n| 570 | 680 | 23 | 55 | 40 | 35 | - |",
+      "page_start": 31,
+      "page_end": 31,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "재료"
+    },
+    {
+      "text": "작업상 주의점\n•녹, 스케일, 기름등에 의한 영향은 비교적 둔감하나 가능한 모재부를 깨끗이 청소하여 주십시오. •플럭스는 사용전 필히 300℃ 전후에서 1~2시간 정도 건조하여 주십시오.\n플럭스\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 215",
+      "page_start": 31,
+      "page_end": 31,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 32] 용착금속의 화학성분의 일례(%) (DC+)\n| 조합Wire (AWSCla ssifica tion) With OKAutrod | C | Mn | Si | Cr | Ni | Mo | FN | Other |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 308L | <003 . | 10 . | 09 . | 200 . | 100 . | - | - | - |\n| 347 | 004 . | 09 . | 07 . | 198 . | 97 . | - | 9 | - |\n| 316L | 002 . | 10 . | 08 . | 191 . | 119 . | 27 . | 9 | - |\n| 318 | 004 . | 12 . | 05 . | 185 . | 120 . | 26 . | 9 | Nb:05 . |\n| 309MoL | 002 . | 15 . | 08 . | 210 . | 150 . | 30 . | 9 | Nb:05 . |",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 화학성분의 일례(%) (DC+)"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 32] 용착금속의 기계적 성질의 일례 (DC+)\n| 열1 | 조합Wire (Classif icatio n ) WithOKAutrod | 항복강도 (N/mm2) | 인장강도 (N/mm2) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | - | +20℃ | -60℃ | -110℃ | -196℃ |\n| - | 308L | 365 | 580 | 38 | +20℃ | 60 | -110℃ | 50 |\n| - | 347 | 470 | 640 | 35 | 65 | 55 | 40 | 50 |\n| - | 316L | 385 | 590 | 36 | 65 | 55 | 40 | 50 |\n| - | 318 | 440 | 600 | 42 | 100 | 90 | 40 | 50 |\n| - | 309MoL | 400 | 600 | 38 | 120 | 90 | 40 | 50 |",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 기계적 성질의 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.92\n스테인리스강용\n특 성\n•OK Flux 10.92는 크롬 등의 합금원소가 적량 첨가된 중성 소결형 플럭스(Neutral Bonded Flux)로 스테인리스강의 맞대기용접 뿐만 아니라 스테인리스 스트립을 이용한 스트립 클래딩 용접에서도 우수한 성능을 발휘합니다. •일반적으로 DC(+)가 많이 사용되며, DC(-) 또는 AC도 사용됩니다.\n용 도\n스테인리스강\n•스트립 클래딩시 스트립 넓이는 100mm까지 가능하며 전류 및 속도의 적용범위가 넓습니다. •아크 안정성, 슬래그 박리성 등 작업성이 양호하며 비드 외관이 아름답습니다.",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "또는 AC도 사용됩니다.\n용 도\n스테인리스강\n•스트립 클래딩시 스트립 넓이는 100mm까지 가능하며 전류 및 속도의 적용범위가 넓습니다. •아크 안정성, 슬래그 박리성 등 작업성이 양호하며 비드 외관이 아름답습니다.\n작업상 주의점\n서브머지드 아크 용접 재료\n•열영향부의 내식성을 저하시키지 않도록 용접입열을 최소로 하여 주십시오. •이재용접 및 클래드강과 같은 이종금속의 용접에서는 용입이 깊어지면 마르텐사이트가 석출하여 균열이 발생하기 쉬우므로 개선형상, 용접조건, 와이어의 겨냥 위치에 주의하여 주십시오.\n용착금속의 화학성분의 일례(%) (DC+)\n용착금속의 기계적 성질의 일례 (DC+)",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "서는 용입이 깊어지면 마르텐사이트가 석출하여 균열이 발생하기 쉬우므로 개선형상, 용접조건, 와이어의 겨냥 위치에 주의하여 주십시오.\n용착금속의 화학성분의 일례(%) (DC+)\n용착금속의 기계적 성질의 일례 (DC+)\n216 주식회사 세아 ESAB",
+      "page_start": 32,
+      "page_end": 32,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 33] 서브머지드용착금속의 화학성분의 일례(%) (DC+) 스테인리 아크\n| 조합Wire (AWSCla ssifica tion) With OKAutrod | C | Mn | Si | Cr | Ni | Mo | N | FN | Other |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 308L | <003 . | 14 . | 06 . | 200 . | 100 . | - | - | 8 | - |\n| 308H | 005 . | 15 . | 06 . | 200 . | 96 . | - | - | 10 | - |\n| 347 | 004 . | 11 . | 05 . | 190 . | 96 . | - | - | 8 | Nb:05 . |\n| 316L | <003 . | 14 . | 06 . | 185 . | 115 . | 27 . | - | 8 | Nb:05 . |\n| 317L | <004 . | 15 . | 06 . | 190 . | 135 . | 35 . | - | 8 | Nb:05 . |\n| 316H | 005 . | 15 . | 06 . | 190 . | 125 . | 22 . | - | 8 | Nb:05 . |\n| 1638 . | 002 . | 54 . | 07 . | 200 . | 155 . | 25 . | 013 . | 8 | Nb:05 . |\n| 318 | <004 . | 12 . | 06 . | 185 . | 120 . | 26 . | 013 . | 9 | Nb:05 . |\n| 309L | <003 . | 15 . | 06 . | 240 . | 125 . | 26 . | 013 . | 9 | Nb:05 . |\n| 309MoL | 002 . | 15 . | 05 . | 210 . | 150 . | 30 . | 013 . | 9 | Nb:05 . |\n| 385 | <003 . | 15 . | 06 . | 190 . | 250 . | 40 . | 013 . | 9 | Cu:15 . |\n| 310 | 010 . | 11 . | 05 . | 260 . | 210 . | 40 . | 013 . | 9 | Cu:15 . |\n| 312 | 010 . | 15 . | 05 . | 290 . | 95 . | 40 . | 013 . | 50 | Cu:15 . |\n| 2209 | 002 . | 13 . | 06 . | 225 . | 90 . | 30 . | 015 . | 45 | Cu:15 . |\n| 310MoL | 002 . | 40 . | 01 . | 245 . | 220 . | 21 . | 012 . | 45 | Cu:15 . |\n| 2509 | 002 . | 06 . | 05 . | 245 . | 95 . | 35 . | 019 . | 40 | Cu:15 . |\n| 1697 . | 006 . | 63 . | 12 . | 180 . | 80 . | 35 . | 019 . | 40 | Cu:15 . |",
+      "page_start": 33,
+      "page_end": 33,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "서브머지드용착금속의 화학성분의 일례(%) (DC+)                                                                                                                                                                            "
+    },
+    {
+      "text": "OK Flux 10.93\n특 성\n•OK Flux 10.93은 Cr. Ni등의 합금 원소가 첨가되지 않은 염기성 소결형 플럭스(Basic Bonded Flux)로 Duplex 스테인리스 및 일반 스테인리스강의 용접에 사용되며 OK Flux 10.92에 비해 용접부에 높은 충격인성을 가집니다. •일반적인 특성 및 작업상의 주의점은 OK Flux 10.92를 참조하시기 바랍니다.\n용착금속의 화학성분의 일례(%) (DC+)\n스테인리스강\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 217",
+      "page_start": 33,
+      "page_end": 33,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 34] 3 용착금속의 기계적 성질의 일례 (DC+)\n| 조합Wire (Classif icatio n ) WithOKAutrod | 항복강도 (N/mm2) | 인장강도 (N/mm2) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | +20℃ | -60℃ | -110℃ | -196℃ |\n| 308L | 400 | 580 | 38 | 90 | 65 | 55 | 40 |\n| 347 | 455 | 635 | 35 | 90 | 85 | 60 | 30 |\n| 316L | 390 | 565 | 42 | 90 | 90 | 75 | 40 |\n| 317L | 440 | 615 | 28 | 80 | 50 | 75 | 40 |\n| 1638 . | 410 | 600 | 44 | 80 | 70 | 60 | 40 |\n| 318 | 440 | 600 | 42 | 100 | 90 | 40 | 40 |\n| 309L | 430 | 570 | 33 | 90 | 70 | 60 | 35 |\n| 309MoL | 400 | 600 | 38 | 120 | 70 | 60 | 35 |\n| 385 | 310 | 530 | 35 | 80 | 70 | 60 | 35 |\n| 310 | 390 | 590 | 45 | 170 | 70 | 60 | 35 |\n| 312 | 530 | 750 | 20 | 50 | 70 | 60 | 35 |\n| 2209 | 630 | 780 | 30 | 140 | 110 | 80 | 35 |\n| 310MoL | 335 | 575 | 42 | 120 | 110 | 80 | 35 |\n| 2509 | 640 | 840 | 28 | 85 | 50 | 80 | 35 |\n| 1697 . | 400 | 600 | 45 | 95 | 60 | 40 | 35 |",
+      "page_start": 34,
+      "page_end": 34,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "3        용착금속의 기계적 성질의 일례 (DC+)"
+    },
+    {
+      "text": "용착금속의 기계적 성질의 일례 (DC+)\n스테인리스강\n서브머지드 아크 용접 재료\n승인 With OK Autrod\n•308L：DNV •316L：DNV •309L：DNV, LR •2209：ABS, BV, DNV, GL, LR\n218 주식회사 세아 ESAB",
+      "page_start": 34,
+      "page_end": 34,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 35] 용착금속 화학성분의 일례(%) (DC+)\n| 조합Wire (AWSClas sifica tion) | C | Si | Mn | Cr | Ni | Mo | N | FN |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| ER308L | 002 . | 05 . | 14 . | 202 . | 97 . | - | - | 11 |\n| ER347 | 004 . | 05 . | 10 . | 196 . | 96 . | - | Nb：05 . | 9 |\n| ER316L | 002 . | 06 . | 12 . | 195 . | 115 . | 27 . | - | - |\n| 2509 | <004 . | 05 . | 05 . | 255 . | 95 . | 35 . | 020 . | 50 |",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속 화학성분의 일례(%) (DC+)"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 35] 용착금속 기계적 성질의 일례 (DC+)\n| 조합Wire (AWSCla ssifica tion) | 항복강도 (N/㎟) | 인장강도 (N/㎟) | 연신율(%) | 충격치(J) | 충격치(J) | 충격치(J) | 충격치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | 20℃ | -60℃ | -110℃ | -196℃ |\n| ER308L | 400 | 560 | 40 | 85 | 60 | - | 25 |\n| ER347 | 455 | 620 | 39 | 100 | 70 | 50 | 30 |\n| ER316L | 430 | 570 | 36 | 80 | - | - | 35 |\n| 2509 | 625 | 830 | 28 | 90 | 50 | - | - |",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속 기계적 성질의 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.94\n특 성\n스테인리스강\n서브머지드 아크 용접 재료\n•OK Flux 10.94는 스테인리스강의 맞대기 용접에서 Cr 함량을 보강해 주는 불화물염기성계 소결형플럭스입니다. •특히, 높은 페라이트 함량을 요구하는 곳에 추천하며, 두께에 제한 없이 다전극 용접이 가능합니다. •OK Flux 10.94는 DC(+)에서 적용이 가능하고, 우수한 슬래그 박리성과 뛰어난 용접 비드 형상을 나타냅니다. •OK Flux 10.94는 Cr 첨가물로 인해 높은 페라이트 함량을 구현하며, 이로 인해 고온 크랙의 위험성을 줄일 수 있습니다. 반면에 낮은 Si 함량으로 용착금속의 뛰어난 기계적 특성을 보이는 특성이 있습니다. •해당 Flux는 화공, 석유 화학 산업 등의 압력 용기, 저장 탱크, 화학 탱크 등의 제작에 사용되고 있습니다. •특히 Supre Duplex 2507 스테인리스강의 용접에 추천하고 있습니다.",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "는 특성이 있습니다. •해당 Flux는 화공, 석유 화학 산업 등의 압력 용기, 저장 탱크, 화학 탱크 등의 제작에 사용되고 있습니다. •특히 Supre Duplex 2507 스테인리스강의 용접에 추천하고 있습니다.\n용착금속 화학성분의 일례(%) (DC+)\n용착금속 기계적 성질의 일례 (DC+)\nWelding Consumables Guide Book 219",
+      "page_start": 35,
+      "page_end": 35,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 36] 금\n| 조합용접재료 | AWSClassification | AWSClassification | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | Cr | Ni |\n| OKBand1192(Strip) . | A514 . | ERNiCrMo-3 | 002 . | 02 . | 12 . | 210 . | Bal . |\n| OKAutrod1982 . | A514 . | ERNiCrMo-3 | 001 . | 03 . | 03 . | 210 . | Bal . |\n| OKAutrod1985 . | A514 . | ERNiCr-3 | 001 . | 03 . | 32 . | 190 . | Bal . |",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "금"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 36] 조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n| 조합용접재료 | AWSClassification | AWSClassification | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 | 용착금속의화학성분일례 |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | C | Si | Mn | Cr | Ni |\n| OKAutrod1981 . | A514 . | ERNiCrMo-13 | 001 . | 02 . | 30 . | 220 . | Bal . |\n| OKAutrod1982 . | A514 . | ERNiCrMo-3 | 001 . | 02 . | 20 . | 210 . | Bal . |\n| OKAutrod1983 . | A514 . | ERNiCrMo-4 | 001 . | 02 . | 19 . | 150 . | Bal . |\n| OKAutrod1985 . | A514 . | ERNiCr-3 | 001 . | 05 . | 35 . | 200 . | Bal . |",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)"
+    },
+    {
+      "text": "OK Flux 10.16\n니켈 합금, 인코넬 용접용\n특 성\n•OK Flux 10.16은 니켈 합금 와이어 및 클래딩 스트립의 서브머지드 용접용 고염기성 소결형 플럭스 (High-Basic Bonded Flux) 입니다. •고온균열을 최소화 할 수 있도록 설계된 제품입니다.\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n니켈합금\n서브머지드 아크 용접 재료\nOK Flux 10.90\n2~9% Ni 강재용\n특 성\n•OK Flux 10.90은 저온 충격인성을 요구하는 Chemical Tank 제작에 주로 적용되는 2~9% Ni 강재 용접 전용의 Fluoride-Basic 계열의 소결형 플럭스입니다. •적정량의 Mn을 첨가하여 내고온 균열성이 우수합니다. •슬래그 박리성 및 비드 외관이 양호합니다.",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ank 제작에 주로 적용되는 2~9% Ni 강재 용접 전용의 Fluoride-Basic 계열의 소결형 플럭스입니다. •적정량의 Mn을 첨가하여 내고온 균열성이 우수합니다. •슬래그 박리성 및 비드 외관이 양호합니다.\n조합 Wire에 따른 용착금속의 화학성분 및 기계적 성질 일례 (DC+)\n220 주식회사 세아 ESAB",
+      "page_start": 36,
+      "page_end": 36,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 37] 니 서브머지드\n| (%) > Mo | (%) > Nb+Ta | (%) > Fe | 용착금속의기계적성질일례 > 항복강도 (N/mm2) | 용착금속의기계적성질일례 > 인장강도 (N/mm2) | 용착금속의기계적성질일례 > 연신율(%) | 용착금속의기계적성질일례 > 충격 | 용착금속의기계적성질일례 > 치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | - | - | +20℃ | -196℃ |\n| 90 . | 398 . | - | - | - | - | - | - |\n| 90 . | 30 . | 30 . | 425 | 700 | 40 | 130 | 80 |\n| 05 . | 25 . | 30 . | 360 | 600 | 35 | 140 | 100 |",
+      "page_start": 37,
+      "page_end": 37,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "니  서브머지드"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 37] •용접부의 이물질은 균열의 원인이 되므로 청결히 하여 주십시오.\n| (%) > Mo | (%) > Other | 용착금속의기계적 > 항복강도 (N/mm2) | 용착금속의기계적 > 인장강도 (N/mm2) | 용착금속의기계적 > 연신율(%) | 성질일례 > 충격 | 성질일례 > 치(J) | 승인 > 치(J) |\n| --- | --- | --- | --- | --- | --- | --- | --- |\n| - | - | - | - | - | +20℃ | -196℃ | - |\n| 140 . | Fe:3 | 470 | 675 | 46 | 65 | 70 | - |\n| 85 . | Nb+Ta:30 Fe:20 . , . | 440 | 720 | 33 | 130 | 90 | DNV |\n| 140 . | W:35 Fe:70 . , . | 480 | 700 | 35 | 85 | 75 | - |\n| 05 . | Nb+Ta:25 . | 400 | 600 | 35 | - | - | - |",
+      "page_start": 37,
+      "page_end": 37,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "•용접부의 이물질은 균열의 원인이 되므로 청결히 하여 주십시오."
+    },
+    {
+      "text": "작업상 주의점\n•모재와의 희석을 최소화하고 고온균열을 방지하기 위해 DC(-) 전류를 추천합니다. •고입열 및 지나치게 빠른 속도의 용접은 고온균열을 유발할 수 있으므로 주의하시기 바랍니다.\n니켈합금\n서브머지드 아크 용접 재료\n작업상 주의점\n•고입열 용접 및 지나치게 빠른 속도의 용접은 고온균열을 유발할 수 있으므로 주의하여 주십시오. •용접부의 이물질은 균열의 원인이 되므로 청결히 하여 주십시오.\nWelding Consumables Guide Book 221",
+      "page_start": 37,
+      "page_end": 37,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "3 3. 서브머지드 아크 용접재료\n서브머지드 아크 용접용 와이어 서브머지드 아크 W E L D I N G C O N S U M A B L E S G U I D E B O O K 용접 재료",
+      "page_start": 39,
+      "page_end": 39,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 40] OK Autrod Wire\n| Wire | Classification | Classification | Classification | Classification |\n| --- | --- | --- | --- | --- |\n| - | ENISO | SFA/AWS | C | Si |\n| OKAutrod1210 . | EN756:S1 | A517:EL12 | 008 . | 008 . |\n| OKAutrod1220 . | EN756:S2 | A517:EM12 | 010 . | 008 . |\n| OKAutrod1222 . | EN756:S2Si | A517:EM12K | 010 . | 019 . |\n| OKAutrod1224 . | EN756:S2Mo EN12070:SMo | A523:EA2 . | 010 . | 015 . |\n| OKAutrod1230 . | EN756:S3 | A523:EA2 . | 012 . | 013 . |\n| OKAutrod1232 . | EN756:S3Si | A517:EH12K | 013 . | 033 . |\n| OKAutrod1234 . | EN756:S3Mo EN12070:SMnMo | A523:EA4 . | 013 . | 013 . |\n| OKAutrod1240 . | EN756:S4 | A517:EH14 | 013 . | 007 . |\n| OKAutrod1244 . | EN756:S4Mo | A523:EA3 . | 012 . | 009 . |\n| OKAutrod1310SC . | EN12070:SCrMo1 | A523:EB2R . | 010 . | 016 . |\n| OKAutrod1320SC . | EN12070:SCrMo2 | A523:EB3R . | 011 . | 016 . |\n| OKAutrod1321 . | EN756:S2Ni1 | A523:ENi1 . | 011 . | 018 . |\n| OKAutrod1324 . | EN756:SZ | A523:EG . | 011 . | 021 . |\n| OKAutrod1327 . | EN756:S2Ni2 | A523:ENi2 . | 010 . | 019 . |\n| OKAutrod1333 . | EN12070:SCrMo5 | A523:EB6 . | 008 . | 040 . |\n| OKAutrod1334 . | EN12070:SCrMo9 | A523:EB8 . | 007 . | 040 . |\n| OKAutrod1335 . | EN12070:SCrMo91 | A523:EB9 . | 010 . | 024 . |\n| OKAutrod1336 . | EN756:S2Ni1Cu | A523:EG . | 010 . | 022 . |\n| OKAutrod1340 . | EN756:S3Ni1Mo EN14295:S3Ni1Mo | A523:EG . | 011 . | 015 . |\n| OKAutrod1343 . | EN14295:S3Ni25CrMo . | A523:EG . | 012 . | 016 . |\n| OKAutrod1344 . | EN14295:S3Ni15CrMo . | A523:EG . | 010 . | 009 . |\n| OKAutrod1345 . | EN12070:SZ | A523:EG . | 010 . | 016 . |\n| OKAutrod1349 . | EN756:S2Ni3 | A523:ENi3 . | 009 . | 018 . |\n| OKAutrod1364 . | EN756:SZ | A523:EG . | 007 . | 028 . |",
+      "page_start": 40,
+      "page_end": 40,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "OK Autrod Wire"
+    },
+    {
+      "text": "OK Autrod Wire\n와이어\n서브머지드 아크 용접 재료\n224 주식회사 세아 ESAB",
+      "page_start": 40,
+      "page_end": 40,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 41]\n| 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) |\n| --- | --- | --- | --- | --- | --- | --- |\n| Mn | P | S | Cr | Ni | Mo | Other |\n| 051 . | 0010 . | 0012 . | 004 . | 003 . | 001 . | Other |\n| 101 . | 0013 . | 0012 . | 005 . | 003 . | 001 . | Other |\n| 101 . | 0013 . | 0010 . | 003 . | 003 . | 001 . | Other |\n| 106 . | 0013 . | 0010 . | 004 . | 002 . | 050 . | Other |\n| 152 . | 0015 . | 0009 . | 004 . | 007 . | 001 . | Other |\n| 176 . | 0013 . | 0007 . | 003 . | 003 . | 001 . | Other |\n| 145 . | 0009 . | 0007 . | 007 . | 008 . | 048 . | Other |\n| 197 . | 0011 . | 0012 . | 008 . | 008 . | 002 . | Other |\n| 184 . | 0009 . | 0009 . | 005 . | 006 . | 050 . | Other |\n| 073 . | 0005 . | 0004 . | 125 . | 004 . | 053 . | Other |\n| 063 . | 0004 . | 0004 . | 239 . | 005 . | 101 . | Other |\n| 096 . | 0004 . | 0007 . | 003 . | 095 . | 001 . | Other |\n| 145 . | 0010 . | 0009 . | 006 . | 084 . | 022 . | Other |\n| 099 . | 0007 . | 0005 . | 004 . | 214 . | 001 . | Other |\n| 052 . | 0005 . | 0011 . | 566 . | 007 . | 054 . | Other |\n| 050 . | 0009 . | 0007 . | 890 . | 022 . | 096 . | Other |\n| 052 . | 0005 . | 0003 . | 864 . | 065 . | 094 . | Nb:007;V:020;N:005 . . . |\n| 093 . | 0007 . | 0006 . | 029 . | 072 . | 002 . | Cu:043 . |\n| 165 . | 0009 . | 0006 . | 007 . | 093 . | 053 . | Cu:043 . |\n| 145 . | 0011 . | 0010 . | 060 . | 225 . | 049 . | Cu:043 . |\n| 142 . | 0011 . | 0014 . | 025 . | 160 . | 047 . | Cu:043 . |\n| 066 . | 0007 . | 0003 . | 246 . | 006 . | 105 . | Nb:002;V:027 . . |\n| 105 . | 0007 . | 0007 . | 003 . | 312 . | 001 . | Nb:002;V:027 . . |\n| 123 . | 0010 . | 0003 . | 003 . | 002 . | 051 . | Ti:015B:0012 . , . |",
+      "page_start": 41,
+      "page_end": 41,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "와이어\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 225",
+      "page_start": 41,
+      "page_end": 41,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 42]\n| Wire | Classification | Classification | Classification | Classification |\n| --- | --- | --- | --- | --- |\n| - | ENISO | SFA/AWS | C | Si |\n| OKAutrod1638 . | ENISO14343:S20163MnL | SFA/AWS | 001 . | 04 . |\n| OKAutrod1697 . | ENISO14343:S188Mn | A59:(ER307) . | 007 . | 05 . |\n| OKAutrod1981 . | ENISO18274:SNi6059(NiCr23Mo16) | A5 .14:ERNiCrMo-13 | 001 . | 01 . |\n| OKAutrod1982 . | ENISO18274:SNi6625(NiCr22Mo9Nb) | A5 .14:ERNiCrMo-3 | 005 . | 02 . |\n| OKAutrod1983 . | ENISO18274:SNi6276 (NiCr15Mo16Fe6W4) | A5 .14:ERNiCrMo-4 | 001 . | 005 . |\n| OKAutrod1985 . | ENISO18274:SNi6082(NiCr20Mn3Nb) | A5 .14:ERNiCr-3 | 005 . | 03 . |\n| OKAutrod308H | ENISO14343:S199H | A59:ER308H . | 005 . | 05 . |\n| OKAutrod308L | ENISO14343:S199L | A59:ER308L . | 002 . | 04 . |\n| OKAutrod309L | ENISO14343:S2312L | A59:ER309L . | 001 . | 04 . |\n| OKAutrod309MoL | ENISO14343:S2312L | A59:(ER309MoL) . | 001 . | 04 . |\n| OKAutrod310 | ENISO14343:S2520 | A59:ER310 . | 011 . | 04 . |\n| OKAutrod310MoL | ENISO14343:S25222NL | A59:(ER310MoL) . | 001 . | 01 . |\n| OKAutrod312 | ENISO14343:S299 | A59:ER312 . | 010 . | 04 . |\n| OKAutrod316H | ENISO14343:S19123H | A59:ER316H . | 005 . | 04 . |\n| OKAutrod316L | ENISO14343:S19123L | A59:ER316L . | 001 . | 04 . |\n| OKAutrod317L | ENISO14343:S18153L | A59:ER317L . | 001 . | 04 . |\n| OKAutrod318 | ENISO14343:S19123Nb | A59:ER318 . | 004 . | 04 . |\n| OKAutrod347 | ENISO14343:S199Nb | A59:ER347 . | 004 . | 04 . |\n| OKAutrod385 | ENISO14343:S20255CuL | A59:ER385 . | 001 . | 04 . |\n| OKAutrod2209 | ENISO14343:S2293NL | A59:ER2209 . | 001 . | 05 . |\n| OKAutrod2509 | ENISO14343:S2594NL | A59:ER2594 . | 001 . | 04 . |\n| OKAutrod410NiMo | ENISO14343:S134 | A59:ER2594 . | 005 . | 03 . |",
+      "page_start": 42,
+      "page_end": 42,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "와이어\n서브머지드 아크 용접 재료\n226 주식회사 세아 ESAB",
+      "page_start": 42,
+      "page_end": 42,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 43]\n| 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) | 화학성분의일례(%) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| Mn | P | S | Cr | Ni | Mo | N | FN | Other |\n| 69 . | 0015 . | 0010 . | 199 . | 165 . | 30 . | 018 . | FN | Other |\n| 65 . | 0013 . | 0010 . | 185 . | 82 . | 01 . | 018 . | FN | Other |\n| 02 . | 0010 . | 0003 . | 230 . | Bal . | 160 . | 018 . | FN | Al:03Fe:10 ., . |\n| 02 . | 0015 . | 0010 . | 220 . | Bal . | 90 . | 018 . | FN | Nb:35Fe:10 ., . |\n| 08 . | 0015 . | 0010 . | 155 . | Bal . | 155 . | 018 . | FN | W:40Co:20Fe:50 ., ., . |\n| 30 . | 0015 . | 0010 . | 200 . | Bal . | 01 . | 018 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0010 . | 0010 . | 210 . | 100 . | 02 . | 004 . | FN | Nb:26Fe:10 ., . |\n| 18 . | 0015 . | 0010 . | 200 . | 100 . | 02 . | 005 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0015 . | 0010 . | 234 . | 134 . | 01 . | 005 . | FN | Nb:26Fe:10 ., . |\n| 14 . | 0020 . | 0010 . | 214 . | 150 . | 27 . | 005 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0010 . | 0005 . | 259 . | 208 . | 01 . | 004 . | FN | Nb:26Fe:10 ., . |\n| 45 . | 0013 . | 0002 . | 250 . | 219 . | 20 . | 014 . | FN | Nb:26Fe:10 ., . |\n| 18 . | 0020 . | 0005 . | 303 . | 93 . | 02 . | 004 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0010 . | 0010 . | 193 . | 125 . | 26 . | 004 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0015 . | 0010 . | 185 . | 122 . | 27 . | 005 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0015 . | 0010 . | 190 . | 135 . | 36 . | 005 . | FN | Nb:26Fe:10 ., . |\n| 17 . | 0015 . | 0010 . | 185 . | 115 . | 25 . | 008 . | FN | Nb:08 . |\n| 17 . | 0015 . | 0010 . | 193 . | 100 . | 01 . | 008 . | FN | Nb:08 . |\n| 17 . | 0010 . | 0005 . | 200 . | 250 . | 44 . | 004 . | FN | Cu:15 . |\n| 16 . | 0015 . | 0002 . | 230 . | 86 . | 32 . | 016 . | FN | Cu:15 . |\n| 04 . | 0015 . | 0020 . | 250 . | 95 . | 39 . | 025 . | FN | Cu:15 . |\n| 07 . | 0025 . | 0020 . | 125 . | 45 . | 08 . | 025 . | FN | Cu:15 . |",
+      "page_start": 43,
+      "page_end": 43,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "와이어\n서브머지드 아크 용접 재료\nWelding Consumables Guide Book 227",
+      "page_start": 43,
+      "page_end": 43,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Alloy Shield 와이어\n서브머지드 아크 용접용 Composite Wire\n특성 및 용도\n•Alloy Shield Composite Wire는 여러 합금강의 용접이나 표면 육성(Surfacing)에서 요구3 되는 다양한 강도, 충격인성 및 경도를 만족시키기 위해 개발한 튜브상태의 서브머지드 아크 용접 와이어(Tubular Submerged Arc Wires)입니다. 재료 용접 경제성\n•Alloy Shield Composite Wire는 튜브내(Carbon Steel Sheath)에 필요한 여러가지 합금성분 아크 와이어 들을 첨가시킬 수 있으므로 Alloy Shield Wire에 의한 용접시공은 값비싼 합금강 원재료가 필요한 Solid Alloy Shield Wire에 비하여 Cost가 낮아질 수 있습니다. 서브머지드 고용착율\n•Alloy Shield Composite Wire는 높은 전류밀도로 인해 Solid Wire에 비해 단위시간당 더많은 용착금속을 얻을 수 있습니다. 빠른 용융속도(Burn-off Rate)는 수요자에게 용접비용을 절감 시켜주고 용접생산성 향상에 기여합니다.",
+      "page_start": 44,
+      "page_end": 44,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Wire는 높은 전류밀도로 인해 Solid Wire에 비해 단위시간당 더많은 용착금속을 얻을 수 있습니다. 빠른 용융속도(Burn-off Rate)는 수요자에게 용접비용을 절감 시켜주고 용접생산성 향상에 기여합니다.\n적용 플럭스\n•Alloy Shield Wire는 세아 에삽의 Submerged Arc Flux와 같이 사용되도록 개발 되었습니다. 여기에 명기된 기계적 성질 및 화학성분의 일례는 추천한 Flux의 사용에 의하여 얻어진 것입니다. 사용된 Flux가 다를때 용착금속의 기계적 성질 및 화학 성분이 달라질 수 있습니다.\n228 주식회사 세아 ESAB",
+      "page_start": 44,
+      "page_end": 44,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 45] Alloy Shield Composite Wire의 용착속도 일례 3\n| 와이이경(mmØ) | 전류범위(A) | Stick-Out(mm) | 용착속도(kg/hr) . |\n| --- | --- | --- | --- |\n| 24 . | 450~600 | 32 38 51 32 . 44 57 38 51 70 | 6 .4~9 .5 6 .8~10 .9 7 .7~13 .2 5 .4~8 .6 5 .9~9 .5 6 .8~12 .2 6 .8~11 .8 7 .7~13 .2 8 .2~15 .4 |\n| 32 . | 400~700 | 32 38 51 32 . 44 57 38 51 70 | 6 .4~9 .5 6 .8~10 .9 7 .7~13 .2 5 .4~8 .6 5 .9~9 .5 6 .8~12 .2 6 .8~11 .8 7 .7~13 .2 8 .2~15 .4 |\n| 40 . | 450~800 | 32 38 51 32 . 44 57 38 51 70 | 6 .4~9 .5 6 .8~10 .9 7 .7~13 .2 5 .4~8 .6 5 .9~9 .5 6 .8~12 .2 6 .8~11 .8 7 .7~13 .2 8 .2~15 .4 |",
+      "page_start": 45,
+      "page_end": 45,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Alloy Shield Composite Wire의 용착속도 일례          3"
+    },
+    {
+      "text": "Alloy Shield Composite Wire의 용착속도 일례\n와이어\n서브머지드 아크 용접 재료\n※용착속도는 플럭스의 종류에 따라 조금씩 변할 수 있습니다.\nWelding Consumables Guide Book 229",
+      "page_start": 45,
+      "page_end": 45,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 46] 용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)\n| 항복강도 N/mm2{kgf/mm2} | 인장강도 N/mm2{kgf/mm2} | 연신율(%) | 충격치J{kgf·m} | 충격치J{kgf·m} | 열처리 |\n| --- | --- | --- | --- | --- | --- |\n| - | - | - | 22℃ | -1℃ | - |\n| 530{54} | 630{64} | 21 | - | - | 용접한그대로 |\n| 518{53} | 620{63} | 22 | 31{32} . | 21{21} . | 620℃×1시간 SR . |",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)"
+    },
+    {
+      "text": "Alloy Shield B2S\nAWS A5.23 F8PZ-ECB2-B2 해당\n내열강용 Composite Wire\n특성 및 용도\n•Alloy Shield B2S는 1%Cr-0.5%Mo 강용으로 개발된 Composite Wire로서 첨가된 합금은 고온적용시 요구되는 응력완화에 기여합니다. •Alloy Shield B2S는 압력용기, 압력강관, 보일러, 열교환기 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 80\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 80)\n서브머지드 아크 용접 재료",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "압력강관, 보일러, 열교환기 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 80\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 80)\n서브머지드 아크 용접 재료\nC Mn Si P S Cr Mo\n0.04 0.90 0.37 0.017 0.024 1.25 0.55\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)\n포장단위 및 와이어경\n•3.2, 4.0, 4.8mmØ×25kg Coil\n230 주식회사 세아 ESAB",
+      "page_start": 46,
+      "page_end": 46,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 47] 용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)\n| 항복강도 N/mm2{kgf/mm2} | 인장강도 N/mm2{kgf/mm2} | 연신율(%) | 충격치J{kgf·m} | 충격치J{kgf·m} | 열처리 |\n| --- | --- | --- | --- | --- | --- |\n| - | - | - | 22℃ | -1℃ | - |\n| 758{77} | 876{89} | 17 | 31{32} . | 25{26} . | 용접한그대로 |\n| 607{62} | 696{71} | 20 | 41{42} . | 27{28} . | 690℃×1시간 SR . |",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)"
+    },
+    {
+      "text": "Alloy Shield B3S\nAWS A5.23 F9PZ-ECB3-B3 해당\n내열강용 Composite Wire\n특성 및 용도\n•Alloy Shield B3S는 1%Cr-1%Mo강 및 2.25%Cr-1%Mo강용으로 개발된 Composite Wire 로서 첨가된 합금은 고온적용시 요구되는 응력완화에 기여합니다. •Alloy Shield B3S는 압력용기, 압력강관, 보일러, 열교환기 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 80\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 80)",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "eld B3S는 압력용기, 압력강관, 보일러, 열교환기 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 80\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 80)\n서브머지드 아크 용접 재료\nC Mn Si P S Cr Mo\n0.10 1.03 0.50 0.014 0.023 2.28 1.08\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 80)\n포장단위 및 와이어경\n•3.2, 4.0, 4.8mmØ×25kg Coil\nWelding Consumables Guide Book 231",
+      "page_start": 47,
+      "page_end": 47,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 48] 용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)서브머지드\n| C | Mn | Si | P | S | Ni | Cr | Mo | V | Cu | Nb |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 0071 . | 089 . | 023 . | 0008 . | 0008 . | 059 . | 891 . | 108 . | 021 . | 002 . | 004 . |",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)서브머지드"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 48] 용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n| 항복강도 N/mm2{kgf/mm2} | 인장강도 N/mm2{kgf/mm2} | 연신율(%) | 열처리 |\n| --- | --- | --- | --- |\n| 594{60} | 719{73} | 20 | 750℃×180분SR . |",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)"
+    },
+    {
+      "text": "Alloy Shield B9\n9%Cr-1%Mo강 용접용 Composite Wire\n특성 및 용도\n•Alloy Shield B9는 9%Cr-1%Mo-B강용으로 개발된 Composite Wire로서 첨가된 합금은 고온적용시 요구되는 응력완화에 기여합니다. •내열강과 내열합금을 고온장치로서 화력발전용의 보일러와 증기 터빈, 열교환기, 가스 터빈, 항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 10.92\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)\n서브머지드 아크 용접 재료",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 10.92\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)\n서브머지드 아크 용접 재료\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n포장단위 및 와이어경\n•3.2, 4.0, 4.8mmØ×25kg Coil\n232 주식회사 세아 ESAB",
+      "page_start": 48,
+      "page_end": 48,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 49] 용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92) 재료\n| C | Mn | Si | P | S | Ni | Cr | Mo | W | V | Nb |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 0066 . | 0544 . | 0450 . | 0014 . | 0018 . | 0626 . | 8558 . | 0430 . | 1634 . | 0168 . | 0034 . |",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)                                  재료"
+    },
+    {
+      "text": "[PDF 표 2, 페이지 49] 용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n| 항복강도 N/mm2{kgf/mm2} | 인장강도 N/mm2{kgf/mm2} | 연신율(%) | 열처리 |\n| --- | --- | --- | --- |\n| 605{62} | 725{74} | 255 . | 850℃×180분SR . |",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)"
+    },
+    {
+      "text": "Alloy Shield B92W\n9%Cr-0.5%Mo-2%W강 용접용 Composite Wire\n특성 및 용도\n•Alloy Shield B92W는 9%Cr-0.5%Mo-2%W-V-Nb-B강용으로 개발된 Composite Wire로서 첨가된 합금은 고온적용시 요구되는 응력완화에 기여합니다. •내열강과 내열합금을 고온장치로서 화력발전용의 보일러와 증기 터빈, 열교환기, 가스 터빈, 항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 10.92\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": ", 열교환기, 가스 터빈, 항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다.\n추천플럭스\n와이어\n•OK Flux 10.92\n용착금속의 화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)\n서브머지드 아크 용접 재료\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n포장단위 및 와이어경\n•3.2, 4.0, 4.8mmØ×25kg Coil\nWelding Consumables Guide Book 233",
+      "page_start": 49,
+      "page_end": 49,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Alloy Shield B122\n12%Cr-0.5%Mo-2%W강 용접용 Composite Wire\n특성 및 용도\n•Alloy Shield B122W는 12%Cr-1%Mo-2%W-V-Nb-B강용으로 개발된 Composite Wire로서3 첨가된 합금은 고온적용시 요구되는 응력완화에 기여합니다. •내열강과 내열합금을 고온장치로서 화력발전용의 보일러와 증기 터빈, 열교환기, 가스 터빈, 재료 항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다. 용접 아크 와이어 추천플럭스 서브머지드 •OK용착금속의Flux 10.92화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)",
+      "page_start": 50,
+      "page_end": 50,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "빈, 재료 항공기의 제트엔진 및 고온시설물의 서브머지드 아크 용접에 적용됩니다. 용접 아크 와이어 추천플럭스 서브머지드 •OK용착금속의Flux 10.92화학성분의 일례(%) (적용플럭스 : OK Flux 10.92)\nC Mn Si P S Ni Cr Mo V W Cu Nb\n0.063 0.624 0.450 0.016 0.016 0.85 11.501 0.326 0.150 1.91 0.921 0.352\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n항 복 강 도 인 장 강 도 연 신 율 열 처 리 N/mm2{kgf/mm2} N/mm 2{kgf/mm 2} (%)",
+      "page_start": 50,
+      "page_end": 50,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": ".91 0.921 0.352\n용착금속의 기계적 성질의 일례 (적용플럭스 : OK Flux 10.92)\n항 복 강 도 인 장 강 도 연 신 율 열 처 리 N/mm2{kgf/mm2} N/mm 2{kgf/mm 2} (%)\n629{63} 734{75} 25.3 750℃×3시간 S.R\n포장단위 및 와이어경\n•3.2, 4.0, 4.8mmØ×25kg Coil\n234 주식회사 세아 ESAB",
+      "page_start": 50,
+      "page_end": 50,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0001_image_001_a8912a52f8ee.jpeg",
+      "file_hash": "a8912a52f8ee1c3a093f24941a1bfe06e8b54d70357af3ba9a629d35182f23fb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0001_image_002_e423b228eb04.jpeg",
+      "file_hash": "e423b228eb04fb8f7b3efb584fadf31ed1a758643149d12aecee34e14ac04b9f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0001_image_003_fbb95148c52f.jpeg",
+      "file_hash": "fbb95148c52fd59094eaa51ed0cd4912d3ee60cec973f97ab7c3d09d58be7726",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0001_image_004_ac9fd78f8d3c.png",
+      "file_hash": "ac9fd78f8d3ce8e11060ec2bdfaaf794c157f22b8bc6139144f04721c3e8d523",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 39,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0039_image_001_a8912a52f8ee.jpeg",
+      "file_hash": "a8912a52f8ee1c3a093f24941a1bfe06e8b54d70357af3ba9a629d35182f23fb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 39,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/dd251c5c4180897826fa/page_0039_image_002_7b9c9d524426.jpeg",
+      "file_hash": "7b9c9d524426ba09c291ee0a5fc692b38b036b27d635cc62f697a0c9991d9b45",
+      "ocr_text": ""
+    }
+  ],
+  "block_count": 102
+}

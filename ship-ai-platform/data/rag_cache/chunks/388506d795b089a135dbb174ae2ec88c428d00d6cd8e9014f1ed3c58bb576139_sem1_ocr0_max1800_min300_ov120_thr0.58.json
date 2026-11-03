@@ -1,0 +1,270 @@
+{
+  "chunks": [
+    {
+      "text": "AWS STANDARD WELDING PROCEDURE SPECIFICATION LICENSE\nIMPORTANT—READ CAREFULLY BEFORE PROCEEDING\nTHE ENTITY OR INDIVIDUAL PURCHASING THIS AWS STANDARD WELDING PROCEDURE SPECIFICATION AGREES TO BE BOUND BY THE TERMS OF THIS LICENSE. IF YOU DO NOT AGREE TO THE TERMS OF THIS LICENSE, DO NOT USE THE STANDARD AND PROMPTLY RETURN THE PACKAGE UNOPENED, AND THE LICENSE PRICE WILL BE REFUNDED.\nThe enclosed AWS STANDARD WELDING PROCEDURE SPECIFICATION (“SWPS”) is provided to the End User by the American Welding Society (“AWS”) for use only under the terms of this License. AWS reserves any right not expressly granted to the End User.\n1. Ownership: The SWPS is proprietary to AWS and is protected by United States and foreign copyright laws. AWS retains the title to, and ownership of, the SWPS, which is licensed, not sold, to the End User.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "eign copyright laws. AWS retains the title to, and ownership of, the SWPS, which is licensed, not sold, to the End User.\n2. Acceptance of responsibility: Prior to use of an SWPS, the employer shall signify acceptance of responsibility for the production application of the procedure by signing and dating the SWPS on the appropriate page.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "f responsibility for the production application of the procedure by signing and dating the SWPS on the appropriate page.\n3. Definitions:\nAuthorized User shall mean an employee or contractor of the End User. End User shall mean the purchaser of the SWPS.\n4. License: The End User is granted a limited, non-exclusive license to the SWPS for internal business purposes by Authorized Users. When an End User that has purchased a SWPS Site License undergoes a voluntary name change, consolidation or acquisition by another entity, the SWPS shall be valid for use by the newly named organization provided the new company maintains records of the original purchase under the original End User name.\n5. Sublicensing: The End User may not sublicense, assign, or otherwise transfer this License to End User employees or contractors who are not Authorized Users.\n6. Modifications: The End User may not modify, translate, sell, or make derivative works of, the SWPS.\n7. Protection and Security: The End User shall use its best efforts and take all reasonable steps to safeguard the SWPS to ensure that no unauthorized person shall have access thereto and that no unauthorized copy, publication, disclosure or distribution shall be made. The End User shall notify AWS immediately should the End User discover any unauthorized access or copying.\n8. Termination: This License will terminate immediately without notice from AWS if the End User fails to comply with any of its provisions.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "s License will terminate immediately without notice from AWS if the End User fails to comply with any of its provisions.\n9. DISCLAIMER OF WARRANTY: THE SWPS IS PROVIDED “AS IS.” AWS DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE. THE END-USER ASSUMES ALL RISK AS TO THE SUITABILITY OF THE SWPS. IN NO EVENT WILL AWS, OR ITS DIRECTORS, OFFICERS, EMPLOYEES OR AFFILIATES, BE LIABLE TO THE END USER FOR ANY CONSEQUENTIAL, INCIDENTAL, INDIRECT, SPECIAL OR EXEMPLARY DAMAGES. THE LIABILITY (IF ANY) OF AWS TO THE END USER FOR ACTUAL DIRECT DAMAGES FOR ANY CAUSE WHATSOEVER, AND REGARDLESS OF THE FORM OF THE ACTION, WILL BE LIMITED TO, AND IN NO EVENT SHALL EXCEED, THE AMOUNT ORIGINALLY PAID TO AWS FOR THIS LICENSE BY THE END USER.\n10. Miscellaneous: This License is governed by and construed in accordance with the laws of the State of Florida and shall inure to the benefit of AWS and End User and their respective successors and legal representatives. If any provision of this License is held by a court of competent jurisdiction to be invalid or unenforceable, that provision will be enforced to the maximum extent permissible, and the remaining provisions of this License will remain in full force and effect. This Agreement constitutes the entire agreement between the parties with respect to the subject matter hereof. This Agreement may not be changed or amended except by a written instrument executed by a duly authorized officer of Licensor. The exclusive forum for resolution of legal disputes shall be State or federal court in or for Miami, Florida.",
+      "page_start": 1,
+      "page_end": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023 An American National Standard\nStandard Welding Procedure Specification (SWPS) for Gas Tungsten Arc Welding with Consumable Insert Root followed by Shielded Metal Arc Welding of Carbon Steel (M-1/P-1, Group 1 or 2), 1/8 in [3 mm] through 1-1/2 in [38 mm] Thick, INMs- 1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "m] through 1-1/2 in [38 mm] Thick, INMs- 1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications\nSite License",
+      "page_start": 2,
+      "page_end": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023 An American National Standard\nApproved by the American National Standards Institute February 27, 2023\nStandard Welding Procedure Specification (SWPS) for Gas Tungsten Arc Welding with Consumable Insert Root followed by Shielded Metal Arc Welding of Carbon Steel (M-1/P-1, Group 1 or 2), 1/8 in [3 mm] through 1-1/2 in [38 mm] Thick, INMs-1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mm] through 1-1/2 in [38 mm] Thick, INMs-1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications\n4th Edition\nRevises AWS B2.1-1-211:2001 (R2012)\nPrepared by the American Welding Society (AWS) B2 Committee on Procedure and Performance Qualification\nUnder the Direction of the AWS Technical Activities Committee\nApproved by the AWS Board of Directors",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mance Qualification\nUnder the Direction of the AWS Technical Activities Committee\nApproved by the AWS Board of Directors\nAbstract\nThis standard contains the essential welding variables for carbon steel in the thickness range of 1/8 in [3 mm] through 1-1/2 in [38 mm], using manual gas tungsten arc welding with consumable insert root, followed by shielded metal arc welding. It cites the base metals and operating conditions necessary to make the weldment, the filler metal specifications, and the allowable joint designs for groove welds. This SWPS was developed primarily for pipe applications.",
+      "page_start": 3,
+      "page_end": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nISBN Print: 978-0-87171-990-4 ISBN PDF: 978-0-87171- 989-8 © 2023 by American Welding Society All rights reserved Printed in the United States of America Photocopy Rights.No portion of this standard may be reproduced, stored in a retrieval system, or transmitted in any form, including mechanical, photocopying, recording, or otherwise, without the prior written permission of the copyright owner. Authorization to photocopy items for internal, personal, or educational classroom use only or the internal, personal, or educational classroom use only of specific clients is granted by the American Welding Society provided that the appropri­ ate fee is paid to the Copyright Clearance Center, 222 Rosewood Drive, Danvers, MA 01923, tel: (978) 750-8400; Internet: <www.copyright.com>.",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "e Copyright Clearance Center, 222 Rosewood Drive, Danvers, MA 01923, tel: (978) 750-8400; Internet: <www.copyright.com>.\nii",
+      "page_start": 4,
+      "page_end": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nStatement on the Use of American Welding Society Standards",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nStatement on the Use of American Welding Society Standards\nAll standards (codes, specifications, recommended practices, methods, classifications, and guides) of the American Welding Society (AWS) are voluntary consensus standards that have been developed in accordance with the rules of the American National Standards Institute (ANSI). When AWS American National Standards are either incorporated in, or made part of, documents that are included in federal or state laws and regulations, or the regulations of other governmen­ tal bodies, their provisions carry the full legal authority of the statute. In such cases, any changes in those AWS standards must be approved by the governmental body having statutory jurisdiction before they can become a part of those laws and regulations. In all cases, these standards carry the full legal authority of the contract or other document that invokes the AWS standards. Where this contractual relationship exists, changes in or deviations from requirements of an AWS stand­ ard must be by agreement between the contracting parties. AWS American National Standards are developed through a consensus standards development process that brings together volunteers representing varied viewpoints and interests to achieve consensus. While AWS administers the process and establishes rules to promote fairness in the development of consensus, it does not independently test, evaluate, or verify the accuracy of any information or the soundness of any judgments contained in its standards. AWS disclaims liability for any injury to persons or to property, or other damages of any nature whatsoever, whether special, indirect, consequential, or compensatory, directly or indirectly resulting from the publication, use of, or reliance on this standard.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "equential, or compensatory, directly or indirectly resulting from the publication, use of, or reliance on this standard.\nAWS also makes no guarantee or warranty as to the accuracy or completeness of any information pub­ lished herein. In issuing and making this standard available, AWS is neither undertaking to render professional or other services for or on behalf of any person or entity, nor is AWS undertaking to perform any duty owed by any person or entity to someone else. Anyone using these documents should rely on his or her own independent judgment or, as appropriate, seek the advice of a competent professional in determining the exercise of reasonable care in any given circumstances. It is assumed that the use of this standard and its provisions is entrusted to appropriately qualified and competent personnel. This standard may be superseded by new editions. This standard may also be corrected through publication of amend­ ments or errata, or supplemented by publication of addenda. Information on the latest editions of AWS standards including amendments, errata, and addenda is posted on the AWS web page (www.aws.org). Users should ensure that they have the latest edition, amendments, errata, and addenda. Publication of this standard does not authorize infringement of any patent or trade name. Users of this standard accept any and all liabilities for infringement of any patent or trade name items. AWS disclaims liability for the infringement of any patent or product trade name resulting from the use of this standard. AWS does not monitor, police, or enforce compliance with this standard, nor does it have the power to do so. Official interpretations of any of the technical requirements of this standard may only be obtained by sending a request, in writing, to the appropriate technical committee.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "irements of this standard may only be obtained by sending a request, in writing, to the appropriate technical committee.\nSuch requests should be addressed to the American Welding Society, Attention: Managing Director, Standards Development, 8669 NW 36 St, # 130, Miami, FL 33166 (see Annex A). With regard to technical inquiries made concerning AWS standards, oral opinions on AWS standards may be rendered. These opinions are offered solely as a convenience to users of this standard, and they do not constitute professional advice. Such opinions represent only the personal opinions of the particular individuals giving them. These individuals do not speak on behalf of AWS, nor do these oral opinions constitute official or unofficial opinions or interpretations of AWS. In addition, oral opinions are informal and should not be used as a substitute for an official interpretation. This standard is subject to revision at any time by the AWS B2 Committee on Procedure and Performance Qualification. It must be reviewed every five years, and if not revised, it must be either reaffirmed or withdrawn. Comments (recom­ mendations, additions, or deletions) and any pertinent data that may be of use in improving this standard are requested and should be addressed to AWS Headquarters. Such comments will receive careful consideration by the AWS B2 Committee on Procedure and Performance Qualification and the author of the comments will be informed of the Committee’s response to the comments. Guests are invited to attend all meetings of the AWS B2 Committee on Procedure and Performance Qualification to express their comments verbally. Procedures for appeal of an adverse decision concerning all such com­ ments are provided in the Rules of Operation of the Technical Activities Committee. A copy of these Rules can be obtained from the American Welding Society, 8669 NW 36 St, # 130, Miami, FL 33166.",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mmittee. A copy of these Rules can be obtained from the American Welding Society, 8669 NW 36 St, # 130, Miami, FL 33166.\niii",
+      "page_start": 5,
+      "page_end": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nThis page is intentionally blank\niv",
+      "page_start": 6,
+      "page_end": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nPersonnel\nAWS B2 Committee on Procedure and Performance Qualification T. Anderson, Chair ITW Welding North America J. M. Rosario, Secretary American Welding Society J. Alston Jefferson Lab M. E. Barrett Westinghouse J. P. Bell Yates Construction K. L. Bingham Los Alamos National Laboratory D. T. Braun Southside Virginia Community College M. W. Bumgarner Bumgarner Consulting, LLC M. C. Cook Mid-America Carpenters Regional Council Apprentice & Training Program J. L. Cooley YMC Mechanical T. A. Davenport Arcos Industries, LLC J. D. Farren Office of Naval Research J. J. Fluckiger Custom Quality Solutions M. F. Herrle Arise P. S. Kumar Special Technical Services D. Mata Kiewit L. D. Meléndez TC Energy T. A. Mihalik International Training Institute S. D. Mobley Oak Ridge National Laboratory T. C. Mueller Motion Engineering Ltd. J. L. Pasqua Salco Products A. B. Rigato Pacific Northwest National Laboratory W. M. Ruof Bechtel Plant Machinery, Incorporated J. J. Sekely Welding Services, Incorporated M. L. Thomas Rocky Mountain Testing, LLC R. K. Wiswesser Welder Training & Testing Institute\nAdvisors to the AWS B2 Committee on Procedure and Performance Qualification E. W. Beckman Consultant M. Bernasek C-SPEC H. R. Castner Edison Welding Institute (retired) B. J. Hable Ford Motor Company K. Y. Lee DNV B. B. MacDonald Consultant C. D. Morell U.S. Nuclear Regulatory Commission (retired) J. F. Pike Acoustical Sheetmetal F. A. Schweighardt Airgas A. W. Sindel TRC Solutions W. J. Sperko Sperko Engineering Services, Incorporated R. F. Waite Robert F. Waite, PE PC G. M. Wisbrock, Jr. Consultant",
+      "page_start": 7,
+      "page_end": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nAWS B2D Subcommittee on Standard Welding Procedure Specifications J. J. Sekely, Chair Welding Services, Incorporated J. M. Rosario, Secretary American Welding Society J. Alston Jefferson Lab T. Anderson ITW Welding North America M. E. Barrett Westinghouse E. W. Beckman Consultant J. P. Bell Yates Construction K. L. Bingham Los Alamos National Laboratory D. T. Braun Southside Virginia Community College M. W. Bumgarner Bumgarner Consulting, LLC J. L. Cooley YMC Mechanical T. A. Davenport Arcos Industries, LLC J. D. Farren Office of Naval Research J. J. Fluckiger Custom Quality Solutions G. L. Franke Consultant T. A. Mihalik International Training Institute T. C. Mueller Motion Engineering Ltd. J. L. Pasqua Salco Products A. B. Rigato Pacific Northwest National Laboratory W. M. Ruof Bechtel Plant Machinery, Incorporated\nAdvisors to the AWS B2D Subcommittee on Standard Welding Procedure Specifications M. Bernasek C-SPEC H. R. Castner Edison Welding Institute (retired) K. Y. Lee DNV C. D. Morell U.S. Nuclear Regulatory Commission (retired) F. A. Schweighardt Airgas T. J. White Consultant G. M. Wisbrock, Jr. Consultant",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Nuclear Regulatory Commission (retired) F. A. Schweighardt Airgas T. J. White Consultant G. M. Wisbrock, Jr. Consultant\nvi",
+      "page_start": 8,
+      "page_end": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nForeword\nThis foreword is not part of this standard but is included for informational purposes only.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nForeword\nThis foreword is not part of this standard but is included for informational purposes only.\nThe American Welding Society generates Standard Welding Procedure Specifications (SWPSs) for industry through the cooperative efforts of the AWS B2 Committee on Procedure and Performance Qualification, the AWS B2D Subcommittee on Standard Welding Procedure Specifications, and the AWS B2G Subcommittee on Procedure Qualification Records. The Welding Procedures Committee (WPC) of the Welding Research Council (WRC) originally managed the procedure qualification records in support of AWS Standard Welding Procedure Specifications and was formally transitioned to the AWS B2G Subcommittee on Procedure Qualification Records in 2019. The need for pretested welding procedures that are supported by adequate test data and that satisfy the technical require­ ments for the commonly used construction codes and specifications has been expressed by many individuals and organi­ zations. The purpose of a welding procedure qualification is to provide test data for assessing the properties of a weld joint. This Standard Welding Procedure Specification is an outgrowth of the coordinated work of the AWS B2G Subcommittee on Procedure Qualification Records and the AWS B2 Committee on Procedure and Performance Qualification. The AWS B2G Subcommittee on Procedure Qualification Records has provided the data documented on the Summary of Procedure Qualification Records. The welding terms used in this specification shall be interpreted in accordance with the definitions given in the latest edi­ tion of AWS A3.0M/A3.0, Standard Welding Terms and Definitions. Welding symbols shall be those shown in the latest edition of AWS A2.4, Standard Symbols for Welding, Brazing, and Nondestructive Examination.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "be those shown in the latest edition of AWS A2.4, Standard Symbols for Welding, Brazing, and Nondestructive Examination.\nThe AWS B2 Committee on Procedure and Performance Qualification was formed in 1979 to provide welding standards concerning the subject of qualification. The primary document developed by this committee is AWS B2.1/B2.1M, Specification for Welding Procedure and Performance Qualification. This document established the foundation and framework for Standard Welding Procedure Specifications (SWPSs). The first two SWPSs were published in 1990. Since then, SWPSs are continuing to be developed and published by the American Welding Society. A vertical line in the margin or underlined text in clauses, tables, or figures indicates an editorial or technical change from the previous edition. Comments and suggestions for the improvement of this standard are welcome. They should be sent to the Secretary, AWS B2 Committee on Procedure and Performance Qualification, American Welding Society, 8669 NW 36 St., # 130, Miami, FL, 33166.",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Committee on Procedure and Performance Qualification, American Welding Society, 8669 NW 36 St., # 130, Miami, FL, 33166.\nvii",
+      "page_start": 9,
+      "page_end": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023\nThis page is intentionally blank\nviii",
+      "page_start": 10,
+      "page_end": 10,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023 Page 1 of 22\nStandard Welding Procedure Specification (SWPS)\nGas Tungsten Arc Welding with Consumable Insert Root followed by Shielded Metal Arc Welding of Carbon Steel (M-1/P-1, Group 1 or 2), 1/8 in [3 mm] through 1-1/2 in [38 mm] Thick, INMs-1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "mm] through 1-1/2 in [38 mm] Thick, INMs-1, ER70S-2, and E7018, As-Welded or PWHT Condition, Primarily Pipe Applications\nSupporting PQR Numbers: 001002, 001007, 001010, 001013, 001014, 001015, 001017, 001024, 001038, 005031, 200266, 200267, 200268, 200269, 200270, 200272, 200273, 200274, 200275, 200530, 200531, 200532, 200534, 200535, 200625, 200626, 200627, 200628, 200629, 200630, 200631, 200632, 200633, 200634, 200635, 200636, 200637, 200638, 200639, 200708, 200709, 200710, 200711, 200712, 200713, 200728, 200835, 200850, 200851, 200852, 001A, 002A, 003B, 004A, 029A, 030A",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "0708, 200709, 200710, 200711, 200712, 200713, 200728, 200835, 200850, 200851, 200852, 001A, 002A, 003B, 004A, 029A, 030A\nRequirements for Application of SWPSs",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "200713, 200728, 200835, 200850, 200851, 200852, 001A, 002A, 003B, 004A, 029A, 030A\nRequirements for Application of SWPSs\nScope. The data to support this Standard Welding Procedure Specification (SWPS) have been derived from the above listed Procedure Qualification Records (PQRs), which were reviewed and validated under the auspices of the AWS B2G Subcommittee on Procedure Qualification Records. This SWPS is not valid using conditions and variables outside the ranges listed. The American Welding Society considers that this SWPS presents information for producing an acceptable weld using the conditions and variables listed. The user needs a significant knowledge of welding and accepts full respon­ sibility for the performance of the weld and for providing the engineering capability, qualified personnel, and proper equipment to implement this SWPS. Application. This SWPS is to be used only as permitted by AWS B2.1/B2.1M, Standard for Welding Procedure and Performance Qualification, and the applicable fabrication document(s) [such as code, specification, or contract document(s)]. The fabrication document(s) should specify the engineering requirements such as design, need for heat treatment, fabricating tolerances, quality control, and examination and tests applicable to the end product. User’s Responsibility. A SWPS does not replace or substitute for fabrication codes, specifications, contract requirements, or capability and judgment on the part of the user. A SWPS is to be used only as permitted by the applicable fabrication code, specification, or contract document. The ability to produce production welds having properties suitable for the application depends upon supplementing the SWPS with appropriate performance qualification tests and sound engineer­ ing judgment.",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "n depends upon supplementing the SWPS with appropriate performance qualification tests and sound engineer­ ing judgment.\nThe user is responsible for the quality and performance of the final product in accordance with the provi­ sions of the fabrication document(s). Supplementary Instructions. To adapt this SWPS to a specific application, a user may issue supplementary instructions. Such instructions may consist of tighter fit-up tolerances, higher minimum preheat temperature or any other instructions necessary to produce a weldment that meets the requirements of the fabrication document(s). These instructions shall not be less restrictive than provided in the SWPS. Standard Units of Measure. This standard makes use of both U.S. Customary Units and the International System of Units (SI). The latter are shown within brackets ([ ]) or in appropriate columns in tables and figures. The measurements may not be exact equivalents; therefore, each system must be used independently.",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "in tables and figures. The measurements may not be exact equivalents; therefore, each system must be used independently.\nPermission to reproduce for intra-company use only is granted by the American Welding Society",
+      "page_start": 11,
+      "page_end": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "AWS B2.1-1-211:2023 Page 2 of 22\nStandard Welding Procedure Specification (SWPS)\nSafety. Safety and health issues and concerns are beyond the scope of this standard and therefore are not addressed herein. Safety and health information is available from the following sources: American Welding Society: (1) ANSI Z49.1, Safety in Welding, Cutting, and Allied Processes (2) AWS Safety and Health Fact Sheets (3) Other safety and health information on the AWS website Material or Equipment Manufacturers: (1) Safety Data Sheets supplied by materials manufacturers (2) Operating Manuals supplied by equipment manufacturers Applicable Regulatory Agencies: Work performed in accordance with this standard may involve the use of materials that have been deemed hazardous and may involve operations or equipment that may cause injury or death. This standard does not purport to address all safety and health risks that may be encountered. The user of this standard should establish an appropriate safety program to address such risks as well as to meet applicable regulatory requirements. ANSI Z49.1 should be considered when develop­ ing the safety program.",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "ell as to meet applicable regulatory requirements. ANSI Z49.1 should be considered when develop­ ing the safety program.\nPermission to reproduce for intra-company use only is granted by the American Welding Society",
+      "page_start": 12,
+      "page_end": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [],
+  "block_count": 12
+}

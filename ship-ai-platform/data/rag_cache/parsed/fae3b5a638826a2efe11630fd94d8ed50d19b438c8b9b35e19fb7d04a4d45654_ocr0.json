@@ -1,0 +1,76 @@
+{
+  "blocks": [
+    {
+      "text": "2025-교육혁신실-2149                    재해사례（H 형강）\n클램프로 H형강을 걸어 인양 중 떨어진 하물에 맞음\n\n  흙막이 가시설 H형강을 클램프로 걸어 인양 및 트럭에 적재 중 H형강이 이탈되어 떨어지면서 작업자(1)가\n  머리를 맞고 깔려 사망하고 작업자(1)를 구하기 위해 H형강을 다시 걸어 인양 중 또다시 이탈하여 떨어지면서\n  지상에 있던 작업자(2)가 맞아 부상\n\n\n\n\n\n    재해발생 원인\n     클램프를 사용한 1점 지지 줄걸이 작업 중 자재 인양 중 흔들림, 충격 등에 의해 H형강이 클램프에서 이탈\n     톱니가 마모된 클램프를 사용하여 안전장치를 체결한 상태에서도 외력에 의해 밀림현상이 있는 불량\n     클램프를 사용\n     이동식 크레인 작업 시 위험지역 내 출입통제 조치 미실시\n\n    재해예방 대책\n     흙막이 가시설 해체 작업계획 수립 시 안전한 체결기구(샤클)를 사용하도록 하고 줄걸이 작업도 2점 지지가\n     되도록 수립 및 작업 중 이를 준수토록 조치\n     H형강 체결기구는 인양 중 자재가 체결기구에서 이탈되지 않도록 작업 전 체결부 마모상태와 안전장치\n     등의 적합한 작동상태 등을 점검하여 이상 유무 확인➊\n     이동식 크레인을 사용하여 H형강을 ➊              ➋\n     트럭 위로 인양 및 하역하는 작업 시\n     작업지휘자를 배치하여 작업자 위로\n     인양 하물이 통과하지 않도록 조치➋\n\n\n\n\n\n                          ● 산업안전보건기준에 관한 규칙 제38조(사전조사 및 작업계획서 작성 등), 제146조(크레인 작업 시의 조치)     참고법령 및 기준",
+      "page_number": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Safety Tip\n  클램프 사용에 따른 안전확인\n\n\n 클램프 사용에 따른 일반안전\n\n세로 인양작업에 ‘수직용 클램프’, 가로 인양작업에 ‘수평용 클램프’를 사용(공용 클램프도 있음)\n사용 하중(최대 사용 하중, 최소 사용 하중) 및 사용 판 두께의 범위 내에서 사용\n1점 인양으로 중심을 매달아 올려도 하물이 흔들려 클램프가 분리될 우려가 있어 1점 인양 지양\n\n클램프를 인양 하물에 부착하는 경우 개구부의 안쪽까지 완전히 삽입해 이탈 방지용 잠금 장치를 걸어 사용\n캠 및 죠가 마모(제조자 기준에 따름)된 것은 사용하지 않도록 조치\n인양 하물을 잡는 부분에 기름, 도료, 녹 및 스케일 등이 부착된 경우에는 잘 제거하고 사용\n\n인양 하물이나 클램프에 충격 하중이 작용하는 일이 없도록 충분히 주의하여 작업\n2매 이상을 겹쳐서 매달거나 보호대를 사용하지 않도록 조치\n\n\n 클램프 사용 인양작업 시 유의사항\n\n\n2줄 2점 클램프 인양, 4줄 4점 클램프 인양 클램프는 용도 및 구조에 따라 수직면을 잡는 ‘수직 인양용’과\n수평면을 잡는 ‘수평 인양용’이 있으므로, 수평 인양용과 수직 인양용을 바꾸어 사용하지 않는다.\n\n제조자가 정한 사용 하중 및 사용 범위를 엄수한다.\n범용 클램프를 사용하는 경우 인양 하물 형상에 적합한 것을 최소 2개 이상 사용한다.\n인양 각도는 60°이내가 되도록 한다.\n가로 인양 클램프를 사용하는 경우 거는 각도는 30°이내로 한다. 단, 제조자가 지정하는 각도가 있는 경우에는\n지정된 각도 이내로 한다.\n하물 걸이 시의 클램프 압축력을 통해 파손 또는 변형될 우려가 있는 인양 하물에는 사용하지 않는다.\n인양 하물 표면의 부착물(기름·도료 등)은 잘 제거해 둔다.\n\n\n\n\n\n         2줄 2점 걸기 클램프 인양              2줄 2점 걸기 클램프 인양    4줄 4점 걸기 클램프 인양\n\n           (수직 인양용 클램프)                          (수평 인양용 클램프)",
+      "page_number": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_001_5e5094d6ddc5.png",
+      "file_hash": "5e5094d6ddc5f66d0bc326dbe6add1681fefd839f7f378c3fd4a6c43b011fbbc",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_002_edea07d86344.png",
+      "file_hash": "edea07d863443d7fb16ff9a410b245629862db4b1a6fd2b03f4141ff4a484e08",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_003_20f19c910823.png",
+      "file_hash": "20f19c910823ea843555f5f8df29ac022645481ba8c13e0714f068d9450ff5d5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_004_2ab43755d9d4.jpeg",
+      "file_hash": "2ab43755d9d4718d1023c6bc87261bbe15d0d5ccd734675a4b99e5d16be84c2f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_005_56acc05cd15b.png",
+      "file_hash": "56acc05cd15baf2a49a11235d8bc574ad38837545d4693d3188cb340c8432d54",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0001_image_006_31451ac4eb80.jpeg",
+      "file_hash": "31451ac4eb80ab990b5857aba39ebf7aac920b8a96680e1477d07deaf9d30c0e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0002_image_001_791b895acaba.png",
+      "file_hash": "791b895acaba249bdde7293b1c2c65ae436bb599a1d8ddca7f3784c7f452b700",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/fae3b5a638826a2efe11/page_0002_image_002_2021fe6dbcc4.png",
+      "file_hash": "2021fe6dbcc4f6d407f01cc1b8f7fe0a1f58f88e4a8bff86d37db68dde676ee4",
+      "ocr_text": ""
+    }
+  ]
+}

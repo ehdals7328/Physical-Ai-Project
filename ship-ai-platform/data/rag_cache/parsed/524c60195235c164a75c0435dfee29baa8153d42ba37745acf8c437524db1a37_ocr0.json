@@ -1,0 +1,1196 @@
+{
+  "blocks": [
+    {
+      "text": "Occupational Safety & Health Administration\n\n                      U.S. Department of Labor\n\n  AFETYS  and\n  EALTHH\n  NJURY I\n  REVENTIONP\n  HEETSS\n\n       WorkingWorking inin thethe ShipyardShipyard IndustryIndustry\n\n          ProcessProcess\n\n          RiggingRigging\n\n\n\n\n\n                                                                                            C-1",
+      "page_number": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 표 1, 페이지 2] Matrix\n| HAZARD/ PROCESS | Falls | Burns/Shocks | Over- exposure | Traumatic/ AcuteInjuries | Eye Injuries | HeatStress |\n| --- | --- | --- | --- | --- | --- | --- |\n| HotWork: Welding , Cutting andBrazing , | - | - | - | - | - | - |\n| ShipFitting/ UnitAssembly | B 2 - | B 6 - | B 11 - | B 14 - | B 18 - | B 21 - |\n| Rigging | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| Shipboard Electrical:(nextinlineto bedeveloped) | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| Shipboard Machining | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| Shipboard MaterialsHandling | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| SurfacePreparation: AbrasiveBlastingand Painting | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| Housekeeping | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| MaterialsHandling: Shop | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| Insulation/Lagging Installation | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| TankCleaning | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| SheetMetal | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| PipeFitting | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |\n| SupportServices | C 9 - | C 12 - | B 11 - | C 13 - | B 18 - | B 21 - |",
+      "page_number": 2,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "Matrix"
+    },
+    {
+      "text": "Matrix\n\nC-2",
+      "page_number": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration                                       Process:Process: RiggingRigging\n                     U.S. Department of Labor\n\n\nINTRODUCTION\n\nThis guidesheet is designed to highlight safety and health hazards associated with rigging work in\nshipyard employment. Information collected was obtained primarily from shipyard personnel and\nreflects actual shipyard experiences. Employers and workers are encouraged to communicate and\nshare experiences to ensure a safe and healthy work environment for all workers.\n\n\n\n\n\n ResourceResource MaterialsMaterials\n\nThis document does not address ergonomic exposures. Extensive research on ergonomic\nexposures and possible solutions in shipyard employment can be found at\nhttp://www.osha.gov/dts/maritime/index.html\n\nThis document does also not address exposures that occur during construction work, including\nconstruction work performed in shipyards or other maritime jobsites. For construction activity\nrequirements, please see 29 CFR 1926.\n\nAdditional information is available from the National Institute for Occupational Safety and\nHealth (NIOSH) and the National Shipbuilding Research Program (NSRP) at:\nNIOSH: http://www.cdc.gov/niosh/topics/ergonomics\nNSRP: http://www.nsrp.org\n\nOSHA: 29 CFR 1915, Subpart G – Gear and Equipment for Rigging and Materials Handling.\nOSHA: http://www.osha.gov/dsg/guidance/slings/nat-synth-fiber.html\nOSHA: Guidance on Safe Sling Use. https://www.osha.gov/dsg/guidance/slings/index.html\nASME B30.9-Operating Practices for Slings.\nASME B30.26-Inspection Frequency of Rigging Hardware.                                       C-3",
+      "page_number": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "RiggingRigging HazardsHazards\n\n\n\nDescription of rigging hazards that can result in serious injuries or fatalities.\n\n\n Fall Hazards created by:\n          Uneven working surfaces.\n          Wet and slippery working surfaces.\n          Working surfaces not cleared of obstructions.\n           Improper use of portable ladder.\n            Unprotected sides, bulkhead openings, deck holes more than 5 ft.\n\n Struck-by and Crushing Hazards created by:\n          Gear and equipment not properly inspected.\n             Defective gear and equipment.\n          Moving parts and equipment.\n           Loads not safely rigged before being hoisted.\n           Improper use of tag line allowing hoisting material to swing out of\n              control.\n           Loads swung or suspended overhead.\n           Hazardous locations between a swinging load and fixed object.\n\n Electrical Hazards created by:\n           Use of hoisting and hauling equipment near energized lines.\n            Tools and equipment not properly grounded.\n             Defective electrical tools.\n         Worn or frayed electric cables.\n\n\n\n\n\n                                                                                                        C-4",
+      "page_number": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Process:Process: RiggingRigging\n\nRigging: General Information on What Riggers Need to Know.\n Rigging is a critical part of shipyard employment. Riggers prepare ships’ equipment,\n components or sections for lifting by cranes, hoists or other material handling\n equipment. Riggers also act as signalman. Worker safety is of utmost concern\n when performing rigging tasks.\n\n Improper rigging of a load or a rigging failure can expose riggers and other workers\n nearby to a variety of potential hazards. Riggers have been injured or killed\n when loads have slipped from the rigging, or when the rigging has failed. Therefore all\n loads must be safely rigged, including adequate welds on pad eyes (page C-8) prior to a\n lift.\n\n The following are topics that should be discussed with workers prior to beginning rigging\n operations:\n\n      •Hazards associated with rigging operations.\n      •Role and responsibility of each rigger’s assigned task.\n       •Establishing a goal for the day.\n      •Weight of material and equipment being hoisted.\n       •Identifying the various shapes on the surface of equipment being hoisted.\n       •Lifting limitations of gear and hoisting devices.\n      •Communication used by all personnel.\n       •Disconnecting techniques used to complete the task.\n\n Sharing the safe work practices and information in this guidesheet will help keep workers\n safe.\n\n Preventing damage to lifting gear, lifting equipment, vessel components and other\n loads is also critical.\n\n\n\n\n\n                                                                                                        C-5",
+      "page_number": 5,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Process:Process: RiggingRigging\n\nGeneral Information on What Riggers Need to Know:\n\nRiggers must be:\n\n• Trained to understand and recognize the hazards associated with the assigned task.\n\n• Qualified to do assigned work and comply with proper procedures.\n\n• Aware of the surface conditions upon which a crane is operating.\n     The surface should be level within 1% grade and firm enough to support the\n           crane and load.\n     Examine where the load will be set. Remove unnecessary blocks, equipment\n           or other materials that can injure workers if struck by the load.\n\n• Familiar with the various and correct rigging techniques and rigging equipment (e.g.,\nslings, shackles, hooks, hoist, blocks).\n\n• Able to anticipate problems before they occur.\n     Stop the job when any potentially unsafe conditions are present.\n\n• Aware of the weight of the load and understand the rated capacities of the crane and any\nrigging gear (1915.111(b)).\n\nEquipment:\n\n• All rigging gear and equipment provided by the employer must be inspected before each\nshift and at intervals during its use to minimize the possibility of a rigging failure\n(1915.111(a)).\n\n• Overloading the crane and rigging gear may cause:\n     The crane hoist line to part or the rigging gear to fail.\n     The crane to tip over.\n     Damage to and possible failure of the crane.\n\n• Defective gear and equipment must be immediately removed from service (1915.111(a)).\n     Check nylon slings for cuts or frayed areas.\n     Manila rope slings should be checked to determine that they are safe for the\n           intended working loads (1915.112(a)(1)).\n     Check wire rope slings for kinks or broken wires or strands.\n     Check chain slings for stretched links (1915.112(c)(2)).\n     Check hooks to make sure they are not bent from overloading.\n     Check that the crane hook safety latch automatically retracts to the closed\n            position upon release.\n     Bent or sprung hooks must not be used (1915.113(b)(3)).\n     See http://www.osha.gov/dsg/guidance/slings/nat-synth-fiber.html\n\n\n\n\n\n                                                                                                       C-6",
+      "page_number": 6,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Process:Process: RiggingRigging\n\n\n\nSlings or Ropes:\n\n\n• Slings must not be used over sharp corners without padding (1915.116(f)).\n\n• Slings must not be covered with permanent padding that would prevent them from\nbeing inspected before each use.\n\n• Use softeners, padding, chaffing gear or other sling protection as necessary to prevent\ndamage to nylon slings.\n\n• Kinked or knotted wire rope slings should be removed from service (1915.111). Wire\nrope shall not be secured by knots (1915.112(b)(4)).\n\nLifting:\n\n• Avoid lifts near stacked material that may be knocked over by a swinging\nload (1915.116(k)).\n\n• Always check for overhead power lines before lifting a load.\n\n• Before loads or empty lifting gear are raised, lowered, or swung, advance warning\nmust be given to workers operating in the vicinity (1915.116(p)).\n\n• Use a designated spotter to assure that proper clearances are maintained.\n\n• A worker or signalman who is familiar with signal codes must communicate with the\ncrane operator (1915.116(l)).\n\n• When walking with a load, keep it as close to the ground as possible.\n    Inspect the spot where the load is to be landed.\n    When lowering or setting a load, set it down slowly.\n\n•Tag lines must be provided on loads likely to swing or need guidance (1915.116(d)).\n    Do not use tag lines to control lift when the lift is under or near electrical\n        power lines.\n\n• Riggers must not place themselves in a hazardous position between a swinging load\nand a fixed object (1915.116(q)).\n\n• Workers are not to work under the load.\n\n• Workers must not ride a load or hook (1915.116(i)).\n\n• Riggers should keep fingers, hands and feet away from pinch points.\n\n\n\n\n\n                                                                                                        C-7",
+      "page_number": 7,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Process:Process: RiggingRigging\n\n\n\nPad Eyes:\n\n• Pad eyes should be designed for a specific use.\n\n• Each pad eye should be able to hold the intended weight/force that will be applied to it after it\nis welded into place.\n\n• Inspect pad eyes for cracks and other defects that will affect its capacity.\n\n• Remove defective pad eyes from the work area.\n\n• All pad eyes should be welded solidly all around. Weld the middle of the pad eye on both\nsides first, then weld both ends.\n\n• Inspect fitting tools and equipment such as come-alongs, chain falls, turnbuckles, chains and\nhook ratchets that will be used with pad eyes.\n\n• Make sure that the hooks from the come-alongs and chain falls are seated properly in the eye\nof the pad eye.\n\n• Do not overstress the fitting tools – use up to 80% of their capacity.\n\n• When applying pressure with fitting tools or equipment to pad eyes, make sure that everyone\nis well out of the danger zone in the event that the pad eye tears off the surface it was welded\nto.\n\n\n\n\n\n                    Source: Indera Sadikin\n               Pad eye\n\n                                                                                                   C-8",
+      "page_number": 8,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                   Safety                              &\n                                           Health Administration           Process:Process: RiggingRigging                     U.S. Department                                       of                                   Labor\n\nHazard:Hazard: FallsFalls\n\nRiggers preparing loads or conducting lifting operations\nin the shipyard or on the vessel may be exposed to fall\nhazards. When using a tag line to guide a load, riggers\nmust be aware of their surroundings to prevent falls due\nto uneven walking or working surfaces.\n\nFall protection devices, such as guardrails on deck edges,\ndeck openings or stair railings are at times removed to\nallow the movement of a load. This requires alternate fall\nprotection methods.\n\nAs most rigging work is done outdoors, slippery or wet\nsurfaces can also be a problem. In addition, riggers\ntypically work over or near the water. Workers must be\nprovided with approved personal floatation devices\n(PFDs) when working over water (1915.71(j)(3)).\n\n\n\n\n\n                                                                                                           C-9",
+      "page_number": 9,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration            Process:Process: RiggingRigging                      U.S. Department of Labor\n\n Hazard:Hazard: FallsFalls\n\n      Riggers often have to walk backwards to          Sometimes loads have to be landed near\n       either better position the load or to                   the edge of a deck. Riggers should\n       visually communicate with the crane               avoid putting themselves between the\n       operator.                                         load and the edge. While performing\n                                                                   this work, riggers run the risk of being\n                       At these times the risk                                                      crushed or knocked over or through the\n                                  is increased for                                                                 railings if the load suddenly swings\n                             tripping over unseen                                                     towards the edge.\n                            objects on the path of\n                               travel.\n\nProblemsProblems                                                                                                                               ProblemsProblems\n\n\n\n\n\n       Riggers should pre-walk the path of                                                     Riggers should always review the\n        travel and remove potential tripping                                                             potential hazards of landing loads.\n        hazards.                                                         Positioning of the rigger is critical if the\n                                                       load shifts.\n\n                                                         In situations where guardrails have beenSolutionsSolutions                                                        temporarily removed in order to land the                                                                                                                                                        SolutionsSolutions\n                                                            load, riggers must be protected by other\n                                              means to prevent falls overboard.\n\n\n\n                                                                                                             C-10",
+      "page_number": 10,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                 Safety                            &\n                                         Health Administration    Process:Process: RiggingRigging                   U.S. Department                                     of                                  Labor\n\nHazard:Hazard: FallsFalls\n\n\n        CASE HISTORY\nA rigger was using a tag line to help\n position a large piece of ship’s\n equipment. His working surface was a\n grating level next to an open cargo\n area. When the primary rigging gear\n broke loose, it caught the rigger’s foot,\n causing him to lose his balance. He fell\n into the water-filled cargo area (tanks)\nand drowned.\n\n\n\n\n\n                                                                        Source: https://www.osha.gov/dts/maritime.video/shipyard:accidents.html.\n                                                                 OSHA’s Video: Examining Fatal Shipyard Accidents\n\nAnalysisAnalysis andand PreventivePreventive MeasuresMeasures\n\n\n\n The cause of the accident was a rigging failure; the line\n                                                    Workers must be provided was improperly attached to the hook.\n                                                         with fall protection such as\n However this accident became a fatality because the                                                         catwalk guardrails or a fall\n rigger was not tied off properly. Fall protection would                                                                            arrest system.\n have prevented his death.\n\n\n    Hooks should be equipped                 Always ensure the load is\n   with a safety latch or moused.                       properly rigged\n\n\n\n                                Personal flotation devices\n                              should be worn by workers\n                             exposed to falls into water.\n\n\n\n\n                                                                                                             C-11",
+      "page_number": 11,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                 Safety                            &\n                                         Health Administration    Process:Process: RiggingRigging                   U.S. Department                                     of                                  Labor\n\n                            Electrical shock is a serious risk for riggers in most shipyards. The\nHazard:Hazard: ShocksShocks                           following incident raises awareness of this.\n\n CASE HISTORY             -\n\nTwo riggers discovered\n that the initial path they\n planned to take was\n blocked by another crane.\n They selected another\n route that appeared to be\n clear. Their focus on\n ground obstacles\n prevented them from\n noticing low-hanging\n electrical wires above.\n Crane contact with the\n wire resulted in the death\n of one of the riggers.\n\n                                     Source: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html\n                                  OSHA Video: Examining Fatal Shipyard Accidents\n\nAnalysis and Preventive Measures\n\nAlthough the primary cause of this fatality was not noticing the low - hanging electrical lines, there were several\nother contributing factors:\n• Lack of training and hazard recognition.\n•  Loads carried higher than necessary.\n                                                  Training is the key to safe rigging. The safety of• Lack of new hazard assessment when the first\n                                       many shipyard trades depends on rigging safety   route was rejected.\n                                                                    skills.\n• No designated person to select a safe traveling\n   route.\n\n\n   Equipment should not be\n   operated within 10 feet of an\n   energized power line.\n\n\n\n\n\n                                                                                                      C-12",
+      "page_number": 12,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration   Process:Process: RiggingRigging                      U.S. Department of Labor\n\n\n Hazard: Traumatic/Acute Injury\n\n\nRigging work presents numerous potential exposures for\ntraumatic injuries including: pinching, lacerations, amputations,\ncrushing and contusions to the face, foot, head, hand and other\nbody parts. For example, hand and fingers can be pinched\nwhen chain or wire rope-lifting devices become taut and can\nalso be lacerated from damaged wire rope strands or banding\nmaterial used to hold loose materials in place.\n\nAlso, falling objects or debris from material being lifted or\ndropped loads can cause severe injury or death. An error in\nrigging, gear failure, or standing in the wrong place when a lift\nis in progress can result in a worker being struck by the load as\nit shifts or swings unpredictably. When mobile cranes are used,\nthe potential hazard created by the movement of the cab and\ncounterweight can result in a crushing injury.\n\n\n\n\n\n                                                                                                              C-13",
+      "page_number": 13,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                   Safety                              &\n                                           Health Administration   Process:Process: RiggingRigging                      U.S. Department                                        of                                    Labor\n\nHazard:Hazard: TraumaticTraumatic // AcuteAcute InjuryInjury\n\n\n     Rigging gear can pose a risk to workers:            In addition to preparing loads for\n      loose binding wires may create a range of           material movement, riggers can be\n      hazards. If wire ends are caught on clothing,        involved in the unloading process as\n      the rigger could be pulled off balance.               well. One step in this process may\n      Similarly, the rigger’s glove can become            involve removing banding straps used to\n      caught in open loops, and exposed skin            hold the load together.\n      areas, such as the neck and the face, can be\n                                                       Cutting bands may release tension in the\n     wounded, torn or lacerated.\n                                                       bands, causing them to snap apart. The\n                                                             resulting movement of the band ends can\n                                                     cause injury to both the rigger and to\n                                                          others working nearby.\nProblemsProblems                                                                                                                               ProblemsProblems\n\n\n\n\n\n                                                     Before cutting any\n                                                    banding material,\n      Binding wire should                                                             riggers should\n     always be kept tight and                                                         consider and evaluate\n       free of loose ends.\n                                  ns   the potential risks.      Binding wire should be\n                                                 Nearby workers      inspected daily.SolutionsSolutions                                                   should be warned to                                                                                                                                                 SolutionsSoluti   stand clear of the area.\n                                                      Riggers should wear\n                                                    eye protection and\n                                                           gloves.\n\n                                                                                                             C-14",
+      "page_number": 14,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                   Safety                              &\n                                           Health Administration   Process:Process: RiggingRigging                      U.S. Department                                        of                                    Labor\n\nHazard:Hazard: TraumaticTraumatic // AcuteAcute InjuryInjury\n\n       If rigging gear fails, the result can be\n       fatal for anyone under or near the\n       falling load. A suddenly released load\n    may propel material in all directions,\n       far beyond the immediate impactProblemsProblems\n      area.\n\n\n    A rigging gear safety program requires periodic inspections. Tags, serial numbers and\n      color markings can help riggers identify which equipment is safe to use for a particular\n       load.\n\n\n\n\n\n                                NOTE: Periodic inspection\n                                      programs do not eliminate\n                                             the need to check rigging\n                                          gear for damage before each\nSolutionsSolutions                                    and every use!\n\n\n\n\n\n                                                                                                             C-15",
+      "page_number": 15,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational                                 Safety                            &\n                                         Health Administration    Process:Process: RiggingRigging                   U.S. Department                                     of                                  Labor\n\nHazard:Hazard: TraumaticTraumatic // AcuteAcute InjuryInjury\n\n CASE HISTORY\nTwo riggers were helping a portable crane operator unload steel. One of the riggers paused to\n talk with a supervisor. Unfortunately, the rigger was standing inside the swing radius created\nby the movement of the counterweight. Shortly after the conversation ended, the crane swung\n around and fatally crushed the rigger.\n\n\n\n\n\n     https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHA Video: Examining Fatal Shipyard Accidents\n\nAnalysisAnalysis andand PreventivePreventive MeasuresMeasures\n\nSeveral unsafe factors contributed to this worker’s death. First, there was no barricade to prevent\nworkers nearby from crossing into the swing radius of the crane (1915.115(d)). Also, the crane\noperator and the riggers did not keep in visual contact throughout the entire process. Another\ncontributing factor was the lack of audible (able to be heard) signals or horns on the crane which\ncould have alerted nearby workers that the crane was in motion.\n\n\n\n\n\n                                                                                                             C-16",
+      "page_number": 16,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration   Process:Process: RiggingRigging\n                   U.S. Department of Labor\n\nHazard: Traumatic / Acute Injury\n\n\n\n\n\n         CASE HISTORY\n\n\nA worker was tack welding shell\nplating on a unit while a crane was\nmoving other steel plates close by.\nWhile bringing the hook back for\nanother load, the crane operator failed\nto clear the shell plate that was just\nerected and which the welder had just\ntacked. The steel plate broke loose and   Do NOT turn Off safety\nfatally crushed the welder.               or warning devices\n\nSource: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHA Video: Examining Fatal Shipyard\nAccidents\n\nAnalysisAnalysis andand PreventivePreventive MeasuresMeasures\n\nCommunication between a rigger and a\ncrane operator is critical to the safety of\n all shipyard workers. Riggers and crane                            Unused slings and                                      Never swing loads\noperators need to understand how their                                        lines should be                                           over personnel\noperations may have safety                                             secured prior to                                           working\nconsequences for everyone in the area.                             moving the load\n\n\n  Crane operators should\n  assess and recognize\n  potential hazards before\n  starting work\n\n\n\n\n\n                                                                                                             C-17",
+      "page_number": 17,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration    Process:Process: RiggingRigging                   U.S. Department of Labor\n\nHazard:Hazard: TraumaticTraumatic // AcuteAcute InjuryInjury\n\n\n CASE HISTORY\nTwo workers were\n assigned new jobs. One\n of them was briefly\n shown how to operate a\n crane and the other was\n assigned to help by\n rigging the loads. The\n worker assigned to\n operate the crane only\n spent a short time\n practicing. During that\n time, multiple alarms\n and warning signals\n went off in the crane’s\n cab.\n\n\nThe new operator did not fully understand the\nmeaning of the alarms and signals and just figured\nout how to turn them off. The second worker stood\n directly under the crane’s lifting gear. As the crane\nextended, the “headache ball” was pulled tightly\n against the crane by its cable. Since the anti-two\nblock had been disconnected, there was no warning\nbefore the “headache ball” broke free and dropped\n directly onto the worker below.\n                                                               https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHA\n                                                                    Video: Examining Fatal Shipyard Accidents\n\nAnalysisAnalysis andand PreventivePreventive MeasuresMeasures\n\nThe crane operator and riggers were not appropriately trained. They should have been trained on the need to leave\n safety and warning devices on and functioning.\nTraining for the worker on the ground should have stressed the\nneed for riggers to never place themselves under the crane’s\nboom, hook, or load.                                Do NOT work under\n                                                           the boom, hook or load.\n\n\n                        Do NOT turn off safety\n                                 or warning devices\n\n\n\n\n\n                                                                                                             C-18",
+      "page_number": 18,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration    Process:Process: RiggingRigging                   U.S. Department of Labor\n\nHazard: Traumatic / Acute Injury\n\n CASE HISTORY\n   Two riggers were preparing to pull a mooring line onboard. After rigging up a series of cables, they began the\n    task. A wire rope fitting became caught on the chock. A rope was used as a temporary holding method, but\n    the rope failed. The metal cable snapped taut and caught one of the riggers in the neck. He was killed.\n\n\n\n\n\n      Source: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHA Video: Examining\n\n                                                  Fatal Shipyard Accidents\nAnalysis and Preventive Measures\n  Analysis and Prevention Measures:\n\n  The root cause of this fatality was that the rope could not hold the load applied to it. Proper equipment selection\n   is critical to safe rigging. If the rigger had been standing outside of the bight of the line, this accident could have\n  been prevented. Proper training and hazard assessments prior to every rigging job can help minimize the risks of\n   injury and death.\n\n\n\n\n\n                                             Perform hazard      Do not work in the\n                                              assessments before        bight of the line\n                                          work begins         under load or strain\n\n\n\n                                                                                                            C-19",
+      "page_number": 19,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "CaseCase HistoriesHistories\n\n\n   Rigging Accidents\n\n   CASE HISTORY #1\n   Worker Killed When Struck by Falling Exhaust Stack\n\n    Shipyard workers were using a wheel-mounted crane to reposition two exhaust stacks that had\n    been removed from a vessel. The exhaust stacks were being placed close to each other while\n    they were being prepared for sandblasting and painting. The crane operator placed one exhaust\n     stack on its side and leaned the second stack against it while preparing to move the second stack\n    onto its side. The crane operator then slackened the line so that a rigger could reposition the\n    wire rope. As the rigger approached the second stack, the 3-ton exhaust stack fell over and\n     struck the rigger in the back of the head, killing him instantly.\n\n     Possible ways to prevent this type of accident:\n     • Fully understand the sequence of rigging events.\n     • Understand the balance point of material.\n     • Ensure the drop position is secure.\n     • Ensure the lifted item is chocked, if possible.\n\n   CASE HISTORY #2\n   Worker Killed When Struck by Falling Anchor Chain\n\n   A crew was rigging an anchor chain that weighed 29 tons to a 40-ton gantry crane using a 5/8\n    inch cable. The anchor chain was being lifted in ten 90-foot coils. They were moving the chain\n    from a drydock to a barge for shipping. The load was moved over the barge and the operator\n    was about to lay it down when one of the cables snapped, causing a coil of chain to fall. At the\n    same time a worker was boarding the barge to help the riggers. The falling coil of anchor chain\n     struck the worker on the back and the running chain knocked him into the water. He died as a\n     result of being struck by the falling anchor chain.\n\n     Possible ways to prevent this type of accident:\n    •Do not work under suspended loads.\n    •Ensure that proper equipment is used for the lift. Both the type of equipment and the load\n     capacity of the equipment must be reviewed to provide a safety margin.\n    •Ensure that lifting cables are inspected prior to use.\n    •Ensure that personnel are not working in the danger zone. In this case, a 90' coil of chain\n    could fall over a wide area.\n\n\n\n\n\n                                                                                                               C-20",
+      "page_number": 20,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Rigging:Rigging: CaseCase HistoriesHistories\n\n\n\n CASE HISTORY #3\n  Worker Injured While Performing Maintenance on a Crane\n\n\n A worker was removing a damaged load drum, weighing 3,500 pounds, from a crane. He was\n  removing the final bolt from the gear side's pedestal bearing using a brass drift pin in his left hand\n  and a hammer in his right hand. The drum's gear side was secured with rigging, but it still shifted\n  forward. The worker’s left thumb and a portion of left index finger were caught and crushed between\n  the pedestal bearing and another portion of the drum assembly. His left thumb was amputated.\n\n\n  Possible ways to prevent this type of accident:\n   •   Complete a pre-work plan including hazard assessment, sequence of events and\n       possible danger areas.\n   •   Ensure that experienced personnel approve removal procedures.\n   •   Ensure that pinch points have been identified.\n   •   Secure items when possible.\n   •  Keep hands and body parts away from pinch points.\n\n\n CASE HISTORY #4\n  Worker Killed When Anchor Falls on Him\n A rigging crew was assigned to lay out an anchor chain prior to painting. The 16-ton anchor and\n  chain were placed on a barge with the anchor in a standing position. While the worker was lifting a\n  section of chain, the anchor fell on him and killed him.\n\n\n  Possible ways to prevent this type of accident:\n   •   Ensure that workers are not working under the load or in the danger zone.\n   •   Ensure that the anchor is secured to prevent movement.\n   •  Lay anchor on the deck or in a cradle.\n\n\n\n\n\n                                                                                                                 C-21",
+      "page_number": 21,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Rigging:Rigging: CaseCase HistoriesHistories\n\n\n\nCASE HISTORY #5\nWorker Struck by Object\n\nA rigging crew was working on moving a hull in an assembly area. The hull section was\nbeing positioned by a two-crane lift from a horizontal position to a vertical position. The\nrigging crew was unhooking the rigging shackles from one crane, and installing the eye\nbolts for the rigging on the second crane. While assembling a nut and bolt on a shackle\non the lifting lug of the hull section, the entire unit shifted, catching a worker’s foot under\nit which resulted in a crushing injury. The injured worker had been assigned as a helper to\nthe rigging crew on the day of the accident.\n\nPossible ways to prevent this type of accident:\n• Complete a pre-work plan which includes a hazard assessment, sequence of events,\n  securing the load and identifying possible danger areas.\n• Ensure that workers are qualified and trained before the start of work.\n• Ensure that each new worker is trained and is properly supervised.\n• Ensure that pinch points are identified.\n• Properly secure cargo.\n\nCASE HISTORY #6\nWorker Injured When Struck by Rolling Beam\n\nWorkers were placing support I-beams on straps while preparing to launch a large ship.\nOne worker was assigned to be a lead worker for this task. A forklift was used to position\nthe I-beams which had 24-inch by 36-inch plates welded on each end. After the lead\nshipwright rigged the sling on one of the beams, he told the workers to clear the area. He\njumped off the beam and walked to the west side of it so that the load handler could see\nhim. When he got to the clear area, he saw a worker on the ground. The beam had\nrolled toward the east, and the corner of the end plate on the beam had struck\nthe fallen worker’s left leg about mid-calf, fracturing his leg.\n\nPossible ways to prevent this type of accident:\n• Complete a pre-work plan which includes hazard assessment, sequence of events and\n  identifying possible danger areas.\n• Establish safety/exclusion zones.\n• Ensure that pinch points are identified.\n• Ensure that lift signal/warning is sounded.\n• Ensure that personnel are not in the area of the lift.\n\n\n\n                                                                                                   C-22",
+      "page_number": 22,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Rigging:Rigging: CaseCase HistoriesHistories\n\n\n\nCASE HISTORY #7\nCrane Operator Crushed Between Two Steel Frames When Rigging Failed\n\nThe operator of an overhead crane was using a chain sling attached to the hook\nof the crane and was setting it up into a single choker hitch to pick up and turn\nover the steel frame that was lying horizontally on two sawhorses. The hook on the\nsling did not have a safety latch. The operator was standing between the load and\nanother steel frame that was leaning vertically against the shop platform. The chain\ndisconnected from the hook and the vertical steel frame fell towards him. He was crushed\nbetween the two steel frames.\n\nPossible ways to prevent this type of accident:\n•Ensure that workers do not place any part of their bodies into areas where they might become\ntrapped when operating an overhead crane.\n•Ensure that the tools and equipment used are regularly inspected for defects and are replaced or\nrepaired as needed.\n•Ensure that workers who use cranes are trained in rigging procedures.\n•Perform daily inspection of cranes using safety checklists to ensure that all equipment is\nworking properly.\n•Ensure that the hook has a working safety latch, and if not, is moused.\n\n\n\n\n\n                                                                                                       C-23",
+      "page_number": 23,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Rigging: Case Histories\n\n\n     CASE HISTORY # 8\n       Welder Struck by Plate\n\n     A welder was working with the ship repair crew which was fitting a new 0.5-inch thick\n          steel plate on the bottom hull of a tanker. The crew was working on an 8-foot by 40-foot\n         plate which would patch the outboard port side between the center line and the bilge.\n        Three chain-falls were used to lift the plate: two, 3-ton capacity chain-falls and one, 1-ton\n         chain-fall. When the plate was raised, it was off by six inches and did not fit up to the hull.\n       The welder began welding a pad eye to the edge of the plate so that a come-along could be\n        attached and allow the plate to be pulled into position. While the welder was welding the\n       pad eye, one of the interior pad eyes failed, resulting in a chain reaction that caused the\n         plate to drop on the welder, crushing him.\n\n        Possible ways to prevent this type of accident:\n       •Do not work under suspended loads.\n       •Complete pre-work plan including hazard assessment, sequence of events and possible\n        danger areas.\n       •Use blocks or shoring to support the load while work is being done.\n        •Ensure that the lift plan is approved and utilized.\n        •Ensure that rigging equipment meets or exceeds requirements of lift and that a safety\n         factor has been built in.\n        •Ensure that chain-falls are the same capacity when positioning loads.\n        •Ensure that the pad eyes are the appropriate size for their intended use and that the pad\n        eyes are welded, not tack welded.\n\n\n\n\n\n                                                                                                           C-24",
+      "page_number": 24,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration\n                                                  Shipbuilding,Shipbuilding, ShipShip RepairRepair andand ShipShip BreakingBreaking\n                         U.S. Department of Labor\n\n Nobody wants\n to be put\n between a\n rock and a\n hard spot . . .\n\n. . . or a load\nand an\nunguarded deck\nedge or deck\nopening.\n\n\n\n\n\n                  This is the “big game.”\n                    Suit up for it.\n\n                        Fall protection saves lives.\n\n                                                                                                            C-26",
+      "page_number": 25,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration\n                                                Shipbuilding,Shipbuilding, ShipShip RepairRepair andand ShipShip BreakingBreaking\n                       U.S. Department of Labor\n\n     Got plans for what you’re going to do at the end of this shift?\n\n                      So did these people.\n\n\n\n\n\n A worker was tack welding shell plating on a unit while the crane was moving other steel\n  plates. The steel plate was struck, broke loose, and fatally crushed the welder.\n\n                 Source: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHAVideo:\n                                   Examining Fatal Shipyard Accidents\n\nKNOWKNOW HOWHOW TOTO DODO ITIT RIGHT.RIGHT.\nTHENTHEN DODO ITIT RIGHT!!RIGHT!!\n\n\n\nTwo riggers were helping a mobile\ncrane operator unload steel. One\nof the riggers paused to talk with a\nsupervisor. Unfortunately, the\nrigger was standing inside the\nswing radius created by the\nmovement of the counterweight.\nShortly after the discussion ended,\nthe crane swung around and\nfatally crushed the rigger.\n\n\n\n\n\n           Expect the unexpected. Play by the rules.                         C-27",
+      "page_number": 26,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration\n                                         Shipbuilding, Ship Repair and Ship Breaking\n             U.S. Department of Labor\n\n\n\nGot plans for what you’re going to do at the end of this shift ?\n\n                 So did these people.\n\n\n\n\n\n Two riggers were preparing to pull a chain onboard. After rigging up a series of\n cables, they began the task. A wire rope fitting became caught on the chock. A rope\n was used as a temporary holding method, but the rope failed. The metal cable\n snapped taut and struck one of the riggers in the neck. He was killed.\n\n\n\n\n\n     Source:: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html\n          OSHA Video: Examining Fatal Shipyard Accidents\n\n\n\n\n\n                                                                                                C-28",
+      "page_number": 27,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Occupational Safety & Health Administration\n                                               Shipbuilding, Ship Repair and Ship Breaking\n                      U.S. Department of Labor\n\n    Got plans for what you’re going to do at the end of this shift?\n\n                     So did these people.\n\nTwo workers were given new jobs. One of them was briefly shown how to operate a crane and the other\nwas assigned to help by rigging loads. The worker given the crane assignment spent a short period of time\npracticing. As the crane extended, the headache ball was pulled tightly against the crane by its cable.\nSince the alarms had been disconnected, there was no warning before the two-blocked boom broke free\nand dropped directly onto the worker below. He died.\n\n\n\n\n\nSource: https://www.osha.gov/dts/maritime/video/shipyard_accidents.html OSHA Video: Examining Fatal\n                                     Shipyard Accidents\n\n             Expect the unexpected. Play by the rules.                       C-29",
+      "page_number": 28,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0001_image_001_4398ec734747.jpeg",
+      "file_hash": "4398ec73474741849333d623cf0c22ae7d2a7d0d45ec851f432e8aa0230cbe6c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0001_image_002_8258bfdee90e.png",
+      "file_hash": "8258bfdee90ee63965d776f921675a773eaca2078ed55537b9432a95dd77ffd2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0001_image_003_6925344f3114.jpeg",
+      "file_hash": "6925344f31145380476ac72c7e24a63c2c182201e4ded503c75e33f7625475cc",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0001_image_004_8f927476214e.jpeg",
+      "file_hash": "8f927476214e4824e8720ee2bb87f1041064c7ebe7e44ae37d37d93aae004dba",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0001_image_005_95852df3756b.jpeg",
+      "file_hash": "95852df3756bd3d8a3300f36e15fa42fc68649f9b1fecde0356695fe491edeb6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0003_image_001_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0003_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0003_image_003_908b9ce8f672.jpeg",
+      "file_hash": "908b9ce8f672184b9abfaf44ba7d806e35d201195495cc5110b31b30a37c35cd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0004_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0004_image_002_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0004_image_003_bc6cb548343f.jpeg",
+      "file_hash": "bc6cb548343f2beba46bbe007fab9205881a591b5cff96984f3c29e8ebbbc4aa",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0005_image_001_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 5,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0005_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 6,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0006_image_001_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 6,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0006_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 7,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0007_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 7,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0007_image_002_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0008_image_001_d3569cc17bc4.jpeg",
+      "file_hash": "d3569cc17bc4e73a5277abac5e803e2b0b99f8a453da76a977d3c20bf9c093d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0008_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 8,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0008_image_003_674efba662c3.jpeg",
+      "file_hash": "674efba662c308938bb61c459791f38b2ead0ef64e3dd9ca1063e42e7686ab5b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0009_image_001_3fe8425a3a9c.jpeg",
+      "file_hash": "3fe8425a3a9ce8fd5853f87f18aa46eaa178f30e4bf91a24f1df0b2b5eaf5957",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0009_image_002_0a1a92ae0938.png",
+      "file_hash": "0a1a92ae093828253cdb2f181fc302e782f329689ef27fe18a80f5e1541436a2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0009_image_003_2f1869065dae.jpeg",
+      "file_hash": "2f1869065dae0c59183308ba58fbe6260e46379293d0fd56549b8ae367db6a6f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0009_image_004_b69a6eef1dc7.jpeg",
+      "file_hash": "b69a6eef1dc7457e6031882bb92c3ac01f3eb191d02daf1ecbcbf29a0a862d89",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 9,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0009_image_005_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_001_7d42a612cf5d.jpeg",
+      "file_hash": "7d42a612cf5d763fea44f0081b868008ea166b8c02f0f236ad34001d45874f7f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_003_e336641a41ff.png",
+      "file_hash": "e336641a41ff79a382332ccb4a852ab03b5247a406ce747c94b7ae256ded25f7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_004_a19ab5917d0c.jpeg",
+      "file_hash": "a19ab5917d0cdf5a053d39372ddafc8bc5e918a9a6b56ee23b35bb9727c0e9d3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_005_7c1b7fde31f7.png",
+      "file_hash": "7c1b7fde31f7caeb7af5b51839ecad11dbed5ea17b55444e823821b3035f1fc9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_006_07328c95b02b.png",
+      "file_hash": "07328c95b02be561dd82e276345d3a13a3e16c9889f2b9dd8e94b0dc1a30895b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_007_3d7fe0b9aff0.jpeg",
+      "file_hash": "3d7fe0b9aff02ec85025b4f98319f3a628f29e6a3216a5abb0922b19a78c968e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_008_84ab6d3288bd.jpeg",
+      "file_hash": "84ab6d3288bd942796bc1b71660bad96ceeb64c973648337c6b9a7db5942394b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 10,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0010_image_009_b38ee19faff3.jpeg",
+      "file_hash": "b38ee19faff36ee447890063cfdf138fd74033e7a8d290544207d7aa6632bfd2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_001_a17d039bd2a6.jpeg",
+      "file_hash": "a17d039bd2a6b938bce6b23e5530a025463e5bd61f8bba8d3404e7aca2d50774",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_002_0e031bde15f6.jpeg",
+      "file_hash": "0e031bde15f65f6bad826d3763ea878744438b5aa518181b9c6ffb8abe89f522",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_003_883135febeb0.jpeg",
+      "file_hash": "883135febeb0a544db2cb4680d5f46fde1ff0ca0a4bf6ea4102f36065fd432bb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_004_e3f4b418854c.jpeg",
+      "file_hash": "e3f4b418854cac0777a1a794b2f38eac50f12342c8d7fb1cdb2a88303c1808ac",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_005_2ed4030d897a.jpeg",
+      "file_hash": "2ed4030d897acec49e8e5247c410a0a7dc09810dded3c5befcb15a1bbd9e91be",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 11,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0011_image_006_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_002_dbef85bd241a.jpeg",
+      "file_hash": "dbef85bd241a8b891d6071e462bc06b6c68bb34cf881eff8b6ee5b274eabfdb7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_003_cdfb605dea90.jpeg",
+      "file_hash": "cdfb605dea90afadde7cc26b82c7a22bae514ec36a25a25a5b356ef18bc3c1d2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_004_a618d10a87d6.jpeg",
+      "file_hash": "a618d10a87d671bdcfba2ec650994bcbc4af300e7516ba73ec2d2ecce0b51909",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_005_261ba02e200e.jpeg",
+      "file_hash": "261ba02e200ef13fdaf9c69a83648390950bea389626d90a26d44267d3c57f01",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_006_9f81841e56c1.jpeg",
+      "file_hash": "9f81841e56c117af670059f831d8b71d8f19bb961d7d76a6ec17f80cb7375632",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_007_bf5787aec5eb.jpeg",
+      "file_hash": "bf5787aec5eb0b8feb4680814361ade2b0a02f7c7965f870b9f8321588a0e0b5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 12,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0012_image_008_9b3a9e427bc0.jpeg",
+      "file_hash": "9b3a9e427bc071dde372a31c689c2a2956c8eafb8349ad4f6e3707acf9280f1f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 13,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0013_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 13,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0013_image_002_0aa32771492b.jpeg",
+      "file_hash": "0aa32771492b05f233cb52b8d499d6f870a69f48dfe18f0391dee6e05dc27faf",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 13,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0013_image_003_aaaaeb8da0ac.jpeg",
+      "file_hash": "aaaaeb8da0ac4d140e91a3b90848f7977e497e4d8005eca13419ce0df17fac5b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 13,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0013_image_004_48e665de2289.jpeg",
+      "file_hash": "48e665de22892e4a007708c6d2145a70ccb1db337d085af992799bbaa70df464",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_001_2e714c97de6b.jpeg",
+      "file_hash": "2e714c97de6bd919fa0bd6a43477890aaffa2975ad2683b0648af0533328d1e0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_002_4193b383144a.jpeg",
+      "file_hash": "4193b383144a9e8aa4eb470b39e4e82e537090155611c6f189489cfdc30a3d91",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_003_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_004_67685d3ca040.jpeg",
+      "file_hash": "67685d3ca04061bd2e275ccc4317f8bdbb73026c995a5307efa97bc546f07613",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_005_d896773f487e.jpeg",
+      "file_hash": "d896773f487e399b87893c364fc3b9329e4b1171930cee40baedd1783606aa01",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_006_2f6b5d6bc0d3.jpeg",
+      "file_hash": "2f6b5d6bc0d31f248115123ddd52893983de305f19a26b0063391d4b2e311a8e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 14,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0014_image_007_2e8cfe1c09bd.jpeg",
+      "file_hash": "2e8cfe1c09bdb5ca33006d6f0a578283fdb80cec5561f3cb172cc6abad9e8bf2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_001_28d54682858d.jpeg",
+      "file_hash": "28d54682858d67d70670c54c534110340a8992caa5b636c9fec71df0cc72638b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_002_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_003_b38658122375.jpeg",
+      "file_hash": "b3865812237583b7a587ad8d477c282bd22b8aed3f4fa3ccd9d28149d5449b85",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_004_de8714829c50.jpeg",
+      "file_hash": "de8714829c505df6e2a90dd335f446e2834343aa4df3450f669321fae470a816",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_005_91db5eb8d539.jpeg",
+      "file_hash": "91db5eb8d539087a1b768dc75770e6e4eb0bf73d24f7cdaaa22339222927d684",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_006_5f2845ce28f7.jpeg",
+      "file_hash": "5f2845ce28f793774d051381ca470d0add499c4eb6fa89847420e7674e4d755c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_007_b6bab674f3d4.jpeg",
+      "file_hash": "b6bab674f3d48e5c8148dafa757833bc260ba0679e44bdcca855f8bc8e5ba4da",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_008_22ad0800f18f.jpeg",
+      "file_hash": "22ad0800f18f57fc895d3c871d6395e3a4884aefc553c3d23b1ee790e3fe48b8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 15,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0015_image_009_8e80b5ce5c8d.jpeg",
+      "file_hash": "8e80b5ce5c8d43a3dd01d10d78116ab016d994d61ee700e4a236ae08431dc90e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_002_70e0d849bb4d.jpeg",
+      "file_hash": "70e0d849bb4d7dc31b230d15482d07e0943485b1e06f7ac5918281d77b37e56b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_003_f9c2dc6e1d1e.jpeg",
+      "file_hash": "f9c2dc6e1d1e847ff2b7162e4c730c6d0eb2f959967a9c3dc93a3f15f1246b68",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_004_63738945a6ab.jpeg",
+      "file_hash": "63738945a6ab57e248ac2eb71bd92490fd00b93f585b9831ec23b95ecc4b8ee1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_005_3d42ca58e181.jpeg",
+      "file_hash": "3d42ca58e1812b1c1325ce712d248f9157dc614727c770ba7f6132d1e179c8af",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_006_11989dd2dad0.jpeg",
+      "file_hash": "11989dd2dad09c0c5a4e319ba39a890b41edede8185c3ae344d5d975f6bd55df",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_007_d6de4f80824a.jpeg",
+      "file_hash": "d6de4f80824a95aa98ba3a4ebdb89174006f8d5a15d49fd8edcc71d08b233bfb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_008_74e67c41886f.jpeg",
+      "file_hash": "74e67c41886f791a6040afa6c671c6765f3931b2beb21b63e095b5d1118e0221",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 16,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0016_image_009_e7573b8f3e3e.jpeg",
+      "file_hash": "e7573b8f3e3e1800b444b35579af3d1ecb51f8bc70cfa68edb347906f779ff9c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_002_5494283a987b.jpeg",
+      "file_hash": "5494283a987ba914bbbf14236336af70317a944c3bf131bb051337b97df111ac",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_003_f6105c2eb924.jpeg",
+      "file_hash": "f6105c2eb9249c7275f9711c0322b6fdbaf96a627fda6a1d32ad7b3a53fd6611",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_004_662d72443e78.jpeg",
+      "file_hash": "662d72443e78d1724cb47e910bd0d44892ff224ffe73a267972c4fcac1671dda",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_005_eec34824a9f8.jpeg",
+      "file_hash": "eec34824a9f8d904f917849b585a74f15882e2568271ae0ca527ed6a98cfed5f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_006_1973d70295b1.jpeg",
+      "file_hash": "1973d70295b1e7f9e79c8a4fa0376777030e97f469c7073b6992e4858ed352cd",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_007_5407ca38f5a0.jpeg",
+      "file_hash": "5407ca38f5a0bb97463e4a1657274d2c5597adc17efc63713b5d3d957d8df0da",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_008_6fa2c70acbb5.jpeg",
+      "file_hash": "6fa2c70acbb5aa484d3183b71d2838b2f51d2de5596d5d9ce8e502eae6008a5d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 17,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0017_image_009_84213d079240.jpeg",
+      "file_hash": "84213d079240ffb47e965664a8deccc36f7dc37ef6047da58834732136aa36c3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_002_ec490402bfcf.jpeg",
+      "file_hash": "ec490402bfcffb4cf071ec60b04ec124752a18ef4d18783af198cc0818808f32",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_003_876d2eca617c.jpeg",
+      "file_hash": "876d2eca617cd940e83d6d9ee6fec87aca6b8e3cf12fc24f8855dc9f38d738ed",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_004_b56f8ce9e9c5.jpeg",
+      "file_hash": "b56f8ce9e9c5eeab9b9a99421e715af92d93c235c6b0e554ef07168ee9631a67",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_005_02dfd9e62e4b.jpeg",
+      "file_hash": "02dfd9e62e4b16489cb9b631979130ef51588519aa846f8d3f8974bd843ee1f1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_006_6c03eb25d3cd.jpeg",
+      "file_hash": "6c03eb25d3cdf51c565b22933cb462a88e65c21b445b18e64a12e9800eb19d98",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_007_3a17bac560c0.jpeg",
+      "file_hash": "3a17bac560c09c62983fcdbd6866706fa09ff0a681d2145d31d363ed7a8f24c0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_008_570519e9a5b2.jpeg",
+      "file_hash": "570519e9a5b2ebc72462b39f941ddcd53394e3279e9499dc4bb2466226ca5d26",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_009_dc6492b8e9f2.jpeg",
+      "file_hash": "dc6492b8e9f28f14243c9038d3394d43b004c43cd4a6259caaad7ca3c3d3409d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_010_69360c7ef90f.jpeg",
+      "file_hash": "69360c7ef90fcc3fec4efd32b9d1b042934cfd2fd7304dd177d76102de8f7ebf",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 18,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0018_image_011_59dcbb28b042.jpeg",
+      "file_hash": "59dcbb28b042f0488b4e7eabbfbe79e4de1fd12461560bb20e3009a6baa23ad3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_001_f2f16401b043.jpeg",
+      "file_hash": "f2f16401b043fcd322ccc18154642e60d96923c91d57f87183b734fc635a5d73",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_002_55d0244b7d98.jpeg",
+      "file_hash": "55d0244b7d98cbc4c38710ecaa34d1ba52a22a826461fd6977ae9d2643f17041",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_003_0234297d2729.jpeg",
+      "file_hash": "0234297d27292e2d56b65f3f075b87a28fce2a131753f445c2ecef614d9e44a4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_004_e5580a1e55b6.jpeg",
+      "file_hash": "e5580a1e55b6643a8e5ec0d4103c8e9ce05b275c47394e6ef81a6173fb424ebb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_005_140752265c9f.jpeg",
+      "file_hash": "140752265c9fa84c8064b85615aaac6fc75d79b391ddd15a83885ce8d2265ac6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_006_cc585ee3d634.jpeg",
+      "file_hash": "cc585ee3d6343029f68d0aed8a30a5e58a2aff39f5e01f8800733f2e4d393389",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_007_6740f49d7158.jpeg",
+      "file_hash": "6740f49d715882108d7e6c37d9623a5c43e634dc64c2c1a0b01adf368bdc0221",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_008_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_009_63a141382395.jpeg",
+      "file_hash": "63a14138239529119a48060b60cf8c8de03ecf9eb8a79c480b9ae8f106911c83",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 19,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0019_image_010_4eccbee6e32f.jpeg",
+      "file_hash": "4eccbee6e32fea98896ef02bdf1c41c5319800b430c2dfaa56969bcdd3876d10",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_001_7d42a612cf5d.jpeg",
+      "file_hash": "7d42a612cf5d763fea44f0081b868008ea166b8c02f0f236ad34001d45874f7f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_002_b1ddd609fdd5.jpeg",
+      "file_hash": "b1ddd609fdd5e808d3dff6b5a862b978c5dc2c904eda56613c3f9d99615e6af6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_003_ecdfefb16748.png",
+      "file_hash": "ecdfefb1674857b674517488b3ebe82bb831e703703dad70a6cebcdc162081c2",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_004_88bccc0caa7b.png",
+      "file_hash": "88bccc0caa7bc66360b0a5a87c007dd252235120f2439d77273addb029ff7910",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_005_942e1b5e7fe2.jpeg",
+      "file_hash": "942e1b5e7fe274cb53e26d2a9f71a742df7b082c205ae2143ae05c2ff8fc0392",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 25,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0025_image_006_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_002_5494283a987b.jpeg",
+      "file_hash": "5494283a987ba914bbbf14236336af70317a944c3bf131bb051337b97df111ac",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_003_f6105c2eb924.jpeg",
+      "file_hash": "f6105c2eb9249c7275f9711c0322b6fdbaf96a627fda6a1d32ad7b3a53fd6611",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_004_662d72443e78.jpeg",
+      "file_hash": "662d72443e78d1724cb47e910bd0d44892ff224ffe73a267972c4fcac1671dda",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_005_714f71516140.jpeg",
+      "file_hash": "714f71516140096181e92d3862f4a43c1447ed815616a32f09c0ca787536a481",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_006_a4f89800ba87.jpeg",
+      "file_hash": "a4f89800ba87fdff6632d6c98153cacf94defda82aeb9f45792e55b9a19a2b43",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_007_013cd218b9d8.jpeg",
+      "file_hash": "013cd218b9d86f24aa13b5bf04027066c14496c227146f540fc526642f7fbe6d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_008_7f1a0d1ad30b.jpeg",
+      "file_hash": "7f1a0d1ad30b69d16cdb954e6c4622b6ee7a33545f72c17f5c902b81a100f5f1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_009_302ac38a1e45.jpeg",
+      "file_hash": "302ac38a1e45e33b7b8030e2953c21f91730069320dcfddab416663f54733c4e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 26,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0026_image_010_11989dd2dad0.jpeg",
+      "file_hash": "11989dd2dad09c0c5a4e319ba39a890b41edede8185c3ae344d5d975f6bd55df",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_001_f3f7b7a91b9a.jpeg",
+      "file_hash": "f3f7b7a91b9a55159187a8fef7325badc2b8a727c4174c9362128b7e77ddf6b7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_002_1589fa6f14f6.jpeg",
+      "file_hash": "1589fa6f14f65e02dc9c234cc05feffc15d06f120e0735f2a2eff7ea9b5070a9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_003_3524792de829.jpeg",
+      "file_hash": "3524792de82990fefd7796e8e97f5eb7722900344f8a122f23ac273ec8dc3e82",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_004_c3f42edc93a8.jpeg",
+      "file_hash": "c3f42edc93a8623ebffa277e91fb35a93fbca4185bf8ecceeb6c745da131d746",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_005_b4cfebcfa7b6.jpeg",
+      "file_hash": "b4cfebcfa7b68fdd10933eaaa2ad49d4c958d6b3971201d2933123912b9c4210",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_006_25f10ac6f8c9.jpeg",
+      "file_hash": "25f10ac6f8c9714c3135dd559a3770b8bd8d0e5470e0fbaabaabad590d5cbe05",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_007_dd679a1e7237.jpeg",
+      "file_hash": "dd679a1e7237046fb860ef9d5fe3e2271bb2e0f9e5d86f2fac12bd511a223eb1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 27,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0027_image_008_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_001_32ab0f98fb55.png",
+      "file_hash": "32ab0f98fb55ffafe21a3cb3a23b4ded260ccc539dd377b821e5c506f2823637",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_002_f6de190b8f5d.jpeg",
+      "file_hash": "f6de190b8f5d611d8c27e7481f03857d9141671086cf45962c8ccff414072d9e",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_003_0199be1889cb.jpeg",
+      "file_hash": "0199be1889cbc23ed21ede6a6525e551dfb1d619329fd1cee01355c7c23a48c7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_004_53ea5da5e9b0.jpeg",
+      "file_hash": "53ea5da5e9b049d08bf5c68c3663e54be0c84efe8f588d057c536cc1921ecbee",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_005_9f8b005bb49c.jpeg",
+      "file_hash": "9f8b005bb49c6db0c730f33f69129cb1f59629accfd00867e79d9f337407e527",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_006_28503f074df2.jpeg",
+      "file_hash": "28503f074df29a93038c9bc4618641e319597d7d57601c8acb6bef42afa192ca",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_007_031eb24bbd82.jpeg",
+      "file_hash": "031eb24bbd827b4d211385b875e02a46cbbc73ae66a51f32653ef8f87319843c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_008_5a9c804a1587.jpeg",
+      "file_hash": "5a9c804a15876c009dba79acd74ba4854547eaf5c2b4232faa9e7d46c04e49bc",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_009_b78879a87409.jpeg",
+      "file_hash": "b78879a87409116c86941d3254e950cfeffd912915c73d497620ba62c61e8931",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 28,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/524c60195235c164a75c/page_0028_image_010_cc3de323600a.jpeg",
+      "file_hash": "cc3de323600ae78ae1422cdbdea9ff97b7e0e0301fa6577556ce087d885c0bbd",
+      "ocr_text": ""
+    }
+  ]
+}

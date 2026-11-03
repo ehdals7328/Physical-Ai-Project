@@ -1,0 +1,237 @@
+{
+  "blocks": [
+    {
+      "text": "[PDF 표 1, 페이지 1] 기본적으로 체크하여야 할 조항\n| 구분 | 구분 | 구분 | 산업안전보건기준에관한규칙 |\n| --- | --- | --- | --- |\n| 중량물취급 | - | 제385조 | 중량물취급 |\n| 시의위험방지 | - | 제386조 | 경사면에서의중량물취급 |\n| 시의위험방지 | - | 제387조 | 꼬임이끊어진섬유로프등의사용금지 |\n| 시의위험방지 | - | 제388조 | 사용전점검등 |\n| 하역작업 | - | 제389조 | 화물중간에서화물빼내기금지 |\n| 등에의한 | - | 제390조 | 하역작업장의조치기준 |\n| 위험방지 | - | 제391조 | 하적단의간격 |\n| 위험방지 | - | 제392조 | 하적단의붕괴등에의한위험방지 |\n| 위험방지 | - | 제393조 | 화물의적재 |",
+      "page_number": 1,
+      "chunk_type": "TABLE",
+      "asset_path": "",
+      "section_path": "기본적으로 체크하여야 할 조항"
+    },
+    {
+      "text": "일터에서의 유해·위험 예방 조치\n중량물 취급 시 위험방지\n\n2015 - 교육미디어 - 682\n\n기본적으로 체크하여야 할 조항\n\n※ 상기 조항 이외에 추가적으로 적용되는 관련 법령 및 조항이 있음을 유념한다.\n\n일터에서 적용하여야 할 유해·위험 예방 조치\n\n중량물 취급\n\n●\u0007중량물을 운반, 취급하는 경우에 하역운반기계·운반용구(이하 “하역운반기계등”)를 사용. 다만, 작업의 성질상 하역운반\n기계 등을 사용하기 곤란한 경우 예외\n\n경사면에서의 중량물 취급\n\n●\u0007경사면에서 드럼통 등의 중량물을 취급하는 경우 다음 사항 준수\n\n- \u0007구름멈춤대, 쐐기 등을 이용하여 중량물의 동요나 이동을 조절\n\n- \u0007중량물이 구르는 방향인 경사면 아래로는 근로자의 출입을 제한\n\n경사면 아래로 \n출입하면 안돼!\n\n작업받침대 사용",
+      "page_number": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Safety Point\n\n\n\n  꼬임이 끊어진 섬유로프 등의 사용 금지\n\n ● 다음에 해당하는 섬유로프 등을 화물운반용, 고정용으로 사용금지\n    - 꼬임이 끊어진 것\n    - 심하게 손상되거나 부식된 것\n\n\n\n   ● 벨트 박리\n\n                      본체 부분             고리 부분 고리부분의 폭 이상으로 봉재선이\n                                                        풀려 있는 것은 폐기\n         봉제부\n\n\n                            폭          ℓ\n\n          봉제 부분 길이의 20% 이상\n                              ℓ ≥ 폭 일 때 폐기                 접합부의 봉재선이          테두리가 떨어지면 폐기\n                                                         풀어져 있는 것은 폐기\n\n\n   ● 결이 일어남                     ● 손상\n\n\n                                                           걸린 상처\n\n\n\n\n\n                                                   베인 상처    쓸린 상처\n\n\n\n\n  사용 전 점검 등\n\n ● 섬유로프 등을 사용하여 화물취급작업을 하는 경우 해당 섬유\n   로프 등을 점검하고 이상을 발견한 섬유로프 등을 즉시 교체\n\n\n\n  화물 중간에서 빼내기 금지\n\n ● 화물 중간 빼내기 금지(짐이 무너져 사고 위험)\n\n ● 직선으로 깊이 파내기 금지 및 위에서부터 차근차근 하차\n\n\n\n  하역작업장의 조치기준\n\n ● 작업장 통로 위험한 부분 조명 설치\n\n ● 부두 안벽 선을 따라 통로 설치시 폭 90cm 이상\n\n ● 육상에서의 통로 및 작업장소로서 다리 또는 선거(船渠) 갑문(閘門)을 넘는 보도(步道) 등의 위험한 부분에 안전난간 또는\n   울타리 등을 설치",
+      "page_number": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "Safety Point\n\n\n\n  하적단(포장, 가마니 등으로 포장된 화물)의 간격\n\n ● 바닥으로부터의 높이가 2m 이상 되는 하적단과 인접 하적단 사이의 간격을\n   하적단의 밑부분을 기준하여 10cm 이상으로 함\n\n\n\n  하적단의 붕괴 등에 의한 위험 방지\n\n ● 하적단 붕괴 또는 화물 낙하 위험 사전 조치사항\n    - 하적단 로프 결속 및 망을 침\n    - 하적단을 기본형으로 쌓음 : 무거운 것은 밑에 가벼운 것은 위에\n    - 하적단 헐어낼 때는 위에서부터 순차적으로 층계를 만들면서 헐어내어야 하며, 중간에서 헐어내어서는 아니 됨\n\n\n\n\n\n  화물의 적재 시 준수사항\n\n ● 침하 우려가 없는 튼튼한 기반 위에 적재\n\n ● 화물의 압력에 견딜 만큼의 강도를 지니지 아니한 경우에는 벽에 기대지 말 것\n\n ● 불안전한 정도로 높이 쌓지 말 것\n\n ● 하중이 한쪽으로 치우치지 말 것\n\n\n\n\n\n               3단이상 고단 적재(X)                  안정된 높이(2단) 적재(O)\n\n\n\n\n  「일터에서의 유해·위험 예방 조치」는 산업안전보건기준에 관한 규칙에서 정하고 있는 주요 조항에서 해당 유해·위험 예방 조치 내용을 사진, 삽화 등을\n  통해 현장에서 좀 더 적용하기 쉽도록 구성한 것으로, 작업 시작 전 안전점검, 위험성평가, 교육 등에 활용하길 바랍니다.",
+      "page_number": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_001_129af206c76f.png",
+      "file_hash": "129af206c76f98c5ef7f1d95a0681acbaadc99bb5f5c27015c87ec1a9a09bfc4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_002_99570ee206b1.png",
+      "file_hash": "99570ee206b1cae7fdecf7d71ccc2880ddfdcacc4b58874349c64cead73a3269",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_003_da6517c97148.jpeg",
+      "file_hash": "da6517c971480ef70b2183a0c2ebd9f3a7739ef14846d5b0917e2f58cf3c32e8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_004_e8ec43f7f36e.jpeg",
+      "file_hash": "e8ec43f7f36e7f56330170a396dff32024a7c6b12d627ffdfcc8a7dd7bdeb775",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_005_4a95709fc9f9.jpeg",
+      "file_hash": "4a95709fc9f93efbbdd97bb8aa04a5a99b456946864b5af53dbcb8d9586cb523",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_006_c47a6975f7ef.jpeg",
+      "file_hash": "c47a6975f7efc67a29f593805f0b5e024134742ac8e34fcde44692f88dc4283c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_007_e8d96616847d.jpeg",
+      "file_hash": "e8d96616847ddd172b910d12ca2e96fee729b221a225b3728585c209b8fbc0a5",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_008_24a7314ea290.jpeg",
+      "file_hash": "24a7314ea2902447df7f0b460039132e1631fcc4861b601b1d77d9bac0c455ca",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0001_image_009_c8b7aba75f62.jpeg",
+      "file_hash": "c8b7aba75f62366647681976c02db60761c37b6d4e8b920bfbc64149cb3cb8d4",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_001_2aa51d618dca.png",
+      "file_hash": "2aa51d618dca758481eddccae8ef13227f96ba99a9d6456188c67315bee72aec",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_002_5608f51b38ef.png",
+      "file_hash": "5608f51b38efd6e536f08465ba3d522f4f1f50a0e6a9b1c19c9e5708200e0962",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_003_da168a87ea1b.png",
+      "file_hash": "da168a87ea1b43fa56e75f56eb22e54581ef34569847af3d1b1a177774a9d7f6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_004_e60fef3df335.png",
+      "file_hash": "e60fef3df335369264f5807b7b1ea2ef9e8d8172d118b4bec76786a9e69bf1db",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_005_fcc106755459.png",
+      "file_hash": "fcc1067554596302041e3bf46104165197b3f23f320ccbee28cd188dd4f296f7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_006_023a90d1e278.png",
+      "file_hash": "023a90d1e278feda3e2541cdce1268fffd9abc020ea1c93286a34e2596e7bf21",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_007_cfd8a7e50590.png",
+      "file_hash": "cfd8a7e50590c36abc0673cc69a37c011509d0c6d567e2a9e18091b69f8824e6",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_008_5287b6b76931.png",
+      "file_hash": "5287b6b769312fbe1469085e7f2182cfa5b10f126df41681453b2d7648f2f81f",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_009_f0fb98ad238d.jpeg",
+      "file_hash": "f0fb98ad238df0c21904afd256ef9fb0b2fbd9a36b548d4a6c1f63919e2a3194",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_010_bc4a636c5097.png",
+      "file_hash": "bc4a636c5097436b523dc4112700d58b44ab2e45f385fe54d28730700bbbc9f3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_011_e79558dee845.png",
+      "file_hash": "e79558dee845a6cde8458e6b3526952fb51ee4e049ddf93d2433a6e75386adf8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0002_image_012_22a15aa762c7.png",
+      "file_hash": "22a15aa762c72b254754eadc1b05d2ec7185cfe8a906022e54476ad02eb7226c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_001_bc72b34e60fd.png",
+      "file_hash": "bc72b34e60fdde0ad64e76df7d577c835013bb1db989e0a7f6eaaa2c2fde80fb",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_002_07c1c85c41b0.png",
+      "file_hash": "07c1c85c41b0dbd9c675efa1d14aa84f1f325c5198d88c8d757c98b64fa1caec",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_003_21affb542965.jpeg",
+      "file_hash": "21affb54296586d55ab405705ac26538559e06c2ef16bdbecde77282834d3385",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_004_98f260627823.jpeg",
+      "file_hash": "98f260627823eac28cf732eb74d6bde3ecc36f641c983d7f1dc7139a0e666296",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_005_79965dabbcb1.png",
+      "file_hash": "79965dabbcb1d33391424164360e57da2003e375599a827fd3ba871418645527",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_006_07fa4c6eb71f.jpeg",
+      "file_hash": "07fa4c6eb71f604a237318c6d553667e22002777af52d616d71cf810ea6c5763",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_007_fcaf584c14de.jpeg",
+      "file_hash": "fcaf584c14de365d033428ce840140d066f4a42d5a3a91d227d72a28efd5ada0",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/9ed8fb0df36ab848a3e7/page_0003_image_008_b895d23b4d3b.png",
+      "file_hash": "b895d23b4d3b58af843cbb627e4dc0a54deeda815215825949ba60066d719240",
+      "ocr_text": ""
+    }
+  ]
+}

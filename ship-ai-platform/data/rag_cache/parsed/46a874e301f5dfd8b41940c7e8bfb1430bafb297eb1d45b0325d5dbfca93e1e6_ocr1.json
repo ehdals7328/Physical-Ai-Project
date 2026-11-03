@@ -1,0 +1,223 @@
+{
+  "blocks": [
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n19,\nV,\n\n1.5\n\n0.1\n\n70~120\n\n250~350\n\n30~60\n\n60",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_002_84679a2d6acf.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n0.5        300~400      60~120\n\n0.5       250~350     30~60\n\n1.5        250~350      30~60",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_003_3f0c75538fce.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n0.5        300~400      60~120\n\n0.5        300~400      60~120\n2.5         70~100       30~60",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_004_22c10ee1e90e.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n서브머지드\n\n아크 용접용\n\n플럭스\n\nKL-100, KCF-50\nKFN-50, KSN-100\n\nEF-100, EF-100H, EF- 100\n\nEF-200, EF-200K, EF-20C\nEF-200H, EF-200LT,\nEF-200LT Plus, EF-200F,\nEF-300N",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_006_1dd3e249d885.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n라임티타니아계\n\nKM- 700, KM- 900\nKQD-600\n\nKST-307-15\nKST-309Mo-15\n\nKST-308, KST-308L\nKST-309, KST-309L\nKST-316, KST-316L\n\nKST-410, KST-2209",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_007_9100ba607285.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n니우ㅎ6\n저온강용\n내열강용\n\n저수소계 — K-8016B2, K-8016B8\nK-8016C1, K-8016C4\n\n철분저수소계 KW-50WH, K-7018A1\n7      K-9018B3, K-8018C3\n\n고산화티탄계 —KM-100, KM-300R\n\n라임티타니아계 KCSPEL-800R\n\nKM.2Nn0 KM.BNN",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_008_f6e9e1cedda3.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n3.0       70~100     30~60\n\n300~400\n\n60            70._80            30",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_011_5d253cd7a47c.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\n재건조를 필요로\n\nse eeaiy) SECC) Ale)",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_012_c0845919b8c9.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\nKK-50LF, K-7016HR\nKK-55, KK-60, KK-70\n\nK-7018, K-7018HR\nK-7018N, K-8018\nK-9018M, K-10018D2\n\n고셀룰로즈계 K-7010A1",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_015_edc2a4c664e7.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\nKT-303\n\nKH-500LF, KH-500VLF\nKH-500W, KH-500T\n\nTAIBSRA K-7N1NG K-8N1NG",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_016_9850c060adb7.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 그림 OCR, 페이지 1]\na C7) =|\n\n종 별       피복제 계통             제품명",
+      "page_number": 1,
+      "chunk_type": "IMAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_017_e8e59b5af959.png",
+      "section_path": ""
+    },
+    {
+      "text": "[PDF 스캔 페이지 OCR, 페이지 1]\n| (피복 이크 용접봉 재건조 조건\n\n종별\n\n고장력강용\n\n내후성강용\n저온강용\n내열강용\n\n표면경화\n육성용\n\n516용\n\n주철용\n\n서브머지드\n야크 용접용\n플럭스\n\n재건조를 필요로\n\n하는 흡습량%) 까이\n\nK-6012, KR-3000\nKR-3000V\n\nKF-300LF\n\nKH-S00LF, KH-500VLF\nKH-500W, KH-500T\n\nKK-50LF, K-7016HR\nKK-55, KK-60, KK-70\n\nK-7018N, K-8018                        0.5\nK-9018M, K-10018D2\n\n- KW-50G, K-7016A1\n\n저수소기 K-8016B2, K-8016B8                   05           300~400 60~120\noe!K-BO16C1, K-BO16 C4 02000 00000\ncops ayy KW-SOWH, K-7018A1\n절분저수소계: «901883, K-8018C3              05        300-400 60-120\n고산화티탄계 _ KM-100, KM-300R                   25           70-100 30-60\n\nKIv-300, KM1-500\n\n저수소계 KM-700, KM-900   05  300~400 60-120\n00600\n\n라이 KST-S07-15    05 250-350 30~60\n\nKST-309Mo-15\n\nKST-308, KST-308L\n\nKST-309, KST-309L                     15\nKST-316, KST-316L                      ㆍ\nKST-410, KST-2209\n\n250~350\n\nKL-100, KCF-50\n\nKFN-50, KSN-100                    15           70~120\n\n타-100, EF-100H, 타-1005,\n\n타-200, EF-200K, EF-200V,\n\nEF-200H, EF-200LT,                  0.1          250~350         60\nEF-200LT Plus, EF-200F,\n\nEF-300N\n\nKISWEL EE)",
+      "page_number": 1,
+      "chunk_type": "PAGE_OCR",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_scan.png",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_001_cf5a62868c33.png",
+      "file_hash": "cf5a62868c33a1e17e59075ae6fefcaecfae6b5eb23e629b9aa9df06a769d11c",
+      "ocr_text": "KISWEL"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_002_84679a2d6acf.png",
+      "file_hash": "84679a2d6acfc4f641cfc3948e093b0c554b1a78e24d2170122030d936567187",
+      "ocr_text": "19,\nV,\n\n1.5\n\n0.1\n\n70~120\n\n250~350\n\n30~60\n\n60"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_003_3f0c75538fce.png",
+      "file_hash": "3f0c75538fce777cc93f6da5a966a8834563edcd944e51c92fab24054ea2fcf1",
+      "ocr_text": "0.5        300~400      60~120\n\n0.5       250~350     30~60\n\n1.5        250~350      30~60"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_004_22c10ee1e90e.png",
+      "file_hash": "22c10ee1e90e949bdd59cc10878f78162f7737aaa34d687f649d29e581b6094f",
+      "ocr_text": "0.5        300~400      60~120\n\n0.5        300~400      60~120\n2.5         70~100       30~60"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_005_14ba931f5d1b.png",
+      "file_hash": "14ba931f5d1b2e092227d295f0ba2aeb16e7f7979afaec973869c634702032b9",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_006_1dd3e249d885.png",
+      "file_hash": "1dd3e249d885c1cffc388fd892fc0862cbaa4b42bb47fa67fc9c84d7343cd616",
+      "ocr_text": "서브머지드\n\n아크 용접용\n\n플럭스\n\nKL-100, KCF-50\nKFN-50, KSN-100\n\nEF-100, EF-100H, EF- 100\n\nEF-200, EF-200K, EF-20C\nEF-200H, EF-200LT,\nEF-200LT Plus, EF-200F,\nEF-300N"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_007_9100ba607285.png",
+      "file_hash": "9100ba607285f5958ff862e28d73febd622334a8770d2791f6a6d61c84dac285",
+      "ocr_text": "라임티타니아계\n\nKM- 700, KM- 900\nKQD-600\n\nKST-307-15\nKST-309Mo-15\n\nKST-308, KST-308L\nKST-309, KST-309L\nKST-316, KST-316L\n\nKST-410, KST-2209"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_008_f6e9e1cedda3.png",
+      "file_hash": "f6e9e1cedda3e351858b22bd3b6a0bd8bf7e3db278a19686baa7c908a96a4a10",
+      "ocr_text": "니우ㅎ6\n저온강용\n내열강용\n\n저수소계 — K-8016B2, K-8016B8\nK-8016C1, K-8016C4\n\n철분저수소계 KW-50WH, K-7018A1\n7      K-9018B3, K-8018C3\n\n고산화티탄계 —KM-100, KM-300R\n\n라임티타니아계 KCSPEL-800R\n\nKM.2Nn0 KM.BNN"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_009_b8a0ce71c7dc.png",
+      "file_hash": "b8a0ce71c7dc83097cf8177ea5baa07e592eb1422b4522a7138b84bc2d28b2e1",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_010_3c2525a95262.png",
+      "file_hash": "3c2525a952622c3e06ba5b78f582d43f4503de3df2948d58b31f5f2512900b33",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_011_5d253cd7a47c.png",
+      "file_hash": "5d253cd7a47c93f2fca2cfcfbd20967561fc96c8f42bb76ff8985f19c885ad8c",
+      "ocr_text": "3.0       70~100     30~60\n\n300~400\n\n60            70._80            30"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_012_c0845919b8c9.png",
+      "file_hash": "c0845919b8c9cf2d79775e53af4d7940f03e808a47649f61cbf763f46f74b12a",
+      "ocr_text": "재건조를 필요로\n\nse eeaiy) SECC) Ale)"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_013_bf7e0df8c0d9.png",
+      "file_hash": "bf7e0df8c0d9e21765705f800562644dafbfb91086938394ab0e944aef75d9ef",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_014_da5cf695a4bb.png",
+      "file_hash": "da5cf695a4bbd99e50205c2f1db3af3e9001f23e4155285c39951a0f594fb262",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_015_edc2a4c664e7.png",
+      "file_hash": "edc2a4c664e718d32bd49344cefaf53cf36b9f05fdf4686d338562dbef39c5c2",
+      "ocr_text": "KK-50LF, K-7016HR\nKK-55, KK-60, KK-70\n\nK-7018, K-7018HR\nK-7018N, K-8018\nK-9018M, K-10018D2\n\n고셀룰로즈계 K-7010A1"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_016_9850c060adb7.png",
+      "file_hash": "9850c060adb7e75ddfccd6d448f942b505b13c1563397c77136fc9beaef09ad8",
+      "ocr_text": "KT-303\n\nKH-500LF, KH-500VLF\nKH-500W, KH-500T\n\nTAIBSRA K-7N1NG K-8N1NG"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_017_e8e59b5af959.png",
+      "file_hash": "e8e59b5af9598949d13600cccee9666165e1f19354f0a8c7fc084e8f02428be5",
+      "ocr_text": "a C7) =|\n\n종 별       피복제 계통             제품명"
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_image_018_fe1b4a152279.png",
+      "file_hash": "fe1b4a152279c3118572714882e4b0a481ead243408c4aaddbc171f9173c3492",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "SCAN_PAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/46a874e301f5dfd8b419/page_0001_scan.png",
+      "file_hash": "b4eddd51a1b39787565f61ea4d4a3057e7ad511a8256061253bf8767a20ec28e",
+      "ocr_text": "| (피복 이크 용접봉 재건조 조건\n\n종별\n\n고장력강용\n\n내후성강용\n저온강용\n내열강용\n\n표면경화\n육성용\n\n516용\n\n주철용\n\n서브머지드\n야크 용접용\n플럭스\n\n재건조를 필요로\n\n하는 흡습량%) 까이\n\nK-6012, KR-3000\nKR-3000V\n\nKF-300LF\n\nKH-S00LF, KH-500VLF\nKH-500W, KH-500T\n\nKK-50LF, K-7016HR\nKK-55, KK-60, KK-70\n\nK-7018N, K-8018                        0.5\nK-9018M, K-10018D2\n\n- KW-50G, K-7016A1\n\n저수소기 K-8016B2, K-8016B8                   05           300~400 60~120\noe!K-BO16C1, K-BO16 C4 02000 00000\ncops ayy KW-SOWH, K-7018A1\n절분저수소계: «901883, K-8018C3              05        300-400 60-120\n고산화티탄계 _ KM-100, KM-300R                   25           70-100 30-60\n\nKIv-300, KM1-500\n\n저수소계 KM-700, KM-900   05  300~400 60-120\n00600\n\n라이 KST-S07-15    05 250-350 30~60\n\nKST-309Mo-15\n\nKST-308, KST-308L\n\nKST-309, KST-309L                     15\nKST-316, KST-316L                      ㆍ\nKST-410, KST-2209\n\n250~350\n\nKL-100, KCF-50\n\nKFN-50, KSN-100                    15           70~120\n\n타-100, EF-100H, 타-1005,\n\n타-200, EF-200K, EF-200V,\n\nEF-200H, EF-200LT,                  0.1          250~350         60\nEF-200LT Plus, EF-200F,\n\nEF-300N\n\nKISWEL EE)"
+    }
+  ]
+}

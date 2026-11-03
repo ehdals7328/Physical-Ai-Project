@@ -1,0 +1,104 @@
+{
+  "blocks": [
+    {
+      "text": "2011-교육미디어-1620\n\n    유압자키 안전작업\n                Hydraulic Jockey                           선박건조 및 수리업\n\n\n   유압자키란?\n\n\n      유압자키(Hydraulic Jockey)란 블록 등의 중량물을 들어 올리는데 사용하는 치공구로 사용 중 램(Ram)이\n     실린더(Cylinder)로부터 이탈하면서 비래하는 등의 위험이 있다.\n\n\n\n\n                                       램\n\n                                           실린더\n\n\n                         호스        니플\n\n\n\n\n\n            손잡이\n\n\n\n\n\n                      받침대       유압펌프        잠금장치\n\n\n                        유압자키 각부 명칭\n\n\n\n\n\n              유압자키                   유압자키 작업\n\n\n\n\nwww.kosha.or.kr",
+      "page_number": 1,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "유압자키 안전작업\n\n  주요 위험요인\n\n   비래 위험\n     - 불안정한 상태로 자키를 설치하여 사용 중 한쪽 방향으로 넘어지면서 램이 유압에 의해 비래할 위험\n     - 램 지지용 지그(PCS)의 용접불량으로 파단, 비래 위험\n\n   협착 위험\n     - 램 상부에 피스를 쌓아 올려 사용 중 상부 구조물이 전도되거나 피스 이탈로 인해 손이 끼일 위험\n     - 램 위치 조정을 위하여 해머 등으로 위치 조정 중 자키가 넘어지면서 끼일 위험\n\n\n\n\n 안전대책\n\n  ● 비래 위험 방지\n    - 지면이 안정되고 편하중이 생기지 않게 설치\n    - 지지용 지그는 가해지는 힘을 고려하여 충분히 용접\n\n  ● 협착 위험 방지\n    - 램이나 피스 부위를 손으로 잡고 작업하지 않음\n    - 램 위치 조정을 위해 해머, 파이프 등으로 조정 금지\n\n\n\n\n\nwww.kosha.or.kr",
+      "page_number": 2,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "유압자키 안전작업\n\n\n 재해사례 : 유압자키 램이 비래하여 작업자 안면 강타\n\n\n  개요\n\n   조선소의 대조립 공장에서 블록 하부를 받쳐서 올리던 중 비스듬하게 설치된 램이 튕기면서 피재자의\n   안면을 가격\n\n\n\n\n\n  발생원인\n\n   ● 유압자키를 비스듬하게 설치한 상태에서 레버 작동\n\n   ● 레버를 작동하면서 램을 주시하지 않고 다른 방향 주시\n\n   ● 협소한 공간에서 램 정면에서 작업 실시\n\n\n  예방대책\n\n   ● 편하중이 발생하지 않도록 설치\n    유압자키 설치 시 상부구조물과 바닥면이 경사지지 않도록 중심축을 맞추어 설치\n\n   ● 레버작동 시 램을 주시하면서 작업 실시\n\n   ● 협소한 공간에서는 거리를 두고 측면에서 작업 실시\n    유압자키 작동 시 램의 정면을 피해 측면 또는 안전한 장소를 선정하여 작업 실시\n\n\n\n\nwww.kosha.or.kr",
+      "page_number": 3,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    },
+    {
+      "text": "선박건조 및 수리업    유압자키 안전작업\n\n\n  안전수칙\n\n\n\n    ● 유압펌프 변형 유무, 오일 누유 여부를 확인한다.\n\n    ● 니플 및 호스 규격품 사용 여부, 니플 연결부 마모·변형 등을 확인한다.\n\n    ● 유압 벨브 및 램의 변형상태를 점검 확인한다.\n\n    ● 바닥면에 안정되게 설치한다.\n\n    ● 편하중이 발생되지 않도록 유압자키가 설치되었는지 확인한다.\n\n    ● 여러 개의 램을 동시에 사용할 경우 고리로 연결하여 비래를 방지한다.\n\n    ● 펌프는 조작하기 쉬운 곳에 설치하고 밸브를 닫은 후 레버를 조작한다.\n\n    ● 램과 최대한 안전거리를 유지하면서 레버를 작동한다.\n\n    ● 항상 램의 상태를 주시하면서 조작한다.\n\n    ● 하중을 지지한 상태로 장시간 방치하지 말아야 한다.\n\n    ● 용량이 맞는 유압펌프를 사용한다.\n\n    ● 램이 떨어지거나 넘어지지 않도록 설치·사용한다.\n\n\n\n\n\n     관련 법령\n\n       ● 산업안전보건기준에 관한 규칙\n       - 제89조 (운전 시작 전 조치)        - 제90조 (날아오는 가공물 등에 의한 위험의 방지)\n\n\n\n\n\nwww.kosha.or.kr",
+      "page_number": 4,
+      "chunk_type": "TEXT",
+      "asset_path": "",
+      "section_path": ""
+    }
+  ],
+  "assets": [
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0001_image_001_6581736df611.png",
+      "file_hash": "6581736df611e10642c4549d57ed06b6eb1100dae6a922ebce2da54efe2f70c8",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0001_image_002_0b07d0eb2cef.jpeg",
+      "file_hash": "0b07d0eb2cef523f6592ba9b719e810e07302fbc7e7bf6e411c91785943ddc98",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0001_image_003_62615b612d64.jpeg",
+      "file_hash": "62615b612d645ab94aaaf7fcc325a840eba1cb493dd48d6b58664ad3f382458b",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 1,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0001_image_004_1c1ec6dc0a42.jpeg",
+      "file_hash": "1c1ec6dc0a425f773a7e4bb1a780eccf8f9f68fc0adcbc8b08b9a18c99822b11",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0002_image_001_0e62f6b1d385.png",
+      "file_hash": "0e62f6b1d385ea6e72acfbccd10aaf001023ed8b9b7b212ab9a2a906fb1a63a3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0002_image_002_66e0da3af28e.jpeg",
+      "file_hash": "66e0da3af28e2188b861ce6ca574db040f41428f77670bb2e8adba6a7605b47d",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 2,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0002_image_003_562d7b344610.jpeg",
+      "file_hash": "562d7b344610044a61edcb637eb070f4074ad5768095f34d69cf46627652ae9c",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0003_image_001_0e62f6b1d385.png",
+      "file_hash": "0e62f6b1d385ea6e72acfbccd10aaf001023ed8b9b7b212ab9a2a906fb1a63a3",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 3,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0003_image_002_9319ebf9d0be.jpeg",
+      "file_hash": "9319ebf9d0be8f09456254e2a942f063a8d2fc3cc9db51111ca83dca228d21f7",
+      "ocr_text": ""
+    },
+    {
+      "page_number": 4,
+      "asset_type": "IMAGE",
+      "asset_path": "C:/ship-ai-platform/data/extracted_assets/f9413271b14549d134dd/page_0004_image_001_0e62f6b1d385.png",
+      "file_hash": "0e62f6b1d385ea6e72acfbccd10aaf001023ed8b9b7b212ab9a2a906fb1a63a3",
+      "ocr_text": ""
+    }
+  ]
+}
