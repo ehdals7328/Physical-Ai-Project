@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Vision Monitoring - Ai Project{% endblock %}
+{% block body_class %}detail-bg{% endblock %}
+{% block nav_vision %}active{% endblock %}
+
+{% block content %}
+<!-- 💡 상단 Nav bar에 가리지 않도록 style에 padding-top 또는 margin-top을 추가했습니다 -->
+<main class="detail-container" style="max-width: 1400px; margin: 0 auto; padding: 30px 20px; margin-top: 40px;">
+
+    <h2 class="page-title" style="margin-bottom: 16px; color: #f0f6fc;">실시간 데이터베이스 및 모니터링 시스템 연동</h2>
+
+    <!-- 상단 요약 텍스트 한 줄 -->
+    <div class="top-meta-bar" style="display: flex; gap: 24px; align-items: center; background-color: #161b22; padding: 10px 16px; border-radius: 8px; border: 1px solid #30363d; margin-bottom: 16px; color: #c9d1d9; font-size: 13px;">
+        <div>📍 <strong>위치정보:</strong> 대구 동구 센터 1지역</div>
+        <div>🎯 <strong>정확도:</strong> 98.4%</div>
+        <div>🆔 <strong>ID:</strong> OBJ-2026-0928</div>
+    </div>
+    <!-- 상단 요약 텍스트 한 줄 아래에 채널 선택 버튼 추가 -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+        <button onclick="changeChannel('Test_1.mp4')" style="background-color: #1f6feb; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+            🎥 Test_1 영상 추론 시작
+        </button>
+        <button onclick="changeChannel('Test_2.mp4')" style="background-color: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer;">
+            🎥 Test_2 영상 추론 시작
+        </button>
+    </div>
+
+    <!-- 메인 모니터링 그리드 유지 ... -->
+
+    <!-- 메인 모니터링 그리드 (비디오 꽉 차게 + 우측 JSON) -->
+    <div class="monitoring-box" style="display: flex; gap: 20px; align-items: flex-start;">
+
+        <!-- 왼쪽: 비디오 화면 -->
+        <div class="video-section" style="flex: 3; display: flex; flex-direction: column;">
+            <div class="video-screen" style="position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background-color: #000; border-radius: 8px; min-height: 520px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <img id="video-stream" src="{{ url_for('vision.video_feed') }}"
+                     alt="AI Vision Stream"
+                     style="width: 100%; height: 100%; object-fit: contain;">
+
+                <!-- 🔥 컨트롤 버튼 -->
+                <button id="toggle-btn" onclick="togglePlayPause()" style="position: absolute; top: 16px; right: 16px; background-color: rgba(218, 54, 51, 0.85); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; backdrop-filter: blur(4px); transition: 0.2s;">
+                    ⏸ 정지 (Pause)
+                </button>
+            </div>
+        </div>
+
+        <!-- 오른쪽: JSON 출력 박스 -->
+        <div class="json-section" style="flex: 2; display: flex; flex-direction: column;">
+            <div class="json-container" style="border: 1px solid #30363d; border-radius: 8px; overflow: hidden; background-color: #0d1117; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <div class="json-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background-color: #161b22; border-bottom: 1px solid #30363d; color: #c9d1d9;">
+                    <span style="font-weight: 600; font-size: 13px; font-family: monospace;">JSON Output Stream</span>
+                    <div style="font-size: 11px; color: #8b949e; display: flex; align-items: center;">
+                        <span id="stream-status-tag" style="padding: 2px 8px; background: #238636; color: white; border-radius: 12px; font-weight: bold; margin-right: 8px;">● LIVE</span>
+                        <span style="cursor: pointer; padding: 2px 6px; background: #21262d; border-radius: 4px; border: 1px solid #30363d;">Raw</span>
+                    </div>
+                </div>
+                <pre id="json-viewer" style="margin: 0; padding: 14px 16px; color: #7ee787; font-family: 'Fira Code', 'Consolas', monospace; font-size: 12px; line-height: 1.5; height: 492px; overflow-y: auto; background-color: #0d1117;">
+{ "status": "Connecting to RunPod API..." }
+                </pre>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 하단 모델 설명 섹션 -->
+    <div class="model-section" style="margin-top: 24px; background-color: #161b22; padding: 16px 20px; border-radius: 8px; border: 1px solid #30363d;">
+        <h3 style="margin-top: 0; color: #c9d1d9; font-size: 16px;">Base model : YOLOv11</h3>
+        <div class="description-box" style="color: #8b949e; font-size: 14px; margin-top: 6px;">
+            <p style="margin: 0;">YOLOv11 모델에 특정 도메인 맞춤형 커스텀 데이터의 라벨을 수집 및 학습시켰습니다. 선박 제조 환경의 Block 을 탐지하고 조립 공정에서 이음부와 가용접부를 탐지합니다.</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    // 1. JSON 지속 폴링
+    setInterval(async () => {
+        try {
+            const res = await fetch("{{ url_for('vision.get_detections') }}");
+            const data = await res.json();
+            document.getElementById("json-viewer").innerText = JSON.stringify(data, null, 2);
+        } catch (err) {
+            console.error("JSON 업데이트 오류:", err);
+        }
+    }, 400);
+
+    // 2. 서버 백엔드로 정지/재생 명령 전달
+    async function togglePlayPause() {
+        try {
+            const res = `{{ url_for('vision.toggle_pause') }}`;
+            const response = await fetch(res);
+            const data = await response.json();
+
+            const toggleBtn = document.getElementById("toggle-btn");
+            const statusTag = document.getElementById("stream-status-tag");
+
+            if (data.is_paused) {
+                toggleBtn.innerText = "▶ 재생 (Play)";
+                toggleBtn.style.backgroundColor = "rgba(35, 134, 54, 0.85)";
+                statusTag.innerText = "⏸ PAUSED";
+                statusTag.style.backgroundColor = "#da3633";
+            } else {
+                toggleBtn.innerText = "⏸ 정지 (Pause)";
+                toggleBtn.style.backgroundColor = "rgba(218, 54, 51, 0.85)";
+                statusTag.innerText = "● LIVE";
+                statusTag.style.backgroundColor = "#238636";
+            }
+        } catch (err) {
+            console.error("정지/재생 요청 실패:", err);
+        }
+    }
+// 3. 채널(영상) 변경 요청 로직
+    async function changeChannel(filename) {
+        try {
+            // 로컬 Flask 뷰의 블루프런트 경로로 요청
+            const response = await fetch(`/vision/change_video/${filename}`);
+            const data = await response.json();
+
+            if(data.status === "success") {
+                console.log(filename + " 채널 변경 성공. 추론 스트림 재시작 중...");
+
+                // UI 상태 초기화 (재생 상태로 복구)
+                const toggleBtn = document.getElementById("toggle-btn");
+                const statusTag = document.getElementById("stream-status-tag");
+                toggleBtn.innerText = "⏸ 정지 (Pause)";
+                toggleBtn.style.backgroundColor = "rgba(218, 54, 51, 0.85)";
+                statusTag.innerText = "● LIVE";
+                statusTag.style.backgroundColor = "#238636";
+            }
+        } catch (err) {
+            console.error("채널 변경 요청 실패:", err);
+        }
+    }
+</script>
+{% endblock %}
