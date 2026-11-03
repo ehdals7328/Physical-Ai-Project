@@ -1,3 +1,7 @@
+# 하위 모든 data 폴더 및 캐시/에셋 영구 제외
+**/data/
+ship-ai-platform/data/
+
 # 가상환경 및 IDE
 .venv/
 venv/
