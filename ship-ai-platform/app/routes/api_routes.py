@@ -97,7 +97,7 @@ def login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({'status': 'error', 'message': '아이디 또는 비밀번호가 일치하지 않습니다.'}), 401
 
-    if user.is_active != True:
+    if not user.is_active or str(user.is_active).upper() not in ('TRUE', '1', 'Y'):
         return jsonify({'status': 'error', 'message': '비활성화된 계정입니다.'}), 403
 
     session.permanent = True
@@ -333,38 +333,41 @@ def work_analyze():
     v_analysis = VisionAnalysis(
         work_id=order.work_id,
         image_path=img_path,
-        model_name=v_out.get('model_name', 'YOLOv8'),
-        model_version=v_out.get('model_version', 'v1.0'),
+        model_name=v_out.get('model_name', 'YOLOv11s-ShipWeld-Seg'),
+        model_version=v_out.get('model_version', 'v2.4-2026'),
         analysis_status=v_out.get('analysis_status', 'COMPLETED'),
-        image_width=v_out.get('image_width', 1920),
-        image_height=v_out.get('image_height', 1080),
-        result_json=json.dumps({"detections_count": len(v_out.get('detections', []))}, ensure_ascii=False),
+        image_width=v_out.get('image_width', 640),
+        image_height=v_out.get('image_height', 360),
+        result_json=json.dumps(v_out, ensure_ascii=False),
         started_at=v_out.get('started_at', datetime.now()),
         completed_at=v_out.get('completed_at', datetime.now())
     )
     db.session.add(v_analysis)
     db.session.commit()
 
+    detection_rows = []
     for det in v_out.get('detections', []):
-        db.session.add(VisionDetection(
-            vision_id=v_analysis.vision_id,
-            class_name=det.get('class_name'),
-            confidence=det.get('confidence'),
-            coordinate_type=det.get('coordinate_type', 'xyxy'),
-            x_min=det.get('x_min'),
-            y_min=det.get('y_min'),
-            x_max=det.get('x_max'),
-            y_max=det.get('y_max'),
-            geometry_data=json.dumps(det.get('geometry_data', {}), ensure_ascii=False)
-        ))
-    db.session.commit()
+        detection_rows.append({
+            "VISION_ID": v_analysis.vision_id,
+            "CLASS_NAME": det.get('class_name'),
+            "CONFIDENCE": det.get('confidence'),
+            "COORDINATE_TYPE": det.get('coordinate_type', 'PIXEL'),
+            "X_MIN": det.get('x_min'),
+            "Y_MIN": det.get('y_min'),
+            "X_MAX": det.get('x_max'),
+            "Y_MAX": det.get('y_max'),
+            "GEOMETRY_DATA": json.dumps(det.get('geometry_data', {}), ensure_ascii=False),
+            "CREATED_AT": datetime.utcnow()
+        })
+    if detection_rows:
+        db.session.bulk_insert_mappings(VisionDetection, detection_rows)
+        db.session.commit()
 
     # 3. 에이전트 파이프라인 호출
     session_id = session.get('conversation_id', f"WORK_{order.work_id}")
     config = {"configurable": {"thread_id": session_id}}
-
     query_composite = f"{work_area}에서 {base_material} {material_thickness}T {process_type} {joint_type} 작업지시서 작성해줘. {request_text}"
-    
+
     state_input = {
         "user_query": query_composite,
         "messages": [HumanMessage(content=query_composite)],
@@ -384,6 +387,7 @@ def work_analyze():
         "search_queries": [],
         "retrieved_docs": [],
         "weather_data": None,
+        "vision_data": v_out,  # [개선] 비전 검출 결과(용접선, 장애물)를 에이전트 상태로 명시적 전달
         "generated_document": None,
         "final_answer": None,
         "audit_saved": False

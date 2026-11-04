@@ -1,5 +1,6 @@
 # Web Framework & Server
 Flask>=3.0.0
+flask-cors>=4.0.0
 Flask-SQLAlchemy>=3.1.0
 SQLAlchemy>=2.0.0
 waitress>=3.0.0
@@ -13,30 +14,26 @@ langchain>=0.2.0
 langchain-core>=0.2.0
 langchain-community>=0.2.0
 langchain-openai>=0.1.0
+langchain-tavily>=0.1.0
+langchain-text-splitters>=0.2.0
 langgraph>=0.1.0
+
+# MCP (Model Context Protocol)
+mcp[cli]==1.30.0
+langchain-mcp-adapters>=0.1.0
 
 # RAG & Vector Store & Document Parsing
 chromadb>=0.5.0
+langchain-chroma>=0.1.0
 sentence-transformers>=3.0.0
 PyMuPDF>=1.24.0
-tabulate>=0.9.0
 numpy>=1.26.0
+tabulate>=0.9.0
 
-# Environment & Utilities
-python-dotenv>=1.0.0
+# Network & HTTP Clients
 requests>=2.31.0
+httpx>=0.27.0
+
+# Environment & Data Validation
+python-dotenv>=1.0.0
 pydantic>=2.7.0
-
-
-#------------------------------------
-pip install openai
-
-pip install "mcp[cli]==1.30.0"
-
-pip install -U langgraph langchain langchain-openai langchain-core langchain-tavily python-dotenv
-
-pip install langchain-mcp-adapters langchain-chroma chromadb langchain-community langchain-text-splitters pymupdf httpx
-
-pip install flask flask-cors
-
-python -m pip install "sentence-transformers>=3.0.0" "Flask-SQLAlchemy>=3.1.0" "SQLAlchemy>=2.0.0" "waitress>=3.0.0" "oracledb>=2.0.0" "tabulate>=0.9.0" "numpy>=1.26.0" "requests>=2.31.0" "pydantic>=2.7.0"

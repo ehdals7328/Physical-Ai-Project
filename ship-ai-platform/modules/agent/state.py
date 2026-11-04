@@ -20,27 +20,19 @@ SearchStatus = Literal["idle", "completed", "empty", "error"]
 
 
 class ShipAgentState(TypedDict):
-  # 대화 히스토리 (멀티턴 컨텍스트 보존)
-  messages: Annotated[List[BaseMessage], add_messages]
-
-  # 최신 사용자 입력 질의
-  user_query: str
-
-  # Team 1: 분석 및 라우팅 상태
-  task_type: Optional[TaskType]
-  target_categories: List[DocCategory]  # 질의에 맞는 RAG 카테고리 목록
-  need_weather: bool  # 야외/기상 연동 필요 여부
-  extracted_params: Dict[str, Any]  # 사용자가 직접 언급한 제원(하드코딩 기본값 없음)
-  is_param_complete: Optional[str]  # "yes" | "no" (doc_generation 시 필수)
-  missing_params: List[str]  # 누락된 필수 파라미터 목록
-
-  # Team 2: 지식 및 환경 수집 상태
-  search_status: SearchStatus  # idle -> completed / empty / error
-  search_queries: List[str]  # 생성된 RAG 검색 쿼리들
-  retrieved_docs: List[Dict[str, Any]]  # 인출된 청크 (출처, 카테고리, 본문)
-  weather_data: Optional[Dict[str, Any]]  # 기상청 MCP 데이터
-
-  # Team 3: 생성 결과
-  generated_document: Optional[Dict[str, Any]]  # 정형화된 문서 결과물
-  final_answer: Optional[str]  # 최종 사용자 응답 문장
-  audit_saved: bool
+    messages: Annotated[List[BaseMessage], add_messages]
+    user_query: str
+    task_type: Optional[TaskType]
+    target_categories: List[DocCategory]
+    need_weather: bool
+    extracted_params: Dict[str, Any]
+    is_param_complete: Optional[str]
+    missing_params: List[str]
+    search_status: SearchStatus
+    search_queries: List[str]
+    retrieved_docs: List[Dict[str, Any]]
+    weather_data: Optional[Dict[str, Any]]
+    vision_data: Optional[Dict[str, Any]]
+    generated_document: Optional[Dict[str, Any]]
+    final_answer: Optional[str]
+    audit_saved: bool
