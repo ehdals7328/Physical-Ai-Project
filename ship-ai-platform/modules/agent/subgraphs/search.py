@@ -44,12 +44,11 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
     맞춰 ChromaDB 문서를 동적으로 인출하는 노드
     """
     query = state.get("user_query", "")
-    target_categories = state.get("target_categories", [])
     collected_docs: List[Dict[str, Any]] = []
 
     try:
         # 단 1회의 통합 호출로 개선
-        raw_items = search_knowledge_by_categories(query, categories=target_categories, top_k=4)
+        raw_items = search_knowledge_by_categories(query, top_k=4)
         for item in raw_items:
             collected_docs.append({
                 "category": item.get("category", "규격"),

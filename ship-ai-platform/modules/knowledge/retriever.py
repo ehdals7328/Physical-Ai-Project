@@ -218,7 +218,6 @@ class KnowledgeStore:
     def search(
         self,
         query: str,
-        category: str | None = None,
         top_k: int = 5,
         *,
         allowed_access_levels: Iterable[str] | None = ("PUBLIC", "INTERNAL"),
@@ -234,8 +233,6 @@ class KnowledgeStore:
                 {"is_active": {"$eq": True}},
                 {"document_status": {"$eq": "ACTIVE"}},
             ]
-            if category:
-                clauses.append({"category": {"$eq": str(category)}})
             if allowed_access_levels is not None:
                 access = [str(value).upper() for value in allowed_access_levels]
                 if not access:

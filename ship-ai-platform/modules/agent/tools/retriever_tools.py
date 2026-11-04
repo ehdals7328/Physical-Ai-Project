@@ -30,57 +30,26 @@ def _format_search_results(items: List[dict[str, Any]]) -> str:
 # ------------------------------------------------------------------------------
 # ⭕ [신규 추가] 7대 카테고리를 동적으로 지원하는 범용 검색 함수
 # ------------------------------------------------------------------------------
-def search_knowledge_by_categories(
-        query: str,
-        categories: Optional[Union[str, List[str]]] = None,
-        top_k: int = 4
-) -> List[dict[str, Any]]:
-    """단일 카테고리 또는 다중 카테고리 목록을 전달받아 단 1회의 검색으로 인출"""
+def search_knowledge(query: str, top_k: int = 4) -> List[dict[str, Any]]:
+    """카테고리 구분 없이 전체 ChromaDB 지식베이스에서 유사도 상위 문서를 단 1회 인출"""
     try:
-        cat_mapping = {
-            "manufacturing_tech": "제조기술",
-            "safety_health": "안전보건",
-            "class_rules": "선급법규",
-            "heavy_equipment": "장비중량물",
-            "quality_inspection": "품질검사",
-            "work_weather": "작업환경기상",
-            "internal_docs": "사내문서",
-        }
-
-        target_cats: List[str] = []
-        if isinstance(categories, str):
-            target_cats = [cat_mapping.get(categories, categories)]
-        elif isinstance(categories, list):
-            target_cats = [cat_mapping.get(c, c) for c in categories if c]
-
-        # 단일 카테고리 검색
-        if len(target_cats) == 1:
-            results = store.search(
-                query=query,
-                category=target_cats[0],
-                top_k=top_k,
-                allowed_access_levels=["INTERNAL", "PUBLIC"],
-            )
-        else:
-            # 카테고리가 없거나 여러 개인 경우 전체 검색 후 인메모리 필터링 또는 통합 검색
-            results = store.search(
-                query=query,
-                category=None,
-                top_k=top_k * (len(target_cats) if target_cats else 1),
-                allowed_access_levels=["INTERNAL", "PUBLIC"],
-            )
-            if target_cats:
-                results = [r for r in results if r.get("category") in target_cats][:top_k]
-
+        results = store.search(
+            query=query,
+            top_k=top_k,
+            allowed_access_levels=["INTERNAL", "PUBLIC"],
+        )
         return results or []
     except Exception as e:
         print(f"[KnowledgeStore 검색 오류]: {e}")
         return []
 
 
-# 기존 함수 호환성 유지용 래퍼
-def search_knowledge_by_category(query: str, category: Optional[str] = None, top_k: int = 4):
-    return search_knowledge_by_categories(query, categories=category, top_k=top_k)
+# 기존 에이전트 코드(search.py 등)와의 호출 호환성 유지용 래퍼 (인자 무시하고 전체 검색)
+def search_knowledge_by_categories(query: str, categories: Any = None, top_k: int = 4) -> List[dict[str, Any]]:
+    return search_knowledge(query=query, top_k=top_k)
+
+def search_knowledge_by_category(query: str, category: Any = None, top_k: int = 4) -> List[dict[str, Any]]:
+    return search_knowledge(query=query, top_k=top_k)
 
 
 # ------------------------------------------------------------------------------

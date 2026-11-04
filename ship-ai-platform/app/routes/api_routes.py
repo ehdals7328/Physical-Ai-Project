@@ -136,7 +136,6 @@ def session_check():
 def rag_ask():
     data = request.get_json() or {}
     query = data.get('query', '').strip()
-    category = data.get('category', '').strip()
     if not query:
         return jsonify({'status': 'error', 'message': '질문을 입력하세요.'}), 400
 
@@ -149,7 +148,7 @@ def rag_ask():
         "user_query": query,
         "messages": [HumanMessage(content=query)],
         "task_type": None,
-        "target_categories": [category] if category and category != "전체 카테고리 검색" else [],
+        "target_categories": [],
         "need_weather": False,
         "extracted_params": {},
         "is_param_complete": None,
@@ -372,7 +371,7 @@ def work_analyze():
         "user_query": query_composite,
         "messages": [HumanMessage(content=query_composite)],
         "task_type": "doc_generation",
-        "target_categories": ["manufacturing_tech", "safety_health"],
+        "target_categories": [],
         "need_weather": True,
         "extracted_params": {
             "material": base_material,
