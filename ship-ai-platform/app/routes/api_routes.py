@@ -142,6 +142,7 @@ def rag_ask():
     started_at = datetime.now()
     session_id = session.get('conversation_id', f"SESSION_{uuid.uuid4().hex[:8]}")
     config = {"configurable": {"thread_id": session_id}}
+    prev_params = session.get('extracted_params', {})
 
     # 1. ShipAgentState 초기 입력값 설정
     state_input = {
@@ -150,7 +151,7 @@ def rag_ask():
         "task_type": None,
         "target_categories": [],
         "need_weather": False,
-        "extracted_params": {},
+        "extracted_params": prev_params,
         "is_param_complete": None,
         "missing_params": [],
         "search_status": "idle",
@@ -163,6 +164,7 @@ def rag_ask():
     }
     
     result = ship_agent_app.invoke(state_input, config=config)
+    session['extracted_params'] = result.get('extracted_params', {})
     completed_at = datetime.now()
 
     response_answer = result.get('final_answer') or "질의 처리가 완료되었습니다."
