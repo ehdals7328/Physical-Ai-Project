@@ -1,19 +1,21 @@
-# C:\Physical-Ai-Project\agent_system\tools\weather_server.py
+import logging
 import os
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-# 1. 상위 폴더(agent_system)의 .env 파일 명시적 로드
-env_path = Path(__file__).resolve().parent.parent / ".env"
+# 불필요한 종료 로그 억제[cite: 17]
+logging.getLogger("mcp.server.streamable_http").setLevel(logging.CRITICAL)
+logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
+
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"  # 루트 .env 경로 방어
+if not env_path.exists():
+  env_path = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 weatherapi_key = os.getenv("WEATHER_API_KEY") or os.getenv("OPENWEATHER_API_KEY")
-
-# 2. host와 port 설정을 FastMCP 생성자에서 정의
 mcp = FastMCP("weather-server", host="0.0.0.0", port=8000)
-
 
 @mcp.tool()
 def get_current_weather(location: str = "Ulsan") -> str:

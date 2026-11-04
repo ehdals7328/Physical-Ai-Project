@@ -1,89 +1,93 @@
-# agent_system/main_graph.py
-import sys
-from pathlib import Path
-from typing import List, Literal
-from pydantic import BaseModel, Field
+"""Ship Welding Autonomous Platform: 메인 오케스트레이터 (supervisor.py)
 
-CURRENT_DIR = Path(__file__).resolve().parent
-if str(CURRENT_DIR) not in sys.path:
-    sys.path.insert(0, str(CURRENT_DIR))
+Supervisor가 State를 검사하여 Team 1(분석) -> Team 2(수집) -> Team 3(생성)의 유기적 흐름을
+제어합니다.
+"""
 
-from langchain_openai import ChatOpenAI
-from langgraph.graph import StateGraph, START, END
+import os
+from typing import Literal
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
 
-from state import ShipAgentState
-from .subgraphs import team1_subgraph, team2_subgraph, team3_subgraph
-
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
-
-def make_top_supervisor(llm, members: List[str]):
-    options = tuple(["FINISH", *members])
-
-    class Router(BaseModel):
-        next: Literal[*options] = Field(
-            ..., description="다음에 호출할 하위 팀 이름 또는 작업 종료(FINISH)"
-        )
-
-    def supervisor_node(state: ShipAgentState):
-        task_type = state.get("task_type")
-        is_complete = state.get("is_param_complete")
-        has_search = bool(state.get("retrieved_docs"))
-        has_output = bool(state.get("generated_document") or state.get("final_answer"))
-
-        system_prompt = (
-            "당신은 조선소 스마트 공정 멀티에이전트 시스템의 총괄 오케스트레이터(Supervisor)입니다.\n"
-            f"지휘 가능한 하위 팀 목록: {members}\n\n"
-            "현재 상태를 보고 다음에 실행할 팀을 자율적으로 판단하여 선택하세요:\n"
-            "1. 현재 턴의 사용자 입력에 대해 아직 분석(task_type)이 수행되지 않았다면 'team1_analysis'를 선택하세요.\n"
-            "2. 'team1_analysis' 분석 결과, 일상 대화(chitchat)이거나 사용자에게 추가 정보 확인/최종 승인 질문을 던져야 하는 상태(is_param_complete == 'no' 및 final_answer 생성 완료)라면, 검색이나 문서 생성으로 넘어가지 말고 즉시 'FINISH'를 선택해 사용자와 대화하세요.\n"
-            "3. 사용자의 최종 승인이 완료(is_param_complete == 'yes')되었으나 아직 사내 규격/기상 검색(retrieved_docs)이 수행되지 않았다면 'team2_search'를 선택하세요.\n"
-            "4. 규격/기상 검색까지 완료되었으나 최종 산출물(generated_document 또는 final_answer)이 생성되지 않았다면 'team3_docgen'을 선택하세요.\n"
-            "5. 모든 요청 처리가 완료되어 최종 답변이나 문서가 준비되었다면 'FINISH'를 선택하세요.\n\n"
-            f"[현재 상태 요약]\n"
-            f"- 사용자 입력: {state.get('user_query')}\n"
-            f"- 분석된 태스크: {task_type}\n"
-            f"- 조건 충족 및 사용자 승인 완료 여부(is_param_complete): {is_complete}\n"
-            f"- 규격/기상 검색 완료 여부: {has_search}\n"
-            f"- 에이전트 응답 또는 문서 준비 여부: {has_output}\n"
-        )
-
-        decision = llm.with_structured_output(
-            Router, method="function_calling"
-        ).invoke(system_prompt)
-
-        return {"next": decision.next}
-
-    return supervisor_node
+from modules.agent.state import ShipAgentState
+from modules.agent.subgraphs.analysis import team1_subgraph
+from modules.agent.subgraphs.docgen import team3_subgraph
+from modules.agent.subgraphs.search import team2_subgraph
 
 
-members = ["team1_analysis", "team2_search", "team3_docgen"]
-top_supervisor = make_top_supervisor(llm, members)
+# ==============================================================================
+# 1. Supervisor 라우팅 판정 함수
+# ==============================================================================
+def supervisor_router(
+    state: ShipAgentState,
+) -> Literal["team1_analysis", "team2_search", "team3_docgen", "__end__"]:
+  task_type = state.get("task_type")
+  search_status = state.get("search_status", "idle")
+  final_answer = state.get("final_answer")
 
-main_builder = StateGraph(ShipAgentState)
+  # 1. Team 3에서 최종 답변(또는 역질문)이 생성되었다면 즉시 파이프라인 완전 종료 (무한루프 방지 ⭐)
+  if final_answer:
+    return "__end__"
 
-main_builder.add_node("supervisor", top_supervisor)
-main_builder.add_node("team1_analysis", team1_subgraph)
-main_builder.add_node("team2_search", team2_subgraph)
-main_builder.add_node("team3_docgen", team3_subgraph)
+  # 2. 작업 의도 분류가 아직 안 되었다면 Team 1(분석팀)으로
+  if not task_type:
+    return "team1_analysis"
 
-main_builder.add_edge(START, "supervisor")
+  # 3. 단순 일상 대화(chat)는 RAG/기상 검색을 건너뛰고 바로 Team 3(생성팀)으로
+  if task_type == "chat":
+    return "team3_docgen"
 
-main_builder.add_conditional_edges(
+  # 4. 전문 지식 질의(knowledge_qa) 또는 문서 발행(doc_generation):
+  #    검색 미실행(idle) 상태라면 무조건 Team 2(검색팀)로 이동
+  if search_status == "idle":
+    return "team2_search"
+
+  # 5. 검색이 실행 완료(completed, empty, error)되었으면 Team 3(생성팀)으로 이동
+  return "team3_docgen"
+
+
+# Supervisor 디버깅용 노드
+def supervisor_node(state: ShipAgentState):
+  task = state.get("task_type")
+  status = state.get("search_status", "idle")
+  has_ans = bool(state.get("final_answer"))
+  print(
+      f"[Supervisor] task_type={task}, search_status={status},"
+      f" has_final_answer={has_ans}"
+  )
+  return {}
+
+
+# ==============================================================================
+# 2. 메인 오케스트레이터 그래프 빌드
+# ==============================================================================
+workflow = StateGraph(ShipAgentState)
+
+workflow.add_node("supervisor", supervisor_node)
+workflow.add_node("team1_analysis", team1_subgraph)
+workflow.add_node("team2_search", team2_subgraph)
+workflow.add_node("team3_docgen", team3_subgraph)
+
+# 진입점
+workflow.add_edge(START, "supervisor")
+
+# Supervisor 조건부 분기
+workflow.add_conditional_edges(
     "supervisor",
-    lambda state: state["next"],
+    supervisor_router,
     {
         "team1_analysis": "team1_analysis",
         "team2_search": "team2_search",
         "team3_docgen": "team3_docgen",
-        "FINISH": END,
+        "__end__": END,
     },
 )
 
-main_builder.add_edge("team1_analysis", "supervisor")
-main_builder.add_edge("team2_search", "supervisor")
-main_builder.add_edge("team3_docgen", "supervisor")
+# 각 팀 완료 후 supervisor로 복귀
+workflow.add_edge("team1_analysis", "supervisor")
+workflow.add_edge("team2_search", "supervisor")
+workflow.add_edge("team3_docgen", "supervisor")
 
-memory = MemorySaver()
-ship_agent_app = main_builder.compile(checkpointer=memory)
+# 세션 메모리 체크포인터 장착
+checkpointer = MemorySaver()
+ship_agent_app = workflow.compile(checkpointer=checkpointer)

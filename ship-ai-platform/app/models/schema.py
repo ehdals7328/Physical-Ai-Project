@@ -37,7 +37,7 @@ class User(db.Model):
     email = db.Column('EMAIL', db.String(100))
     display_name = db.Column('DISPLAY_NAME', db.String(100))
     role = db.Column('ROLE', db.String(20), default='USER')
-    is_active = db.Column('IS_ACTIVE', db.String(1), default='Y')
+    is_active = db.Column('IS_ACTIVE', db.String(1), default=True)
     created_at = db.Column('CREATED_AT', db.DateTime, default=datetime.utcnow)
     updated_at = db.Column('UPDATED_AT', db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
