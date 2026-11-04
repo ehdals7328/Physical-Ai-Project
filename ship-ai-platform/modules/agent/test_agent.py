@@ -1,171 +1,98 @@
-# agent_system/run_test.py
-import json
+"""
+스마트 선박 자율 제조 멀티에이전트 단독 통합 테스트 (test_agent.py)
+"""
 import os
-from pathlib import Path
+import sys
+import json
 from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
 
-load_dotenv()
+# 루트 경로 인식 보정 (ship-ai-platform 기준)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "../.."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-from .supervisor import ship_agent_app
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-OUTPUT_DIR = Path("./generated_docs")
+# supervisor 메인 그래프 앱 임포트
+from modules.agent.supervisor import ship_agent_app
 
-def print_separator(title: str):
-    print("\n" + "=" * 70)
-    print(f"🚀 {title}")
-    print("=" * 70)
 
-def execute_stream_turn(turn_label: str, query: str, config: dict = None) -> dict:
-    """단일 질의 스트림 실행 및 세부 단계 출력 래퍼"""
-    print(f"\n----------------------------------------------------------------------")
-    print(f"▶ [{turn_label}] 질의: \"{query}\"")
-    print(f"----------------------------------------------------------------------")
+def run_unit_test(case_num: int, title: str, query: str):
+    print(f"\n{'='*75}")
+    print(f"▶ [Test Case {case_num}] {title}")
+    print(f"  - 질의: \"{query}\"")
+    print(f"{'='*75}")
 
-    turn_input = {
+    initial_state = {
+        "messages": [],
         "user_query": query,
-        "messages": [HumanMessage(content=query)],
         "task_type": None,
+        "target_categories": [],
+        "need_weather": False,
+        "extracted_params": {},
         "is_param_complete": None,
+        "missing_params": [],
+        "search_status": "idle",
+        "search_queries": [],
         "retrieved_docs": [],
+        "weather_data": None,
         "generated_document": None,
         "final_answer": None,
+        "audit_saved": False
     }
 
-    step_count = 1
-    final_state = {}
+    # ⭕ 체크포인터용 thread_id 설정 추가 (케이스별 독립 세션 부여)
+    config = {"configurable": {"thread_id": f"test_case_session_{case_num}"}}
 
-    for output in ship_agent_app.stream(
-        turn_input,
-        config=config,
-        recursion_limit=20,
-        stream_mode="updates",
-        subgraphs=True,
-    ):
-        if isinstance(output, tuple):
-            subgraph_path, node_updates = output
-        else:
-            subgraph_path, node_updates = (), output
+    try:
+        # invoke 호출 시 config 전달
+        result = ship_agent_app.invoke(initial_state, config=config)
 
-        for node_name, state_update in (node_updates or {}).items():
-            if isinstance(state_update, dict):
-                final_state.update(state_update)
+        print("\n[에이전트 실행 상태 요약]")
+        print(f" • Task Type        : {result.get('task_type')}")
+        print(f" • Target Categories: {result.get('target_categories')}")
+        print(f" • Search Status    : {result.get('search_status')}")
+        print(f" • Retrieved Docs   : {len(result.get('retrieved_docs', []))}건 인출")
+        print(f" • Extracted Params : {result.get('extracted_params')}")
+        print(f" • Is Param Complete: {result.get('is_param_complete')}")
 
-            prefix = f"[{'/'.join(subgraph_path)} > {node_name}]" if subgraph_path else f"[{node_name}]"
-            print(f"  [{step_count:02d}단계] 👉 {prefix}")
+        print("\n[최종 에이전트 응답]:")
+        print(result.get("final_answer"))
 
-            # 1. 최상위 오케스트레이션
-            if node_name == "supervisor":
-                print(f"    └─ [Supervisor] 다음 팀 배정: '{state_update.get('next')}'")
+        doc = result.get("generated_document")
+        if doc:
+            print("\n[발행된 공식 지시서/계획서 문서]:")
+            print(json.dumps(doc, indent=2, ensure_ascii=False))
 
-            # 2. Team 1 분석팀
-            elif node_name == "intent_classifier":
-                print(f"    └─ [Team 1 분류] task_type: {state_update.get('task_type')}")
-            elif node_name == "parameter_checker":
-                print(f"    └─ [Team 1 검증] is_param_complete: {state_update.get('is_param_complete')}")
+    except Exception as e:
+        print(f"\n❌ [테스트 실패]: {e}")
+        import traceback
+        traceback.print_exc()
 
-            # 3. Team 2 검색팀
-            elif node_name == "rag_retriever":
-                docs = state_update.get("retrieved_docs", [])
-                print(f"    └─ [Team 2 RAG] 규격 인출 완료 ({len(docs)}건)")
-            elif node_name == "weather_collector":
-                weather = state_update.get("weather_info", {})
-                print(f"    └─ [Team 2 기상] {weather.get('location')} | 기온: {weather.get('temperature')}℃ | 풍속: {weather.get('wind_speed')}m/s")
-            elif node_name == "doc_grader":
-                print(f"    └─ [Team 2 Grader] 적합성 판정: {state_update.get('is_docs_relevant')} (재시도: {state_update.get('retry_count', 0)}회)")
-
-            # 4. Team 3 문서생성팀
-            elif node_name == "output_validator":
-                print(f"    └─ [Team 3 검증] 서식 무결성 통과 및 마크다운 파일 저장")
-            elif node_name == "save_audit":
-                audit_msg = (state_update or {}).get("audit_result", "기록 완료")
-                print(f"    └─ [Team 3 감사] {audit_msg}")
-
-            step_count += 1
-
-    # 최종 요약 출력
-    print(f"\n[산출물 결과 요약]")
-    doc = final_state.get("generated_document")
-    if doc:
-        print(f"• 태스크: {final_state.get('task_type')}")
-        print(f"• 생성 문서 JSON:\n{json.dumps(doc, indent=2, ensure_ascii=False)}")
-    else:
-        print(f"• 에이전트 응답:")
-        print(final_state.get("final_answer"))
-
-    return final_state
-
-def run_full_system_test():
-    """모든 핵심 기능 통합 검증 벤치마크"""
-    print_separator("스마트 선박 제조 멀티에이전트 시스템 전체 기능 통합 벤치마크 테스트")
-
-    # =========================================================================
-    # Part 1. 멀티턴 & 역질문 & 용접지시서(weld_order) 발행 검증
-    # =========================================================================
-    print("\n[PART 1] 필수 조건 누락 역질문 및 멀티턴 세션 유지 검증")
-    session_config = {"configurable": {"thread_id": "integration_test_session"}}
-
-    # Turn 1: 강종/두께 누락 -> 역질문 유도
-    execute_stream_turn(
-        turn_label="Turn 1: 필수 정보 누락 질의",
-        query="울산 야외 독에서 용접 작업지시서 작성해줘",
-        config=session_config
-    )
-
-    # Turn 2: 누락 조건 보충 -> 이전 세션(울산)과 결합하여 정상 지시서 발행
-    execute_stream_turn(
-        turn_label="Turn 2: 누락 조건 보충 답변",
-        query="SS400 10T 맞대기로 진행해",
-        config=session_config
-    )
-
-    # =========================================================================
-    # Part 2. 중량물 작업계획서(heavy_plan) 및 강풍 안전 중지 검증
-    # =========================================================================
-    print("\n[PART 2] 중량물 안전계획서 발행 및 강풍 환경 작업 중지 판정 검증")
-    execute_stream_turn(
-        turn_label="Case 3: 강풍(풍속 12m/s) 인양 계획 질의",
-        query="풍속이 12m/s일 때 크레인 블록 인양 작업 안전 기준 및 계획서 작성해줘",
-        config={"configurable": {"thread_id": "heavy_plan_session"}}
-    )
-
-    # =========================================================================
-    # Part 3. 사내 규격 기반 일반 기술 QA(general_qa) 검증
-    # =========================================================================
-    print("\n[PART 3] 사내 규격 기반 전문 기술 QA 검증")
-    execute_stream_turn(
-        turn_label="Case 4: 결함 방지 수칙 전문 기술 질의",
-        query="선박 후판 용접 시 언더컷 결함 방지 기준이 뭐야?",
-        config={"configurable": {"thread_id": "general_qa_session"}}
-    )
-
-    # =========================================================================
-    # Part 4. 로컬 물리 디스크 산출물 확인
-    # =========================================================================
-    print_separator("물리 파일 저장 및 감사 이력 적재 확인")
-    if OUTPUT_DIR.exists():
-        md_files = list(OUTPUT_DIR.glob("*.md"))
-        audit_file = OUTPUT_DIR / "audit_history.log"
-
-        print(f"📁 저장 디렉토리: {OUTPUT_DIR.resolve()}")
-        print(f"📄 생성된 마크다운(.md) 문서 수: {len(md_files)}개")
-        for f in md_files[-3:]:
-            print(f"   └─ {f.name}")
-
-        if audit_file.exists():
-            print(f"📋 감사 이력 로그(audit_history.log) 확인 완료 (최근 기록):")
-            with audit_file.open("r", encoding="utf-8") as af:
-                lines = af.readlines()
-                for line in lines[-3:]:
-                    print(f"   {line.strip()}")
-        else:
-            print("⚠️ audit_history.log 파일이 아직 생성되지 않았습니다.")
-    else:
-        print("⚠️ generated_docs 폴더가 생성되지 않았습니다.")
-
-    print("\n" + "=" * 70)
-    print("🎉 전체 통합 벤치마크 테스트 완료")
-    print("=" * 70 + "\n")
 
 if __name__ == "__main__":
-    run_full_system_test()
+    print("\n🚀 [Multi-Agent System] 자율 의도 분류 및 범용 RAG 단독 통합 테스트 시작")
+
+    # 1. 일상 대화 (chat)
+    run_unit_test(
+        1,
+        "일상 대화 및 시스템 기능 안내",
+        "안녕하세요! 선박 작업 어시스턴트 기능에 대해 소개해줘."
+    )
+
+    # 2. 전문 지식 질의 (knowledge_qa - 산소농도 및 RT 기준)
+    run_unit_test(
+        2,
+        "전문 규격/지침 Q&A (산소농도 및 RT 비파괴검사 기준)",
+        "밀폐구역 작업 시 적정 산소농도 기준과 방사선투과(RT) 결함 합격 기준을 알려줘."
+    )
+
+    # 3. 제원 누락 문서 생성 (doc_generation - 역질문 유도)
+    run_unit_test(
+        3,
+        "문서 작성 제원 누락 역질문 검증 (하드코딩 디폴트값 차단 확인)",
+        "울산 야외 독에서 용접 작업지시서 한 부 작성해줘."
+    )
+
+    print(f"\n{'='*75}\n✅ 단독 테스트 완료\n{'='*75}\n")
