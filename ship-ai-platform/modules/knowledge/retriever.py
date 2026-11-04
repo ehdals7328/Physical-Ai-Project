@@ -13,6 +13,7 @@ import chromadb
 
 from config import Config
 from modules.knowledge.embedding import encode_texts
+from modules.knowledge.embedding import encode_query
 
 INDEX_VERSION = "RAG_V2"
 COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "shipbuilding_docs")
@@ -228,8 +229,6 @@ class KnowledgeStore:
         top_k = max(1, min(int(top_k), 20))
 
         try:
-            if self.collection.count() == 0:
-                return []
             clauses: list[dict[str, Any]] = [
                 {"index_version": {"$eq": INDEX_VERSION}},
                 {"is_active": {"$eq": True}},
@@ -244,10 +243,13 @@ class KnowledgeStore:
                 clauses.append({"access_level": {"$in": access}})
 
             where = {"$and": clauses}
-            query_embedding = encode_texts([query])[0]
+            query_embedding = encode_query(query)
+            if not query_embedding:
+                return []
+
             response = self.collection.query(
                 query_embeddings=[query_embedding],
-                n_results=min(top_k, self.collection.count()),
+                n_results=top_k,
                 where=where,
                 include=["documents", "metadatas", "distances"],
             )
@@ -262,7 +264,7 @@ class KnowledgeStore:
             for idx, text in enumerate(documents):
                 meta = metadatas[idx] or {}
                 distance = float(distances[idx]) if idx < len(distances) and distances[idx] is not None else 1.0
-                similarity = max(0.0, min(1.0, 1.0 - distance))
+                similarity = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
                 if similarity < min_similarity:
                     continue
                 items.append({

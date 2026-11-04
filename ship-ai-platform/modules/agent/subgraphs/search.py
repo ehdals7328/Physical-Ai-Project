@@ -5,8 +5,10 @@ Team 1에서 도출한 target_categories(7대 카테고리) 및 사용자 질의
 """
 from typing import Any, Dict, List
 from langgraph.graph import StateGraph, START, END
-
 from modules.agent.state import ShipAgentState
+
+from modules.agent.tools.retriever_tools import search_knowledge_by_categories
+from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
 
 # 도구 및 클라이언트 안전 임포트
 try:
@@ -46,71 +48,26 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
     collected_docs: List[Dict[str, Any]] = []
 
     try:
-        # 1. 범용 7대 카테고리 검색 함수가 구현되어 있는 경우 우선 사용
-        if "search_knowledge_by_category" in globals() and callable(search_knowledge_by_category):
-            if target_categories:
-                for cat in target_categories:
-                    raw_items = search_knowledge_by_category(query, category=cat, top_k=3)
-                    for item in raw_items:
-                        collected_docs.append({
-                            "category": cat,
-                            "content": item.get("chunk_text", "") or str(item),
-                            "metadata": {
-                                "document_name": item.get("document_name"),
-                                "revision": item.get("revision"),
-                                "page": item.get("page_start"),
-                                "similarity": item.get("similarity_score"),
-                            }
-                        })
-            else:
-                raw_items = search_knowledge_by_category(query, top_k=4)
-                for item in raw_items:
-                    collected_docs.append({
-                        "category": item.get("category", "일반규격"),
-                        "content": item.get("chunk_text", "") or str(item),
-                        "metadata": {
-                            "document_name": item.get("document_name"),
-                            "page": item.get("page_start"),
-                        }
-                    })
-
-        # 2. 범용 함수 결과가 비어있거나 기존 개별 도구(wps, safety)만 존재하는 경우 폴백
-        if not collected_docs:
-            need_safety = any(c in ["safety_health", "heavy_equipment"] for c in target_categories) or \
-                          any(k in query for k in ["안전", "밀폐", "산소", "크레인", "인양", "방호"])
-            need_wps = any(c in ["manufacturing_tech", "quality_inspection", "class_rules"] for c in target_categories) or \
-                       any(k in query for k in ["용접", "전류", "전압", "WPS", "모재", "두께"]) or not need_safety
-
-            if need_wps and callable(wps_retriever_tool):
-                wps_text = wps_retriever_tool.invoke(query)
-                if wps_text and "찾지 못했습니다" not in str(wps_text):
-                    collected_docs.append({
-                        "category": "제조기술(WPS)",
-                        "content": str(wps_text),
-                        "metadata": {"source": "wps_retriever_tool"}
-                    })
-
-            if need_safety and callable(safety_retriever_tool):
-                safety_text = safety_retriever_tool.invoke(query)
-                if safety_text and "찾지 못했습니다" not in str(safety_text):
-                    collected_docs.append({
-                        "category": "안전보건/작업환경",
-                        "content": str(safety_text),
-                        "metadata": {"source": "safety_retriever_tool"}
-                    })
-
+        # 단 1회의 통합 호출로 개선
+        raw_items = search_knowledge_by_categories(query, categories=target_categories, top_k=4)
+        for item in raw_items:
+            collected_docs.append({
+                "category": item.get("category", "규격"),
+                "content": item.get("chunk_text", "") or str(item),
+                "metadata": {
+                    "document_name": item.get("document_name"),
+                    "revision": item.get("revision"),
+                    "page": item.get("page_start"),
+                    "similarity": item.get("similarity_score"),
+                    "source": item.get("source"),
+                    "doc_id": item.get("chunk_id")
+                }
+            })
         status = "completed" if collected_docs else "empty"
-        return {
-            "retrieved_docs": collected_docs,
-            "search_status": status
-        }
-
+        return {"retrieved_docs": collected_docs, "search_status": status}
     except Exception as e:
-        print(f"[Team 2 Search Error] RAG 문서 인출 중 예외 발생: {e}")
-        return {
-            "retrieved_docs": [],
-            "search_status": "error"
-        }
+        print(f"[Team 2 Search Error]: {e}")
+        return {"retrieved_docs": [], "search_status": "error"}
 
 
 # ==============================================================================
@@ -125,38 +82,26 @@ def conditional_weather_node(state: ShipAgentState) -> Dict[str, Any]:
     query = state.get("user_query", "")
     params = state.get("extracted_params", {}) or {}
 
-    # 날씨 필요 여부 확인
     is_weather_in_query = any(k in query for k in ["날씨", "기온", "풍속", "기상", "바람", "습도"])
     if not (need_weather or is_weather_in_query):
         return {"weather_data": None}
 
-    # 1. 위치 파라미터 확인 (하드코딩 도시 리스트 완전 제거)
     location = params.get("location")
-
-    # 2. 위치가 없으면 임의로 도시를 정하지 않고, 사용자에게 위치를 요구
     if not location:
         return {
             "weather_data": {
                 "status": "NEED_LOCATION",
-                "message": "기상 정보 확인을 위해 작업 위치(조선소 및 독 명칭)를 입력해 주세요."
+                "message": "기상 정보 확인을 위해 작업 위치를 입력해 주세요."
             },
             "need_weather": True
         }
 
-    # 3. 위치가 전달된 경우 FastMCP 실시간 기상 도구 실행 (동적 지오코딩)
     try:
         weather_info = get_realtime_weather_from_mcp(location)
-        return {
-            "weather_data": weather_info,
-            "need_weather": True
-        }
+        return {"weather_data": weather_info, "need_weather": True}
     except Exception as e:
-        print(f"[Team 2 Weather Error] 기상 수집 예외: {e}")
         return {
-            "weather_data": {
-                "location": location,
-                "error": str(e)
-            },
+            "weather_data": {"location": location, "error": str(e)},
             "need_weather": True
         }
 
@@ -168,8 +113,12 @@ builder = StateGraph(ShipAgentState)
 builder.add_node("rag_retriever", dynamic_rag_retriever_node)
 builder.add_node("weather_collector", conditional_weather_node)
 
+# START -> 2개 노드로 동시 Fan-Out
 builder.add_edge(START, "rag_retriever")
-builder.add_edge("rag_retriever", "weather_collector")
+builder.add_edge(START, "weather_collector")
+
+# 2개 노드가 모두 끝나면 END로 병합 (Fan-In)
+builder.add_edge("rag_retriever", END)
 builder.add_edge("weather_collector", END)
 
 team2_subgraph = builder.compile()
