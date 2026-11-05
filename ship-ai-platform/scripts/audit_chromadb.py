@@ -1,5 +1,4 @@
-
-# 인덱스 버전별(RAG_V2 vs 레거시), 카테고리별, 문서별 청크 분포 현황을 터미널에 요약 출력하는 읽기 전용(Read-Only) 진단/모니터링 스크립트
+"""공통 기술 RAG와 사내 RAG의 인덱스 상태를 읽기 전용으로 진단합니다."""
 from __future__ import annotations
 
 import os
@@ -12,44 +11,44 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 import chromadb
 from config import Config
-from modules.knowledge.retriever import COLLECTION_NAME, INDEX_VERSION
+from modules.knowledge.retriever import PUBLIC_COLLECTION_NAME, INTERNAL_COLLECTION_NAME, INDEX_VERSION
 
 
-# 로컬 ChromaDB에 접속해 메타데이터를 읽어온 뒤 버전·카테고리·문서 ID별 분포를 집계하여 콘솔에 리포팅하는 진단 진입점 함수.
 def main() -> int:
+    """두 컬렉션의 인덱스 버전·문서·카테고리별 청크 분포를 출력합니다."""
     client = chromadb.PersistentClient(path=os.path.abspath(Config.CHROMA_DB_PATH))
-    try:
-        collection = client.get_collection(COLLECTION_NAME)
-    except Exception:
-        print(f"컬렉션이 없습니다: {COLLECTION_NAME}")
-        return 0
+    for collection_name in (PUBLIC_COLLECTION_NAME, INTERNAL_COLLECTION_NAME):
+        try:
+            collection = client.get_collection(collection_name)
+        except Exception:
+            print(f"컬렉션 없음: {collection_name}")
+            continue
 
-    result = collection.get(include=["metadatas"])
-    ids = result.get("ids", [])
-    metadatas = result.get("metadatas", [])
-    versions = Counter()
-    docs = Counter()
-    categories = Counter()
+        result = collection.get(include=["metadatas"])
+        ids = result.get("ids", [])
+        versions = Counter()
+        docs = Counter()
+        categories = Counter()
+        for metadata in result.get("metadatas", []):
+            metadata = metadata or {}
+            versions[metadata.get("index_version", "LEGACY_OR_UNKNOWN")] += 1
+            docs[metadata.get("document_id", "UNKNOWN")] += 1
+            categories[metadata.get("category", "UNKNOWN")] += 1
 
-    for metadata in metadatas:
-        metadata = metadata or {}
-        versions[metadata.get("index_version", "LEGACY_OR_UNKNOWN")] += 1
-        docs[metadata.get("document_id", "UNKNOWN")] += 1
-        categories[metadata.get("category", "UNKNOWN")] += 1
-
-    print(f"Collection: {COLLECTION_NAME}")
-    print(f"전체 벡터: {len(ids)}")
-    print(f"검색 대상({INDEX_VERSION}): {versions.get(INDEX_VERSION, 0)}")
-    print(f"구형/기타 인덱스: {len(ids) - versions.get(INDEX_VERSION, 0)}")
-    print("\n[인덱스 버전]")
-    for key, value in versions.most_common():
-        print(f"  {key}: {value}")
-    print("\n[카테고리]")
-    for key, value in categories.most_common():
-        print(f"  {key}: {value}")
-    print("\n[문서별 청크 수 - 상위 30]")
-    for key, value in docs.most_common(30):
-        print(f"  DOCUMENT_ID={key}: {value}")
+        print(f"\n[{collection_name}]")
+        print(f"전체 벡터: {len(ids)}")
+        print(f"현재 인덱스({INDEX_VERSION}): {versions.get(INDEX_VERSION, 0)}")
+        print(f"이전/기타 인덱스: {len(ids) - versions.get(INDEX_VERSION, 0)}")
+        print("인덱스 버전:")
+        for key, value in versions.most_common():
+            print(f"  {key}: {value}")
+        print("문서별 청크 수 - 상위 20:")
+        for key, value in docs.most_common(20):
+            print(f"  DOCUMENT_ID={key}: {value}")
+        if categories:
+            print("분류별 청크 수:")
+            for key, value in categories.most_common():
+                print(f"  {key}: {value}")
     return 0
 
 

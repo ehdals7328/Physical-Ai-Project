@@ -1,12 +1,9 @@
-# 이 파일은 원본 PDF 문서들을 스캔하여 관계형 DB(DOCUMENT_METADATA)와 벡터 스토어(ChromaDB) 양쪽에 파일 해시 기반으로 동기화하고,
-# 캐시 검증을 통해 변경된 파일만 골라 적재하는 CLI 기반 RAG 증분 데이터 수집/배치 파이프라인(Ingest Controller)이다.
-
+"""PDF 원본을 Oracle 문서 메타데이터와 PUBLIC/INTERNAL RAG에 증분 색인합니다."""
 from __future__ import annotations
 
 import argparse
 import logging
 import os
-import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -25,102 +22,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger("rag.ingest")
 
-CATEGORY_RULES = [
-    ("안전보건", ("안전", "kosha", "osha", "z49", "safety", "health")),
-    ("품질검사", ("품질", "검사", "inspection", "defect", "ut", "rt", "hull weld")),
-    ("장비중량물", ("중량", "crane", "rigging", "lifting", "hoist", "인양")),
-    ("작업환경기상", ("기상", "풍속", "습도", "weather", "environment", "wind")),
-    ("선급법규", ("선급", "class rule", "class_rules", "kr rule", "korean register", "kr ", "imo", "goal-based", "b2.1")),
-    ("사내문서", ("사내", "internal", "work instruction", "승인서")),
-]
 
-SOURCE_RULES = [
-    (("aws",), "AWS (미국용접학회)"),
-    (("kosha",), "안전보건공단(KOSHA)"),
-    (("osha",), "OSHA"),
-    (("twi",), "TWI (영국용접연구소)"),
-    (("kiswel",), "KISWEL (고려용접봉)"),
-    (("seah", "세아"), "세아ESAB"),
-    (("imo",), "IMO"),
-    (("kr ", "korean register", "한국선급"), "한국선급(KR)"),
-]
-
-
-# 공백과 경로 기호를 제거하고 소문자로 통일하여 파일명 비교 시 오차를 없애는 문자열 정규화 함수.
-def normalize_name(value: str) -> str:
-    value = (value or "").strip().casefold().replace("\\", "/")
-    value = value.rsplit("/", 1)[-1]
-    value = re.sub(r"\s+", "", value)
-    return value
-
-
-# 파일명과 상위 폴더 경로의 키워드를 미리 정의된 규칙표와 대조하여 문서의 카테고리와 출처(발행처)를 자동 추론하는 함수.
-def guess_metadata(pdf_path: Path) -> tuple[str, str]:
-    name = pdf_path.name.casefold()
-    folders = " ".join(part.casefold() for part in pdf_path.parts)
-    search_text = f"{folders} {name}"
-
-    category = "제조기술"
-    for candidate, keywords in CATEGORY_RULES:
-        if any(keyword in search_text for keyword in keywords):
-            category = candidate
-            break
-
-    source = "미확인"
-    for keywords, candidate_source in SOURCE_RULES:
-        if any(keyword in search_text for keyword in keywords):
-            source = candidate_source
-            break
-    if source == "미확인":
-        source = "조선소 기술자료실"
-    return category, source
-
-
-# 프로젝트 루트를 기준으로 상대 경로 문자열을 생성하여 운영체제 간 경로 호환성을 보장하는 유틸리티 함수.
 def relative_path(path: Path) -> str:
+    """프로젝트 내부 파일은 상대 경로로, 외부 파일은 절대 경로로 반환합니다."""
     try:
         return path.resolve().relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
         return path.resolve().as_posix()
 
 
-# 오라클 DB(DOCUMENT_METADATA)를 조회하여 기존 문서 레코드를 재활용하거나 새 메타데이터 행을 생성해 매핑하는 함수.
-def find_or_create_metadata(pdf_path: Path, file_hash: str, *, dry_run: bool):
-    docs = DocumentMetadata.query.all()
+def find_or_create_metadata(
+    pdf_path: Path,
+    file_hash: str,
+    *,
+    dry_run: bool,
+    access_level: str,
+):
+    """활성 파일 해시가 일치하는 문서 메타데이터를 재사용하거나 새 행을 생성합니다."""
+    existing = DocumentMetadata.query.filter_by(
+        file_hash=file_hash,
+        access_level=access_level.upper(),
+        document_status="ACTIVE",
+    ).first()
+    if existing:
+        return existing, False
 
-    exact = next((row for row in docs if (row.file_hash or "").strip().lower() == file_hash), None)
-    if exact:
-        return exact, False
-
-    target_name = normalize_name(pdf_path.name)
-    same_name = [row for row in docs if normalize_name(row.document_name) == target_name]
-
-    reusable = next(
-        (
-            row for row in same_name
-            if not (row.file_hash or "").strip()
-            or str(row.file_path or "").strip().upper() == "SEED_DATA"
-        ),
-        None,
-    )
-    if reusable:
-        if not dry_run:
-            reusable.file_hash = file_hash
-            reusable.file_path = relative_path(pdf_path)
-            reusable.ingest_status = "QUEUED"
-            reusable.updated_at = datetime.utcnow()
-        return reusable, False
-
-    category, source = guess_metadata(pdf_path)
     if dry_run:
         return None, True
 
     row = DocumentMetadata(
         document_name=pdf_path.name[:300],
-        category=category,
-        source=source,
+        category="기술자료",
+        source="출처 미기재",
         revision="UNKNOWN",
-        access_level=os.getenv("DEFAULT_DOCUMENT_ACCESS_LEVEL", "INTERNAL").upper(),
+        access_level=access_level.upper(),
         file_path=relative_path(pdf_path),
         file_hash=file_hash,
         ingest_status="QUEUED",
@@ -132,22 +67,34 @@ def find_or_create_metadata(pdf_path: Path, file_hash: str, *, dry_run: bool):
     return row, True
 
 
-# 개별 PDF의 중복 여부를 검사하고, 파싱·청킹·임베딩을 거쳐 ChromaDB와 오라클 DB의 처리 상태를 일치시키는 핵심 단일 적재 처리 함수.
 def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
+    """PDF 한 건의 해시 확인·파싱·청킹·임베딩·색인과 상태 갱신을 수행합니다."""
     file_hash = sha256_file(pdf_path)
     logger.info("PDF 확인: %s | SHA256=%s", pdf_path.name, file_hash[:16])
 
-    row, is_new = find_or_create_metadata(pdf_path, file_hash, dry_run=args.dry_run)
+    row, is_new = find_or_create_metadata(
+        pdf_path,
+        file_hash,
+        dry_run=args.dry_run,
+        access_level=args.access_level,
+    )
     if row is not None and str(row.document_status or "ACTIVE").upper() != "ACTIVE":
         logger.warning("비활성 문서이므로 건너뜀: %s (DOCUMENT_ID=%s)", pdf_path.name, row.document_id)
         return "SKIPPED"
 
-    if row is not None and store is not None and not args.force and not args.dry_run and store.is_document_indexed(
-            row.document_id, file_hash):
-        if row.ingest_status != "COMPLETED" and not args.dry_run:
-            row.ingest_status = "COMPLETED"
-            row.updated_at = datetime.utcnow()
-            db.session.commit()
+    if row is not None:
+        row.access_level = args.access_level
+
+    if (
+        row is not None
+        and store is not None
+        and not args.force
+        and not args.dry_run
+        and store.is_document_indexed(row.document_id, file_hash, args.access_level)
+    ):
+        row.ingest_status = "COMPLETED"
+        row.updated_at = datetime.utcnow()
+        db.session.commit()
         logger.info("변경 없음 건너뜀: %s (DOCUMENT_ID=%s)", pdf_path.name, row.document_id)
         return "SKIPPED"
 
@@ -171,7 +118,6 @@ def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
             ocr_enabled=args.ocr,
             force_reparse=args.force_reparse,
         )
-
         logger.info(
             "추출 완료: blocks=%s, chunks=%s, assets=%s, parsed_cache=%s, chunk_cache=%s",
             cache_info.get("block_count", 0), len(chunks), len(assets),
@@ -193,11 +139,11 @@ def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
             document_id=document_id,
             document_name=row.document_name,
             category=row.category,
-            source=row.source or "미확인",
+            source=row.source or "출처 미기재",
             revision=row.revision or "UNKNOWN",
             file_hash=file_hash,
             chunks=chunks,
-            access_level=row.access_level or "INTERNAL",
+            access_level=args.access_level,
             document_status=row.document_status or "ACTIVE",
         )
         row.ingest_status = "COMPLETED"
@@ -220,16 +166,17 @@ def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
         raise
 
 
-# CLI 명령행 인자(--dry-run, --ocr, --force 등)를 파싱하고 대상 PDF들을 순회하며 일괄 적재 및 에러 롤백을 총괄하는 진입점 함수.
 def main() -> int:
-    parser = argparse.ArgumentParser(description="PDF를 BGE-M3 semantic chunking으로 ChromaDB에 증분 적재")
+    """명령행 옵션을 확인하고 지정된 PDF 폴더의 증분 색인을 실행합니다."""
+    parser = argparse.ArgumentParser(description="PDF를 PUBLIC 또는 INTERNAL ChromaDB 컬렉션에 적재")
     parser.add_argument("--pdf-dir", default=str(PROJECT_ROOT / "data" / "raw_pdfs"))
-    parser.add_argument("--dry-run", action="store_true", help="Oracle/ChromaDB에 저장하지 않고 추출·청킹만 검사")
-    parser.add_argument("--force", action="store_true", help="이미 적재된 PDF도 다시 임베딩")
-    parser.add_argument("--force-reparse", action="store_true", help="PDF 파싱/청킹 캐시도 무시하고 다시 생성")
-    parser.add_argument("--no-semantic", action="store_true", help="Semantic 경계 분석을 끄고 문단 기반 길이 청킹")
+    parser.add_argument("--dry-run", action="store_true", help="DB/벡터 저장 없이 파싱·청킹만 검사")
+    parser.add_argument("--force", action="store_true", help="기존 색인도 다시 임베딩")
+    parser.add_argument("--force-reparse", action="store_true", help="PDF 파싱/청킹 캐시 무시")
+    parser.add_argument("--no-semantic", action="store_true", help="의미 기반 분할을 끄고 기본 청킹 사용")
     parser.add_argument("--ocr", action="store_true", help="Tesseract OCR 사용 (kor+eng 언어 데이터 필요)")
     parser.add_argument("--limit", type=int, default=0, help="처리할 PDF 최대 개수 (0=전체)")
+    parser.add_argument("--access-level", choices=("PUBLIC", "INTERNAL"), default="PUBLIC")
     args = parser.parse_args()
 
     pdf_dir = Path(args.pdf_dir).resolve()
@@ -244,7 +191,7 @@ def main() -> int:
         logger.warning("처리할 PDF가 없습니다: %s", pdf_dir)
         return 0
 
-    logger.info("대상 PDF: %s개 | 폴더: %s", len(pdf_files), pdf_dir)
+    logger.info("대상 PDF: %s개 | 폴더: %s | access_level=%s", len(pdf_files), pdf_dir, args.access_level)
     app = create_app()
     summary = {"COMPLETED": 0, "SKIPPED": 0, "FAILED": 0, "DRY_RUN": 0}
 
@@ -262,7 +209,7 @@ def main() -> int:
 
         logger.info("처리 결과: %s", summary)
         if store is not None:
-            logger.info("현재 RAG_V2 청크 수: %s", store.count(current_index_only=True))
+            logger.info("현재 PUBLIC=%s / INTERNAL=%s 청크", store.count(), store.count_internal())
 
     return 1 if summary["FAILED"] else 0
 
