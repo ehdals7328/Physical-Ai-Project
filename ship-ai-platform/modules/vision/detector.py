@@ -1,6 +1,15 @@
+"""
+modules/vision/detector.py
+조선소 용접선 및 결함 탐지 비전 모듈 (팀원 연계용 표준 인터페이스 스텁).
+"""
 from datetime import datetime
+from typing import Dict, Any
 
-def analyze_welding_frame(image_path: str = "", include_defect: bool = False) -> dict:
+def analyze_welding_frame(image_path: str = "", include_defect: bool = False) -> Dict[str, Any]:
+    """
+    현장 용접 이미지 또는 비디오 프레임을 수신하여 BBox 및 이음선 궤적을 반환합니다.
+    (추후 팀원의 실제 YOLOv11s 가중치 추론 코드가 이 인터페이스 규격에 맞추어 결합됩니다.)
+    """
     started = datetime.utcnow()
     detections = [
         {
