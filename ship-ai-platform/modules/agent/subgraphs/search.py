@@ -1,10 +1,10 @@
 """
 Team 2: 지식·환경 수집 및 Function Calling 감리 서브그래프 (search.py)
 - Node 1 (rag_retriever): Team 1이 계획한 검색어로 ChromaDB 인출
-- Node 2 (weather_collector): Team 1이 계획한 영문 도시명으로 FastMCP 기상 수집
+- Node 2 (weather_collector): FastMCP 실시간 기상 수집
 - Node 3 (semantic_doc_grader): 무관한 RAG 문서 필터링
-- Node 4 (env_safety_critic): evaluate_environmental_safety 도구를 Function Calling으로 직접 호출하여 안전 판정
-- Node 5 (spec_gap_evaluator): RAG 규격서 기반 동적 필수 제원 누락 추론
+- Node 4 (env_safety_critic): evaluate_environmental_safety 도구 자율 실행
+- Node 5 (spec_gap_evaluator): 인출된 RAG 규격서와 현재 확보된 제원을 대조하여 누락 항목 동적 판정
 """
 
 import json
@@ -26,14 +26,13 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 # 1. RAG 규격 문서 인출 노드 (rag_retriever)
 # ==============================================================================
 def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
-    search_queries = state.get("search_queries", [])
-    task_type = state.get("task_type", "knowledge_qa")
+    search_queries = state.get("search_queries") or []
+    user_query = state.get("user_query", "").strip()
 
-    # Team 1에서 RAG 검색 도구를 호출하지 않은 경우(순수 날씨 질의, 일상 대화) 즉시 스킵
-    if not search_queries:
+    target_query = search_queries[0] if search_queries else user_query
+    if not target_query:
         return {"retrieved_docs": [], "search_status": "empty"}
 
-    target_query = search_queries[0]
     collected_docs: List[Dict[str, Any]] = []
 
     try:
@@ -91,7 +90,7 @@ def conditional_weather_node(state: ShipAgentState) -> Dict[str, Any]:
 class RelevantDocIndices(BaseModel):
     relevant_indices: List[int] = Field(
         default_factory=list,
-        description="사용자 질의 및 작업 목적과 실제로 연관이 있는 문서의 인덱스 번호(0부터 시작) 목록. 없으면 빈 리스트([])"
+        description="사용자 질의 및 누적 작업 제원과 연관이 있는 문서의 인덱스 번호(0부터 시작) 목록"
     )
 
 
@@ -100,9 +99,11 @@ structured_grader = llm.with_structured_output(RelevantDocIndices, method="funct
 GRADER_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "당신은 기술 문서 적합성 감사 AI입니다.\n"
-     "검색된 문서 청크들이 [사용자 질의]에 답변하거나 [작업지시서]를 작성하는 데 실질적인 기술 근거가 되는지 평가하세요.\n"
-     "- 질문 의도와 무관한 문서는 제외하고, 관련성이 인정되는 문서의 인덱스 번호(0, 1, 2...)만 반환하세요."),
-    ("human", "[사용자 질의]: {query}\n\n[검색된 문서 목록]:\n{docs_preview}")
+     "검색된 문서 청크들이 [사용자 질의] 및 [누적 작업 제원]에 대한 기술 근거가 되는지 평가하여 관련 문서의 인덱스 번호(0, 1, 2...)를 반환하세요."),
+    ("human",
+     "[사용자 질의]: {query}\n"
+     "[누적 작업 제원]: {params}\n\n"
+     "[검색된 문서 목록]:\n{docs_preview}")
 ])
 
 
@@ -112,6 +113,7 @@ def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
         return {"retrieved_docs": [], "search_status": "empty"}
 
     query = state.get("user_query", "")
+    params = state.get("extracted_params", {}) or {}
     preview_lines = [
         f"[{idx}] {d.get('metadata', {}).get('document_name', '문서')}: {str(d.get('content', ''))[:300].replace(chr(10), ' ')}"
         for idx, d in enumerate(docs)
@@ -120,12 +122,15 @@ def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
     try:
         res: RelevantDocIndices = (GRADER_PROMPT | structured_grader).invoke({
             "query": query,
+            "params": json.dumps(params, ensure_ascii=False),
             "docs_preview": "\n".join(preview_lines)
         })
         filtered = [docs[i] for i in res.relevant_indices if 0 <= i < len(docs)]
+        # 만약 필터링 결과가 전부 비어버렸다면 원본 문서를 유지하여 규격 참조 단절 방지
+        final_docs = filtered if filtered else docs
         return {
-            "retrieved_docs": filtered,
-            "search_status": "completed" if filtered else "empty"
+            "retrieved_docs": final_docs,
+            "search_status": "completed"
         }
     except Exception as e:
         print(f"[Team 2 Grader Warning]: {e}")
@@ -133,17 +138,21 @@ def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 4. Function Calling 기반 환경·안전 룰 판정 노드 (env_safety_critic) ⭐
+# 4. Function Calling 기반 환경·안전 룰 판정 노드 (env_safety_critic)
 # ==============================================================================
 llm_with_safety_tool = llm.bind_tools([evaluate_environmental_safety], tool_choice="evaluate_environmental_safety")
 
 SAFETY_TOOL_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "당신은 조선소 환경 안전 감리 AI입니다.\n"
-     "제공된 [실측 기상 데이터]와 [참조 규격 문서]를 확인하고, 반드시 `evaluate_environmental_safety` 도구를 호출하세요.\n"
-     "규격 문서에 외기온도 예열 기준이나 풍속 제한 기준이 명시되어 있다면 `thresholds` 인자에 반영하고, 없으면 기본값을 사용하세요."),
+     "주어진 [실측 기상], [작업 맥락], [규격 문서]를 검토하여 `evaluate_environmental_safety` 도구를 실행하세요.\n"
+     "- 만약 [작업 맥락]에서 사용자가 특정 가상 기상 조건(예: '풍속 12m/s 강풍 상황')을 가정하여 요청했다면, 실측 기상 대신 사용자가 가정한 수치를 current_wind / current_temp에 우선 적용하여 안전성을 평가하십시오.\n"
+     "- thresholds 인자에는 단일 숫자(float) 값들로 구성된 딕셔너리(예: {{'work_stop_wind_limit': 10.0, 'weld_wind_screen_limit': 2.0, 'preheat_temp_limit': 5.0}})를 전달하십시오."),
     ("human",
-     "[실측 기온]: {temp}℃\n[실측 풍속]: {wind}m/s\n[작업 맥락]: {task_type}\n[참조 규격 문서]:\n{docs_text}")
+     "[실측 기상]: 기온 {temp}℃, 풍속 {wind}m/s\n"
+     "[작업 맥락]: {query}\n"
+     "[확보된 제원]: {params}\n"
+     "[규격 문서]:\n{docs_text}")
 ])
 
 
@@ -159,13 +168,15 @@ def env_safety_critic_node(state: ShipAgentState) -> Dict[str, Any]:
 
     docs = state.get("retrieved_docs", [])
     docs_text = "\n".join(str(d.get("content", ""))[:400] for d in docs) if docs else "참조 규격 없음"
+    query = state.get("user_query", "")
+    params = state.get("extracted_params", {}) or {}
 
     try:
-        # LLM이 Function Calling으로 evaluate_environmental_safety 도구 호출 인자 구성
         ai_msg = (SAFETY_TOOL_PROMPT | llm_with_safety_tool).invoke({
             "temp": float(temp),
             "wind": float(wind),
-            "task_type": state.get("task_type", "용접 작업"),
+            "query": query,
+            "params": json.dumps(params, ensure_ascii=False),
             "docs_text": docs_text
         })
 
@@ -173,14 +184,21 @@ def env_safety_critic_node(state: ShipAgentState) -> Dict[str, Any]:
         if tool_calls:
             safety_eval = evaluate_environmental_safety.invoke(tool_calls[0]["args"])
         else:
+            actual_process = params.get("process") or query
             safety_eval = evaluate_environmental_safety.invoke({
                 "current_temp": float(temp),
-                "current_wind": float(wind)
+                "current_wind": float(wind),
+                "task_context": actual_process,
+                "task_type": actual_process
             })
-    except Exception:
+    except Exception as e:
+        print(f"[Team 2 Safety Critic Warning]: {e}")
+        actual_process = params.get("process") or query
         safety_eval = evaluate_environmental_safety.invoke({
             "current_temp": float(temp),
-            "current_wind": float(wind)
+            "current_wind": float(wind),
+            "task_context": actual_process,
+            "task_type": actual_process
         })
 
     enriched_weather = dict(weather)
@@ -192,12 +210,16 @@ def env_safety_critic_node(state: ShipAgentState) -> Dict[str, Any]:
 # 5. RAG 문서 기반 동적 필수 제원 검증 노드 (spec_gap_evaluator)
 # ==============================================================================
 class SpecGapAnalysis(BaseModel):
+    required_by_rag: List[str] = Field(
+        default_factory=list,
+        description="인출된 RAG 규격서에서 작업 조건을 특정하기 위해 기준 키(Key)로 삼고 있는 현장 입력 항목들 (예: 모재 재질, 판 두께, 작업 자세 등)"
+    )
     missing_fields: List[str] = Field(
         default_factory=list,
-        description="인출된 RAG 규격/양식을 적용하기 위해 필수적이나 현재 사용자 입력에 누락된 항목 목록. 모두 충족되었으면 빈 리스트([])"
+        description="required_by_rag 중 현재 [확보된 제원]과 [사용자 입력]에 아직 제공되지 않은 필수 항목 목록. 모두 충족되었으면 빈 리스트([])"
     )
     is_ready_to_generate: bool = Field(
-        description="필수 파라미터가 충분하여 지시서를 작성할 수 있는지 여부"
+        description="누락된 필수 항목이 없어 즉시 작업지시서를 발행할 수 있는지 여부 (missing_fields가 비어있으면 True)"
     )
 
 
@@ -205,23 +227,29 @@ structured_spec_evaluator = llm.with_structured_output(SpecGapAnalysis, method="
 
 SPEC_EVAL_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
-     "당신은 사내 표준 규격 감사 엔지니어입니다.\n"
-     "인출된 [사내 규격/양식 문서(RAG)]를 확인하고, [현재 확보된 작업 제원]과 대조하여 "
-     "사용자가 반드시 추가로 제공해야 하는 핵심 누락 항목(missing_fields)을 판정하세요."),
+     "당신은 사내 표준 규격(RAG) 대조 심사 엔지니어 AI입니다.\n"
+     "[인출된 사내 규격 문서(RAG)]를 읽고, 해당 규격서의 표나 기준을 적용하기 위해 작업자가 알려주어야 하는 현장 입력 조건과 현재 [확보된 제원]을 대조하세요.\n\n"
+     "[대조 및 판정 원칙]\n"
+     "1. 규격서에서 전류/전압/안전수칙 등의 결과값을 찾기 위한 '입력 조건(예: 대상 모재/강종, 판 두께, 이음 형태 등)'이 [확보된 제원]이나 [사용자 입력]에 빠져 있다면, 그 부족한 조건들을 구체적으로 `missing_fields`에 나열하고 `is_ready_to_generate=False`로 판정하십시오.\n"
+     "2. 반대로 [확보된 제원]에 대상 모재와 두께/공정 정보가 이미 들어있다면, 즉시 `missing_fields=[]`, `is_ready_to_generate=True`로 승인하십시오.\n"
+     "3. 규격서 본문에서 찾아서 지시서에 적어주어야 하는 결과값(권장 전류, 전압, 와이어경, 예열온도 등)은 작업자에게 묻는 항목이 아니므로 절대 `missing_fields`에 넣지 마십시오."),
     ("human",
-     "[인출된 사내 규격 문서(RAG)]:\n{docs}\n\n"
-     "[현재 확보된 작업 제원]: {params}\n"
-     "[사용자 원문 질의]: {query}")
+     "[현재 확보된 제원 (이전 대화 누적 포함)]: {params}\n"
+     "[현재 사용자 입력]: {query}\n"
+     "[인출된 사내 규격 문서(RAG)]:\n{docs}")
 ])
 
 
 def spec_gap_evaluator_node(state: ShipAgentState) -> Dict[str, Any]:
-    if state.get("task_type") != "doc_generation" or not state.get("retrieved_docs"):
+    if state.get("task_type") != "doc_generation":
         return {}
 
     docs = state.get("retrieved_docs", [])
     params = state.get("extracted_params", {}) or {}
-    preview_docs = "\n".join(f"[{d.get('category')}]: {str(d.get('content'))[:500]}" for d in docs)
+    preview_docs = "\n".join(
+        f"[{d.get('metadata', {}).get('document_name', '규격')}]: {str(d.get('content'))[:500]}"
+        for d in docs
+    ) if docs else "인출된 규격 문서 없음"
 
     try:
         res: SpecGapAnalysis = (SPEC_EVAL_PROMPT | structured_spec_evaluator).invoke({
@@ -229,18 +257,21 @@ def spec_gap_evaluator_node(state: ShipAgentState) -> Dict[str, Any]:
             "params": json.dumps(params, ensure_ascii=False),
             "query": state.get("user_query", "")
         })
-        current_missing = list(state.get("missing_params", []))
-        for m in res.missing_fields:
-            if m not in current_missing:
-                current_missing.append(m)
+
+        missing = list(res.missing_fields) if not res.is_ready_to_generate else []
+        if not params.get("location") and "작업 위치(조선소/현장명)" not in missing:
+            missing.append("작업 위치(조선소/현장명)")
+
+        is_complete = (len(missing) == 0)
+        print(f"📋 [Spec Gap 분석]: 확보된 제원={params} | RAG 대조 누락 항목={missing}")
 
         return {
-            "missing_params": current_missing,
-            "is_param_complete": "yes" if res.is_ready_to_generate else "no"
+            "missing_params": missing,
+            "is_param_complete": "yes" if is_complete else "no"
         }
     except Exception as e:
         print(f"[Team 2 Spec Gap Warning]: {e}")
-        return {}
+        return {"missing_params": [], "is_param_complete": "yes"}
 
 
 # ==============================================================================
