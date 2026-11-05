@@ -1,7 +1,7 @@
 """
 Team 3: 맞춤형 문서 생성 및 Function Calling 배포 서브그래프 (docgen.py)
-- Node 1 (work_order_writer): 정상 조건(PASS) 시 표준 작업지시서 작성
-- Node 2 (troubleshooter_agent): 강풍(STOP), 비전 간섭, 또는 필수 제원 누락 시 현장 대책/역질문 생성
+- Node 1 (work_order_writer): 정상 및 조건부 승인(PASS / CONDITIONAL_PASS) 시 표준 작업지시서 작성
+- Node 2 (troubleshooter_agent): 강풍(STOP), 필수 제원 누락 시 현장 대책/역질문 생성
 - Node 3 (domain_qa_writer): 일반 기술/규격/날씨 질의 응답 전담
 - Node 4 (output_validator): Function Calling(bind_tools)으로 마크다운 파일 저장 및 감사 로그 도구 실행
 """
@@ -36,27 +36,64 @@ def route_generation_task(
     state: ShipAgentState,
 ) -> Literal["troubleshooter_agent", "work_order_writer", "domain_qa_writer"]:
     task_type = state.get("task_type", "knowledge_qa")
+    
+    # 1. 일반 질문은 즉시 전문 QA로 분기
+    if task_type != "doc_generation":
+        print(f"\n👉 [Team 3 라우팅]: domain_qa_writer (사유: 일반 기술/기상 질의, task_type='{task_type}')")
+        return "domain_qa_writer"
+
+    # 2. 작업지시서 생성 시 환경 및 안전 조건 검증
     weather = state.get("weather_data") or {}
+    safety_eval = weather.get("safety_evaluation") or {}
     vision = state.get("vision_data") or {}
     missing = state.get("missing_params", [])
+    
+    weather_status = weather.get("status")
+    safety_status = safety_eval.get("status")
 
-    if weather.get("status") in ("NEED_LOCATION", "NOT_FOUND"):
-        return "troubleshooter_agent"
-    if task_type == "doc_generation" and missing:
-        return "troubleshooter_agent"
-
-    safety_eval = weather.get("safety_evaluation") or {}
+    # 비전이 연결되지 않았을 때는 항상 안전(정상)으로 통과 처리
+    detections = vision.get("detections") or []
     has_vision_obstacle = any(
-        "OBSTACLE" in str(det.get("class_name", "")).upper() or "DEFECT" in str(det.get("class_name", "")).upper()
-        for det in (vision.get("detections") or [])
-    )
-    if safety_eval.get("status") == "STOP" or has_vision_obstacle:
-        if task_type == "doc_generation":
-            return "troubleshooter_agent"
+        det.get("is_hazard") is True or 
+        "OBSTACLE" in str(det.get("class_name", "")).upper()
+        for det in detections
+    ) if detections else False
 
-    if task_type == "doc_generation":
+    # 안전 승인 조건 (CONDITIONAL_PASS도 표준 지시서 작성 경로로 정상 수용)
+    is_weather_ok = (weather_status == "SUCCESS")
+    is_safety_ok = (safety_status in ("PASS", "CONDITIONAL_PASS"))
+    is_params_ok = (not missing)
+    is_vision_ok = (not has_vision_obstacle)
+
+    is_fully_approved = (
+        is_weather_ok and
+        is_safety_ok and
+        is_params_ok and
+        is_vision_ok
+    )
+
+    print("\n" + "=" * 65)
+    print("🔍 [Team 3 라우터 화이트리스트 검사 현황]")
+    print(f"   1. 날씨 상태 (SUCCESS 여부) : {is_weather_ok} (현재: '{weather_status}')")
+    print(f"   2. 안전 판정 (승인 범위)    : {is_safety_ok} (현재: '{safety_status}')")
+    print(f"   3. 필수 제원 (누락 없음 여부): {is_params_ok} (누락목록: {missing})")
+    print(f"   4. 비전 검사 (장애물 없음)   : {is_vision_ok} (현재 비전 미연동/정상)")
+    
+    if is_fully_approved:
+        print("👉 [결정]: work_order_writer (작업지시서 작성 노드 진입)")
+        print("=" * 65 + "\n")
         return "work_order_writer"
-    return "domain_qa_writer"
+    
+    fail_reasons = []
+    if not is_weather_ok: fail_reasons.append(f"날씨미달({weather_status})")
+    if not is_safety_ok: fail_reasons.append(f"안전평가미달({safety_status})")
+    if not is_params_ok: fail_reasons.append(f"제원누락({missing})")
+    if not is_vision_ok: fail_reasons.append("비전장애물감지")
+
+    print(f"👉 [결정]: troubleshooter_agent (사유: {', '.join(fail_reasons)})")
+    print("=" * 65 + "\n")
+
+    return "troubleshooter_agent"
 
 
 # ==============================================================================
@@ -65,13 +102,12 @@ def route_generation_task(
 WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "당신은 조선소 공정 총괄 엔지니어 AI입니다.\n"
-     "제공된 [참조 규격 문서(RAG)], [확정 작업 제원], [현장 기상 및 안전 판정], [비전 탐지 결과]만을 근거로 "
-     "현장 작업자용 표준 용접 작업지시서를 구조화된 마크다운으로 작성하세요.\n"
-     "- 기상 안전 판정(safety_evaluation)의 필수 안전 수칙(mandatory_rules)을 반드시 포함하십시오.\n"
-     "- 참조한 문서명과 페이지를 명시하십시오."),
+     "제공된 [참조 규격 문서(RAG)], [확정 작업 제원], [현장 기상 및 안전 판정]을 근거로 "
+     "현장 작업자용 표준 작업지시서를 구조화된 마크다운으로 작성하세요.\n\n"
+     "- 현장 기상 및 안전 판정(safety_evaluation)의 조건부 수칙(방풍막 설치, 예열 여부 등)을 작업 지침에 반드시 포함하십시오.\n"
+     "- 사내 규격서에서 인용한 권장 수치(전류/전압 범위 등)와 출처 문서명을 명시하십시오."),
     ("human",
      "[확정 작업 제원]: {params}\n"
-     "[비전 검사 데이터]: {vision}\n"
      "[현장 기상 및 안전 판정]: {weather}\n"
      "[참조 규격 문서(RAG)]:\n{docs}\n\n"
      "[사용자 요청]: {query}")
@@ -79,24 +115,28 @@ WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
 
 
 def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
+    print("🚀 >>> [실행 노드]: work_order_writer_node 진입 (표준 지시서 작성)")
     params = state.get("extracted_params", {}) or {}
-    weather = state.get("weather_data")
-    vision = state.get("vision_data")
+    weather = state.get("weather_data") or {}
     docs = state.get("retrieved_docs", [])
     query = state.get("user_query", "")
 
     res = (WORK_ORDER_PROMPT | llm).invoke({
         "params": json.dumps(params, ensure_ascii=False),
-        "vision": json.dumps(vision, ensure_ascii=False) if vision else "이상 없음",
         "weather": json.dumps(weather, ensure_ascii=False) if weather else "기상 정보 없음",
         "docs": format_retrieved_docs(docs),
         "query": query
     })
 
     answer = res.content
+    
+    # 🌟 실제 안전 평가 결과 상태(PASS 또는 CONDITIONAL_PASS)를 그대로 보존
+    actual_status = (weather.get("safety_evaluation") or {}).get("status", "PASS")
+    doc_title = f"{params.get('material', '표준')} {params.get('thickness', '')} 작업지시서".strip()
+
     generated_doc = {
-        "title": f"{params.get('material', '표준')} {params.get('thickness', '')} 작업지시서".strip(),
-        "status": "PASS",
+        "title": doc_title,
+        "status": actual_status,
         "parameters": params,
         "weather": weather,
         "content": answer
@@ -114,26 +154,25 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "당신은 조선소 현장 안전 감리 및 트러블슈팅 전문 AI입니다.\n"
-     "현재 작업 요청에 대해 [필수 조건 누락], [기상 악화(STOP)], 또는 [비전 장애물/결함 탐지]가 발생했습니다.\n\n"
+     "현재 작업 요청에 대해 [필수 조건 누락] 또는 [기상 악화(STOP)]가 발생했습니다.\n\n"
      "[대응 원칙]\n"
-     "1. 위치 정보나 필수 작업 제원이 누락된 경우: 임의로 값을 가정하지 말고, 누락된 항목을 친절하고 명확하게 사용자에게 되물으세요(역질문).\n"
-     "2. 강풍(STOP)이나 비전 장애물(CLAMP_OBSTACLE 등)이 감지된 경우: 즉시 '작업 보류(HOLD/STOP) 및 현장 조치 지시서'를 작성하고, "
-     "사내 규격(RAG)에 기반한 구체적인 보정 처방전을 제시하세요."),
+     "1. [누락된 필수 파라미터]에 명시된 현장 조건(작업 위치, 대상 사양 등)만 사용자에게 되물으세요.\n"
+     "   - 사내 규격(RAG)에서 참조해야 하는 공학 기준값은 사용자에게 되묻지 마십시오.\n"
+     "2. 강풍(STOP) 등으로 작업이 불가한 경우: 즉시 '작업 보류(HOLD/STOP)' 판정과 보정 조치를 제시하십시오."),
     ("human",
      "[누락된 필수 파라미터]: {missing}\n"
      "[입력된 작업 제원]: {params}\n"
      "[현장 기상 및 안전 판정]: {weather}\n"
-     "[비전 탐지 데이터]: {vision}\n"
      "[참조 규격 문서(RAG)]:\n{docs}\n\n"
      "[사용자 질의]: {query}")
 ])
 
 
 def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
+    print("⚠️ >>> [실행 노드]: troubleshooter_node 진입 (안전 미달/조건부 보류 조치)")
     missing = state.get("missing_params", [])
     params = state.get("extracted_params", {}) or {}
     weather = state.get("weather_data") or {}
-    vision = state.get("vision_data")
     docs = state.get("retrieved_docs", [])
     query = state.get("user_query", "")
 
@@ -148,7 +187,6 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
         "missing": missing,
         "params": json.dumps(params, ensure_ascii=False),
         "weather": json.dumps(weather, ensure_ascii=False),
-        "vision": json.dumps(vision, ensure_ascii=False) if vision else "없음",
         "docs": format_retrieved_docs(docs),
         "query": query
     })
@@ -158,7 +196,7 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
     generated_doc = None
     if is_hold_doc:
         generated_doc = {
-            "title": "공정 안전 보류(HOLD) 및 현장 보정 조치 지시서",
+            "title": "공정 안전 보류(HOLD) 및 현장 조치 지시서",
             "status": "HOLD",
             "parameters": params,
             "weather": weather,
@@ -179,6 +217,7 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
      "당신은 선박 제조 기술 및 현장 환경 안내 전문 AI입니다.\n"
      "- [현장 기상 데이터]가 제공된 경우 현재 위치의 기온, 풍속, 습도 및 안전 판정 사항을 정확히 안내하세요.\n"
+     " - 영문 지명(예: Geoje, Ulsan 등)은 자연스러운 '한글 지명(거제, 울산 등)'으로 변환하여 안내하세요.\n"
      "- [참조 규격 문서(RAG)]가 제공된 경우 문서의 수치와 기준을 인용하여 답변하고 출처 문서명을 밝히세요."),
     ("human",
      "[현장 기상 데이터]: {weather}\n"
@@ -188,6 +227,7 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
 
 
 def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
+    print("💬 >>> [실행 노드]: domain_qa_writer_node 진입 (일반 기술 Q&A 작성)")
     weather = state.get("weather_data")
     docs = state.get("retrieved_docs", [])
     query = state.get("user_query", "")
@@ -206,7 +246,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# Node 4: Function Calling 기반 파일 발행 및 감사 로깅 Agent (output_validator) ⭐
+# Node 4: Function Calling 기반 파일 발행 및 감사 로깅 Agent (output_validator)
 # ==============================================================================
 llm_with_doc_tools = tool_llm.bind_tools([export_work_order_file, log_inspection_history])
 
