@@ -44,3 +44,5 @@ modules/vision/weights/
 logs/
 .DS_Store
 Thumbs.db
+
+generated_docs

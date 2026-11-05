@@ -262,25 +262,40 @@ def rag_ask():
 
     config = {"configurable": {"thread_id": session_id}}
     prev_params = dict(session.get('extracted_params') or {})
+    # 🌟 직전 턴이 제원 누락 역질문 상태('no')였는지 여부만 가져옴 (task_type은 항상 None으로 시작!)
+    prev_complete = session.get('is_param_complete')
 
-    # 이전 턴의 누적 파라미터(prev_params)를 유지하면서 신규 질의만 전달
     state_input = {
         "user_query": query,
         "messages": [HumanMessage(content=query)],
         "extracted_params": prev_params,
+
+        # 🌟 사용자분이 수정하신 대로 task_type은 무조건 None! (항상 Team 1을 거치도록 보장)
+        "task_type": None,
+        "target_categories": [],
+        "need_weather": False,
+        "is_param_complete": prev_complete,  # 👈 직전 턴 역질문 대기 여부만 전달
+
         "search_status": "idle",
+        "search_queries": [],
+        "retrieved_docs": [],
+        "weather_data": None,
+        "vision_data": None,
+        "missing_params": [],
+        "generated_document": None,
         "final_answer": None,
         "audit_saved": False
     }
 
     result = ship_agent_app.invoke(state_input, config=config)
 
-    # 최신 추출 파라미터를 세션에 병합 보존 (멀티턴 슬롯 누적)
+    # 최신 추출 파라미터 및 완료 상태 세션 저장
     updated_params = dict(prev_params)
     for k, v in (result.get('extracted_params') or {}).items():
         if v is not None and str(v).strip() != "":
             updated_params[k] = v
     session['extracted_params'] = updated_params
+    session['is_param_complete'] = result.get('is_param_complete')
     session.modified = True
 
     completed_at = datetime.now()
