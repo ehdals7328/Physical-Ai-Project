@@ -27,6 +27,7 @@ _PUA_SYMBOL_MAP = str.maketrans({
 
 
 def _normalize(text: str) -> str:
+    """PDF에서 추출한 문자열의 특수문자와 공백을 정규화합니다."""
     text = text.replace("\x00", " ")
     text = text.translate(_PUA_SYMBOL_MAP)
     text = re.sub(r"N\s*[\ue000-\uf8ff□]\s*mm\s*[\ue000-\uf8ff□2²]?", "N/mm²", text)
@@ -39,6 +40,7 @@ def _normalize(text: str) -> str:
 
 
 def _split_long_paragraph(text: str, max_chars: int) -> list[str]:
+    """긴 문단을 문장 경계와 최대 글자 수 기준으로 분할합니다."""
     text = _normalize(text)
     if len(text) <= max_chars:
         return [text] if text else []
@@ -71,6 +73,7 @@ def _split_long_paragraph(text: str, max_chars: int) -> list[str]:
 
 
 def _paragraphs(text: str, max_chars: int) -> list[str]:
+    """PDF 본문을 정규화된 문단 단위 목록으로 변환합니다."""
     text = _normalize(text)
     if not text:
         return []
@@ -89,6 +92,7 @@ def _paragraphs(text: str, max_chars: int) -> list[str]:
 
 
 def _pack_fixed(units: list[str], max_chars: int, overlap_chars: int) -> list[str]:
+    """문단 단위를 길이 제한과 겹침 길이에 맞춰 고정 청크로 묶습니다."""
     output: list[str] = []
     current = ""
     for unit in units:
@@ -114,6 +118,7 @@ def _semantic_pack(
     similarity_threshold: float,
     overlap_chars: int,
 ) -> list[str]:
+    """문단 임베딩 간 의미 유사도를 이용해 청크 경계를 결정합니다."""
     if len(units) <= 1:
         return _pack_fixed(units, max_chars, overlap_chars)
 
@@ -164,6 +169,7 @@ def chunk_blocks(
     overlap_chars: int | None = None,
     similarity_threshold: float | None = None,
 ) -> list[dict[str, Any]]:
+    """파서가 추출한 본문·표·OCR 블록을 검색용 청크로 변환합니다."""
     max_chars = max_chars or int(os.getenv("RAG_CHUNK_MAX_CHARS", "1800"))
     table_max_chars = int(os.getenv("RAG_TABLE_MAX_CHARS", str(max(max_chars, 4500))))
     min_chars = min_chars or int(os.getenv("RAG_CHUNK_MIN_CHARS", "300"))

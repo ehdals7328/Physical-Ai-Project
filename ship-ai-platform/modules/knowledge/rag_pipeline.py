@@ -12,6 +12,7 @@ from modules.knowledge.semantic_chunker import chunk_blocks
 
 # 파일 내용을 해싱해서 PDF 이름이 바뀌어도 같은 파일로 인식
 def sha256_file(file_path: str | Path) -> str:
+    """파일을 스트리밍 방식으로 읽어 SHA-256 해시를 계산합니다."""
     digest = hashlib.sha256()
     with open(file_path, "rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):   # 1MB 씩 쪼개서 해시 누적 (메모리 터짐 방지)
@@ -21,11 +22,13 @@ def sha256_file(file_path: str | Path) -> str:
 
 # 캐시 JSON 파일 읽기
 def _read_json(path: Path):
+    """파싱 또는 청킹 캐시 JSON 파일을 읽습니다."""
     with path.open("r", encoding="utf-8") as stream:
         return json.load(stream)
 
 # JSON 파일을 저장하다가 서버가 꺼지거나 오류가 나도 파일이 깨지지 않게 보장
 def _write_json_atomic(path: Path, payload: Any) -> None:
+    """임시 파일 기록 후 교체 방식으로 캐시 JSON을 안전하게 저장합니다."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_suffix(path.suffix + ".tmp")
     with temp_path.open("w", encoding="utf-8") as stream:
