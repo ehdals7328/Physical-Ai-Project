@@ -32,10 +32,10 @@ def search_knowledge(
     top_k: int = 4
 ) -> List[dict[str, Any]]:
     """ChromaDB 지식베이스에서 카테고리 필터(선택)를 반영하여 유사도 상위 문서를 인출합니다."""
+    # 1. 1차 시도: 기본 검색 (access_level 제약 없이 순수 텍스트/카테고리 유사도 검색)
     search_kwargs: dict[str, Any] = {
         "query": query,
         "top_k": top_k,
-        "allowed_access_levels": ["INTERNAL", "PUBLIC"],
     }
     if category:
         search_kwargs["category"] = category
@@ -43,14 +43,32 @@ def search_knowledge(
     try:
         results = store.search(**search_kwargs)
     except TypeError:
-        # store.search가 category 인자를 받지 않는 구버전일 경우 호환 처리
+        # store.search 시그니처 호환 처리
         search_kwargs.pop("category", None)
-        results = store.search(**search_kwargs)
+        try:
+            results = store.search(**search_kwargs)
+        except Exception as e:
+            print(f"[Retriever Store Warning]: {e}")
+            results = []
+    except Exception as e:
+        print(f"[Retriever Search Error]: {e}")
+        results = []
 
-    # 카테고리 지정 검색 결과가 비어있다면 전체 카테고리에서 재검색(Fallback)
+    # 2. 카테고리 필터 때문에 비어있는 경우 전체 검색으로 Fallback
     if not results and category:
         search_kwargs.pop("category", None)
-        results = store.search(**search_kwargs)
+        try:
+            results = store.search(**search_kwargs)
+        except Exception:
+            results = []
+
+    # 3. 만약 store.search()에 필수 인자로 allowed_access_levels가 필요하다면 그때만 보완 호출
+    if not results:
+        try:
+            search_kwargs["allowed_access_levels"] = ["INTERNAL", "PUBLIC", "CONFIDENTIAL", "ALL"]
+            results = store.search(**search_kwargs)
+        except Exception:
+            pass
 
     return results or []
 

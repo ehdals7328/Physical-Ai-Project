@@ -289,12 +289,7 @@ def rag_ask():
 
     result = ship_agent_app.invoke(state_input, config=config)
 
-    # 최신 추출 파라미터 및 완료 상태 세션 저장
-    updated_params = dict(prev_params)
-    for k, v in (result.get('extracted_params') or {}).items():
-        if v is not None and str(v).strip() != "":
-            updated_params[k] = v
-    session['extracted_params'] = updated_params
+    session['extracted_params'] = dict(result.get('extracted_params') or {})
     session['is_param_complete'] = result.get('is_param_complete')
     session.modified = True
 
@@ -322,7 +317,7 @@ def rag_ask():
         input_data=json.dumps(state_input, ensure_ascii=False, default=str),
         state_data=json.dumps({
             "task_type": task_type_res,
-            "extracted_params": updated_params,
+            "extracted_params": result.get("extracted_params") or {},
             "missing_params": result.get("missing_params", []),
             "weather_data": result.get("weather_data")
         }, ensure_ascii=False, default=str),

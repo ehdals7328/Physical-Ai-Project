@@ -1,8 +1,8 @@
 """
 Team 3: 맞춤형 문서 생성 및 발행 통제 서브그래프 (docgen.py)
 - Node 1 (work_order_writer): 정상 및 조건부 승인(PASS / CONDITIONAL_PASS) 시 표준 작업지시서 작성
-- Node 2 (troubleshooter_agent): 강풍(STOP), 필수 제원 누락 시 현장 대책/역질문 생성
-- Node 3 (domain_qa_writer): 일반 기술/규격/날씨 질의 응답 전담
+- Node 2 (troubleshooter_agent): 강풍(STOP), 필수 제원 누락, 또는 날씨 질의 시 위치 누락 안내
+- Node 3 (domain_qa_writer): 일반 기술/규격/공정/날씨 질의 응답 전담 (환경+RAG 복합 질의 포함)
 - Node 4 (output_validator): 승인된 문서만 마크다운 파일로 발행(HOLD/DRAFT 제외) 및 감사 로그 기록
 """
 
@@ -35,14 +35,17 @@ def route_generation_task(
     state: ShipAgentState,
 ) -> Literal["troubleshooter_agent", "work_order_writer", "domain_qa_writer"]:
     task_type = state.get("task_type", "knowledge_qa")
+    weather = state.get("weather_data") or {}
 
-    # 1. 일반 질문 및 일상 대화는 즉시 전문 QA로 분기
+    # 1. 문서 발행이 아닌 일반 질문(knowledge_qa, chat)인 경우
     if task_type != "doc_generation":
+        # 만약 실시간 날씨가 필요한 질문인데 위치가 없어서 NEED_LOCATION이 떴다면 위치 안내를 위해 분기
+        if state.get("need_weather") and weather.get("status") == "NEED_LOCATION":
+            return "troubleshooter_agent"
         print(f"\n👉 [Team 3 라우팅]: domain_qa_writer (사유: 일반 기술/기상 질의, task_type='{task_type}')")
         return "domain_qa_writer"
 
-    # 2. 작업지시서 생성 시 환경 및 안전 조건 검증
-    weather = state.get("weather_data") or {}
+    # 2. 작업지시서/계획서 발행(doc_generation) 시 환경 및 안전 조건 검증
     safety_eval = weather.get("safety_evaluation") or {}
     vision = state.get("vision_data") or {}
     missing = state.get("missing_params", [])
@@ -103,11 +106,11 @@ def route_generation_task(
 # ==============================================================================
 WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
-     "당신은 조선소 공정 총괄 엔지니어 AI입니다.\n"
+     "당신은 조선소 공정 총괄 엔지니어 AI(Team 3)입니다.\n"
      "제공된 [참조 규격 문서(RAG)], [확정 작업 제원], [현장 기상 및 안전 판정]을 근거로 "
-     "현장 작업자용 표준 작업지시서를 구조화된 마크다운으로 작성하세요.\n\n"
-     "- 안전 판정이 CONDITIONAL_PASS인 경우 문서 최상단에 '[조건부 작업 승인 - 선행 안전조치 필수]'를 명시하고 선행 조치 체크리스트(prerequisites)를 반드시 포함하십시오.\n"
-     "- 사내 규격서에서 인용한 권장 수치(전류/전압 범위 등)와 출처 문서명을 명시하십시오."),
+     "현장 작업자용 표준 작업지시서를 구조화된 마크다운(표 포함)으로 작성하세요.\n\n"
+     "- 안전 판정이 CONDITIONAL_PASS인 경우 문서 최상단에 '[조건부 작업 승인 - 선행 안전조치 필수]'를 명시하고 선행 조치 체크리스트(방풍막 설치, 예열 등)를 반드시 포함하십시오.\n"
+     "- 사내 규격서에서 인용한 권장 시공 조건(전류, 전압, 와이어 규격, 주의사항 등)과 출처 문서명을 명확히 기재하십시오."),
     ("human",
      "[확정 작업 제원]: {params}\n"
      "[현장 기상 및 안전 판정]: {weather}\n"
@@ -132,7 +135,8 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     answer = res.content
     actual_status = (weather.get("safety_evaluation") or {}).get("status") or "CONDITIONAL_PASS"
-    doc_title = f"{params.get('material', '표준')} {params.get('thickness', '')} 작업지시서".strip()
+    spec_summary = " ".join(str(v) for k, v in params.items() if k != "location" and v).strip()
+    doc_title = f"{spec_summary or '표준'} 작업지시서".strip()
 
     generated_doc = {
         "title": doc_title,
@@ -153,15 +157,17 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 # ==============================================================================
 TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
-     "당신은 조선소 현장 안전 감리 및 트러블슈팅 전문 AI입니다.\n"
-     "현재 작업 요청에 대해 [필수 조건 누락] 또는 [기상 악화(STOP)]가 발생했습니다.\n\n"
+     "당신은 조선소 현장 안전 감리 및 트러블슈팅 전문 AI(Team 3)입니다.\n"
+     "현재 작업지시서 발행 요청에 대해 [필수 조건 누락] 또는 [기상 악화(STOP)]가 발생했습니다.\n\n"
      "[대응 원칙]\n"
-     "1. [누락된 필수 파라미터]가 존재할 경우: 해당 현장 조건(작업 위치, 대상 모재 강종, 판 두께 등)만 명확하고 간결하게 사용자에게 요청하세요.\n"
-     "   - 사내 규격(RAG)에서 찾아야 하는 권장 전류/전압 값은 사용자에게 되묻지 마십시오.\n"
-     "2. 강풍(STOP) 등으로 작업이 불가한 경우: 즉시 '작업 보류(HOLD/STOP)' 판정과 안전 조치 지침을 제시하십시오."),
+     "1. [누락된 필수 파라미터]가 존재할 경우:\n"
+     "   - 오직 [누락된 필수 파라미터] 목록에 적힌 항목만 명확하고 간결하게 사용자에게 알려달라고 요청하세요.\n"
+     "   - ⚠️ [참조 규격 문서(RAG)]에 적혀 있는 전류, 전압, 와이어경, 화학성분, 기계적 성질 등은 절대 사용자에게 요구하지 마십시오.\n"
+     "2. [누락된 필수 파라미터]가 비어있고 강풍(STOP) 등으로 작업이 불가한 경우:\n"
+     "   - 즉시 '작업 보류(HOLD/STOP)' 판정 사유와 현장 안전 조치 지침을 제시하십시오."),
     ("human",
      "[누락된 필수 파라미터]: {missing}\n"
-     "[입력된 작업 제원]: {params}\n"
+     "[현재 확보된 작업 제원]: {params}\n"
      "[현장 기상 및 안전 판정]: {weather}\n"
      "[참조 규격 문서(RAG)]:\n{docs}\n\n"
      "[사용자 질의]: {query}")
@@ -169,7 +175,7 @@ TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
 
 
 def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
-    print("⚠️ >>> [실행 노드]: troubleshooter_node 진입 (안전 미달/조건부 보류 조치)")
+    print("⚠️ >>> [실행 노드]: troubleshooter_node 진입 (안전 미달/제원 보충 안내)")
     missing = state.get("missing_params", [])
     params = state.get("extracted_params", {}) or {}
     weather = state.get("weather_data") or {}
@@ -215,10 +221,10 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
 # ==============================================================================
 QA_PROMPT = ChatPromptTemplate.from_messages([
     ("system",
-     "당신은 선박 제조 기술 및 현장 환경 안내 전문 AI입니다.\n"
-     "- [현장 기상 데이터]가 제공된 경우 현재 위치의 기온, 풍속, 습도 및 안전 판정 사항을 정확히 안내하세요.\n"
-     " - 영문 지명(예: Geoje, Ulsan 등)은 자연스러운 '한글 지명(거제, 울산 등)'으로 변환하여 안내하세요.\n"
-     "- [참조 규격 문서(RAG)]가 제공된 경우 문서의 수치와 기준을 인용하여 답변하고 출처 문서명을 밝히세요."),
+     "당신은 선박 제조 기술, 공정 절차 및 현장 안전 안내 전문 AI(Team 3)입니다.\n"
+     "- 사용자의 질문 의도에 맞춰 명확하고 체계적으로 설명하세요. (절대 임의로 작업지시서를 발급하거나 모재/두께를 요구하는 역질문을 하지 마십시오.)\n"
+     "- [현장 기상 데이터]가 제공된 경우 현재 위치(영문 지명은 자연스러운 한글 지명으로 변환)의 기온, 풍속, 습도 및 그에 따른 현장 안전 유의사항을 함께 안내하세요.\n"
+     "- [참조 규격 문서(RAG)]가 제공된 경우 문서의 핵심 내용, 절차, 수치 기준을 적극 인용하여 답변하고 출처 문서명을 밝히세요."),
     ("human",
      "[현장 기상 데이터]: {weather}\n"
      "[참조 규격 문서(RAG)]:\n{docs}\n\n"
@@ -227,7 +233,7 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
 
 
 def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
-    print("💬 >>> [실행 노드]: domain_qa_writer_node 진입 (일반 기술 Q&A 작성)")
+    print("💬 >>> [실행 노드]: domain_qa_writer_node 진입 (일반 기술/환경 Q&A 작성)")
     weather = state.get("weather_data")
     docs = state.get("retrieved_docs", [])
     query = state.get("user_query", "")
@@ -260,14 +266,12 @@ def output_validator_node(state: ShipAgentState) -> Dict[str, Any]:
         status_flag = "QA_COMPLETED"
 
     try:
-        # 1. 승인된 문서(PASS 또는 CONDITIONAL_PASS)만 마크다운 파일로 발행 (HOLD/미승인 문서는 파일 발행 차단)
         if isinstance(gen_doc, dict) and status_flag in ("PASS", "CONDITIONAL_PASS"):
             export_work_order_file.invoke({
                 "document_data": gen_doc,
                 "file_prefix": "work_order"
             })
 
-        # 2. 모든 실행 이력에 대해 감사 로그 확정 기록
         log_inspection_history.invoke({
             "session_id": "AGENT_RUNTIME",
             "query": query,
@@ -275,7 +279,7 @@ def output_validator_node(state: ShipAgentState) -> Dict[str, Any]:
         })
         return {"audit_saved": True}
     except Exception as e:
-        print(f"[Team 3 Validator Warning]: 도구 실행 오류 ({e})")
+        print(f"[Team 3 Validator Warning]: {e}")
         return {"audit_saved": False}
 
 
