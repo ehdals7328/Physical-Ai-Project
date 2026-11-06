@@ -14,85 +14,42 @@ if PROJECT_ROOT not in sys.path:
 
 load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
-# supervisor 메인 그래프 앱 임포트
-from modules.agent.supervisor import ship_agent_app
+# modules/agent/test_agent.py
+import sys
+from pathlib import Path
+from modules.knowledge.retriever import KnowledgeStore
 
+store = KnowledgeStore()
 
-def run_unit_test(case_num: int, title: str, query: str):
-    print(f"\n{'='*75}")
-    print(f"▶ [Test Case {case_num}] {title}")
-    print(f"  - 질의: \"{query}\"")
-    print(f"{'='*75}")
+print("=" * 60)
+print("1. KnowledgeStore 속성 점검")
+print("   - persist_directory:", getattr(store, "persist_directory", getattr(store, "db_path", "없음")))
+print("   - collection_name  :", getattr(store, "collection_name", "없음"))
 
-    initial_state = {
-        "messages": [],
-        "user_query": query,
-        "task_type": None,
-        "target_categories": [],
-        "need_weather": False,
-        "extracted_params": {},
-        "is_param_complete": None,
-        "missing_params": [],
-        "search_status": "idle",
-        "search_queries": [],
-        "retrieved_docs": [],
-        "weather_data": None,
-        "generated_document": None,
-        "final_answer": None,
-        "audit_saved": False
-    }
+# ChromaDB 컬렉션 접근
+col = getattr(store, "collection", getattr(store, "_collection", None))
+if col is None:
+    print("❌ 컬렉션 객체를 찾을 수 없습니다.")
+    sys.exit(0)
 
-    # ⭕ 체크포인터용 thread_id 설정 추가 (케이스별 독립 세션 부여)
-    config = {"configurable": {"thread_id": f"test_case_session_{case_num}"}}
+count = col.count()
+print(f"2. ChromaDB 적재 청크 총 개수: {count}건")
 
-    try:
-        # invoke 호출 시 config 전달
-        result = ship_agent_app.invoke(initial_state, config=config)
+if count == 0:
+    print("❌ ChromaDB 컬렉션 데이터가 0건입니다. (PDF 인제스천이 안 되어 있거나 DB 경로 불일치)")
+    sys.exit(0)
 
-        print("\n[에이전트 실행 상태 요약]")
-        print(f" • Task Type        : {result.get('task_type')}")
-        print(f" • Target Categories: {result.get('target_categories')}")
-        print(f" • Search Status    : {result.get('search_status')}")
-        print(f" • Retrieved Docs   : {len(result.get('retrieved_docs', []))}건 인출")
-        print(f" • Extracted Params : {result.get('extracted_params')}")
-        print(f" • Is Param Complete: {result.get('is_param_complete')}")
+# 데이터가 있다면 1건 샘플 출력
+sample = col.peek(limit=1)
+print("3. 샘플 문서 메타데이터:")
+print("   - metadatas:", sample.get("metadatas", []))
+print("   - text 미리보기:", [str(doc)[:100] for doc in sample.get("documents", [])])
 
-        print("\n[최종 에이전트 응답]:")
-        print(result.get("final_answer"))
-
-        doc = result.get("generated_document")
-        if doc:
-            print("\n[발행된 공식 지시서/계획서 문서]:")
-            print(json.dumps(doc, indent=2, ensure_ascii=False))
-
-    except Exception as e:
-        print(f"\n❌ [테스트 실패]: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-if __name__ == "__main__":
-    print("\n🚀 [Multi-Agent System] 자율 의도 분류 및 범용 RAG 단독 통합 테스트 시작")
-
-    # 1. 일상 대화 (chat)
-    run_unit_test(
-        1,
-        "일상 대화 및 시스템 기능 안내",
-        "안녕하세요! 선박 작업 어시스턴트 기능에 대해 소개해줘."
-    )
-
-    # 2. 전문 지식 질의 (knowledge_qa - 산소농도 및 RT 기준)
-    run_unit_test(
-        2,
-        "전문 규격/지침 Q&A (산소농도 및 RT 비파괴검사 기준)",
-        "밀폐구역 작업 시 적정 산소농도 기준과 방사선투과(RT) 결함 합격 기준을 알려줘."
-    )
-
-    # 3. 제원 누락 문서 생성 (doc_generation - 역질문 유도)
-    run_unit_test(
-        3,
-        "문서 작성 제원 누락 역질문 검증 (하드코딩 디폴트값 차단 확인)",
-        "울산 야외 독에서 용접 작업지시서 한 부 작성해줘."
-    )
-
-    print(f"\n{'='*75}\n✅ 단독 테스트 완료\n{'='*75}\n")
+# store.search 직접 호출 시 에러 확인
+print("4. store.search('선박') 직접 실행 테스트:")
+try:
+    res = store.search(query="선박", top_k=2)
+    print(f"   -> 반환 결과: {len(res)}건")
+except Exception as e:
+    print(f"   ❌ search() 내부 에러 발생: {e}")
+print("=" * 60)
