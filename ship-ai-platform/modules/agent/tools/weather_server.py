@@ -22,54 +22,67 @@ mcp = FastMCP("weather-server", host="0.0.0.0", port=8000)
 
 
 def extract_clean_city(query: str) -> str:
-    """사용자가 입력한 지명/문장에서 OpenWeatherMap 조회가 가능한 영문 대표 도시명 1단어 추출"""
-    clean_query = (query or "").strip()
-    if not clean_query:
-        return ""
+  clean_query = (query or "").strip()
+  if not clean_query:
+    return ""
 
-    # 이미 순수 영문 단일 단어(알파벳)로 넘어온 경우 그대로 사용
-    if clean_query.isascii() and clean_query.isalpha():
-        return clean_query
+  if clean_query.isascii() and clean_query.isalpha():
+    return clean_query
 
-    prompt = (
-        "다음 입력에서 기상 조회가 가능한 대표 도시의 영문명 딱 1단어만 출력하세요.\n"
-        "특정 도시를 식별할 수 없으면 'NONE'이라고만 출력하세요.\n"
-        "설명 없이 영문 도시명 1단어만 반환할 것."
+  prompt = (
+      "다음 입력에서 기상 조회가 가능한 대표 도시의 영문명 딱 1단어만"
+      " 출력하세요.\n"
+      "특정 도시를 식별할 수 없으면 'NONE'이라고만 출력하세요.\n"
+      "설명 없이 영문 도시명 1단어만 반환할 것."
+  )
+  try:
+    res = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": clean_query},
+        ],
+        temperature=0,
+        max_tokens=10,
     )
-    try:
-        res = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": clean_query}
-            ],
-            temperature=0,
-            max_tokens=10
-        )
-        city = res.choices[0].message.content.strip().split()[0].replace(".", "").replace("'", "")
-        return "" if city.upper() == "NONE" else city
-    except Exception:
-        return ""
+    city = (
+        res.choices[0]
+        .message.content.strip()
+        .split()[0]
+        .replace(".", "")
+        .replace("'", "")
+    )
+    if city.upper() != "NONE":
+      return city
+  except Exception as e:
+    print(f"🚨 [weather_server LLM 예외]: {e}")
+
+  # LLM 호출 실패 시 지오코딩 API에 원본 쿼리 직접 전달
+  return clean_query
 
 
 def get_geo(city_query: str):
-    """지오코딩 조회 (URL 파라미터 안전 바인딩)"""
-    url = "http://api.openweathermap.org/geo/1.0/direct"
-    params = {"q": city_query, "limit": 1, "appid": weatherapi_key}
-    try:
-        res = requests.get(url, params=params, timeout=5.0)
-        if res.status_code == 200:
-            data = res.json()
-            if isinstance(data, list) and len(data) > 0:
-                return data[0]
-    except Exception:
-        pass
-    return None
+  """지오코딩 조회 (한글/영문 지명 유연 조회)"""
+  url = "http://api.openweathermap.org/geo/1.0/direct"
+  params = {"q": city_query, "limit": 1, "appid": weatherapi_key}
+  try:
+    res = requests.get(url, params=params, timeout=5.0)
+    if res.status_code == 200:
+      data = res.json()
+      if isinstance(data, list) and len(data) > 0:
+        return data[0]
+    else:
+      print(f"🚨 [weather_server Geo API 오류]: {res.status_code} - {res.text}")
+  except Exception as e:
+    print(f"🚨 [weather_server Geo 통신 예외]: {e}")
+  return None
 
 
 @mcp.tool()
 def get_current_weather(location: str) -> str:
-    """[MCP Tool] 실시간 기상 조회 (결측치 0.0 대체 금지 원칙 적용)"""
+    print(f"\n📡 [FastMCP 도구 호출 수신] location='{location}'")
+    print(f"   [Server Env] Weather API Key 존재 여부: {bool(weatherapi_key)}")
+
     if not location or not location.strip():
         return "오류: 조회할 도시/지역명이 입력되지 않았습니다."
 
@@ -77,6 +90,7 @@ def get_current_weather(location: str) -> str:
         return "오류: 기상 API 인증키(WEATHER_API_KEY)가 설정되지 않았습니다."
 
     target_city = extract_clean_city(location)
+    print(f"   [Server Target City] 최종 식별된 영문 도시명: '{target_city}'")
     if not target_city:
         return f"조회 실패: '{location}'에서 검색 가능한 도시명을 특정할 수 없습니다."
 
