@@ -1,102 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>조선소 Physical AI & Multi-DB/RAG 통합 관제 콘솔</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Ship AI Platform{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+  {% block head %}{% endblock %}
 </head>
-<body>
-<header class="top-navbar">
-    <a href="/" class="logo">🚢 HD / HWA Physical AI & Multi-DB Platform</a>
-    <div style="display: flex; align-items: center; gap: 10px;">
-        <span id="navUserBadge" class="badge-chip chip-dark">비로그인 (Guest)</span>
-        <a href="/login" id="navLoginBtn" class="btn btn-outline-light btn-sm" style="font-size: 0.8rem; padding: 3px 10px;">로그인 / 계정</a>
-        <button id="navLogoutBtn" class="btn btn-danger btn-sm d-none" style="font-size: 0.8rem; padding: 3px 10px;" onclick="doLogout()">로그아웃</button>
+<body class="bg-body-tertiary">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
+  <div class="container-fluid px-lg-4">
+    <a class="navbar-brand fw-semibold" href="{{ url_for('web.index') }}">SHIP <span class="text-info">AI</span></a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"><span class="navbar-toggler-icon"></span></button>
+    <div class="collapse navbar-collapse" id="mainNav">
+      {% if user %}
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.index' %}active{% endif %}" href="{{ url_for('web.index') }}">대시보드</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.chat_page' %}active{% endif %}" href="{{ url_for('web.chat_page') }}">AI 질의</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.work_orders_page' %}active{% endif %}" href="{{ url_for('web.work_orders_page') }}">작업지시</a></li>
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.documents_page' %}active{% endif %}" href="{{ url_for('web.documents_page') }}">RAG 문서</a></li>
+        {% if user.role_code == 'SYS_ADMIN' or user.can_access_erp == 'Y' %}
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.erp_page' %}active{% endif %}" href="{{ url_for('web.erp_page') }}">ERP 자원</a></li>
+        {% endif %}
+        {% if user.role_code == 'SYS_ADMIN' %}<li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.users_page' %}active{% endif %}" href="{{ url_for('web.users_page') }}">사용자 권한</a></li>{% endif %}
+        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.system_page' %}active{% endif %}" href="{{ url_for('web.system_page') }}">시스템 상태</a></li>
+      </ul>
+      <div class="d-flex align-items-center gap-3 text-white-50 small">
+        <span>{{ user.user_name }} <span class="badge text-bg-secondary">{{ user.role_code }}</span></span>
+        <button class="btn btn-outline-light btn-sm" id="logoutBtn">로그아웃</button>
+      </div>
+      {% endif %}
     </div>
-</header>
-
-<section class="status-strip">
-    <div class="status-row">
-        <span class="status-title text-primary">[DB 1: ship_user (공정/비전 9개 테이블)]</span>
-        <span id="shipUserBar">로딩 중...</span>
-        <button class="btn btn-outline-secondary btn-sm py-0 ms-auto" style="font-size: 0.78rem;" onclick="refreshStatus()">🔄 상태 새로고침</button>
-    </div>
-    <div class="status-row">
-        <span class="status-title text-success">[DB 2: ship_erp (대기업 자원 7개 테이블)]</span>
-        <span id="shipErpBar">로딩 중...</span>
-    </div>
-    <div class="status-row">
-        <span class="status-title text-dark">[Multi-RAG (ChromaDB 2개 컬렉션)]</span>
-        <span id="ragCountBar">로딩 중...</span>
-    </div>
-</section>
-
-<main class="container-fluid px-4">
-    {% block content %}{% endblock %}
+  </div>
+</nav>
+<main class="container-fluid px-lg-4 py-4">
+  {% block content %}{% endblock %}
 </main>
-
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastArea"></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function switchTab(targetTabId, btnElement) {
-    document.querySelectorAll('.tab-view-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-menu-btn').forEach(el => el.classList.remove('active'));
-    const target = document.getElementById(targetTabId);
-    if (target) target.classList.add('active');
-    if (btnElement) btnElement.classList.add('active');
+async function apiFetch(url, options={}) {
+  const response = await fetch(url, {credentials:'same-origin', ...options});
+  let data = {}; try { data = await response.json(); } catch (_) {}
+  if (!response.ok) throw new Error(data.message || `요청 실패 (${response.status})`);
+  return data;
 }
-
-async function refreshStatus() {
-    try {
-        const res = await fetch("/api/system/status");
-        if (!res.ok) return;
-        const d = await res.json();
-        const uBar = document.getElementById("shipUserBar");
-        if (uBar && d.ship_user_counts) {
-            uBar.innerHTML = Object.entries(d.ship_user_counts)
-                .map(([k, v]) => `<span class="badge-chip chip-blue me-1">${k}: <b>${v}</b></span>`).join("");
-        }
-        const eBar = document.getElementById("shipErpBar");
-        if (eBar && d.ship_erp_counts) {
-            eBar.innerHTML = Object.entries(d.ship_erp_counts)
-                .map(([k, v]) => `<span class="badge-chip chip-green me-1">${k}: <b>${v}</b></span>`).join("");
-        }
-        const rBar = document.getElementById("ragCountBar");
-        if (rBar && d.rag_counts) {
-            rBar.innerHTML = Object.entries(d.rag_counts)
-                .map(([k, v]) => `<span class="badge-chip chip-dark me-1">${k}: <b style="color: #38bdf8;">${v} 청크</b></span>`).join("");
-        }
-    } catch(err) { console.error("상태 로드 에러:", err); }
+function showToast(message, type='info') {
+  const area=document.getElementById('toastArea'); if(!area) return;
+  const node=document.createElement('div'); node.className=`toast align-items-center text-bg-${type} border-0`;
+  node.setAttribute('role','status'); node.innerHTML='<div class="d-flex"><div class="toast-body"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+  node.querySelector('.toast-body').textContent=message; area.appendChild(node);
+  const toast=new bootstrap.Toast(node,{delay:3500}); toast.show(); node.addEventListener('hidden.bs.toast',()=>node.remove());
 }
-
-async function checkSession() {
-    try {
-        const res = await fetch("/api/auth/session-check");
-        const d = await res.json();
-        const badge = document.getElementById("navUserBadge");
-        const lBtn = document.getElementById("navLoginBtn");
-        const loBtn = document.getElementById("navLogoutBtn");
-        if (d.logged_in) {
-            if (badge) { badge.className = "badge-chip chip-green"; badge.textContent = `👤 ${d.display_name} (${d.role})`; }
-            if (lBtn) lBtn.classList.add("d-none");
-            if (loBtn) loBtn.classList.remove("d-none");
-        } else {
-            if (badge) { badge.className = "badge-chip chip-dark"; badge.textContent = "비로그인 (기본: admin / admin1234)"; }
-            if (lBtn) lBtn.classList.remove("d-none");
-            if (loBtn) loBtn.classList.add("d-none");
-        }
-    } catch(e) {}
-}
-
-async function doLogout() {
-    await fetch("/api/auth/logout", {method: "POST"});
-    location.reload();
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    checkSession();
-    refreshStatus();
-});
+const logoutBtn=document.getElementById('logoutBtn');
+if(logoutBtn) logoutBtn.addEventListener('click', async()=>{try{await apiFetch('/api/auth/logout',{method:'POST'});}finally{location.href='/login';}});
 </script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

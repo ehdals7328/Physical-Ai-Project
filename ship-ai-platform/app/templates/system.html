@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}시스템 상태 | SHIP AI{% endblock %}
+{% block content %}
+<div class="mb-4"><div class="eyebrow">SYSTEM HEALTH</div><h1 class="h3 mb-1">시스템 연결 상태</h1><p class="text-secondary mb-0">DB별 연결과 RAG 컬렉션 카운트를 확인합니다. Agent와 Vision은 현재 연결 확인용 Stub입니다.</p></div>
+<div class="card"><div class="card-header bg-white d-flex justify-content-between"><span class="fw-semibold">Health Check</span><button class="btn btn-sm btn-outline-primary" id="checkBtn">다시 확인</button></div><div class="card-body"><div id="healthRows" class="row g-3"><div class="text-secondary">확인 중...</div></div><hr><div id="ragCounts" class="small text-secondary"></div></div></div>
+{% endblock %}
+{% block scripts %}<script>
+async function checkHealth(){const box=document.getElementById('healthRows');box.textContent='확인 중...';try{const d=await apiFetch('/api/system/health');box.replaceChildren();Object.entries(d.checks).forEach(([name,status])=>{const col=document.createElement('div');col.className='col-sm-6 col-lg-3';const card=document.createElement('div');card.className='health-card';const title=document.createElement('div');title.className='small text-secondary';title.textContent=name;const value=document.createElement('div');value.className='fw-semibold mt-1';value.textContent=status;value.classList.add(status==='OK'?'text-success':status.startsWith('ERROR')?'text-danger':'text-warning');card.append(title,value);col.appendChild(card);box.appendChild(col);});document.getElementById('ragCounts').textContent=`공개 표준 청크: ${d.rag_counts.standards??'-'} · 사내 문서 청크: ${d.rag_counts.internal??'-'}`;}catch(e){box.textContent=e.message;}}
+document.getElementById('checkBtn').addEventListener('click',checkHealth);checkHealth();
+</script>{% endblock %}
