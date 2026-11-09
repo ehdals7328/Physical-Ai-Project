@@ -1,6 +1,11 @@
 """
 app/models/schema.py
 조선소 Physical AI + 통합 ERP 다중 데이터베이스 스키마 정의 (총 16개 테이블).
+- ship_user (9개): USERS, WORK_ORDERS, VISION_ANALYSES, VISION_DETECTIONS,
+                   AGENT_EXECUTIONS, WORK_INSTRUCTIONS, DOCUMENT_METADATA,
+                   VISION_STREAM_LOGS, HUMAN_APPROVAL_LOGS
+- ship_erp (7개):  ERP_COMPANIES, ERP_BRANCHES, ERP_WORKERS, ERP_WELDING_ROBOTS,
+                   ERP_BRANCH_INVENTORY, ERP_EQUIPMENT_MAINTENANCE, ERP_MATERIAL_TRANSACTIONS
 """
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
@@ -9,7 +14,7 @@ from sqlalchemy import Identity
 db = SQLAlchemy()
 
 # -----------------------------------------------------------------------------
-# [DB 1: ship_user] 공정 / Vision / Agent 이력 관리 도메인 (9개)
+# [DB 1: ship_user] 공정 / Vision / Agent 이력 관리 도메인 (9개 테이블)
 # -----------------------------------------------------------------------------
 class User(db.Model):
     """사용자 계정 및 역할 관리 테이블 (USERS)."""
@@ -19,7 +24,7 @@ class User(db.Model):
     password_hash = db.Column('PASSWORD_HASH', db.String(255), nullable=False)
     email = db.Column('EMAIL', db.String(100))
     display_name = db.Column('DISPLAY_NAME', db.String(100))
-    role = db.Column('ROLE', db.String(20), default='USER')           # 'ADMIN', 'USER', 'PARTNER'
+    role = db.Column('ROLE', db.String(20), default='USER')
     is_active = db.Column('IS_ACTIVE', db.String(10), default='Y')
     created_at = db.Column('CREATED_AT', db.DateTime, default=datetime.utcnow)
     updated_at = db.Column('UPDATED_AT', db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -50,7 +55,7 @@ class VisionAnalysis(db.Model):
     vision_id = db.Column('VISION_ID', db.Integer, Identity(start=1), primary_key=True)
     work_id = db.Column('WORK_ID', db.Integer, db.ForeignKey('WORK_ORDERS.WORK_ID'), nullable=False)
     image_path = db.Column('IMAGE_PATH', db.String(1000))
-    model_name = db.Column('MODEL_NAME', db.String(100), default='YOLOv11s-ShipWeld')
+    model_name = db.Column('MODEL_NAME', db.String(100), default='YOLOv11s')
     model_version = db.Column('MODEL_VERSION', db.String(50), default='v2.4')
     analysis_status = db.Column('ANALYSIS_STATUS', db.String(20), default='COMPLETED')
     image_width = db.Column('IMAGE_WIDTH', db.Integer)
@@ -87,7 +92,7 @@ class AgentExecution(db.Model):
     request_type = db.Column('REQUEST_TYPE', db.String(30))
     agent_name = db.Column('AGENT_NAME', db.String(100), default='ShipSupervisorAgent')
     user_query = db.Column('USER_QUERY', db.Text)
-    execution_status = db.Column('EXECUTION_STATUS', db.String(20), default='SUCCESS')
+    execution_status = db.Column('EXECUTION_STATUS', db.String(20), default='RUNNING')
     approval_result = db.Column('APPROVAL_RESULT', db.String(20), default='PASS')
     current_node = db.Column('CURRENT_NODE', db.String(100))
     state_version = db.Column('STATE_VERSION', db.Integer, default=1)
@@ -123,7 +128,7 @@ class DocumentMetadata(db.Model):
     document_name = db.Column('DOCUMENT_NAME', db.String(300), nullable=False)
     category = db.Column('CATEGORY', db.String(50), nullable=False)
     source = db.Column('SOURCE', db.String(300))
-    revision = db.Column('REVISION', db.String(100), default='UNKNOWN')
+    revision = db.Column('REVISION', db.String(100))
     access_level = db.Column('ACCESS_LEVEL', db.String(20), default='PUBLIC')
     file_path = db.Column('FILE_PATH', db.String(1000))
     file_hash = db.Column('FILE_HASH', db.String(64))
@@ -137,7 +142,7 @@ class VisionStreamLog(db.Model):
     """시계열 실시간 용접 토치 궤적 로그 테이블 (VISION_STREAM_LOGS)."""
     __tablename__ = 'VISION_STREAM_LOGS'
     stream_id = db.Column('STREAM_ID', db.Integer, Identity(start=1), primary_key=True)
-    vision_id = db.Column('VISION_ID', db.Integer, nullable=False)
+    vision_id = db.Column('VISION_ID', db.Integer, db.ForeignKey('VISION_ANALYSES.VISION_ID'), nullable=False)
     frame_seq = db.Column('FRAME_SEQ', db.Integer, nullable=False)
     event_type = db.Column('EVENT_TYPE', db.String(50), default='TRACKING')
     torch_x = db.Column('TORCH_X', db.Float)
@@ -146,11 +151,11 @@ class VisionStreamLog(db.Model):
     captured_at = db.Column('CAPTURED_AT', db.DateTime, default=datetime.utcnow)
 
 class HumanApprovalLog(db.Model):
-    """HITL 관리자 안전 승인 및 거부 로그 테이블 (HUMAN_APPROVAL_LOGS)."""
+    """HITL 관리자 안전 승인 및 개입 로그 테이블 (HUMAN_APPROVAL_LOGS)."""
     __tablename__ = 'HUMAN_APPROVAL_LOGS'
     approval_id = db.Column('APPROVAL_ID', db.Integer, Identity(start=1), primary_key=True)
-    work_id = db.Column('WORK_ID', db.Integer, nullable=False)
-    instruction_id = db.Column('INSTRUCTION_ID', db.Integer, nullable=False)
+    work_id = db.Column('WORK_ID', db.Integer, db.ForeignKey('WORK_ORDERS.WORK_ID'), nullable=False)
+    instruction_id = db.Column('INSTRUCTION_ID', db.Integer, db.ForeignKey('WORK_INSTRUCTIONS.INSTRUCTION_ID'), nullable=False)
     approver_id = db.Column('APPROVER_ID', db.Integer, nullable=False)
     approval_decision = db.Column('APPROVAL_DECISION', db.String(20), nullable=False)
     override_params = db.Column('OVERRIDE_PARAMS', db.Text)
@@ -158,7 +163,7 @@ class HumanApprovalLog(db.Model):
     action_timestamp = db.Column('ACTION_TIMESTAMP', db.DateTime, default=datetime.utcnow)
 
 # -----------------------------------------------------------------------------
-# [DB 2: ship_erp] 대기업 인사 / 협력사 / 로봇 / 자재 ERP 도메인 (7개)
+# [DB 2: ship_erp] 대기업 인사 / 협력사 / 로봇 / 자재 ERP 도메인 (7개 테이블)
 # -----------------------------------------------------------------------------
 class ErpCompany(db.Model):
     """원청 및 사외 협력업체 마스터 테이블 (ERP_COMPANIES)."""
@@ -189,7 +194,7 @@ class ErpWorker(db.Model):
     company_id = db.Column('COMPANY_ID', db.Integer, nullable=False)
     branch_id = db.Column('BRANCH_ID', db.Integer, nullable=False)
     worker_name = db.Column('WORKER_NAME', db.String(50), nullable=False)
-    worker_code = db.Column('WORKER_CODE', db.String(50))
+    worker_code = db.Column('WORKER_CODE', db.String(50), unique=True)
     skill_grade = db.Column('SKILL_GRADE', db.String(100))
     status = db.Column('STATUS', db.String(20), default='AVAILABLE')
     phone = db.Column('PHONE', db.String(50))

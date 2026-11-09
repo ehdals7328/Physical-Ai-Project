@@ -19,7 +19,8 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     os.makedirs(app.config["INTERNAL_PDF_FOLDER"], exist_ok=True)
     os.makedirs(app.config["CHROMA_DB_PATH"], exist_ok=True)
-    os.makedirs(app.config["RAG_CACHE_FOLDER"], exist_ok=True)
+    rag_cache_dir = app.config.get("RAG_CACHE_FOLDER", os.path.join(app.root_path, "..", "data", "rag_cache"))
+    os.makedirs(rag_cache_dir, exist_ok=True)
 
     db.init_app(app)
 

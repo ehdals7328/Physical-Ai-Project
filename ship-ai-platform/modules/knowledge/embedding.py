@@ -1,68 +1,37 @@
-"""임베딩 모델을 지연 로딩하고 질의 벡터를 재사용합니다."""
-
+"""
+modules/knowledge/embedding.py
+BGE-M3 싱글톤 임베딩 및 단일 쿼리 LRU 캐싱 모듈.
+"""
 from __future__ import annotations
 
-import logging
+import os
 from functools import lru_cache
-from threading import Lock
 from typing import Sequence
 
-from config import Config
-
-logger = logging.getLogger(__name__)
-_MODEL_LOCK = Lock()
-_MODEL = None
-
-
+@lru_cache(maxsize=1)
 def get_embedder():
-    """SentenceTransformer 모델을 프로세스에서 한 번만 생성해 반환합니다."""
-    global _MODEL
-    if _MODEL is None:
-        with _MODEL_LOCK:
-            if _MODEL is None:
-                try:
-                    from sentence_transformers import SentenceTransformer
-                except ImportError as exc:
-                    raise RuntimeError("sentence-transformers 패키지가 설치되지 않았습니다.") from exc
-                logger.info("임베딩 모델 로딩: %s", Config.EMBEDDING_MODEL)
-                _MODEL = SentenceTransformer(
-                    Config.EMBEDDING_MODEL,
-                    device=Config.EMBEDDING_DEVICE,
-                )
-    return _MODEL
-
+    from sentence_transformers import SentenceTransformer
+    model_name = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+    device = os.getenv("EMBEDDING_DEVICE", "").strip() or None
+    print(f"[Embedding] 모델 적재: {model_name} (device={device or 'auto'})")
+    return SentenceTransformer(model_name, device=device)
 
 def warmup_embedder() -> None:
-    """최초 검색 전 선택적으로 임베딩 모델을 예열합니다."""
-    get_embedder().encode(["model warmup"], normalize_embeddings=True, show_progress_bar=False)
-    logger.info("임베딩 모델 예열 완료")
-
-
-@lru_cache(maxsize=512)
-def encode_query(query: str) -> tuple[float, ...]:
-    """동일한 질의의 임베딩 결과를 LRU 캐시에서 재사용합니다."""
-    cleaned = (query or "").strip()
-    if not cleaned:
-        return ()
-    vector = encode_texts([cleaned])[0]
-    return tuple(float(value) for value in vector)
-
-
-def encode_texts(
-    texts: Sequence[str],
-    *,
-    batch_size: int | None = None,
-    show_progress_bar: bool = False,
-) -> list[list[float]]:
-    """텍스트 목록을 정규화된 임베딩 벡터 목록으로 변환합니다."""
-    if not texts:
-        return []
     model = get_embedder()
-    vectors = model.encode(
-        list(texts),
-        batch_size=batch_size or Config.EMBEDDING_BATCH_SIZE,
-        normalize_embeddings=True,
-        show_progress_bar=show_progress_bar,
-        convert_to_numpy=True,
-    )
-    return vectors.tolist()
+    model.encode(["warmup"], normalize_embeddings=True)
+    print("[Embedding] BGE-M3 모델 사전 예열(Warm-up) 완료.")
+
+@lru_cache(maxsize=256)
+def encode_query(query: str) -> list[float]:
+    cleaned = (query or "").strip()
+    if not cleaned: return []
+    res = encode_texts([cleaned])
+    return res[0] if res else []
+
+def encode_texts(texts: Sequence[str], batch_size: int | None = None) -> list[list[float]]:
+    if not texts: return []
+    import numpy as np
+    model = get_embedder()
+    batch = batch_size or int(os.getenv("EMBEDDING_BATCH_SIZE", "16"))
+    vectors = model.encode(list(texts), batch_size=batch, normalize_embeddings=True, show_progress_bar=False, convert_to_numpy=True)
+    return np.asarray(vectors, dtype=np.float32).tolist()

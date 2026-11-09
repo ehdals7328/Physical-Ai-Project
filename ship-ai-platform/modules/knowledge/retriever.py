@@ -1,276 +1,232 @@
-"""두 ChromaDB 컬렉션을 대상으로 문서 적재·검색·삭제를 제공합니다.
-
-서버 부팅 시 모델을 읽지 않습니다. ChromaDB 연결은 필요할 때 생성하고,
-임베딩과 선택적 Cross-Encoder는 검색/색인 요청이 들어온 시점에만 로드합니다.
 """
-
+modules/knowledge/retriever.py
+고성능 하이브리드 RAG 검색 및 관리자 문서 생명주기 관리 엔진.
+"""
 from __future__ import annotations
 
-import logging
+import os
+import pickle
 import uuid
-from threading import Lock
-from typing import Any
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List
+
+import chromadb
+from kiwipiepy import Kiwi
+import numpy as np
+from rank_bm25 import BM25Okapi
+from sentence_transformers import CrossEncoder
 
 from config import Config
 from modules.knowledge.embedding import encode_query, encode_texts
 
-logger = logging.getLogger(__name__)
-PUBLIC_COLLECTION_NAME = "shipbuilding_docs"
-INTERNAL_COLLECTION_NAME = "company_internal_docs"
-INDEX_VERSION = "RAG_V3"
+INDEX_VERSION = "RAG_V2"
+COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "shipbuilding_docs")
+INTERNAL_COLLECTION_NAME = os.getenv("CHROMA_INTERNAL_COLLECTION", "company_internal_docs")
 
-_STORE = None
-_STORE_LOCK = Lock()
+_GLOBAL_STORE_INSTANCE = None
+_GLOBAL_RERANKER = None
+_GLOBAL_KIWI = None
 
+def get_shared_reranker() -> CrossEncoder:
+    global _GLOBAL_RERANKER
+    if _GLOBAL_RERANKER is None:
+        print("[Reranker] Cross-Encoder 로드: BAAI/bge-reranker-base (최초 1회)")
+        _GLOBAL_RERANKER = CrossEncoder("BAAI/bge-reranker-base", max_length=512)
+    return _GLOBAL_RERANKER
+
+def get_shared_kiwi() -> Kiwi:
+    global _GLOBAL_KIWI
+    if _GLOBAL_KIWI is None:
+        _GLOBAL_KIWI = Kiwi()
+    return _GLOBAL_KIWI
 
 class KnowledgeStore:
-    """공통 기술 문서와 사내 문서를 분리해 관리하는 벡터 저장소입니다."""
+    def __init__(self):
+        chroma_path = os.path.abspath(Config.CHROMA_DB_PATH)
+        os.makedirs(chroma_path, exist_ok=True)
+        self.client = chromadb.PersistentClient(path=chroma_path)
 
-    def __init__(self) -> None:
-        """PersistentClient와 두 문서 컬렉션만 초기화합니다."""
-        import chromadb
-
-        self.client = chromadb.PersistentClient(path=Config.CHROMA_DB_PATH)
-        self.public_collection = self.client.get_or_create_collection(
-            name=PUBLIC_COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine", "description": "Public shipbuilding and welding standards"},
+        self.collection = self.client.get_or_create_collection(
+            name=COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
         )
         self.internal_collection = self.client.get_or_create_collection(
-            name=INTERNAL_COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine", "description": "Authenticated internal shipyard documents"},
+            name=INTERNAL_COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
         )
-        self._reranker = None
-        self._reranker_lock = Lock()
 
-    def _collection(self, access_level: str):
-        """접근 등급에 해당하는 ChromaDB 컬렉션을 선택합니다."""
-        normalized = (access_level or "PUBLIC").upper()
-        if normalized == "INTERNAL":
-            return self.internal_collection
-        if normalized == "PUBLIC":
-            return self.public_collection
-        raise ValueError("access_level은 PUBLIC 또는 INTERNAL이어야 합니다.")
+        self.kiwi = get_shared_kiwi()
+        self.reranker = get_shared_reranker()
 
-    def counts(self) -> dict[str, int]:
-        """공통 기술 문서와 사내 문서의 현재 청크 수를 반환합니다."""
-        return {
-            "public": int(self.public_collection.count()),
-            "internal": int(self.internal_collection.count()),
-        }
+        self.bm25_corpus: List[List[str]] = []
+        self.bm25_chunks: List[Dict[str, Any]] = []
+        self.bm25_index: BM25Okapi | None = None
+        self._load_or_build_bm25_index()
 
-    def count(self) -> int:
-        """공통 기술 문서 컬렉션의 청크 수를 반환합니다."""
-        return int(self.public_collection.count())
+    def count(self, *, current_index_only: bool = True) -> int:
+        return int(self.collection.count())
 
     def count_internal(self) -> int:
-        """사내 문서 컬렉션의 청크 수를 반환합니다."""
         return int(self.internal_collection.count())
 
-    def _get_reranker(self):
-        """설정에서 활성화한 경우에만 Cross-Encoder 모델을 지연 로딩합니다."""
-        if not Config.RAG_RERANK_ENABLED:
-            return None
-        if self._reranker is None:
-            with self._reranker_lock:
-                if self._reranker is None:
-                    from sentence_transformers import CrossEncoder
+    def _tokenize(self, text: str) -> List[str]:
+        tokens = []
+        for t in self.kiwi.tokenize(text):
+            if t.tag.startswith(('NN', 'SL', 'SN')):
+                tokens.append(t.form.lower())
+        return tokens or text.lower().split()
 
-                    logger.info("Cross-Encoder 로딩: %s", Config.RAG_RERANK_MODEL)
-                    self._reranker = CrossEncoder(Config.RAG_RERANK_MODEL, max_length=512)
-        return self._reranker
+    def _load_or_build_bm25_index(self):
+        cache_file = Path(Config.CHROMA_DB_PATH) / "bm25_cache.pkl"
+        if cache_file.exists():
+            try:
+                with open(cache_file, "rb") as f:
+                    cached = pickle.load(f)
+                    self.bm25_corpus = cached.get("corpus", [])
+                    self.bm25_chunks = cached.get("chunks", [])
+                    self.bm25_index = cached.get("index")
+                print(f"[BM25] 캐시 즉시 로드 완료: {len(self.bm25_chunks)}개 청크 (소요: ~0.05초)")
+                return
+            except Exception as e:
+                print(f"[BM25] 캐시 로드 실패 재빌드: {e}")
+
+        data = self.collection.get(include=["documents", "metadatas"])
+        docs = data.get("documents") or []
+        metas = data.get("metadatas") or []
+        ids = data.get("ids") or []
+
+        self.bm25_corpus = []
+        self.bm25_chunks = []
+        for i, text in enumerate(docs):
+            cleaned = (text or "").strip()
+            if len(cleaned) < 30:
+                continue
+            meta = metas[i] if i < len(metas) else {}
+            tokens = self._tokenize(cleaned)
+            self.bm25_corpus.append(tokens)
+            self.bm25_chunks.append({
+                "chunk_id": ids[i],
+                "chunk_text": cleaned,
+                "document_name": meta.get("document_name", "기술규격서"),
+                "category": meta.get("category", "규격"),
+                "source": meta.get("source", "조선소 기술표준"),
+                "page": meta.get("page_start", 1),
+                "page_start": meta.get("page_start", 1),
+                "rag_type": "공통규격RAG"
+            })
+
+        if self.bm25_corpus:
+            self.bm25_index = BM25Okapi(self.bm25_corpus)
+            try:
+                with open(cache_file, "wb") as f:
+                    pickle.dump({"corpus": self.bm25_corpus, "chunks": self.bm25_chunks, "index": self.bm25_index}, f)
+                print(f"[BM25] 인덱스 빌드 및 캐시 저장 완료 ({cache_file.name})")
+            except Exception:
+                pass
 
     def search(
         self,
         query: str,
-        top_k: int | None = None,
+        top_k: int = 4,
         rag_mode: str = "ALL",
-    ) -> list[dict[str, Any]]:
-        """선택한 컬렉션에서 벡터 검색 후 필요할 때만 재정렬합니다."""
+        min_confidence_threshold: float = 0.65,
+        **kwargs
+    ) -> List[Dict[str, Any]]:
         query = (query or "").strip()
-        mode = (rag_mode or "ALL").upper()
         if not query:
             return []
-        if mode not in {"ALL", "PUBLIC", "INTERNAL"}:
-            raise ValueError("rag_mode는 ALL, PUBLIC, INTERNAL 중 하나여야 합니다.")
 
-        limit = max(1, min(int(top_k or Config.RAG_DEFAULT_TOP_K), 20))
-        candidate_limit = max(limit, min(Config.RAG_CANDIDATE_K, 30))
+        candidates_map: Dict[str, Dict[str, Any]] = {}
+        q_emb = encode_query(query)
 
-        collections = []
-        if mode in {"ALL", "PUBLIC"}:
-            collections.append((self.public_collection, "PUBLIC", "공통기술RAG"))
-        if mode in {"ALL", "INTERNAL"}:
-            collections.append((self.internal_collection, "INTERNAL", "사내문서RAG"))
-
-        # 검색 대상 컬렉션에 문서가 없으면 임베딩 모델을 로드하지 않습니다.
-        populated_collections = [
-            (collection, access_level, rag_type, int(collection.count()))
-            for collection, access_level, rag_type in collections
-        ]
-        populated_collections = [item for item in populated_collections if item[3] > 0]
-        if not populated_collections:
-            return []
-
-        query_vector = list(encode_query(query))
-        if not query_vector:
-            return []
-
-        candidates: dict[str, dict[str, Any]] = {}
-        for collection, access_level, rag_type, collection_size in populated_collections:
-            result = collection.query(
-                query_embeddings=[query_vector],
-                n_results=min(candidate_limit, collection_size),
-                include=["documents", "metadatas", "distances"],
+        # 1. Dense Vector 검색
+        if q_emb and self.collection.count() > 0 and rag_mode in ("ALL", "PUBLIC"):
+            raw_res = self.collection.query(
+                query_embeddings=[q_emb],
+                n_results=min(15, self.collection.count()),
+                include=["documents", "metadatas"]
             )
-            documents = (result.get("documents") or [[]])[0]
-            metadatas = (result.get("metadatas") or [[]])[0]
-            distances = (result.get("distances") or [[]])[0]
-            ids = (result.get("ids") or [[]])[0]
-
-            for index, chunk_text in enumerate(documents):
-                if not chunk_text:
-                    continue
-                metadata = metadatas[index] or {}
-                stored_access_level = str(metadata.get("access_level") or access_level).upper()
-                if stored_access_level != access_level:
-                    continue
-                document_id = metadata.get("document_id")
-                if str(metadata.get("document_status", "ACTIVE")).upper() != "ACTIVE":
-                    continue
-                if metadata.get("is_active", True) is False:
-                    continue
-                distance = float(distances[index]) if index < len(distances) else 0.0
-                chunk_id = ids[index]
-                candidates[f"{access_level}:{chunk_id}"] = {
-                    "chunk_id": chunk_id,
-                    "document_id": document_id,
-                    "chunk_text": str(chunk_text),
-                    "document_name": metadata.get("document_name", "이름 없는 문서"),
-                    "category": metadata.get("category", "미분류"),
-                    "source": metadata.get("source", "출처 미기재"),
-                    "revision": metadata.get("revision", "UNKNOWN"),
-                    "page": metadata.get("page_start", 1),
-                    "page_start": metadata.get("page_start", 1),
-                    "page_end": metadata.get("page_end", metadata.get("page_start", 1)),
-                    "access_level": access_level,
-                    "rag_type": rag_type,
-                    "vector_distance": round(distance, 6),
-                    "similarity_score": round(max(0.0, min(1.0, 1.0 - distance)), 4),
+            for idx, text in enumerate((raw_res.get("documents") or [[]])[0]):
+                if len(str(text).strip()) < 30: continue
+                cid = (raw_res.get("ids") or [[]])[0][idx]
+                meta = (raw_res.get("metadatas") or [[]])[0][idx] or {}
+                candidates_map[cid] = {
+                    "chunk_id": cid, "chunk_text": text,
+                    "document_name": meta.get("document_name", "기술규격서"),
+                    "category": meta.get("category", "규격"),
+                    "source": meta.get("source", "조선소 기술자료실"),
+                    "page": meta.get("page_start", 1), "page_start": meta.get("page_start", 1),
+                    "rag_type": "공통규격RAG"
                 }
 
-        results = list(candidates.values())
-        if not results:
+        # 사내 보안내규 검색
+        if q_emb and self.internal_collection.count() > 0 and rag_mode in ("ALL", "INTERNAL"):
+            int_res = self.internal_collection.query(
+                query_embeddings=[q_emb],
+                n_results=min(6, self.internal_collection.count()),
+                include=["documents", "metadatas"]
+            )
+            for idx, text in enumerate((int_res.get("documents") or [[]])[0]):
+                cid = (int_res.get("ids") or [[]])[0][idx]
+                meta = (int_res.get("metadatas") or [[]])[0][idx] or {}
+                candidates_map[cid] = {
+                    "chunk_id": cid, "chunk_text": text,
+                    "document_name": meta.get("document_name", "사내보안내규"),
+                    "category": meta.get("category", "사내보안내규"),
+                    "source": meta.get("source", "생산기술본부 로봇운영팀"),
+                    "page": meta.get("page_start", 1), "page_start": meta.get("page_start", 1),
+                    "rag_type": "사내내규RAG"
+                }
+
+        # 2. Sparse 키워드 검색 (BM25)
+        if self.bm25_index and rag_mode in ("ALL", "PUBLIC"):
+            tokens = self._tokenize(query)
+            scores = self.bm25_index.get_scores(tokens)
+            for idx in sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:10]:
+                if scores[idx] > 0.05:
+                    c = self.bm25_chunks[idx]
+                    if c["chunk_id"] not in candidates_map:
+                        candidates_map[c["chunk_id"]] = c
+
+        candidate_list = list(candidates_map.values())
+        if not candidate_list:
             return []
 
-        reranker = self._get_reranker()
-        if reranker is not None:
-            pairs = [[query, item["chunk_text"]] for item in results]
-            scores = reranker.predict(pairs, show_progress_bar=False)
-            for item, score in zip(results, scores):
-                item["rerank_score"] = round(float(score), 5)
-            results.sort(key=lambda item: item.get("rerank_score", float("-inf")), reverse=True)
-        else:
-            results.sort(key=lambda item: item["vector_distance"])
+        # 3. Cross-Encoder 리랭킹
+        pairs = [[query, c["chunk_text"]] for c in candidate_list]
+        logits = self.reranker.predict(pairs)
 
-        return results[:limit]
+        # 4. 시그모이드 확률 스케일링 & 컷오프
+        final_results = []
+        for idx, logit in enumerate(logits):
+            prob = 1.0 / (1.0 + np.exp(-float(logit)))
+            if prob < min_confidence_threshold:
+                continue
+            item = dict(candidate_list[idx])
+            item["similarity_score"] = round(prob, 4)
+            final_results.append(item)
 
-    def replace_document_chunks(
-        self,
-        *,
-        document_id: int,
-        document_name: str,
-        category: str,
-        source: str,
-        revision: str,
-        file_hash: str,
-        chunks: list[dict[str, Any]],
-        access_level: str = "PUBLIC",
-        document_status: str = "ACTIVE",
-    ) -> int:
-        """문서의 기존 청크를 교체하고 지정 컬렉션에 새 청크를 일괄 적재합니다."""
-        collection = self._collection(access_level)
-        valid_chunks = [chunk for chunk in chunks if str(chunk.get("text", "")).strip()]
-        if not valid_chunks:
-            return 0
+        final_results.sort(key=lambda x: x["similarity_score"], reverse=True)
+        return final_results[:top_k]
 
-        texts = [str(chunk["text"]).strip() for chunk in valid_chunks]
-        embeddings = encode_texts(texts)
-        document_id = int(document_id)
-        collection.delete(where={"document_id": {"$eq": document_id}})
-        other_collection = self.internal_collection if collection is self.public_collection else self.public_collection
-        other_collection.delete(where={"document_id": {"$eq": document_id}})
+    def add_internal_document_chunks(self, document_id: int, document_name: str, category: str, source: str, chunks: list[dict[str, Any]]):
+        texts = [c["text"].strip() for c in chunks if c.get("text", "").strip()]
+        if not texts: return
+        embs = encode_texts(texts)
+        ids = [f"INT_D{document_id}_C{i+1:04d}" for i in range(len(texts))]
+        metas = [{
+            "document_id": document_id, "document_name": document_name, "category": category,
+            "source": source, "page_start": c.get("page_start", 1), "index_version": INDEX_VERSION
+        } for c in chunks]
+        self.internal_collection.upsert(ids=ids, embeddings=embs, documents=texts, metadatas=metas)
 
-        ingest_id = uuid.uuid4().hex[:12]
-        ids = [f"DOC{document_id}_CHUNK{index:06d}" for index in range(1, len(texts) + 1)]
-        metadatas = []
-        for index, chunk in enumerate(valid_chunks, start=1):
-            page_start = int(chunk.get("page_start", 1) or 1)
-            page_end = int(chunk.get("page_end", page_start) or page_start)
-            metadatas.append(
-                {
-                    "document_id": document_id,
-                    "document_name": str(document_name)[:300],
-                    "category": str(category or "미분류")[:50],
-                    "source": str(source or "출처 미기재")[:300],
-                    "revision": str(revision or "UNKNOWN")[:100],
-                    "file_hash": str(file_hash),
-                    "chunk_index": index,
-                    "page_start": page_start,
-                    "page_end": page_end,
-                    "chunk_type": str(chunk.get("chunk_type", "TEXT"))[:30],
-                    "access_level": access_level.upper(),
-                    "document_status": document_status.upper(),
-                    "is_active": True,
-                    "index_version": INDEX_VERSION,
-                    "ingest_run_id": ingest_id,
-                }
-            )
-
-        batch_size = 64
-        for start in range(0, len(texts), batch_size):
-            end = start + batch_size
-            collection.upsert(
-                ids=ids[start:end],
-                embeddings=embeddings[start:end],
-                documents=texts[start:end],
-                metadatas=metadatas[start:end],
-            )
-        return len(texts)
-
-    def is_document_indexed(self, document_id: int, file_hash: str, access_level: str = "PUBLIC") -> bool:
-        """문서 ID와 파일 해시가 같은 색인 청크가 있는지 확인합니다."""
-        collection = self._collection(access_level)
-        result = collection.get(
-            where={
-                "$and": [
-                    {"document_id": {"$eq": int(document_id)}},
-                    {"file_hash": {"$eq": str(file_hash)}},
-                    {"access_level": {"$eq": access_level.upper()}},
-                ]
-            },
-            include=["metadatas"],
-        )
-        return bool(result.get("ids"))
-
-    def delete_document_chunks(self, document_id: int, access_level: str = "INTERNAL") -> int:
-        """문서 ID에 연결된 청크를 두 컬렉션 모두에서 찾아 제거합니다."""
-        self._collection(access_level)  # 접근 등급 입력값을 먼저 검증합니다.
-        deleted_count = 0
-        for collection in (self.public_collection, self.internal_collection):
-            condition = {"document_id": {"$eq": int(document_id)}}
-            existing = collection.get(where=condition, include=[])
-            count = len(existing.get("ids", []))
-            if count:
-                collection.delete(where=condition)
-                deleted_count += count
-        return deleted_count
-
+    def delete_internal_document_chunks(self, document_id: int):
+        res = self.internal_collection.get(where={"document_id": {"$eq": int(document_id)}}, include=[])
+        ids = res.get("ids", [])
+        if ids:
+            self.internal_collection.delete(ids=ids)
 
 def get_knowledge_store() -> KnowledgeStore:
-    """프로세스 전역 KnowledgeStore 인스턴스를 지연 생성해 반환합니다."""
-    global _STORE
-    if _STORE is None:
-        with _STORE_LOCK:
-            if _STORE is None:
-                _STORE = KnowledgeStore()
-    return _STORE
+    global _GLOBAL_STORE_INSTANCE
+    if _GLOBAL_STORE_INSTANCE is None:
+        _GLOBAL_STORE_INSTANCE = KnowledgeStore()
+    return _GLOBAL_STORE_INSTANCE
