@@ -1,10 +1,8 @@
-"""Ship Welding Autonomous Platform: 메인 오케스트레이터 (supervisor.py)
-
-Supervisor가 State를 검사하여 Team 1(분석) -> Team 2(수집) -> Team 3(생성)의 유기적 흐름을
-제어합니다.
+"""
+modules/agent/supervisor.py
+Top-Level Supervisor & Multi-Turn Memory Graph
 """
 
-import os
 from typing import Literal
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -15,79 +13,49 @@ from modules.agent.subgraphs.docgen import team3_subgraph
 from modules.agent.subgraphs.search import team2_subgraph
 
 
-# ==============================================================================
-# 1. Supervisor 라우팅 판정 함수
-# ==============================================================================
-def supervisor_router(
+def route_after_team1(
     state: ShipAgentState,
-) -> Literal["team1_analysis", "team2_search", "team3_docgen", "__end__"]:
-  task_type = state.get("task_type")
-  search_status = state.get("search_status", "idle")
-  final_answer = state.get("final_answer")
+) -> Literal["team2_search", "team3_docgen", "__end__"]:
+    task_type = state.get("task_type")
+    is_complete = state.get("is_param_complete", "yes")
+    missing = state.get("missing_params")
+    
+    print("\n" + "=" * 60)
+    print(f"🧭 [Supervisor Routing] task_type='{task_type}', is_param_complete='{is_complete}'")
+    print(f"   - 누락 제원: {missing}")
+    print(f"   - 사내 ERP 자원 진단: {state.get('erp_resource_status') is not None}")
+    print(f"   - 외주 연계 필요 여부: {state.get('is_outsourcing_required')}")
+    # 1. 일상 대화이거나, 필수 제원 누락으로 역질문(final_answer)이 이미 만들어진 경우 즉시 종료
+    if task_type == "chat" or (task_type == "doc_generation" and is_complete == "no"):
+        return "__end__"
 
-  # 1. Team 3에서 최종 답변(또는 역질문)이 생성되었다면 즉시 파이프라인 완전 종료 (무한루프 방지 ⭐)
-  if final_answer:
-    return "__end__"
+    # 2. 사내 재고 단순 문의(erp_resource_qa) 및 인사 자격 문의(hr_safety_qa)는
+    #    Team 1에서 이미 본사 ERP 조회를 마쳤으므로 Team 2를 건너뛰고 Team 3 브리핑으로 직행!
+    if task_type in ("erp_resource_qa", "hr_safety_qa"):
+        return "team3_docgen"
 
-  # 2. 작업 의도 분류가 아직 안 되었다면 Team 1(분석팀)으로
-  if not task_type:
-    return "team1_analysis"
-
-  # 3. 단순 일상 대화(chat)는 RAG/기상 검색을 건너뛰고 바로 Team 3(생성팀)으로
-  if task_type == "chat":
-    return "team3_docgen"
-
-  # 4. 전문 지식 질의(knowledge_qa) 또는 문서 발행(doc_generation):
-  #    검색 미실행(idle) 상태라면 무조건 Team 2(검색팀)로 이동
-  if search_status == "idle":
+    # 3. 그 외(knowledge_qa, scm_partner_qa, doc_generation)는 Team 2로 이동
     return "team2_search"
 
-  # 5. 검색이 실행 완료(completed, empty, error)되었으면 Team 3(생성팀)으로 이동
-  return "team3_docgen"
 
+builder = StateGraph(ShipAgentState)
 
-# Supervisor 디버깅용 노드
-def supervisor_node(state: ShipAgentState):
-  task = state.get("task_type")
-  status = state.get("search_status", "idle")
-  has_ans = bool(state.get("final_answer"))
-  print(
-      f"[Supervisor] task_type={task}, search_status={status},"
-      f" has_final_answer={has_ans}"
-  )
-  return {}
+builder.add_node("team1_analysis", team1_subgraph)
+builder.add_node("team2_search", team2_subgraph)
+builder.add_node("team3_docgen", team3_subgraph)
 
-
-# ==============================================================================
-# 2. 메인 오케스트레이터 그래프 빌드
-# ==============================================================================
-workflow = StateGraph(ShipAgentState)
-
-workflow.add_node("supervisor", supervisor_node)
-workflow.add_node("team1_analysis", team1_subgraph)
-workflow.add_node("team2_search", team2_subgraph)
-workflow.add_node("team3_docgen", team3_subgraph)
-
-# 진입점
-workflow.add_edge(START, "supervisor")
-
-# Supervisor 조건부 분기
-workflow.add_conditional_edges(
-    "supervisor",
-    supervisor_router,
+builder.add_edge(START, "team1_analysis")
+builder.add_conditional_edges(
+    "team1_analysis",
+    route_after_team1,
     {
-        "team1_analysis": "team1_analysis",
         "team2_search": "team2_search",
         "team3_docgen": "team3_docgen",
         "__end__": END,
     },
 )
+builder.add_edge("team2_search", "team3_docgen")
+builder.add_edge("team3_docgen", END)
 
-# 각 팀 완료 후 supervisor로 복귀
-workflow.add_edge("team1_analysis", "supervisor")
-workflow.add_edge("team2_search", "supervisor")
-workflow.add_edge("team3_docgen", "supervisor")
-
-# 세션 메모리 체크포인터 장착
-checkpointer = MemorySaver()
-ship_agent_app = workflow.compile(checkpointer=checkpointer)
+memory = MemorySaver()
+ship_agent_app = builder.compile(checkpointer=memory)
