@@ -1,7 +1,7 @@
 """
 modules/agent/subgraphs/docgen.py
-Team 3: 작업지시서(WORK_INSTRUCTIONS) 생성, 자율 트러블슈팅,
-인사/ERP DB 실시간 브리핑 & [Logical Bridge: Work Authorization] 트랜잭션 마감 서브그래프
+Team 3: 거버넌스 게이트키퍼(Supervisor) 기반 작업지시서(WORK_INSTRUCTIONS) 생성,
+자율 트러블슈팅, 인사/ERP 실시간 브리핑 & [Logical Bridge: Work Authorization] 트랜잭션 마감 서브그래프
 """
 
 import json
@@ -13,7 +13,12 @@ from langgraph.graph import END, START, StateGraph
 
 from modules.agent.state import ShipAgentState
 from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
-from modules.agent.tools.erp_tools import commit_erp_work_order, list_erp_workers
+from modules.agent.tools.erp_tools import (
+    calculate_required_wire_kg,
+    commit_erp_work_order,
+    get_active_partner_from_db,
+    list_erp_workers,
+)
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
 
@@ -29,16 +34,14 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 # ==============================================================================
-# 1. 라우팅 분기 함수 (route_generation_task)
+# 0. Team 3 거버넌스 게이트키퍼 노드 (Supervisor / Safety Interlock Gatekeeper)
 # ==============================================================================
-def route_generation_task(
-    state: ShipAgentState,
-) -> Literal["troubleshooter_agent", "work_order_writer", "domain_qa_writer"]:
+def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type", "knowledge_qa")
 
     if task_type != "doc_generation":
-        print(f"\n👉 [Team 3 라우팅]: domain_qa_writer (사유: 일반 기술/ERP/인사 질의, task_type='{task_type}')\n")
-        return "domain_qa_writer"
+        print(f"\n👉 [Team 3 Gatekeeper]: domain_qa_writer (사유: 일반 기술/ERP/인사 질의, task_type='{task_type}')\n")
+        return {"next": "domain_qa_writer"}
 
     missing = state.get("missing_params", [])
     weather = state.get("weather_data") or {}
@@ -47,14 +50,13 @@ def route_generation_task(
     erp_status = state.get("erp_resource_status") or {}
     vision = state.get("vision_data") or {}
 
-    # 🌟 작업자 자격 인터록 검사 강화 (worker_qualified와 worker_qualification.is_valid 둘 다 검사)
+    # 작업자 선급 자격 유효성 검증
     worker_qual = erp_status.get("worker_qualification") or {}
     is_worker_valid = erp_status.get("worker_qualified", True) and worker_qual.get("is_valid", False)
-    
-    # 만약 worker_qualification 정보 자체가 비어있거나 worker_id가 없으면 부적격
     if not worker_qual or not worker_qual.get("worker_id"):
         is_worker_valid = False
 
+    # 비전 결함, 아크 발생(용접 중 Lock), 로봇 비상정지(E-STOP) 인터록 검사
     robot_exec = vision.get("robot_execution") or {}
     has_vision_hazard = (
         str(vision.get("inspection_status", "")).upper() == "DEFECT"
@@ -72,13 +74,13 @@ def route_generation_task(
     is_blocked = (
         bool(missing)
         or safety_status == "STOP"
-        or not is_worker_valid              # 👈 자격 만료/미배정 시 차단!
+        or not is_worker_valid
         or has_vision_hazard
         or weather_status in ("NEED_LOCATION", "NOT_FOUND", "PARSE_ERROR", "ERROR")
     )
 
     print("\n" + "=" * 65)
-    print("🔍 [Team 3 라우터 거버넌스 인터록 검사 현황]")
+    print("🔍 [Team 3 거버넌스 게이트키퍼 인터록 검사 현황]")
     print(f"   1. 작업 유형 (task_type)    : {task_type}")
     print(f"   2. 필수 제원 누락 여부      : {bool(missing)} (누락 목록: {missing})")
     print(f"   3. 기상 상태 및 안전 판정   : 상태='{weather_status}' | 판정='{safety_status}'")
@@ -101,16 +103,25 @@ def route_generation_task(
         chosen_node = "troubleshooter_agent"
         print(f"👉 [최종 결정]: {chosen_node} (차단 사유: {', '.join(fail_reasons)})")
         print("=" * 65 + "\n")
-        return chosen_node
+        return {"next": chosen_node}
 
     chosen_node = "work_order_writer"
     print(f"👉 [최종 결정]: {chosen_node} (모든 안전 및 ERP 인터록 통과)")
     print("=" * 65 + "\n")
-    return chosen_node
+    return {"next": chosen_node}
+
+
+def route_from_gatekeeper(
+    state: ShipAgentState,
+) -> Literal["troubleshooter_agent", "work_order_writer", "domain_qa_writer"]:
+    nxt = state.get("next")
+    if nxt in ("troubleshooter_agent", "work_order_writer", "domain_qa_writer"):
+        return nxt
+    return "domain_qa_writer"
 
 
 # ==============================================================================
-# 2. 도메인 QA, ERP 재고 및 인사 DB 실시간 브리핑 노드 (domain_qa_writer)
+# 1. 도메인 QA, ERP 재고 및 인사 DB 실시간 브리핑 워커 (domain_qa_writer)
 # ==============================================================================
 QA_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -137,7 +148,6 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type")
 
     if task_type == "hr_worker_qa":
-        # branch_code 필터 없이 전체 작업자 조회 (모든 야드 포함)
         db_res = list_erp_workers.invoke({"branch_code": None})
         workers = db_res.get("workers", [])
 
@@ -182,7 +192,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 3. Self-Healing 트러블슈터 & 거버넌스 인터록 노드 (troubleshooter_agent)
+# 2. Self-Healing 트러블슈터 워커 (troubleshooter_agent)
 # ==============================================================================
 TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -225,7 +235,7 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
         "final_answer": res.content,
         "generated_document": {
             "title": "작업 보류 및 현장 안전/자원 조치 지시서 (HOLD)",
-            "status": "HOLD",
+            "status": "REJECTED",
             "approval_status": "REJECTED",
             "parameters": state.get("extracted_params") or {},
             "weather": state.get("weather_data"),
@@ -237,7 +247,7 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 4. 공식 작업지시서 작성 노드 (work_order_writer)
+# 3. 공식 작업지시서 작성 및 멀티-ERP 트랜잭션 마감 워커 (work_order_writer)
 # ==============================================================================
 WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -278,27 +288,75 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     partner_plan = state.get("partner_erp_plan") or {}
     weather = state.get("weather_data") or {}
     vision = state.get("vision_data") or {}
-    is_outsourced = state.get("is_outsourcing_required", False)
 
     selected_partner = (partner_plan.get("selected_partner") or {}) if partner_plan else {}
+
+    # 1. 본사(HQ) 코드 DB 동적 조회 (하드코딩 배제)
+    hq_code = erp_status.get("hq_company_code")
+    if not hq_code:
+        hq_meta = get_active_partner_from_db("HQ")
+        hq_code = hq_meta.get("company_code")
+
+    # 2. 외주 수행 여부 종합 판정 (Team 1 LLM 분석 플래그 & B2B 조회 결과 기반)
+    pref_mode = state.get("preferred_execution_mode", "AUTO")
+    is_outsourced = (
+        state.get("is_outsourcing_required") is True
+        or pref_mode == "OUTSOURCED_B2B"
+        or bool(selected_partner.get("partner_id"))
+    )
+
+    # 3. 협력사 코드 및 품목 코드 동적 매핑
+    if is_outsourced:
+        partner_id = selected_partner.get("partner_id") or erp_status.get("selected_wire_supplier")
+        if not partner_id:
+            domain_map = {
+                "HEAVY_TRANSPORT": "LOGISTICS",
+                "OUTSOURCED_WORKER": "BLOCK_WELDING",
+                "WELDING_MATERIAL": "STEEL_SUPPLY",
+            }
+            spec_field = domain_map.get(state.get("outsourcing_domain") or "WELDING_MATERIAL", "STEEL_SUPPLY")
+            fallback_comp = get_active_partner_from_db(spec_field)
+            partner_id = fallback_comp.get("company_code")
+
+        wire_item_code = (
+            selected_partner.get("hq_item_code")
+            or erp_status.get("selected_wire_code")
+            or selected_partner.get("supplier_sku")
+        )
+    else:
+        partner_id = hq_code
+        wire_item_code = erp_status.get("selected_wire_code")
+
+    # 4. 자재 Lot, 작업자, 차량, 와이어 소요량 동적 산출
     lot_no = (
         selected_partner.get("partner_lot_no")
         if is_outsourced and selected_partner.get("partner_lot_no")
         else erp_status.get("assigned_lot_no")
-    ) or "LOT-UNASSIGNED"
+    )
 
     worker_qual = erp_status.get("worker_qualification") or {}
-    worker_id = worker_qual.get("worker_id") or "UNASSIGNED"
-    worker_name = params.get("worker_name") or worker_qual.get("worker_name") or "미배정"
+    worker_id = worker_qual.get("worker_id") or selected_partner.get("assigned_worker_id")
+    worker_name = (
+        params.get("worker_name")
+        or worker_qual.get("worker_name")
+        or selected_partner.get("worker_name")
+    )
 
     vehicle_code = (
         selected_partner.get("assigned_vehicle_code")
         if is_outsourced and selected_partner.get("assigned_vehicle_code")
         else erp_status.get("assigned_vehicle_code")
     )
-    partner_id = selected_partner.get("partner_id", "COMP-HQ") if is_outsourced else "COMP-HQ"
-    block_code = params.get("block_id") or "UNSPECIFIED"
+    block_code = params.get("block_id")
 
+    req_wire_kg = calculate_required_wire_kg(
+        estimated_length_mm=vision.get("estimated_length_mm"),
+        weight_ton=params.get("weight_ton"),
+    )
+
+    delivery_zone = params.get("work_zone") or state.get("default_workspace")
+
+    # 5. ERP 원장 커밋 (HITL 승인 또는 즉시 실행 요청 시)
     if state.get("hitl_approved") or state.get("is_action_requested"):
         erp_commit = commit_erp_work_order.invoke({
             "block_id": block_code,
@@ -308,10 +366,11 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "worker_id": worker_id,
             "work_no": state.get("work_no"),
             "assigned_vehicle_code": vehicle_code,
-            "wire_item_code": erp_status.get("selected_wire_code"),
+            "wire_item_code": wire_item_code,
             "is_outsourced": is_outsourced,
             "partner_id": partner_id,
-            "reserve_wire_kg": 15.0,
+            "reserve_wire_kg": req_wire_kg,
+            "delivery_yard_zone": delivery_zone,
         })
         approval_status = "APPROVED"
     else:
@@ -324,12 +383,13 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "worker_id": worker_id,
             "worker_name": worker_name,
             "assigned_vehicle_code": vehicle_code,
-            "erp_transaction_status": "DRAFT",   # 👈 'WAITING_APPROVAL' 대신 DDL 규격과 일치하는 명칭 사용
+            "erp_transaction_status": "DRAFT",
             "b2b_po_ack": f"PO-PLAN-{partner_id}" if is_outsourced else None,
-            "reserved_wire_kg": 15.0,
+            "reserved_wire_kg": req_wire_kg,
         }
         approval_status = "DRAFT"
 
+    # 6. RAG 규격 및 프롬프트 인출
     docs = state.get("retrieved_docs", [])
     docs_text = "\n\n".join(
         f"[{d.get('metadata', {}).get('document_name', 'WPS 규격서')}]: {d.get('content', '')}"
@@ -376,16 +436,19 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "safety_clearance_yn": vision.get("safety_clearance_yn", "Y"),
     }
 
+    # WORK_INSTRUCTIONS DDL Check Constraint 준수 ('DRAFT', 'APPROVED', 'REJECTED')
     generated_doc = {
         "work_id": state.get("work_id"),
         "work_order_number": erp_commit.get("work_order_number"),
         "revision_no": "Rev.1",
         "title": f"[{approval_status}] {params.get('block_id', '')} {params.get('material', '')} {params.get('thickness', '')} 작업지시서".strip(),
-        "status": "APPROVED" if approval_status == "APPROVED" else "WAITING_APPROVAL",
+        "status": approval_status,
         "approval_status": approval_status,
         "execution_type": erp_commit.get("execution_type"),
         "allocated_lot_no": lot_no,
         "assigned_vehicle_code": vehicle_code,
+        "wire_item_code": wire_item_code,
+        "reserve_wire_kg": req_wire_kg,
         "erp_commit": erp_commit,
         "partner_erp_plan": partner_plan,
         "parameters": params,
@@ -425,17 +488,19 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 5. 서브그래프 조립
+# 4. Team 3 SubGraph 조립 (Gatekeeper Supervisor 중심 구조)
 # ==============================================================================
 builder = StateGraph(ShipAgentState)
 
+builder.add_node("governance_gatekeeper", governance_gatekeeper_node)
 builder.add_node("domain_qa_writer", domain_qa_writer_node)
 builder.add_node("troubleshooter_agent", troubleshooter_node)
 builder.add_node("work_order_writer", work_order_writer_node)
 
+builder.add_edge(START, "governance_gatekeeper")
 builder.add_conditional_edges(
-    START,
-    route_generation_task,
+    "governance_gatekeeper",
+    route_from_gatekeeper,
     {
         "domain_qa_writer": "domain_qa_writer",
         "troubleshooter_agent": "troubleshooter_agent",

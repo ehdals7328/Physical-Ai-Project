@@ -1,6 +1,6 @@
 """
 modules/agent/subgraphs/search.py
-Team 2: 지식(RAG + 보안 필터)·환경(Weather MCP)·비전(YOLOv11 궤적/안전거리)·공급망(PostgreSQL B2B) 자율 감리 서브그래프
+Team 2: 내부 Supervisor(Orchestrator) 기반 지식(RAG)·공급망(PostgreSQL B2B)·환경(Weather MCP)·비전(YOLOv11) 자율 감리 서브그래프
 """
 
 import json
@@ -12,7 +12,11 @@ from pydantic import BaseModel, Field
 
 from modules.agent.state import ShipAgentState
 from modules.agent.tools.domain_tools import evaluate_environmental_safety
-from modules.agent.tools.erp_tools import query_partner_erp_b2b
+from modules.agent.tools.erp_tools import (
+    calculate_required_wire_kg,
+    get_branch_context_from_db,
+    query_partner_erp_b2b,
+)
 from modules.agent.tools.retriever_tools import search_knowledge_by_categories
 from modules.agent.tools.vision_tools import get_vision_inspection_status
 from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
@@ -21,13 +25,54 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 # ==============================================================================
-# 1. 동적 RAG 지식 인출 노드 (rag_retriever + CAN_ACCESS_INTERNAL_RAG 보안 필터)
+# 0. Team 2 내부 Supervisor 노드 (동적 워커 스케줄러)
+# ==============================================================================
+def team2_supervisor_node(state: ShipAgentState) -> Dict[str, Any]:
+    """
+    현재 State와 아직 실행되지 않은 수집 과업을 점검하여
+    다음에 호출할 Team 2 내 전문 워커(rag_retriever / b2b_scm_collector / weather_and_safety)를 결정합니다.
+    """
+    plan = state.get("team2_plan")
+
+    # 최초 진입 시 task_type 및 플래그 기반으로 필요한 워커 큐(Queue) 동적 생성
+    if plan is None:
+        task_type = state.get("task_type", "knowledge_qa")
+        is_outsourcing = state.get("is_outsourcing_required", False) or (
+            state.get("preferred_execution_mode") == "OUTSOURCED_B2B"
+        )
+        need_weather = state.get("need_weather", False)
+
+        new_plan: List[str] = []
+        if task_type in ("knowledge_qa", "doc_generation"):
+            new_plan.append("rag_retriever")
+        if is_outsourcing or task_type == "scm_partner_qa":
+            new_plan.append("b2b_scm_collector")
+        if need_weather or task_type == "doc_generation":
+            new_plan.append("weather_and_safety")
+
+        plan = new_plan
+
+    if not plan:
+        return {"next": "__end__", "team2_plan": []}
+
+    next_worker = plan[0]
+    remaining_plan = plan[1:]
+    return {"next": next_worker, "team2_plan": remaining_plan}
+
+
+def route_from_team2_supervisor(
+    state: ShipAgentState,
+) -> Literal["rag_retriever", "b2b_scm_collector", "weather_and_safety", "__end__"]:
+    nxt = state.get("next")
+    if nxt in ("rag_retriever", "b2b_scm_collector", "weather_and_safety"):
+        return nxt
+    return "__end__"
+
+
+# ==============================================================================
+# 1. 동적 RAG 지식 인출 워커 (rag_retriever + CAN_ACCESS_INTERNAL_RAG 보안 필터)
 # ==============================================================================
 def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
-    task_type = state.get("task_type", "knowledge_qa")
-    if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa", "scm_partner_qa", "chat"):
-        return {"retrieved_docs": [], "search_status": "completed", "doc_grade": "yes"}
-
     search_queries = list(state.get("search_queries") or [])
     user_query = state.get("user_query", "").strip()
     categories = state.get("target_categories") or None
@@ -72,12 +117,13 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
                     })
         except Exception as e:
             print(f"[Team 2 RAG Search Warning]: {e}")
+
     status = "completed" if collected_docs else "empty"
     return {"retrieved_docs": collected_docs, "search_status": status}
 
 
 # ==============================================================================
-# 2. 시맨틱 문서 적합성 평가 노드 (semantic_doc_grader)
+# 2. 시맨틱 문서 적합성 평가 워커 (semantic_doc_grader)
 # ==============================================================================
 class RelevantDocIndices(BaseModel):
     relevant_indices: List[int] = Field(
@@ -107,9 +153,6 @@ GRADER_PROMPT = ChatPromptTemplate.from_messages([
 
 def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type", "knowledge_qa")
-    if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa", "scm_partner_qa", "chat"):
-        return {"doc_grade": "yes", "search_status": "completed"}
-
     docs = state.get("retrieved_docs", [])
     if not docs:
         return {"retrieved_docs": [], "search_status": "empty", "doc_grade": "no"}
@@ -146,7 +189,7 @@ def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 3. 자율 쿼리 재작성 노드 (query_rewriter)
+# 3. 자율 쿼리 재작성 워커 (rewrite_query)
 # ==============================================================================
 class RewrittenQueries(BaseModel):
     queries: List[str] = Field(description="재검색을 위한 조선/용접 공학 표준 키워드 쿼리 1~2개")
@@ -179,16 +222,16 @@ def rewrite_query_node(state: ShipAgentState) -> Dict[str, Any]:
     }
 
 
-def route_after_grader(state: ShipAgentState) -> Literal["rewrite_query", "b2b_scm_collector"]:
+def route_after_grader(state: ShipAgentState) -> Literal["rewrite_query", "team2_supervisor"]:
     if state.get("doc_grade") == "yes":
-        return "b2b_scm_collector"
+        return "team2_supervisor"
     if state.get("retry_count", 0) < 1:
         return "rewrite_query"
-    return "b2b_scm_collector"
+    return "team2_supervisor"
 
 
 # ==============================================================================
-# 4. PostgreSQL B2B 협력사 공급망 실시간 조회 노드 (b2b_scm_collector)
+# 4. PostgreSQL B2B 협력사 공급망 실시간 조회 워커 (b2b_scm_collector)
 # ==============================================================================
 class OutsourcingRequirement(BaseModel):
     domain: Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER"] = Field(
@@ -197,52 +240,50 @@ class OutsourcingRequirement(BaseModel):
 
 
 def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
-    is_outsourcing = state.get("is_outsourcing_required", False)
-    task_type = state.get("task_type")
-
-    if not is_outsourcing and task_type != "scm_partner_qa":
-        return {"partner_erp_plan": None}
-
     erp_status = state.get("erp_resource_status") or {}
     params = state.get("extracted_params") or {}
     query = state.get("user_query", "")
 
-    classifier = llm.with_structured_output(OutsourcingRequirement)
-    prompt = [
-        (
-            "system",
-            "당신은 스마트 조선소 공급망(SCM) 자원 조정관입니다. "
-            "사용자 요청과 본사 자원 진단 결과를 바탕으로 외주 의뢰 대상이 '중량물 운송/배차(HEAVY_TRANSPORT)'인지, "
-            "'용접 자재 조달(WELDING_MATERIAL)'인지, '외주 인력 파견(OUTSOURCED_WORKER)'인지 자율 판단하십시오.",
-        ),
-        ("human", f"[사용자 질의]: {query}\n[본사 자원 진단 사유]: {erp_status.get('outsourcing_reason')}"),
-    ]
+    shortage_domain = state.get("outsourcing_domain")
+    if not shortage_domain:
+        classifier = llm.with_structured_output(OutsourcingRequirement)
+        prompt = [
+            (
+                "system",
+                "당신은 스마트 조선소 공급망(SCM) 자원 조정관입니다. "
+                "사용자 요청과 본사 자원 진단 결과를 바탕으로 외주 의뢰 대상이 '중량물 운송/배차(HEAVY_TRANSPORT)'인지, "
+                "'용접 자재 조달(WELDING_MATERIAL)'인지, '외주 인력 파견(OUTSOURCED_WORKER)'인지 자율 판단하십시오.",
+            ),
+            ("human", f"[사용자 질의]: {query}\n[본사 자원 진단 사유]: {erp_status.get('outsourcing_reason')}"),
+        ]
+        try:
+            decision: OutsourcingRequirement = classifier.invoke(prompt)
+            shortage_domain = decision.domain
+        except Exception:
+            shortage_domain = (
+                "HEAVY_TRANSPORT"
+                if "TRANSPORT" in str(erp_status.get("outsourcing_reason")).upper()
+                else "WELDING_MATERIAL"
+            )
 
-    try:
-        decision: OutsourcingRequirement = classifier.invoke(prompt)
-        shortage_domain = decision.domain
-    except Exception:
-        shortage_domain = (
-            "HEAVY_TRANSPORT"
-            if "TRANSPORT" in str(erp_status.get("outsourcing_reason")).upper()
-            else "WELDING_MATERIAL"
-        )
+    req_wire_kg = calculate_required_wire_kg(
+        estimated_length_mm=None,
+        weight_ton=params.get("weight_ton"),
+    )
 
-    # 🌟 PostgreSQL B2B View 실시간 조회 호출
     partner_plan = query_partner_erp_b2b.invoke({
         "shortage_reason": shortage_domain,
-        "material": params.get("material", ""),
-        "required_wire_kg": 20.0,
-        "target_region": params.get("location", "울산"),
+        "material": params.get("process") or params.get("material", ""),
+        "required_wire_kg": req_wire_kg,
+        "target_region": params.get("location", ""),
     })
     return {"partner_erp_plan": partner_plan}
 
 
 # ==============================================================================
-# 5. 실시간 기상 수집, YOLOv11 비전 검사 연동 및 안전 룰 판정 노드
+# 5. 실시간 기상 수집, YOLOv11 비전 검사 연동 및 안전 룰 판정 워커
 # ==============================================================================
 def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
-    need_weather = state.get("need_weather", False)
     task_type = state.get("task_type", "knowledge_qa")
     params = state.get("extracted_params") or {}
 
@@ -253,16 +294,12 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
             "camera_code": params.get("camera_code"),
         })
 
-    if not need_weather and task_type != "doc_generation":
-        return {"weather_data": None, "vision_data": vision_info}
-
+    # [하드코딩 제거] location이 없거나 구역 코드인 경우 ERP_BRANCHES DB에서 지역명 동적 조회
     location = params.get("location")
     if not location or "ZONE" in str(location).upper():
         branch_code = params.get("branch_code") or state.get("branch_code")
-        if branch_code and "GEOJE" in branch_code.upper():
-            location = "거제"
-        else:
-            location = "울산"
+        b_ctx = get_branch_context_from_db(branch_code)
+        location = b_ctx.get("region_name") or "Ulsan"
 
     weather_info = dict(get_realtime_weather_from_mcp(location) or {})
     status = weather_info.get("status")
@@ -283,8 +320,8 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
     raw_wind = weather_info.get("wind_speed")
     raw_rain = weather_info.get("precipitation")
 
-    temp = float(raw_temp) if raw_temp is not None else 20.0
-    wind = float(raw_wind) if raw_wind is not None else 0.0
+    temp = float(raw_temp) if raw_temp is not None else None
+    wind = float(raw_wind) if raw_wind is not None else None
     rain = float(raw_rain) if raw_rain is not None else 0.0
 
     try:
@@ -333,28 +370,40 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 6. 서브그래프 조립
+# 6. Team 2 SubGraph 조립 (Supervisor 중심 Hub-and-Spoke 아키텍처)
 # ==============================================================================
 builder = StateGraph(ShipAgentState)
 
+builder.add_node("team2_supervisor", team2_supervisor_node)
 builder.add_node("rag_retriever", dynamic_rag_retriever_node)
 builder.add_node("semantic_doc_grader", semantic_doc_grader_node)
 builder.add_node("rewrite_query", rewrite_query_node)
 builder.add_node("b2b_scm_collector", b2b_scm_collector_node)
 builder.add_node("weather_and_safety", weather_and_safety_node)
 
-builder.add_edge(START, "rag_retriever")
+builder.add_edge(START, "team2_supervisor")
+builder.add_conditional_edges(
+    "team2_supervisor",
+    route_from_team2_supervisor,
+    {
+        "rag_retriever": "rag_retriever",
+        "b2b_scm_collector": "b2b_scm_collector",
+        "weather_and_safety": "weather_and_safety",
+        "__end__": END,
+    },
+)
+
 builder.add_edge("rag_retriever", "semantic_doc_grader")
 builder.add_conditional_edges(
     "semantic_doc_grader",
     route_after_grader,
     {
         "rewrite_query": "rewrite_query",
-        "b2b_scm_collector": "b2b_scm_collector",
+        "team2_supervisor": "team2_supervisor",
     },
 )
 builder.add_edge("rewrite_query", "rag_retriever")
-builder.add_edge("b2b_scm_collector", "weather_and_safety")
-builder.add_edge("weather_and_safety", END)
+builder.add_edge("b2b_scm_collector", "team2_supervisor")
+builder.add_edge("weather_and_safety", "team2_supervisor")
 
 team2_subgraph = builder.compile()

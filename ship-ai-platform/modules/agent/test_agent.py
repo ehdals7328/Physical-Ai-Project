@@ -17,16 +17,13 @@ if str(PLATFORM_ROOT) not in sys.path:
 load_dotenv(PLATFORM_ROOT / ".env")
 
 from modules.agent.supervisor import ship_agent_app
-from modules.agent.tools.erp_tools import commit_erp_work_order
+from modules.agent.tools.erp_tools import commit_erp_work_order, list_erp_workers
 from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
 from flask import Flask, jsonify, render_template_string, request
 from langchain_core.messages import HumanMessage
 
 app = Flask(__name__)
 
-# ==============================================================================
-# 내장 반응형 테스트 웹 콘솔 (시나리오 버튼 및 HITL 결재 UI 결합)
-# ==============================================================================
 HTML_PAGE = """
 <!DOCTYPE html>
 <html lang="ko">
@@ -52,24 +49,23 @@ HTML_PAGE = """
             <h3>⚓ 스마트 조선소 Agentic AI & 분산 ERP E2E 테스트 벤치</h3>
             <div>
                 <span class="badge bg-primary">LangGraph Multi-Agent</span>
-                <span class="badge bg-success">HQ ERP DB 연동</span>
-                <span class="badge bg-warning text-dark">303호 B2B MCP 연동</span>
+                <span class="badge bg-success">HQ Oracle ERP 연동</span>
+                <span class="badge bg-warning text-dark">PostgreSQL B2B 연동</span>
                 <span class="badge bg-danger">HITL 승인 게이트</span>
             </div>
         </div>
     </div>
 
-    <!-- 원클릭 시나리오 테스트 바 (보존 완료) -->
     <div class="card mb-3 p-2 bg-light">
         <div class="d-flex gap-2 flex-wrap align-items-center">
             <span class="fw-bold me-2">⚡ 검증 시나리오 버튼:</span>
-            <button class="btn btn-outline-primary btn-sm" onclick="setQuery('거제 야드에서 B-305 블록 김철수 반장 투입해서 작업지시서 발행해줘')">
+            <button class="btn btn-outline-primary btn-sm" onclick="setQuery('거제 야드에서 B-305 블록 김철수 반장 투입해서 외주 협력사 연계로 작업지시서 발행해줘')">
                 1. B-305 B2B 외주 & 지시서 결재 대기
             </button>
             <button class="btn btn-outline-warning btn-sm text-dark" onclick="setQuery('사내 트랜스포터 없으니까 바로 외주 배차 1대 확정해줘')">
                 2. 협력업체 다이렉트 외주 배차 승인
             </button>
-            <button class="btn btn-outline-danger btn-sm" onclick="setQuery('거제 야드에서 B-104 블록 박무자격 작업자 투입해서 작업지시서 발행해줘')">
+            <button class="btn btn-outline-danger btn-sm" onclick="setQuery('울산 야드에서 B-104 블록 조객원 작업자 투입해서 작업지시서 발행해줘')">
                 3. 선급 자격증 만료 차단(Fail-Closed)
             </button>
             <button class="btn btn-outline-info btn-sm text-dark" onclick="setQuery('현재 사내 창고에 남아있는 강판이랑 용접 와이어 재고 현황 알려줘')">
@@ -79,7 +75,6 @@ HTML_PAGE = """
     </div>
 
     <div class="row">
-        <!-- 좌측: 대화형 인터페이스 -->
         <div class="col-md-7">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-white fw-bold">대화 및 작업지시서 출력창 (Thread: <span id="session-display">session_demo_01</span>)</div>
@@ -103,7 +98,6 @@ HTML_PAGE = """
             </div>
         </div>
 
-        <!-- 우측: 백엔드 상태(State) & ERP 트랜잭션 실시간 모니터 -->
         <div class="col-md-5">
             <div class="card shadow-sm mb-3">
                 <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
@@ -164,13 +158,12 @@ HTML_PAGE = """
 
             const data = await resp.json();
             
-            // AI 본문 렌더링
             let aiText = data.final_answer || "응답 내용이 없습니다.";
             let formattedText = aiText.replace(/\\n/g, "<br>").replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>");
             chatBox.innerHTML += `<div class="msg-ai">${formattedText}</div>`;
 
-            // HITL 관리자 결재 게이트 분기
-            if (data.generated_document && data.generated_document.status === "WAITING_APPROVAL") {
+            // DRAFT 또는 WAITING_APPROVAL 상태일 때 HITL 결재 게이트 활성화
+            if (data.generated_document && (data.generated_document.status === "DRAFT" || data.generated_document.status === "WAITING_APPROVAL")) {
                 pendingDoc = data.generated_document;
                 const docTitle = pendingDoc.title || "외주 조달 및 공정 작업 계획";
                 chatBox.innerHTML += `
@@ -238,9 +231,7 @@ HTML_PAGE = """
 </html>
 """
 
-# ==============================================================================
-# 에이전트 대화 및 질의 API
-# ==============================================================================
+
 @app.route("/")
 def index():
     return render_template_string(HTML_PAGE)
@@ -256,80 +247,51 @@ def chat_api():
     initial_state = {
         "messages": [HumanMessage(content=user_query)],
         "user_query": user_query,
+        # 웹 테스트 시 HITL 결재 버튼을 거치도록 기본값은 False로 진입
+        "hitl_approved": False,
     }
 
     result = ship_agent_app.invoke(initial_state, config=config)
 
     generated_doc = result.get("generated_document")
     task_type = result.get("task_type")
-    is_action_llm = result.get("is_action_requested", False)
-    
-    # 🌟 발주, 배차, 확정, 진행 등 현장 실행 액션 키워드 감지 (이중 안전장치)
-    action_keywords = ["진행해줘", "진행하자", "발주", "배차", "확정", "주문", "실행", "신청", "배정해줘"]
-    is_action_keyword = any(k in user_query for k in action_keywords)
-    is_action = is_action_llm or is_action_keyword
+    is_action = result.get("is_action_requested", False)
 
-    # 🌟 지시서(doc)가 아직 생성되지 않은 상태에서 외주 협력사 실행 요청이 인입된 경우
-    if not generated_doc and is_action and task_type in ["scm_partner_qa", "erp_resource_qa", "doc_generation"]:
+    # 단독 외주 배차/발주 요청(scm_partner_qa) 시 B2B 조회 결과 기반으로 HITL 결재 문서 동적 생성
+    if not generated_doc and is_action and task_type in ("scm_partner_qa", "erp_resource_qa"):
         partner_plan = result.get("partner_erp_plan") or {}
-        selected_partner = partner_plan.get("selected_partner") or {}
-        erp_status = result.get("erp_resource_status") or {}
-        
-        # 1) 트랜스포터 / 운송 요청인지 판별
-        is_transport = (
-            "트랜스포터" in user_query 
-            or "운송" in user_query 
-            or "배차" in user_query
-            or selected_partner.get("business_type") == "HEAVY_TRANSPORT"
-        )
-        
-        if is_transport:
-            p_name = selected_partner.get("partner_name", "(주)한국운송")
-            p_id = selected_partner.get("partner_id", "VEND-HANKOOK-TP")
-            b_type = "HEAVY_TRANSPORT"
-            doc_title = f"[외주 배차 결재안] {p_name} 중량물 트랜스포터 1대 배차"
-            allocated_lot = "EQUIP-TP-OUTSOURCED"
-            req_params = {
-                "business_type": b_type,
-                "partner_name": p_name,
-                "partner_id": p_id,
-                "equipment": "사외 트랜스포터 1대 (특수면허 운전원/신호수 포함)",
-                "lead_time": "1.5시간"
-            }
-        else:
-            p_name = selected_partner.get("partner_name", "(주)대한용재")
-            p_id = selected_partner.get("partner_id", "VEND-DAEHAN-MAT")
-            b_type = "WELDING_MATERIAL_SUPPLY"
-            doc_title = f"[외주 자재 조달 결재안] {p_name} 긴급 와이어 조달"
-            allocated_lot = selected_partner.get("partner_lot_no", "LOT-DAEHAN-CSF71T-2026")
-            req_params = {
-                "business_type": b_type,
-                "partner_name": p_name,
-                "partner_id": p_id,
-                "item_name": "CSF-71T 용접 와이어 (1.2mm)",
-                "required_qty": "20.0 kg (긴급 가용량 240kg)",
-                "lead_time": "2.0시간"
-            }
+        selected = partner_plan.get("selected_partner") or {}
+        params = result.get("extracted_params") or {}
 
-        # 🌟 이 WAITING_APPROVAL 상태의 generated_doc이 웹 화면에 결재 게이트를 띄웁니다!
+        p_id = selected.get("partner_id")
+        p_name = selected.get("partner_name") or p_id
+        b_type = selected.get("business_type") or result.get("outsourcing_domain") or "OUTSOURCED_B2B"
+        allocated_lot = (
+            selected.get("partner_lot_no")
+            or selected.get("assigned_vehicle_code")
+            or selected.get("assigned_worker_id")
+        )
+
         generated_doc = {
             "work_order_number": f"PO-DRAFT-{p_id}",
-            "title": doc_title,
-            "status": "WAITING_APPROVAL",
+            "title": f"[외주 실행 결재안] {p_name} ({b_type})",
+            "status": "DRAFT",
+            "approval_status": "DRAFT",
             "execution_type": "OUTSOURCED_B2B",
             "allocated_lot_no": allocated_lot,
+            "assigned_vehicle_code": selected.get("assigned_vehicle_code"),
             "partner_erp_plan": partner_plan,
-            "parameters": req_params,
-            "content": result.get("final_answer")
+            "parameters": params,
+            "content": result.get("final_answer"),
         }
 
     preview_commit = None
-    if generated_doc and generated_doc.get("status") == "WAITING_APPROVAL":
+    if generated_doc and generated_doc.get("status") in ("DRAFT", "WAITING_APPROVAL"):
         preview_commit = {
             "work_order_number": generated_doc.get("work_order_number"),
             "execution_type": generated_doc.get("execution_type", "OUTSOURCED_B2B"),
-            "erp_transaction_status": "WAITING_APPROVAL",
-            "note": "관리자 결재 대기 중 (DB 미반영)"
+            "erp_transaction_status": "DRAFT",
+            "note": "관리자 결재 대기 중 (DB 미반영)",
         }
 
     state_summary = {
@@ -352,17 +314,16 @@ def chat_api():
     })
 
 
-# ==============================================================================
-# 관리자 HITL 승인/반려 확정 API (실제 DB 원장 커밋)
-# ==============================================================================
 @app.route("/api/approve", methods=["POST"])
 def approve_api():
     payload = request.get_json() or {}
     action = payload.get("action", "APPROVE")
     doc = payload.get("doc") or {}
     params = doc.get("parameters") or {}
+    erp_commit_draft = doc.get("erp_commit") or {}
     partner_plan = doc.get("partner_erp_plan") or {}
-    is_outsourced = (doc.get("execution_type") == "OUTSOURCED_B2B")
+    selected_partner = partner_plan.get("selected_partner") or {}
+    is_outsourced = doc.get("execution_type") == "OUTSOURCED_B2B"
 
     if action == "REJECT":
         return jsonify({
@@ -370,40 +331,53 @@ def approve_api():
             "message": "❌ [요청 반려] 관리자에 의해 작업지시 및 외주 발주가 반려되었습니다. (원장 롤백)",
             "erp_commit_result": {
                 "erp_transaction_status": "ROLLED_BACK",
-                "reason": "ADMIN_REJECTED"
-            }
+                "reason": "ADMIN_REJECTED",
+            },
         })
 
-    selected_partner = (partner_plan.get("selected_partner") or {}) if partner_plan else {}
-    lot_no = doc.get("allocated_lot_no") or "LOT-2026-POSCO-04"
+    # 작업자 ID 및 블록 ID가 없는 단독 외주 배차 건일 경우 DB에서 유효 값 동적 보완
+    worker_id = erp_commit_draft.get("worker_id")
+    worker_name = erp_commit_draft.get("worker_name") or params.get("worker_name")
+    if not worker_id or worker_id in ("UNASSIGNED", "미배정"):
+        w_list = list_erp_workers.invoke({"branch_code": params.get("branch_code")}).get("workers", [])
+        valid_workers = [w for w in w_list if w.get("is_valid")]
+        if valid_workers:
+            worker_id = valid_workers[0]["worker_id"]
+            worker_name = valid_workers[0]["worker_name"]
+
+    block_id = params.get("block_id") or "B-104"
+    lot_no = doc.get("allocated_lot_no") or erp_commit_draft.get("allocated_lot_no") or "LOT-DEFAULT"
+    partner_id = selected_partner.get("partner_id") or erp_commit_draft.get("partner_id")
 
     commit_res = commit_erp_work_order.invoke({
-        "block_id": params.get("block_id", "B-104"),
-        "material": params.get("material", "SS400"),
+        "block_id": block_id,
+        "material": params.get("material", ""),
         "allocated_lot_no": lot_no,
-        "worker_name": params.get("worker_name", "김철수(KR-6G)"),
+        "worker_name": worker_name,
+        "worker_id": worker_id,
+        "assigned_vehicle_code": doc.get("assigned_vehicle_code"),
+        "wire_item_code": doc.get("wire_item_code"),
         "is_outsourced": is_outsourced,
-        "partner_id": selected_partner.get("partner_id") or params.get("partner_id"),
-        "reserve_wire_kg": 15.0,
+        "partner_id": partner_id,
+        "reserve_wire_kg": doc.get("reserve_wire_kg"),
+        "delivery_yard_zone": params.get("work_zone"),
     })
 
-    # 문서 최종 파일 저장 및 감사 로그 기록 (기능 100% 보존)
     try:
         final_doc_data = dict(doc)
         final_doc_data["work_order_number"] = commit_res.get("work_order_number")
         final_doc_data["erp_commit"] = commit_res
         final_doc_data["status"] = "APPROVED"
+        final_doc_data["approval_status"] = "APPROVED"
 
         export_work_order_file.invoke({
             "document_data": final_doc_data,
             "file_prefix": "approved_order",
         })
         log_inspection_history.invoke({
-            "session_id": commit_res.get("work_order_number"),
-            "query": f"HITL 외주/지시서 승인 완료: {params.get('block_id', 'BLK')}",
-            "task_type": "doc_generation",
-            "parameters": json.dumps(params, ensure_ascii=False),
-            "safety_status": "APPROVED",
+            "session_id": commit_res.get("work_order_number", "APPROVED_SESSION"),
+            "query": f"HITL 외주/지시서 승인 완료: {block_id}",
+            "status": "APPROVED",
         })
     except Exception as e:
         print(f"[HITL Commit Log Notice]: {e}")
@@ -411,7 +385,7 @@ def approve_api():
     return jsonify({
         "status": "APPROVED",
         "message": f"✅ [관리자 최종 승인 완료] 외주 발주 및 작업지시가 공식 확정되었습니다. (식별번호: {commit_res.get('work_order_number')})",
-        "erp_commit_result": commit_res
+        "erp_commit_result": commit_res,
     })
 
 
