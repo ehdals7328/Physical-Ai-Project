@@ -29,9 +29,9 @@ def route_after_team1(
     if task_type == "chat" or (task_type == "doc_generation" and is_complete == "no"):
         return "__end__"
 
-    # 2. 사내 재고 단순 문의(erp_resource_qa) 및 인사 자격 문의(hr_safety_qa)는
-    #    Team 1에서 이미 본사 ERP 조회를 마쳤으므로 Team 2를 건너뛰고 Team 3 브리핑으로 직행!
-    if task_type in ("erp_resource_qa", "hr_safety_qa"):
+    # 2. 사내 재고 단순 문의(erp_resource_qa), 인사 자격 문의(hr_safety_qa), 작업자 명단 조회(hr_worker_qa)는
+    #    Team 2(RAG/기상)를 건너뛰고 Team 3 브리핑으로 직행!
+    if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa"):
         return "team3_docgen"
 
     # 3. 그 외(knowledge_qa, scm_partner_qa, doc_generation)는 Team 2로 이동
