@@ -1,129 +1,286 @@
-"""두 개의 독립 Chroma 컬렉션을 권한 경계와 함께 검색한다.
-
-- shipbuilding_docs: 공개 조선·용접 표준 자료
-- company_internal_docs: 회사별 사내 시방서/내부 기술문서
-Similarity는 Chroma cosine distance를 1-distance로 환산한 값이며 CrossEncoder logit과 혼동하지 않는다.
-"""
+# 이 파일은 RAG 시스템에서 텍스트 청크를 ChromaDB에 저장·검색하며,
+# 문서 개정이나 시스템 크래시 상황에서도 데이터 정합성을 깨뜨리지 않도록
+#  원자적 롤백과 무중단 벡터 교체 배포 방식)를 보장하는 벡터 스토어 트랜잭션 관리자이다
 from __future__ import annotations
-import threading
-from typing import Any
+
+import os
+import uuid
+from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Iterable
+
 import chromadb
+
 from config import Config
+from modules.knowledge.embedding import encode_texts
 from modules.knowledge.embedding import encode_query
 
-_store = None
-_lock = threading.Lock()
+INDEX_VERSION = "RAG_V2"
+COLLECTION_NAME = os.getenv("CHROMA_COLLECTION", "shipbuilding_docs")
+
 
 class KnowledgeStore:
+    # 디스크에 ChromaDB 디렉터리를 생성하고 컬렉션(HNSW 코사인 공간)을 초기화하거나 불러오는 생성자.
     def __init__(self):
-        self.client = chromadb.PersistentClient(path=Config.CHROMA_DB_PATH)
-        self.public = self.client.get_or_create_collection(name=Config.PUBLIC_COLLECTION, metadata={"hnsw:space": "cosine"})
-        self.internal = self.client.get_or_create_collection(name=Config.INTERNAL_COLLECTION, metadata={"hnsw:space": "cosine"})
+        chroma_path = os.path.abspath(Config.CHROMA_DB_PATH)
+        os.makedirs(chroma_path, exist_ok=True)
+        self.client = chromadb.PersistentClient(path=chroma_path)
+        self.collection = self.client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            metadata={"hnsw:space": "cosine", "description": "Shipyard welding knowledge RAG"},
+        )
 
-    def counts(self) -> dict[str, int]:
-        return {"standards": int(self.public.count()), "internal": int(self.internal.count())}
+    # 현재 적용 중인 유효 인덱스 버전(RAG_V2)의 청크 개수(또는 전체 청크 개수)를 반환하는 메서드.
+    def count(self, *, current_index_only: bool = True) -> int:
+        if not current_index_only:
+            return int(self.collection.count())
+        result = self.collection.get(
+            where={"index_version": {"$eq": INDEX_VERSION}},
+            include=["metadatas"],
+        )
+        return len(result.get("ids", []))
 
+    # 특정 문서가 누락 없이 온전한 세대(Generation)로 적재되었는지 검증하고, 비정상 종료로 남은 파편 벡터는 자동 청소하는 정합성 확인 메서드.
+    def is_document_indexed(self, document_id: int, file_hash: str) -> bool:
+        result = self.collection.get(
+            where={
+                "$and": [
+                    {"document_id": {"$eq": int(document_id)}},
+                    {"file_hash": {"$eq": str(file_hash)}},
+                    {"index_version": {"$eq": INDEX_VERSION}},
+                    {"is_active": {"$eq": True}},
+                ]
+            },
+            include=["metadatas"],
+        )
+        ids = result.get("ids", [])
+        metadatas = result.get("metadatas", [])
+        if not ids:
+            return False
+
+        generations: dict[str, list[tuple[str, dict[str, Any]]]] = defaultdict(list)
+        for vector_id, metadata in zip(ids, metadatas):
+            metadata = metadata or {}
+            generation = str(metadata.get("ingest_run_id", "LEGACY"))
+            generations[generation].append((vector_id, metadata))
+
+        complete: list[tuple[str, str]] = []
+        for generation, rows in generations.items():
+            expected = int(rows[0][1].get("expected_chunk_count", -1))
+            if expected > 0 and len(rows) == expected:
+                indexed_at = max(str(meta.get("indexed_at", "")) for _, meta in rows)
+                complete.append((indexed_at, generation))
+
+        if not complete:
+            self.collection.delete(ids=ids)
+            return False
+
+        keep_generation = max(complete)[1]
+        stale_ids = [
+            vector_id
+            for generation, rows in generations.items()
+            if generation != keep_generation
+            for vector_id, _ in rows
+        ]
+        if stale_ids:
+            self.collection.delete(ids=stale_ids)
+        return True
+
+    # 대량의 텍스트/벡터 리스트를 지정한 크기(batch_size)로 쪼개어 배치 단위로 전달하는 제너레이터 헬퍼.
     @staticmethod
-    def _normalise(raw: dict[str, Any], collection_type: str, top_k: int) -> list[dict[str, Any]]:
-        docs = (raw.get("documents") or [[]])[0]
-        ids = (raw.get("ids") or [[]])[0]
-        metas = (raw.get("metadatas") or [[]])[0]
-        distances = (raw.get("distances") or [[]])[0]
-        items = []
-        for idx, text in enumerate(docs):
-            if not text:
-                continue
-            meta = metas[idx] or {}
-            distance = float(distances[idx]) if idx < len(distances) and distances[idx] is not None else 1.0
-            similarity = max(0.0, min(1.0, 1.0 - distance))
-            items.append({
-                "chunk_id": ids[idx],
-                "document_id": int(meta.get("document_id", 0) or 0),
-                "document_name": meta.get("document_name", "자료명 미상"),
-                "category": meta.get("category", "GENERAL"),
-                "source": meta.get("source", "출처 미상"),
-                "revision": meta.get("revision", ""),
-                "page": int(meta.get("page_start", 1) or 1),
-                "page_start": int(meta.get("page_start", 1) or 1),
-                "similarity_score": round(similarity, 5),
-                "collection_type": collection_type,
-                "chunk_text": str(text)[:12000],
-            })
-        items.sort(key=lambda x: x["similarity_score"], reverse=True)
-        return items[:top_k]
+    def _batches(items: list, size: int):
+        for start in range(0, len(items), size):
+            yield start, items[start:start + size]
 
-    def _query(self, collection, query: str, top_k: int, where: dict | None = None) -> list[dict[str, Any]]:
-        count = int(collection.count())
-        if count == 0:
-            return []
-        vector = encode_query(query)
-        if not vector:
-            return []
-        args = {"query_embeddings": [vector], "n_results": min(max(top_k * 4, top_k), count), "include": ["documents", "metadatas", "distances"]}
-        if where:
-            args["where"] = where
-        return collection.query(**args)
+    # 신규 버전의 청크들을 먼저 인코딩해 저장·검증한 뒤 구버전 벡터만 안전하게 교체(Blue-Green 방식)하는 무중단 트랜잭션 적재 메서드.
+    def replace_document_chunks(
+        self,
+        *,
+        document_id: int,
+        document_name: str,
+        category: str,
+        source: str,
+        revision: str,
+        file_hash: str,
+        chunks: list[dict[str, Any]],
+        access_level: str = "INTERNAL",
+        document_status: str = "ACTIVE",
+    ) -> int:
+        if not chunks:
+            raise ValueError("청크가 0개입니다. 빈 문서는 인덱싱하지 않습니다.")
 
-    def search_public(self, query: str, top_k: int | None = None) -> list[dict[str, Any]]:
-        top_k = top_k or Config.RAG_TOP_K
-        raw = self._query(self.public, query, top_k)
-        items = self._normalise(raw, "PUBLIC", top_k)
-        return [x for x in items if x["similarity_score"] >= Config.RAG_MIN_SIMILARITY]
+        texts = [str(chunk["text"]).strip() for chunk in chunks]
+        if any(not text for text in texts):
+            raise ValueError("빈 텍스트 청크가 포함되어 있습니다.")
 
-    def search_internal(self, query: str, company_code: str | None, is_sys_admin: bool = False, top_k: int | None = None) -> list[dict[str, Any]]:
-        top_k = top_k or Config.RAG_TOP_K
-        if is_sys_admin:
-            raw = self._query(self.internal, query, top_k)
-            items = self._normalise(raw, "INTERNAL", top_k)
-        else:
-            # 회사별 문서와 전체 공통 사내문서를 별도 쿼리해 컬렉션 필터 문법 차이를 피한다.
-            items = []
-            if company_code:
-                raw_company = self._query(self.internal, query, top_k, {"owner_company_code": company_code})
-                items.extend(self._normalise(raw_company, "INTERNAL", top_k))
-            raw_global = self._query(self.internal, query, top_k, {"owner_company_code": "GLOBAL"})
-            items.extend(self._normalise(raw_global, "INTERNAL", top_k))
-            dedup = {x["chunk_id"]: x for x in items}
-            items = sorted(dedup.values(), key=lambda x: x["similarity_score"], reverse=True)[:top_k]
-        return [x for x in items if x["similarity_score"] >= Config.RAG_MIN_SIMILARITY]
-
-    def upsert_document_chunks(self, *, document_id: int, document_name: str, category: str, source: str,
-                               revision: str, file_hash: str, chunks: list[dict], collection_type: str,
-                               owner_company_code: str | None = None) -> int:
-        from modules.knowledge.embedding import encode_texts
-        clean_chunks = [c for c in chunks if str(c.get("text", "")).strip()]
-        if not clean_chunks:
-            return 0
-        texts = [str(c["text"]).strip() for c in clean_chunks]
         embeddings = encode_texts(texts)
-        collection = self.public if collection_type == "PUBLIC" else self.internal
-        prefix = "PUB" if collection_type == "PUBLIC" else "INT"
-        ids = [f"{prefix}_D{document_id}_C{i+1:05d}" for i in range(len(texts))]
-        company_code = "PUBLIC" if collection_type == "PUBLIC" else (owner_company_code or "GLOBAL")
-        metadatas = [{
-            "document_id": int(document_id), "document_name": document_name[:300],
-            "category": category[:100], "source": (source or "").strip()[:200],
-            "revision": (revision or "")[:80], "file_hash": file_hash,
-            "page_start": int(c.get("page_start", 1) or 1),
-            "owner_company_code": company_code,
-        } for c in clean_chunks]
-        # 재색인 시 구 버전 청크를 먼저 지우되 다른 문서의 데이터에는 영향이 없게 한다.
-        self.delete_document_chunks(document_id, collection_type)
-        collection.upsert(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
+        run_id = uuid.uuid4().hex[:12]
+        ids = [f"D{int(document_id)}_H{file_hash[:12]}_R{run_id}_C{i + 1:05d}" for i in range(len(chunks))]
+        now = datetime.now(timezone.utc).isoformat()
+        metadatas = []
+        for idx, chunk in enumerate(chunks):
+            metadata = {
+                "document_id": int(document_id),
+                "document_name": str(document_name)[:300],
+                "category": str(category)[:30],
+                "source": str(source or "미확인")[:300],
+                "revision": str(revision or "UNKNOWN")[:100],
+                "file_hash": str(file_hash),
+                "chunk_index": int(idx + 1),
+                "page_start": int(chunk.get("page_start", 1)),
+                "page_end": int(chunk.get("page_end", chunk.get("page_start", 1))),
+                "chunk_type": str(chunk.get("chunk_type", "TEXT"))[:30],
+                "section_path": str(chunk.get("section_path", ""))[:500],
+                "asset_path": str(chunk.get("asset_path", ""))[:1000],
+                "access_level": str(access_level or "INTERNAL").upper()[:20],
+                "document_status": str(document_status or "ACTIVE").upper()[:20],
+                "is_active": True,
+                "index_version": INDEX_VERSION,
+                "embedding_model": os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3"),
+                "indexed_at": now,
+                "ingest_run_id": run_id,
+                "expected_chunk_count": int(len(chunks)),
+            }
+            metadatas.append(metadata)
+
+        previous = self.collection.get(
+            where={"document_id": {"$eq": int(document_id)}},
+            include=["metadatas"],
+        )
+        previous_ids = list(previous.get("ids", []))
+        batch_size = int(os.getenv("CHROMA_WRITE_BATCH_SIZE", "64"))
+
+        try:
+            for start, _ in self._batches(ids, batch_size):
+                end = min(start + batch_size, len(ids))
+                self.collection.upsert(
+                    ids=ids[start:end],
+                    embeddings=embeddings[start:end],
+                    documents=texts[start:end],
+                    metadatas=metadatas[start:end],
+                )
+
+            verified: set[str] = set()
+            for start, batch_ids in self._batches(ids, batch_size):
+                response = self.collection.get(ids=batch_ids, include=["metadatas"])
+                verified.update(response.get("ids", []))
+            missing = set(ids) - verified
+            if missing:
+                raise RuntimeError(f"ChromaDB 검증 실패: {len(missing)}개 청크가 확인되지 않습니다.")
+        except Exception:
+            for start, batch_ids in self._batches(ids, batch_size):
+                try:
+                    self.collection.delete(ids=batch_ids)
+                except Exception:
+                    pass
+            raise
+
+        obsolete_ids = [old_id for old_id in previous_ids if old_id not in set(ids)]
+        for start, old_batch in self._batches(obsolete_ids, batch_size):
+            self.collection.delete(ids=old_batch)
+
         return len(ids)
 
-    def delete_document_chunks(self, document_id: int, collection_type: str) -> int:
-        collection = self.public if collection_type == "PUBLIC" else self.internal
-        found = collection.get(where={"document_id": int(document_id)}, include=[])
-        ids = found.get("ids", [])
-        if ids:
-            collection.delete(ids=ids)
-        return len(ids)
+    # 이전 레거시 파이프라인과의 호환을 위해 청크 텍스트를 정규화하고 해시를 생성하여 replace_document_chunks로 넘겨주는 래퍼 메서드.
+    def ingest_pdf_chunks(self, document_id, doc_name, category, source, revision, chunks):
+        import hashlib
+        payload = "\n".join(str(c.get("text", "")) for c in chunks)
+        file_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        normalized = [
+            {
+                "text": c.get("text", ""),
+                "page_start": c.get("page", c.get("page_start", 1)),
+                "page_end": c.get("page", c.get("page_end", 1)),
+                "chunk_type": c.get("chunk_type", "TEXT"),
+                "asset_path": c.get("asset_path", ""),
+                "section_path": c.get("section_path", ""),
+            }
+            for c in chunks
+        ]
+        return self.replace_document_chunks(
+            document_id=document_id,
+            document_name=doc_name,
+            category=category,
+            source=source,
+            revision=revision,
+            file_hash=file_hash,
+            chunks=normalized,
+        )
 
-def get_knowledge_store() -> KnowledgeStore:
-    global _store
-    if _store is None:
-        with _lock:
-            if _store is None:
-                _store = KnowledgeStore()
-    return _store
+    # 단일 텍스트 문자열을 1페이지짜리 단일 청크로 감싸서 적재할 수 있도록 지원하는 테스트/단문용 래퍼 메서드.
+    def ingest_sample_text(self, document_id, doc_name, category, source, revision, text):
+        return self.ingest_pdf_chunks(
+            document_id, doc_name, category, source, revision,
+            [{"page": 1, "text": text, "chunk_type": "TEXT"}],
+        )
+
+    # 사용자 질문을 벡터화하여 유효 인덱스 버전(RAG_V2), 활성 상태, 권한 수준(allowed_access_levels) 조건에 맞는 상위 유사도 청크들을 검색하는 메서드.
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        *,
+        allowed_access_levels: Iterable[str] | None = ("PUBLIC", "INTERNAL"),
+    ) -> list[dict[str, Any]]:
+        query = (query or "").strip()
+        if not query:
+            return []
+        top_k = max(1, min(int(top_k), 20))
+
+        try:
+            clauses: list[dict[str, Any]] = [
+                {"index_version": {"$eq": INDEX_VERSION}},
+                {"is_active": {"$eq": True}},
+                {"document_status": {"$eq": "ACTIVE"}},
+            ]
+            if allowed_access_levels is not None:
+                access = [str(value).upper() for value in allowed_access_levels]
+                if not access:
+                    return []
+                clauses.append({"access_level": {"$in": access}})
+
+            where = {"$and": clauses}
+            query_embedding = encode_query(query)
+            if not query_embedding:
+                return []
+
+            response = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=top_k,
+                where=where,
+                include=["documents", "metadatas", "distances"],
+            )
+
+            ids = (response.get("ids") or [[]])[0]
+            documents = (response.get("documents") or [[]])[0]
+            metadatas = (response.get("metadatas") or [[]])[0]
+            distances = (response.get("distances") or [[]])[0]
+
+            items: list[dict[str, Any]] = []
+            min_similarity = float(os.getenv("RAG_MIN_SIMILARITY", "0.0"))
+            for idx, text in enumerate(documents):
+                meta = metadatas[idx] or {}
+                distance = float(distances[idx]) if idx < len(distances) and distances[idx] is not None else 1.0
+                similarity = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+                if similarity < min_similarity:
+                    continue
+                items.append({
+                    "chunk_id": ids[idx] if idx < len(ids) else None,
+                    "document_id": meta.get("document_id"),
+                    "document_name": meta.get("document_name"),
+                    "category": meta.get("category"),
+                    "source": meta.get("source"),
+                    "revision": meta.get("revision"),
+                    "chunk_text": text,
+                    "similarity_score": round(similarity, 5),
+                    "page": meta.get("page_start"),
+                    "page_start": meta.get("page_start"),
+                    "page_end": meta.get("page_end"),
+                    "chunk_type": meta.get("chunk_type", "TEXT"),
+                    "section_path": meta.get("section_path", ""),
+                    "asset_path": meta.get("asset_path", ""),
+                    "file_hash": meta.get("file_hash"),
+                })
+            return items
+        except Exception as exc:
+            raise RuntimeError(f"RAG 검색 실패: {exc}") from exc

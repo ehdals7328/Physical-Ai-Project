@@ -1,61 +1,96 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Ship AI Platform{% endblock %}</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
-  {% block head %}{% endblock %}
+    <meta charset="UTF-8">
+    <title>조선소 자율 용접 Multi-Agent 플랫폼</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <style>
+        body { background-color: #f4f6f9; }
+        .nav-link.active { font-weight: bold; color: #ffc107 !important; }
+    </style>
 </head>
-<body class="bg-body-tertiary">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
-  <div class="container-fluid px-lg-4">
-    <a class="navbar-brand fw-semibold" href="{{ url_for('web.index') }}">SHIP <span class="text-info">AI</span></a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"><span class="navbar-toggler-icon"></span></button>
-    <div class="collapse navbar-collapse" id="mainNav">
-      {% if user %}
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.index' %}active{% endif %}" href="{{ url_for('web.index') }}">대시보드</a></li>
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.chat_page' %}active{% endif %}" href="{{ url_for('web.chat_page') }}">AI 질의</a></li>
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.work_orders_page' %}active{% endif %}" href="{{ url_for('web.work_orders_page') }}">작업지시</a></li>
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.documents_page' %}active{% endif %}" href="{{ url_for('web.documents_page') }}">RAG 문서</a></li>
-        {% if user.role_code == 'SYS_ADMIN' or user.can_access_erp == 'Y' %}
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.erp_page' %}active{% endif %}" href="{{ url_for('web.erp_page') }}">ERP 자원</a></li>
-        {% endif %}
-        {% if user.role_code == 'SYS_ADMIN' %}<li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.users_page' %}active{% endif %}" href="{{ url_for('web.users_page') }}">사용자 권한</a></li>{% endif %}
-        <li class="nav-item"><a class="nav-link {% if request.endpoint == 'web.system_page' %}active{% endif %}" href="{{ url_for('web.system_page') }}">시스템 상태</a></li>
-      </ul>
-      <div class="d-flex align-items-center gap-3 text-white-50 small">
-        <span>{{ user.user_name }} <span class="badge text-bg-secondary">{{ user.role_code }}</span></span>
-        <button class="btn btn-outline-light btn-sm" id="logoutBtn">로그아웃</button>
-      </div>
-      {% endif %}
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/">🚢 ShipWeld AI Platform</a>
+        <div class=" navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/">1. 플랫폼 소개(홈)</a></li>
+                <li class="nav-item"><a class="nav-link" href="/rag-chat">2. 순수 LLM(RAG) 질의</a></li>
+                <li class="nav-item"><a class="nav-link" href="/work-analysis">3. Vision & 모재 작업지시</a></li>
+                <li class="nav-item"><a class="nav-link" href="/qna">4. A&Q 가이드</a></li>
+            </ul>
+            <div class="d-flex align-items-center gap-2">
+                <span id="navUserBadge" class="badge bg-secondary">비로그인</span>
+                <a href="/login" id="navLoginBtn" class="btn btn-outline-light btn-sm">로그인 / 회원가입</a>
+                <button id="navLogoutBtn" class="btn btn-danger btn-sm d-none" onclick="doLogout()">로그아웃</button>
+            </div>
+        </div>
     </div>
-  </div>
 </nav>
-<main class="container-fluid px-lg-4 py-4">
-  {% block content %}{% endblock %}
-</main>
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastArea"></div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 상단 7개 테이블 실시간 적재 현황 바 -->
+<div class="bg-white border-bottom py-2 px-4 shadow-sm mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <span class="small fw-bold text-secondary">📊 Oracle RDB (7개 테이블 95컬럼) 실시간 레코드 현황:</span>
+        <div id="globalDbCounterBar" class="d-flex flex-wrap gap-1"></div>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    {% block content %}{% endblock %}
+</div>
+
 <script>
-async function apiFetch(url, options={}) {
-  const response = await fetch(url, {credentials:'same-origin', ...options});
-  let data = {}; try { data = await response.json(); } catch (_) {}
-  if (!response.ok) throw new Error(data.message || `요청 실패 (${response.status})`);
-  return data;
+async function refreshSystemStatus() {
+    try {
+        const res = await fetch("/api/system/status");
+        const data = await res.json();
+        if (data.counts) {
+            let html = "";
+            for (const [k, v] of Object.entries(data.counts)) {
+                html += `<span class="badge bg-dark">${k}: <span class="text-warning">${v}</span></span>`;
+            }
+            $("#globalDbCounterBar").html(html);
+        }
+        if (typeof onHistoryLoaded === "function" && data.history) {
+            onHistoryLoaded(data.history);
+        }
+    } catch (e) {}
 }
-function showToast(message, type='info') {
-  const area=document.getElementById('toastArea'); if(!area) return;
-  const node=document.createElement('div'); node.className=`toast align-items-center text-bg-${type} border-0`;
-  node.setAttribute('role','status'); node.innerHTML='<div class="d-flex"><div class="toast-body"></div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
-  node.querySelector('.toast-body').textContent=message; area.appendChild(node);
-  const toast=new bootstrap.Toast(node,{delay:3500}); toast.show(); node.addEventListener('hidden.bs.toast',()=>node.remove());
+
+async function checkSessionState() {
+    const res = await fetch("/api/auth/session-check");
+    if (res.ok) {
+        const data = await res.json();
+        $("#navUserBadge").removeClass("bg-secondary").addClass("bg-success")
+            .text(`👤 ${data.display_name} (${data.role})`);
+        $("#navLoginBtn").addClass("d-none");
+        $("#navLogoutBtn").removeClass("d-none");
+    } else {
+        $("#navUserBadge").removeClass("bg-success").addClass("bg-secondary").text("비로그인 (기능 제한됨)");
+        $("#navLoginBtn").removeClass("d-none");
+        $("#navLogoutBtn").addClass("d-none");
+        const protectedPaths = ["/rag-chat", "/work-analysis", "/qna"];
+        if (protectedPaths.includes(window.location.pathname)) {
+            alert("세션이 만료되었거나 로그인이 필요합니다. 로그인 페이지로 이동합니다.");
+            window.location.href = "/login";
+        }
+    }
 }
-const logoutBtn=document.getElementById('logoutBtn');
-if(logoutBtn) logoutBtn.addEventListener('click', async()=>{try{await apiFetch('/api/auth/logout',{method:'POST'});}finally{location.href='/login';}});
+
+async function doLogout() {
+    await fetch("/api/auth/logout", {method: "POST"});
+    alert("로그아웃 되었습니다.");
+    window.location.href = "/";
+}
+
+$(document).ready(() => {
+    checkSessionState();
+    refreshSystemStatus();
+    setInterval(checkSessionState, 30000); // 30초마다 세션 만료 체크
+});
 </script>
-{% block scripts %}{% endblock %}
 </body>
 </html>
