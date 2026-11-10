@@ -7,10 +7,18 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'ship-welding-secret-key-2026')
+    # 1) 기본 DB (SHIP_USER: 웹 관제, 지침서, 비전, 감사로그)
     SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        'oracle+oracledb://ship_user:ship1234@localhost:1521/?service_name=XEPDB1'
+        'SHIP_USER_DATABASE_URL',
     )
+    
+    # 2) 전사 자원 바인드 DB (SHIP_ERP: 블록 마스터, 자재 BOM, 작업자 자격, 배차)
+    SQLALCHEMY_BINDS = {
+      'ship_erp': os.getenv('SHIP_ERP_DATABASE_URL'),  # 본사 ERP (Oracle)
+      'partner_pg': os.getenv(
+          'PARTNER_PG_DATABASE_URL'
+      ),  # 외부 협력사 (PostgreSQL)
+    }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # [개선] OracleXE Connection Pool 튜닝 옵션
