@@ -13,12 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 def _sha256_bytes(data: bytes) -> str:
-    """바이트 데이터의 SHA-256 해시를 계산합니다."""
     return hashlib.sha256(data).hexdigest()
 
 
 def _ocr_image(image_path: Path, lang: str) -> str:
-    """페이지 이미지에 OCR을 적용해 텍스트를 추출합니다."""
     try:
         import pytesseract
         from PIL import Image
@@ -42,7 +40,6 @@ def _ocr_image(image_path: Path, lang: str) -> str:
 
 
 def _clean_cell(val: Any) -> str:
-    """PDF 표 셀의 줄바꿈과 불필요한 공백을 정리합니다."""
     if val is None:
         return ""
     text = str(val).replace("\x00", " ")
@@ -51,7 +48,6 @@ def _clean_cell(val: Any) -> str:
 
 
 def _detect_header_depth(rows: list[list[str]]) -> int:
-    """표 행 내용을 분석해 머리글에 해당하는 행 수를 추정합니다."""
     if len(rows) <= 2:
         return 1
     header_keywords = ("기호", "처리", "시험", "강도", "연신율", "온도", "에너지", "두께", "방향", "구분", "종류", "호칭")
@@ -74,7 +70,6 @@ def _format_table_structured(
     caption: str = "",
     notes: str = "",
 ) -> str:
-    """PDF 표를 검색에 유리한 구조화 텍스트로 변환합니다."""
     if not raw_rows:
         return ""
 
@@ -131,7 +126,6 @@ def _format_table_structured(
 
 
 def _extract_caption_and_notes(page, table_bbox: tuple[float, float, float, float]) -> tuple[str, str]:
-    """표 주변의 캡션과 주석을 추출합니다."""
     x0, y0, x1, y1 = table_bbox
     page_rect = page.rect
 
@@ -157,7 +151,6 @@ def parse_pdf(
     ocr_enabled: bool = False,
     ocr_lang: str = "kor+eng",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """PDF 페이지에서 본문·표·이미지 및 선택적 OCR 결과를 추출합니다."""
     try:
         import fitz
     except ImportError as exc:
