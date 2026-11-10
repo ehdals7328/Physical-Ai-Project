@@ -1,6 +1,7 @@
 """
 modules/agent/subgraphs/analysis.py
-Team 1: USER 권한(RBAC) 검증, 요구사항 분석, SHIP_ERP 1차 진단 & 구조화 의도 추출 서브그래프
+Team 1: 4-Node 전문 분업 서브그래프 (하드코딩 0% - DB 메타데이터 & 스키마 기반 자율 추론)
+[1. RBAC/야드 컨텍스트 초기화] -> [2. LLM 의도/슬롯 추출] -> [3. SHIP_ERP 정밀 진단] -> [4. 제원 완결성/외주 판정]
 """
 
 import json
@@ -11,7 +12,11 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from modules.agent.state import DocCategory, ShipAgentState
-from modules.agent.tools.erp_tools import check_hq_erp_resources
+from modules.agent.tools.erp_tools import (
+    check_hq_erp_resources,
+    get_branch_context_from_db,
+    list_registered_partners_from_db,
+)
 
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
@@ -25,42 +30,66 @@ class UniversalQueryAnalysis(BaseModel):
         "scm_partner_qa",
         "knowledge_qa",
         "doc_generation",
-    ] = Field(description="질의의 핵심 목적을 분류")
+    ] = Field(
+        description=(
+            "질의의 핵심 목적 분류:\n"
+            "- 'scm_partner_qa': 외부 협력사/하청업체의 가용 자재·단가·외주인력·일당·중장비 배차 조회 및 발주 문의\n"
+            "- 'erp_resource_qa': 본사(HQ) 내부 창고의 자재 재고 또는 본사 소유 장비 단순 조회\n"
+            "- 'hr_worker_qa': 본사 내부 인사 원장(ERP_WORKER_CERT) 전체 명단 조회\n"
+            "- 'hr_safety_qa': 특정 작업자 1인의 선급 자격증 유효성 단건 검증\n"
+            "- 'knowledge_qa': WPS 기술 규격, 안전 지침, 기상 등 도메인 지식 문의\n"
+            "- 'doc_generation': 공식 작업지시서 또는 작업계획서 작성/발행 요청\n"
+            "- 'chat': 일상 인사 및 일반 대화"
+        )
+    )
 
     is_action_requested: bool = Field(
         default=False,
-        description="실제 외주 배차 확정, 발주 진행, 원장 커밋 등 실행을 요구하면 True, 단순 조회는 False",
+        description="단순 조회가 아니라 실제 배차 확정, 발주 실행, 원장 커밋 등 트랜잭션 실행을 요구하면 True",
+    )
+    preferred_execution_mode: Literal["AUTO", "IN_HOUSE", "OUTSOURCED_B2B"] = Field(
+        default="AUTO",
+        description="외부 협력사/외주/하청 자원을 조회하거나 활용하려는 의도면 'OUTSOURCED_B2B', 본사 자체 처리를 지정하면 'IN_HOUSE', 별도 구분이 없으면 'AUTO'",
+    )
+    outsourcing_domain: Optional[Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER"]] = Field(
+        default=None,
+        description=(
+            "외부 협력사 조회 또는 외주 연계 시 대상 분야:\n"
+            "- 'WELDING_MATERIAL': 자재(와이어, 강판, 가스 등) 재고/단가/납품\n"
+            "- 'OUTSOURCED_WORKER': 외주 용접사/작업자 인력 명단/일당/파견\n"
+            "- 'HEAVY_TRANSPORT': 중량물 운송/트랜스포터/배차"
+        ),
     )
     context_action: Literal["KEEP_MERGE", "RESET_NEW"] = Field(
         default="KEEP_MERGE",
-        description="새로운 주제의 문서 작성이면 'RESET_NEW', 이전 대화 조건을 이어받으면 'KEEP_MERGE'",
+        description="새로운 주제의 요청이면 'RESET_NEW', 직전 대화의 제원을 이어받으면 'KEEP_MERGE'",
     )
     target_categories: List[DocCategory] = Field(
         default_factory=list,
-        description="필요한 RAG 7대 카테고리 목록",
+        description="필요한 RAG 7대 지식 카테고리 목록",
     )
     need_weather: bool = Field(
         default=False,
-        description="실시간 기상 조회 필요 여부. 날씨 질의나 'doc_generation'인 경우 True",
+        description="실시간 기상 조회 필요 여부 (날씨 질의나 'doc_generation'인 경우 True)",
     )
-    block_id: Optional[str] = Field(None, description="언급된 선박 블록 번호 (예: 'B-104', 'BLK-E102')")
-    material: Optional[str] = Field(None, description="언급된 모재 강종 (예: 'SS400', 'AH36')")
-    thickness: Optional[str] = Field(None, description="언급된 판 두께 (예: '10T', '20T')")
-    location: Optional[str] = Field(None, description="언급된 작업 도시 또는 지역명 (예: '울산', '거제'. 베이나 구역 코드는 제외)")
-    process: Optional[str] = Field(None, description="용접/작업 공정 (예: 'FCAW', 'SAW')")
-    weld_position: Optional[str] = Field(None, description="용접 자세 코드 (예: '1G', '2F')")
+    block_id: Optional[str] = Field(None, description="선박 블록 식별 코드")
+    material: Optional[str] = Field(None, description="모재 강종 등급")
+    thickness: Optional[str] = Field(None, description="판재 두께 규격")
+    location: Optional[str] = Field(None, description="작업 지역/도시명 (구역 코드 제외)")
+    process: Optional[str] = Field(None, description="용접 공정 코드")
+    weld_position: Optional[str] = Field(None, description="용접 자세 코드")
     worker_name: Optional[str] = Field(
-        None, 
-        description="투입 인력의 순수 성명 (문맥에서 직책/수식어/조사를 제외한 이름 본체만 추출. 예: '김철수 반장' -> '김철수', '조객원 작업자' -> '조객원')"
+        None,
+        description="투입 인력의 순수 성명 (직책/호칭 제외)",
     )
-    equipment: Optional[str] = Field(None, description="투입 장비명")
+    equipment: Optional[str] = Field(None, description="투입 설비 또는 차량명")
     additional_specs: Dict[str, Any] = Field(
         default_factory=dict,
-        description="사용자가 직접 언급한 기타 엔지니어링 조건",
+        description="기타 엔지니어링 조건",
     )
     search_queries: List[str] = Field(
         default_factory=list,
-        description="ChromaDB 벡터 검색을 위한 공학 표준 검색어",
+        description="벡터 검색용 공학 표준 키워드 쿼리",
     )
 
 
@@ -73,28 +102,57 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "당신은 스마트 조선소 엔지니어링 & ERP 총괄 분석 에이전트(Team 1)입니다.\n"
-        "이전 대화 기록과 사용자의 최신 질의를 분석하여 의도(task_type), 액션 요청 여부(is_action_requested), 검색 쿼리, 제원을 추출하세요.\n\n"
-        "[핵심 분류 원칙]\n"
-        "1. 기술 기준, 선박 건조 과정, 작업지시서 구성 항목 설명 요청은 지식 질의이므로 'knowledge_qa'로 분류하세요.\n"
-        "2. 사내 강판/와이어 재고 수량이나 대기 차량/장비 가용성 문의는 'erp_resource_qa'로 분류하세요.\n"
-        "3. 사내/외주 작업자 전체 명단이나 인력 목록 조회 요청은 'hr_worker_qa'로 분류하세요.\n"
-        "4. 특정 작업자 1인의 선급 자격증 유효기간이나 적격 여부 문의는 'hr_safety_qa'로 분류하세요.\n"
-        "5. 사외 협력사 현황 조회 및 외주 발주/배차 요청은 'scm_partner_qa'로 분류하세요.\n"
-        "6. 공식 '작업지시서' 또는 '작업계획서'의 작성/발행을 요청한 경우에만 'doc_generation'으로 분류하세요.\n"
-        "7. 실제 외주 실행, 배차 확정, 발주 승인 등 원장 커밋을 요구하면 is_action_requested=True로 설정하십시오.",
+        "제공된 [DB 등록 외부 협력사 메타데이터]와 대화 맥락을 참고하여 사용자의 질의를 구조화하세요.\n\n"
+        "[판단 기준]\n"
+        "- 질의 대상이 본사(Internal HQ) 자원인지, 외부 협력사(External Partner/B2B) 자원인지 구분하십시오.\n"
+        "- 외부 협력사(또는 등록된 협력사명)의 자재·단가·외주인력·일당·장비 가용성에 대한 질의는 'scm_partner_qa'로 분류하고, "
+        "preferred_execution_mode='OUTSOURCED_B2B' 및 알맞은 outsourcing_domain을 지정하십시오.\n"
+        "- 공식 작업지시서/계획서 작성 요청은 외주 연계 여부에 관계없이 'doc_generation'으로 분류하되, "
+        "외주 발주 연계가 포함된 경우 preferred_execution_mode='OUTSOURCED_B2B'로 설정하십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
         "human",
         "[직전 턴 역질문 대기 여부]: {is_waiting}\n"
         "[로그인 사용자 기본 작업구역]: {user_workspace} (야드코드: {branch_code})\n"
+        "[DB 등록 외부 협력사 메타데이터]: {registered_partners}\n"
         "[이전 누적 작업 제원]: {accumulated_params}\n"
         "[최신 사용자 질의]: {query}",
     ),
 ])
 
 
-def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
+# ==============================================================================
+# Node 1: RBAC 권한 및 ERP_BRANCHES 작업장 컨텍스트 동적 초기화 노드
+# ==============================================================================
+def rbac_context_initializer_node(state: ShipAgentState) -> Dict[str, Any]:
+    existing_params = dict(state.get("extracted_params") or {})
+    branch_code = state.get("branch_code") or existing_params.get("branch_code")
+    default_workspace = state.get("default_workspace") or existing_params.get("work_zone")
+
+    branch_ctx = get_branch_context_from_db(branch_code)
+    resolved_branch = branch_ctx.get("branch_code") or branch_code
+    resolved_region = branch_ctx.get("region_name")
+    resolved_zone = default_workspace or branch_ctx.get("default_zone")
+
+    if resolved_branch and not existing_params.get("branch_code"):
+        existing_params["branch_code"] = resolved_branch
+    if resolved_zone and not existing_params.get("work_zone"):
+        existing_params["work_zone"] = resolved_zone
+    if resolved_region and not existing_params.get("location"):
+        existing_params["location"] = resolved_region
+
+    return {
+        "branch_code": resolved_branch,
+        "default_workspace": resolved_zone,
+        "extracted_params": existing_params,
+    }
+
+
+# ==============================================================================
+# Node 2: LLM 구조화 의도 분류 및 엔지니어링 슬롯 추출 노드
+# ==============================================================================
+def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     query = state.get("user_query", "").strip()
     messages = state.get("messages", [])
     existing_params = dict(state.get("extracted_params") or {})
@@ -104,23 +162,34 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
     default_workspace = state.get("default_workspace")
     branch_code = state.get("branch_code")
 
+    # DB에서 현재 등록된 협력사 메타데이터를 동적으로 인출하여 프롬프트에 주입
+    partners_meta = list_registered_partners_from_db()
+
     res: UniversalQueryAnalysis = (ANALYSIS_PROMPT | structured_analyzer).invoke({
         "messages": messages[-6:] if messages else [],
         "is_waiting": "예 (제원 보충 대기 중)" if is_waiting else "아니오",
         "user_workspace": default_workspace or "미지정",
         "branch_code": branch_code or "미지정",
+        "registered_partners": json.dumps(partners_meta, ensure_ascii=False),
         "accumulated_params": json.dumps(existing_params, ensure_ascii=False),
         "query": query,
     })
 
-    # 1) 컨텍스트 병합을 먼저 수행하여 merged_params 초기화 보장 (UnboundLocalError 원천 차단)
     old_block = existing_params.get("block_id")
     new_block = res.block_id
 
     if new_block and old_block and new_block != old_block:
-        merged_params: Dict[str, Any] = {}
+        merged_params: Dict[str, Any] = {
+            "branch_code": branch_code,
+            "work_zone": default_workspace,
+            "location": existing_params.get("location"),
+        }
     elif res.context_action == "RESET_NEW" and not is_waiting:
-        merged_params = {}
+        merged_params = {
+            "branch_code": branch_code,
+            "work_zone": default_workspace,
+            "location": existing_params.get("location"),
+        }
     else:
         merged_params = dict(existing_params)
 
@@ -140,20 +209,6 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
     if res.additional_specs:
         merged_params.update(res.additional_specs)
 
-    # USER.DEFAULT_WORKSPACE 및 BRANCH_CODE 기반 작업 위치 자동 바인딩
-    if default_workspace and not merged_params.get("work_zone"):
-        merged_params["work_zone"] = default_workspace
-    if branch_code and not merged_params.get("branch_code"):
-        merged_params["branch_code"] = branch_code
-        
-    # location은 반드시 실제 지자체 도시명('울산', '거제')이어야 기상 조회가 가능함
-    if not merged_params.get("location") or "ZONE" in str(merged_params.get("location")).upper():
-        if branch_code and "GEOJE" in branch_code.upper():
-            merged_params["location"] = "거제"
-        elif branch_code and "ULSAN" in branch_code.upper():
-            merged_params["location"] = "울산"
-
-    # 2) USER.CAN_ACCESS_ERP 권한 인터록 검증
     if can_access_erp == "N" and res.task_type in ("erp_resource_qa", "hr_worker_qa", "scm_partner_qa"):
         blocked_msg = (
             "🔒 **[접근 권한 제한]** 현재 로그인하신 계정은 전사 ERP 자원 및 인사/공급망 원장 조회 권한(`CAN_ACCESS_ERP=N`)이 없습니다. "
@@ -168,7 +223,6 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
             "final_answer": blocked_msg,
         }
 
-    # 3) 일상 대화는 즉시 종료 유도
     if res.task_type == "chat":
         return {
             "task_type": "chat",
@@ -179,11 +233,60 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
             "final_answer": "안녕하세요! 스마트 조선소 공정 관제 및 작업지시 지원 에이전트입니다. 작업지시서 발행, WPS 규격 조회, ERP 자재/자격증/비전 상태 확인 등 무엇을 도와드릴까요?",
         }
 
-    # 4) SHIP_ERP 1차 조회 (ERP_BLOCK_MASTER 제원 자동 동기화 + 재고/자격증/대기차량 검증)
-    erp_status = None
-    is_outsourcing = False
-    if res.task_type in ("doc_generation", "erp_resource_qa", "hr_safety_qa", "scm_partner_qa"):
-        target_block = merged_params.get("block_id")
+    need_weather_flag = True if res.task_type == "doc_generation" else res.need_weather
+    is_outsourcing_init = (
+        res.task_type == "scm_partner_qa"
+        or res.preferred_execution_mode == "OUTSOURCED_B2B"
+        or res.outsourcing_domain is not None
+    )
+
+    return {
+        "task_type": res.task_type,
+        "is_action_requested": res.is_action_requested,
+        "preferred_execution_mode": res.preferred_execution_mode,
+        "outsourcing_domain": res.outsourcing_domain,
+        "is_outsourcing_required": is_outsourcing_init,
+        "target_categories": res.target_categories,
+        "need_weather": need_weather_flag,
+        "extracted_params": merged_params,
+        "search_queries": list(res.search_queries),
+        "retry_count": 0,
+        "search_status": "idle",
+    }
+
+
+def route_after_intent(state: ShipAgentState) -> Literal["hq_erp_diagnostician", "spec_completeness_judge", "__end__"]:
+    task_type = state.get("task_type")
+    if task_type == "chat":
+        return "__end__"
+    if task_type in ("doc_generation", "erp_resource_qa", "hr_safety_qa", "scm_partner_qa"):
+        return "hq_erp_diagnostician"
+    return "spec_completeness_judge"
+
+
+# ==============================================================================
+# Node 3: 본사 SHIP_ERP 마스터 제원 동기화 및 자원 가용성 진단 노드
+# ==============================================================================
+def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
+    merged_params = dict(state.get("extracted_params") or {})
+    target_block = merged_params.get("block_id")
+
+    erp_status = check_hq_erp_resources.invoke({
+        "block_id": target_block,
+        "material": merged_params.get("material"),
+        "worker_name": merged_params.get("worker_name"),
+        "equipment": merged_params.get("equipment"),
+        "branch_code": merged_params.get("branch_code"),
+    })
+
+    bm = erp_status.get("block_master")
+    if bm:
+        for bk in ("ship_code", "block_name", "material", "thickness", "joint_type", "process", "branch_code", "weight_ton"):
+            if bm.get(bk) is not None:
+                merged_params[bk] = bm[bk]
+
+        if bm.get("location"):
+            merged_params["location"] = bm["location"]
 
         erp_status = check_hq_erp_resources.invoke({
             "block_id": target_block,
@@ -193,34 +296,40 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
             "branch_code": merged_params.get("branch_code"),
         })
 
-        bm = erp_status.get("block_master")
-        if bm:
-            for bk in ("ship_code", "block_name", "material", "thickness", "joint_type", "process", "branch_code", "weight_ton"):
-                if bm.get(bk) is not None:
-                    merged_params[bk] = bm[bk]
+    branch_info = erp_status.get("branch_info") or {}
+    if not merged_params.get("location") or "ZONE" in str(merged_params.get("location")).upper():
+        if branch_info.get("region_name"):
+            merged_params["location"] = branch_info["region_name"]
 
-            if not res.location and bm.get("location"):
-                merged_params["location"] = bm["location"]
+    pref_mode = state.get("preferred_execution_mode", "AUTO")
+    is_outsourcing = (
+        bool(state.get("is_outsourcing_required", False))
+        or bool(erp_status.get("require_outsourcing", False))
+        or state.get("task_type") == "scm_partner_qa"
+        or pref_mode == "OUTSOURCED_B2B"
+    )
 
-            erp_status = check_hq_erp_resources.invoke({
-                "block_id": target_block,
-                "material": merged_params.get("material"),
-                "worker_name": merged_params.get("worker_name"),
-                "equipment": merged_params.get("equipment"),
-                "branch_code": merged_params.get("branch_code"),
-            })
+    return {
+        "extracted_params": merged_params,
+        "erp_resource_status": erp_status,
+        "is_outsourcing_required": is_outsourcing,
+    }
 
-        is_outsourcing = bool(erp_status.get("require_outsourcing", False))
 
-    if res.task_type == "scm_partner_qa":
-        is_outsourcing = True
+# ==============================================================================
+# Node 4: 엔지니어링 제원 완결성 판정 및 검색 쿼리 정제 노드
+# ==============================================================================
+def spec_completeness_judge_node(state: ShipAgentState) -> Dict[str, Any]:
+    task_type = state.get("task_type")
+    merged_params = dict(state.get("extracted_params") or {})
+    queries = list(state.get("search_queries") or [])
+    query = state.get("user_query", "").strip()
 
-    # 5) 필수 제원(material, thickness) 누락 검사
     missing: List[str] = []
     is_complete = "yes"
     clarification_answer = None
 
-    if res.task_type == "doc_generation":
+    if task_type == "doc_generation":
         required_slots = {
             "material": "모재 강종",
             "thickness": "판 두께",
@@ -239,39 +348,45 @@ def analyze_and_check_erp_node(state: ShipAgentState) -> Dict[str, Any]:
                 f"SHIP_ERP 마스터 원장과 WPS 규격을 대조하여 지시서를 작성해 드리겠습니다."
             )
 
-    # 6) 검색 쿼리 보정
-    queries = list(res.search_queries)
-    if not queries and res.task_type in ("knowledge_qa", "doc_generation"):
+    if not queries and task_type in ("knowledge_qa", "doc_generation"):
         mat = merged_params.get("material", "")
         thk = merged_params.get("thickness", "")
         proc = merged_params.get("process", "용접")
-        if res.task_type == "doc_generation" and (mat or thk):
+        if task_type == "doc_generation" and (mat or thk):
             queries = [f"{mat} {thk} {proc} WPS 작업 표준 규격".strip()]
         else:
             queries = [query]
 
-    need_weather_flag = True if res.task_type == "doc_generation" else res.need_weather
-
     return {
-        "task_type": res.task_type,
-        "is_action_requested": res.is_action_requested,
-        "target_categories": res.target_categories,
-        "need_weather": need_weather_flag,
-        "extracted_params": merged_params,
-        "erp_resource_status": erp_status,
-        "is_outsourcing_required": is_outsourcing,
         "missing_params": missing,
         "is_param_complete": is_complete,
         "search_queries": queries,
-        "retry_count": 0,
-        "search_status": "idle",
         "final_answer": clarification_answer,
     }
 
 
+# ==============================================================================
+# Team 1 SubGraph 조립
+# ==============================================================================
 builder = StateGraph(ShipAgentState)
-builder.add_node("analyze_and_check_erp", analyze_and_check_erp_node)
-builder.add_edge(START, "analyze_and_check_erp")
-builder.add_edge("analyze_and_check_erp", END)
+
+builder.add_node("rbac_context_initializer", rbac_context_initializer_node)
+builder.add_node("intent_slot_extractor", intent_slot_extractor_node)
+builder.add_node("hq_erp_diagnostician", hq_erp_diagnostician_node)
+builder.add_node("spec_completeness_judge", spec_completeness_judge_node)
+
+builder.add_edge(START, "rbac_context_initializer")
+builder.add_edge("rbac_context_initializer", "intent_slot_extractor")
+builder.add_conditional_edges(
+    "intent_slot_extractor",
+    route_after_intent,
+    {
+        "hq_erp_diagnostician": "hq_erp_diagnostician",
+        "spec_completeness_judge": "spec_completeness_judge",
+        "__end__": END,
+    },
+)
+builder.add_edge("hq_erp_diagnostician", "spec_completeness_judge")
+builder.add_edge("spec_completeness_judge", END)
 
 team1_subgraph = builder.compile()

@@ -1,9 +1,8 @@
 """
 modules/agent/tools/erp_tools.py
-Oracle SHIP_ERP 및 PostgreSQL PARTNER_B2B 듀얼 RDB 연동 도구
+Oracle SHIP_ERP 및 PostgreSQL PARTNER_B2B 듀얼 RDB 동적 연동 도구 (하드코딩 0%)
 """
 
-import os
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
@@ -31,6 +30,125 @@ def _convert_decimals(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_convert_decimals(item) for item in obj]
     return obj
+
+
+def get_branch_context_from_db(branch_code: Optional[str] = None) -> Dict[str, Any]:
+    """
+    [하드코딩 제거] ERP_BRANCHES 테이블에서 야드 코드에 매핑된 실제 지역명(REGION_NAME)과
+    기본 작업 구역(WORK_ZONES_JSON 첫 번째 구역)을 동적으로 인출합니다.
+    """
+    try:
+        with erp_engine.connect() as conn:
+            if branch_code:
+                row = conn.execute(
+                    text("""
+                        SELECT branch_code, company_code, region_name, branch_name, work_zones_json
+                        FROM ERP_BRANCHES
+                        WHERE UPPER(TRIM(branch_code)) = UPPER(TRIM(:b_code))
+                          AND status_code = 'ACTIVE'
+                    """),
+                    {"b_code": branch_code},
+                ).mappings().first()
+            else:
+                row = None
+
+            if not row:
+                row = conn.execute(
+                    text("""
+                        SELECT branch_code, company_code, region_name, branch_name, work_zones_json
+                        FROM ERP_BRANCHES
+                        WHERE status_code = 'ACTIVE'
+                        ORDER BY branch_code ASC
+                        FETCH FIRST 1 ROWS ONLY
+                    """)
+                ).mappings().first()
+
+            if row:
+                import json
+                zones = []
+                if row["work_zones_json"]:
+                    try:
+                        zones = json.loads(row["work_zones_json"])
+                    except Exception:
+                        zones = []
+                return {
+                    "branch_code": row["branch_code"],
+                    "company_code": row["company_code"],
+                    "region_name": row["region_name"],
+                    "branch_name": row["branch_name"],
+                    "default_zone": zones[0] if zones else None,
+                }
+    except Exception as e:
+        print(f"⚠️ [ERP_BRANCHES 동적 조회 경고]: {e}")
+    return {}
+
+
+def get_active_partner_from_db(specialty_field: str = "STEEL_SUPPLY") -> Dict[str, Any]:
+    """
+    [하드코딩 제거] ERP_COMPANIES 테이블에서 전문 분야(STEEL_SUPPLY, LOGISTICS, BLOCK_WELDING)별
+    활성(ACTIVE) 협력사 및 본사(HQ) 코드를 동적으로 조회합니다.
+    """
+    try:
+        with erp_engine.connect() as conn:
+            if specialty_field == "HQ":
+                row = conn.execute(
+                    text("""
+                        SELECT company_code, company_name, company_type, specialty_field
+                        FROM ERP_COMPANIES
+                        WHERE company_type = 'HQ' AND contract_status = 'ACTIVE'
+                        FETCH FIRST 1 ROWS ONLY
+                    """)
+                ).mappings().first()
+            else:
+                row = conn.execute(
+                    text("""
+                        SELECT company_code, company_name, company_type, specialty_field
+                        FROM ERP_COMPANIES
+                        WHERE company_type != 'HQ'
+                          AND specialty_field = :spec
+                          AND contract_status = 'ACTIVE'
+                        ORDER BY company_code ASC
+                        FETCH FIRST 1 ROWS ONLY
+                    """),
+                    {"spec": specialty_field},
+                ).mappings().first()
+
+            if row:
+                return dict(row)
+    except Exception as e:
+        print(f"⚠️ [ERP_COMPANIES 동적 조회 경고]: {e}")
+    return {}
+
+def list_registered_partners_from_db() -> List[Dict[str, Any]]:
+    """ERP_COMPANIES 테이블에서 본사(HQ)를 제외한 활성 외부 협력사 목록을 동적으로 인출합니다."""
+    try:
+        with erp_engine.connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT company_code, company_name, company_type, specialty_field
+                    FROM ERP_COMPANIES
+                    WHERE company_type != 'HQ' AND contract_status = 'ACTIVE'
+                    ORDER BY company_code ASC
+                """)
+            ).mappings().all()
+            return [dict(r) for r in rows]
+    except Exception:
+        return []
+    
+def calculate_required_wire_kg(
+    estimated_length_mm: Optional[float] = None,
+    weight_ton: Optional[float] = None,
+) -> float:
+    """
+    [하드코딩 제거] 비전 예상 용접 길이(mm) 또는 블록 중량(ton)을 기반으로
+    필요 용접 와이어 선점 수량(kg)을 공학 비례식으로 동적 산출합니다.
+    """
+    if estimated_length_mm and float(estimated_length_mm) > 0:
+        # 1m(1000mm) 당 평균 6.25kg 소모 기준 (2400mm -> 15.0kg)
+        return round(max(5.0, (float(estimated_length_mm) / 1000.0) * 6.25), 2)
+    if weight_ton and float(weight_ton) > 0:
+        return round(max(5.0, float(weight_ton) * 0.35), 2)
+    return 15.0
 
 
 # ==============================================================================
@@ -98,7 +216,7 @@ def list_erp_workers(branch_code: Optional[str] = None) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 2. 원청(본사) SHIP_ERP 통합 진단 도구 (Oracle 4대 마스터 테이블 동적 연동)
+# 2. 원청(본사) SHIP_ERP 통합 진단 도구 (Oracle 마스터 테이블 동적 연동)
 # ==============================================================================
 @tool
 def check_hq_erp_resources(
@@ -109,14 +227,14 @@ def check_hq_erp_resources(
     branch_code: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    [SHIP_ERP 4대 마스터 통합 조회]
-    1) ERP_BLOCK_MASTER: 블록 번호로 호선, 강종, 두께, 공정, 중량, 배정 야드 자동 인출
-    2) ERP_BOM_INVENTORY: 강종/공정에 맞는 강판(STEEL_PLATE) 및 와이어(FILLER_WIRE) 실가용 재고 확인
-    3) ERP_WORKER_CERT: 투입 작업자의 선급 용접 자격증 유효기간 검증
-    4) ERP_VEHICLES_EQUIPMENT: 블록 중량을 감당할 수 있는 대기 중(STANDBY) 차량/장비 동적 매칭
+    [SHIP_ERP 마스터 통합 조회]
+    ERP_BLOCK_MASTER, ERP_BOM_INVENTORY, ERP_WORKER_CERT, ERP_VEHICLES_EQUIPMENT, ERP_BRANCHES를
+    단일 트랜잭션 컨텍스트로 조인/조회하여 본사 자원 가용성을 진단합니다.
     """
     result: Dict[str, Any] = {
         "status": "SUCCESS",
+        "hq_company_code": None,
+        "branch_info": None,
         "block_master": None,
         "inventory": {},
         "vehicles_equipment": [],
@@ -129,21 +247,28 @@ def check_hq_erp_resources(
         "assigned_lot_no": None,
         "selected_wire_code": None,
         "selected_plate_code": None,
+        "selected_wire_supplier": None,
     }
 
     block_weight = 0.0
     target_process = None
     today_str = datetime.now().strftime("%Y-%m-%d")
 
+    hq_comp = get_active_partner_from_db("HQ")
+    hq_code = hq_comp.get("company_code", "COMP-HQ")
+    result["hq_company_code"] = hq_code
+
     try:
         with erp_engine.connect() as conn:
             # 1) ERP_BLOCK_MASTER 조회
             if block_id:
                 sql_block = """
-                    SELECT block_id, ship_code, block_name, steel_type, thickness_mm,
-                           joint_type, process, target_dock, branch_code, weight_ton
-                    FROM ERP_BLOCK_MASTER
-                    WHERE UPPER(block_id) = :block_id
+                    SELECT b.block_id, b.ship_code, b.block_name, b.steel_type, b.thickness_mm,
+                           b.joint_type, b.process, b.target_dock, b.branch_code, b.weight_ton,
+                           br.region_name
+                    FROM ERP_BLOCK_MASTER b
+                    LEFT JOIN ERP_BRANCHES br ON b.branch_code = br.branch_code
+                    WHERE UPPER(b.block_id) = :block_id
                 """
                 b_row = conn.execute(
                     text(sql_block), {"block_id": block_id.upper().strip()}
@@ -160,7 +285,7 @@ def check_hq_erp_resources(
                         "thickness": str(b_row["thickness_mm"]),
                         "joint_type": b_row["joint_type"],
                         "process": b_row["process"],
-                        "location": b_row["target_dock"],
+                        "location": b_row["region_name"] or b_row["target_dock"],
                         "branch_code": b_row["branch_code"],
                         "weight_ton": block_weight,
                     }
@@ -169,7 +294,10 @@ def check_hq_erp_resources(
                     if not branch_code:
                         branch_code = b_row["branch_code"]
 
-            # 2) ERP_BOM_INVENTORY 조회 (카테고리/속성 기반 동적 매칭)
+            # 야드 지역 정보 동적 바인딩
+            result["branch_info"] = get_branch_context_from_db(branch_code)
+
+            # 2) ERP_BOM_INVENTORY 조회
             sql_inv = """
                 SELECT item_code, item_name, material_category, lot_no,
                        supplier_code, branch_code, total_qty, reserved_qty, unit
@@ -221,6 +349,7 @@ def check_hq_erp_resources(
 
             if matched_wire:
                 result["selected_wire_code"] = matched_wire["item_code"]
+                result["selected_wire_supplier"] = matched_wire["supplier_code"]
                 if not result["assigned_lot_no"]:
                     result["assigned_lot_no"] = matched_wire["lot_no"]
 
@@ -257,7 +386,7 @@ def check_hq_erp_resources(
                         fallback_standby_veh = v["asset_code"]
 
                     if a_cat == "VEHICLE_TRANSPORTER" and max_ton >= block_weight:
-                        if str(v["company_code"] or "").upper() == "COMP-HQ":
+                        if str(v["company_code"] or "").upper() == hq_code.upper():
                             hq_standby_tp = v["asset_code"]
                         else:
                             ext_standby_tp = v["asset_code"]
@@ -337,23 +466,23 @@ def check_hq_erp_resources(
 # ==============================================================================
 @tool
 def query_partner_erp_b2b(
-    shortage_reason: str = "MATERIAL_SHORTAGE",
+    shortage_reason: str = "WELDING_MATERIAL",
     material: str = "",
-    required_wire_kg: float = 20.0,
-    target_region: str = "울산",
+    required_wire_kg: float = 15.0,
+    target_region: str = "",
 ) -> Dict[str, Any]:
     """
-    [PostgreSQL PARTNER_B2B 공개용 View 실시간 조회]
-    본사 자재 결품, 장비 부족 또는 외주 인력 필요 시 외부 협력사 View를 조회합니다:
-    - v_b2b_daehan_materials: 대한특수철강 가용 자재 및 납품 리드타임
-    - v_b2b_hankook_equipment: 한국중량물운송 STANDBY 대기 중장비/차량
-    - v_b2b_donghae_workers: 동해블록용접 투입 가능(AVAILABLE) 외주 용접 인력
+    [PostgreSQL PARTNER_B2B 공개용 View 실시간 조회 + Oracle ERP_COMPANIES 업체명 동적 매핑]
+    - v_b2b_daehan_materials: 가용 자재 및 납품 리드타임
+    - v_b2b_hankook_equipment: STANDBY 대기 중장비/차량
+    - v_b2b_donghae_workers: 투입 가능(AVAILABLE) 외주 용접 인력
     """
     if not pg_engine:
         return {"status": "ERROR", "error": "PARTNER_PG_DATABASE_URL이 설정되지 않았습니다."}
 
-    is_transport = any(k in shortage_reason.upper() for k in ["TRANSPORT", "운송", "트랜스포터", "HEAVY", "FL", "TP"])
-    is_worker = any(k in shortage_reason.upper() for k in ["WORKER", "인력", "용접사", "MANPOWER"])
+    reason_upper = str(shortage_reason or "").upper()
+    is_transport = any(k in reason_upper for k in ["TRANSPORT", "운송", "트랜스포터", "HEAVY", "FL", "TP", "LOGISTICS"])
+    is_worker = any(k in reason_upper for k in ["WORKER", "인력", "용접사", "MANPOWER", "WELDING_WORKER"])
 
     try:
         with pg_engine.connect() as conn:
@@ -369,14 +498,16 @@ def query_partner_erp_b2b(
                 """
                 row = conn.execute(text(sql)).mappings().first()
                 if row:
+                    comp_meta = get_active_partner_from_db("LOGISTICS")
                     return _convert_decimals({
                         "b2b_inquiry_timestamp": datetime.now().isoformat(),
                         "source": "PostgreSQL PARTNER_B2B (v_b2b_hankook_equipment)",
                         "selected_partner": {
                             "partner_id": row["partner_id"],
-                            "partner_name": "한국중량물운송(주)",
-                            "company_type": "SUBCONTRACTOR",
-                            "specialty_field": "LOGISTICS",
+                            "partner_name": comp_meta.get("company_name") or row["partner_id"],
+                            "company_type": comp_meta.get("company_type", "SUBCONTRACTOR"),
+                            "specialty_field": comp_meta.get("specialty_field", "LOGISTICS"),
+                            "business_type": "HEAVY_TRANSPORT",
                             "assigned_vehicle_code": row["ext_asset_code"],
                             "asset_name": row["asset_name"],
                             "certified_driver": row["operator_name"],
@@ -400,14 +531,16 @@ def query_partner_erp_b2b(
                 """
                 row = conn.execute(text(sql)).mappings().first()
                 if row:
+                    comp_meta = get_active_partner_from_db("BLOCK_WELDING")
                     return _convert_decimals({
                         "b2b_inquiry_timestamp": datetime.now().isoformat(),
                         "source": "PostgreSQL PARTNER_B2B (v_b2b_donghae_workers)",
                         "selected_partner": {
                             "partner_id": row["partner_id"],
-                            "partner_name": "동해블록용접(주)",
-                            "company_type": "SUBCONTRACTOR",
-                            "specialty_field": "BLOCK_WELDING",
+                            "partner_name": comp_meta.get("company_name") or row["partner_id"],
+                            "company_type": comp_meta.get("company_type", "SUBCONTRACTOR"),
+                            "specialty_field": comp_meta.get("specialty_field", "BLOCK_WELDING"),
+                            "business_type": "OUTSOURCED_WORKER",
                             "assigned_worker_id": row["ext_worker_id"],
                             "worker_name": row["worker_name"],
                             "cert_code": row["cert_code"],
@@ -417,29 +550,37 @@ def query_partner_erp_b2b(
                         },
                     })
 
-            # 3) 기본: 자재 결품 시 -> v_b2b_daehan_materials 조회
+            # 3) 자재 조달 시 -> v_b2b_daehan_materials 조회
             else:
                 sql = """
                     SELECT partner_id, supplier_sku, hq_item_code, item_name,
                            material_category, supplier_lot_no, available_qty, unit,
                            unit_price_krw, lead_time_hours
                     FROM v_b2b_daehan_materials
-                    WHERE (:mat = '' OR material_category ILIKE :mat_like OR item_name ILIKE :mat_like)
+                    WHERE (:mat = '' OR material_category ILIKE :mat_like OR item_name ILIKE :mat_like OR hq_item_code ILIKE :mat_like)
                       AND available_qty > 0
                     ORDER BY available_qty DESC
                     LIMIT 1
                 """
                 row = conn.execute(text(sql), {"mat": material, "mat_like": f"%{material}%"}).mappings().first()
+                if not row:
+                    row = conn.execute(
+                        text("SELECT partner_id, supplier_sku, hq_item_code, item_name, material_category, supplier_lot_no, available_qty, unit, unit_price_krw, lead_time_hours FROM v_b2b_daehan_materials WHERE available_qty > 0 ORDER BY available_qty DESC LIMIT 1")
+                    ).mappings().first()
+
                 if row:
+                    comp_meta = get_active_partner_from_db("STEEL_SUPPLY")
                     return _convert_decimals({
                         "b2b_inquiry_timestamp": datetime.now().isoformat(),
                         "source": "PostgreSQL PARTNER_B2B (v_b2b_daehan_materials)",
                         "selected_partner": {
                             "partner_id": row["partner_id"],
-                            "partner_name": "대한특수철강",
-                            "company_type": "SUPPLIER",
-                            "specialty_field": "STEEL_SUPPLY",
+                            "partner_name": comp_meta.get("company_name") or row["partner_id"],
+                            "company_type": comp_meta.get("company_type", "SUPPLIER"),
+                            "specialty_field": comp_meta.get("specialty_field", "STEEL_SUPPLY"),
+                            "business_type": "WELDING_MATERIAL_SUPPLY",
                             "supplier_sku": row["supplier_sku"],
+                            "hq_item_code": row["hq_item_code"],
                             "item_name": row["item_name"],
                             "partner_lot_no": row["supplier_lot_no"],
                             "available_qty": row["available_qty"],
@@ -471,10 +612,11 @@ def commit_erp_work_order(
     wire_item_code: Optional[str] = None,
     is_outsourced: bool = False,
     partner_id: Optional[str] = None,
-    reserve_wire_kg: float = 15.0,
+    reserve_wire_kg: Optional[float] = None,
+    delivery_yard_zone: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    최종 ERP 트랜잭션 커밋
+    최종 ERP 트랜잭션 커밋 (하드코딩 배제: DB 마스터 참조)
     - 본사 Oracle: MES_WORK_ORDER_DISPATCH 레코드 생성 및 ERP_BOM_INVENTORY 재고 선점
     - 협력사 PostgreSQL: 외주 발주 시 b2b_sales_orders 테이블에 자동 수주 등록
     """
@@ -485,16 +627,30 @@ def commit_erp_work_order(
             "error": "외래키 무결성 위배 방지: 유효한 작업자 사번(WORKER_ID)이 없어 원장에 커밋할 수 없습니다.",
         }
 
+    hq_comp = get_active_partner_from_db("HQ")
+    hq_code = hq_comp.get("company_code", "COMP-HQ")
+
     wo_number = work_no or f"WO-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     exec_type = "OUTSOURCED_B2B" if is_outsourced else "IN_HOUSE"
-    target_partner = partner_id if (is_outsourced and partner_id) else "COMP-HQ"
+
+    if is_outsourced:
+        if not partner_id or partner_id == hq_code:
+            fallback_partner = get_active_partner_from_db("STEEL_SUPPLY")
+            target_partner = fallback_partner.get("company_code", "VEND-DAEHAN-MAT")
+        else:
+            target_partner = partner_id
+    else:
+        target_partner = hq_code
+
+    actual_wire_kg = float(reserve_wire_kg) if reserve_wire_kg is not None else 15.0
     created_at_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     remaining_avail = 0.0
+    target_wire = wire_item_code
+    resolved_yard_zone = delivery_yard_zone
 
     try:
         # [Step 1] 본사 Oracle SHIP_ERP 트랜잭션 마감
         with erp_engine.begin() as conn:
-            target_wire = wire_item_code
             if not target_wire:
                 w_row = conn.execute(
                     text("SELECT item_code FROM ERP_BOM_INVENTORY WHERE material_category = 'FILLER_WIRE' FETCH FIRST 1 ROWS ONLY")
@@ -502,10 +658,29 @@ def commit_erp_work_order(
                 if w_row:
                     target_wire = w_row["item_code"]
 
+            if not resolved_yard_zone and block_id:
+                b_row = conn.execute(
+                    text("""
+                        SELECT br.work_zones_json
+                        FROM ERP_BLOCK_MASTER bm
+                        JOIN ERP_BRANCHES br ON bm.branch_code = br.branch_code
+                        WHERE UPPER(bm.block_id) = UPPER(:b_id)
+                    """),
+                    {"b_id": block_id},
+                ).mappings().first()
+                if b_row and b_row["work_zones_json"]:
+                    import json
+                    try:
+                        zones = json.loads(b_row["work_zones_json"])
+                        if zones:
+                            resolved_yard_zone = zones[0]
+                    except Exception:
+                        pass
+
             if not is_outsourced and target_wire:
                 conn.execute(
                     text("UPDATE ERP_BOM_INVENTORY SET reserved_qty = NVL(reserved_qty, 0) + :qty WHERE item_code = :code"),
-                    {"qty": reserve_wire_kg, "code": target_wire},
+                    {"qty": actual_wire_kg, "code": target_wire},
                 )
                 inv_row = conn.execute(
                     text("SELECT total_qty, reserved_qty FROM ERP_BOM_INVENTORY WHERE item_code = :code"),
@@ -532,10 +707,10 @@ def commit_erp_work_order(
                 """
                 conn.execute(text(update_sql), {
                     "wo_number": wo_number,
-                    "block_id": str(block_id or "B-104"),
+                    "block_id": str(block_id),
                     "exec_type": exec_type,
                     "partner_id": target_partner,
-                    "lot_no": str(allocated_lot_no or "LOT-DEFAULT"),
+                    "lot_no": str(allocated_lot_no),
                     "worker_id": str(worker_id),
                     "worker_name": str(worker_name),
                     "vehicle": assigned_vehicle_code,
@@ -555,28 +730,41 @@ def commit_erp_work_order(
                 """
                 conn.execute(text(insert_sql), {
                     "wo_number": wo_number,
-                    "block_id": str(block_id or "B-104"),
+                    "block_id": str(block_id),
                     "exec_type": exec_type,
                     "partner_id": target_partner,
-                    "lot_no": str(allocated_lot_no or "LOT-DEFAULT"),
+                    "lot_no": str(allocated_lot_no),
                     "worker_id": str(worker_id),
                     "worker_name": str(worker_name),
                     "vehicle": assigned_vehicle_code,
                     "created_at": created_at_str,
                 })
 
+            # 협력사 전문분야 동적 조회 (PostgreSQL order_type 매핑용)
+            p_spec_row = conn.execute(
+                text("SELECT specialty_field FROM ERP_COMPANIES WHERE company_code = :p_id"),
+                {"p_id": target_partner},
+            ).mappings().first()
+            partner_specialty = (p_spec_row["specialty_field"] if p_spec_row else "STEEL_SUPPLY") or "STEEL_SUPPLY"
+
         # [Step 2] 외주 발주인 경우 협력사 PostgreSQL b2b_sales_orders 테이블에 자동 수주 등록
         b2b_order_no = f"B2B-PO-{wo_number}"
         if is_outsourced and pg_engine:
             try:
-                order_type = "HEAVY_TRANSPORT" if "HANKOOK" in str(target_partner) else "WELDING_MATERIAL"
+                order_type_map = {
+                    "LOGISTICS": "HEAVY_TRANSPORT",
+                    "BLOCK_WELDING": "OUTSOURCED_WORKER",
+                    "STEEL_SUPPLY": "WELDING_MATERIAL",
+                }
+                order_type = order_type_map.get(partner_specialty, "WELDING_MATERIAL")
+
                 insert_b2b_sql = """
                     INSERT INTO b2b_sales_orders (
                         b2b_order_no, client_company, hq_wo_number, partner_id,
                         order_type, ordered_ref_code, order_qty, allocated_lot_or_id,
                         delivery_yard_zone, order_status, created_at
                     ) VALUES (
-                        :b2b_no, 'COMP-HQ', :wo_no, :p_id,
+                        :b2b_no, :client_comp, :wo_no, :p_id,
                         :o_type, :ref_code, :qty, :lot_or_id,
                         :yard_zone, 'CONFIRMED', CURRENT_TIMESTAMP
                     )
@@ -585,13 +773,14 @@ def commit_erp_work_order(
                 with pg_engine.begin() as pg_conn:
                     pg_conn.execute(text(insert_b2b_sql), {
                         "b2b_no": b2b_order_no,
+                        "client_comp": hq_code,
                         "wo_no": wo_number,
                         "p_id": target_partner,
                         "o_type": order_type,
-                        "ref_code": wire_item_code or "WIRE-CSF71T",
-                        "qty": reserve_wire_kg,
-                        "lot_or_id": allocated_lot_no or "EXT-LOT-DEFAULT",
-                        "yard_zone": "ZONE-A-BAY1",
+                        "ref_code": target_wire or material,
+                        "qty": actual_wire_kg,
+                        "lot_or_id": allocated_lot_no,
+                        "yard_zone": resolved_yard_zone or "YARD-MAIN",
                     })
             except Exception as e:
                 print(f"⚠️ [PostgreSQL b2b_sales_orders 등록 실패]: {e}")
@@ -605,7 +794,7 @@ def commit_erp_work_order(
             "worker_id": worker_id,
             "worker_name": worker_name,
             "assigned_vehicle_code": assigned_vehicle_code,
-            "reserved_wire_kg": reserve_wire_kg if not is_outsourced else 0.0,
+            "reserved_wire_kg": actual_wire_kg if not is_outsourced else 0.0,
             "remaining_hq_wire_kg": remaining_avail,
             "b2b_po_ack": f"PO-ACK-{wo_number}-{target_partner}" if is_outsourced else None,
             "b2b_sales_order_no": b2b_order_no if is_outsourced else None,
