@@ -1,26 +1,4 @@
-"""조선/해양 자율 용접 플랫폼 RDB 스키마 모델 정의 (Oracle Database 18c XE 호환).
-
-[시스템 개요 및 엔티티 관계(ERD) 흐름]
-1. USERS: 시스템 작업자, 관리자 계정 및 역할 관리.
-2. WORK_ORDERS: 블록 번호, 모재, 판두께, 홈 형상 등 선체 용접 작업 지시서(User 1:N).
-3. VISION_ANALYSES: YOLO 비전 검사 메타데이터 및 분석 파이프라인 상태(WorkOrder 1:N).
-4. VISION_DETECTIONS: 용접선(Seam), 부재 경계 박스 좌표 및 신뢰도(VisionAnalysis 1:N).
-5. AGENT_EXECUTIONS: LangGraph 멀티 에이전트 상태, 노드 전이 로그(User/WorkOrder/Vision N:1).
-6. WORK_INSTRUCTIONS: RAG 검증 및 에이전트 승인을 거쳐 생성된 최종 용접 작업 지시서.
-7. DOCUMENT_METADATA: RAG 지식 베이스(선급 규정, WPS, 안전 표준) 원본 문서 메타데이터.
-
-[데이터 파이프라인 계층 구조]
-   USERS
-     │
-     ├──▶ WORK_ORDERS ───▶ VISION_ANALYSES ───▶ VISION_DETECTIONS
-     │          │                 │
-     │          └────────┬────────┘
-     │                   ▼
-     ├──────────▶ AGENT_EXECUTIONS ──▶ WORK_INSTRUCTIONS
-     │                   ▲
-     ▼                   │ (RAG 참조)
-DOCUMENT_METADATA ───────┘
-"""
+# 조선/해양 자율 용접 플랫폼 RDB 스키마 모델 정의 (Oracle Database 18c XE 호환).
 
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
@@ -133,19 +111,19 @@ class WorkInstruction(db.Model):
     created_at = db.Column('CREATED_AT', db.DateTime, default=datetime.utcnow)
     updated_at = db.Column('UPDATED_AT', db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# 7. DOCUMENT_METADATA (13개 열)
+# 7. DOCUMENT_METADATA (12개 열)
 class DocumentMetadata(db.Model):
-    __tablename__ = 'DOCUMENT_METADATA'
-    document_id = db.Column('DOCUMENT_ID', db.Integer, Identity(start=1), primary_key=True)
-    document_name = db.Column('DOCUMENT_NAME', db.String(300), nullable=False)
-    category = db.Column('CATEGORY', db.String(30), nullable=False)
-    source = db.Column('SOURCE', db.String(300))
-    revision = db.Column('REVISION', db.String(100))
-    access_level = db.Column('ACCESS_LEVEL', db.String(20), default='PUBLIC')
-    file_path = db.Column('FILE_PATH', db.String(1000))
-    file_hash = db.Column('FILE_HASH', db.String(64))
-    ingest_status = db.Column('INGEST_STATUS', db.String(20), default='COMPLETED')
-    document_status = db.Column('DOCUMENT_STATUS', db.String(20), default='ACTIVE')
-    uploaded_by = db.Column('UPLOADED_BY', db.Integer, db.ForeignKey('USERS.USER_ID'), nullable=True)
-    created_at = db.Column('CREATED_AT', db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column('UPDATED_AT', db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    __tablename__ = "DOCUMENT_METADATA"
+
+    document_id = db.Column("DOCUMENT_ID", db.Integer, primary_key=True)
+    document_code = db.Column("DOCUMENT_CODE", db.String(50), unique=True, nullable=False)
+    document_title = db.Column("DOCUMENT_TITLE", db.String(200), nullable=False)
+    collection_type = db.Column("COLLECTION_TYPE", db.String(20), nullable=False)  # 'PUBLIC', 'INTERNAL'
+    category_code = db.Column("CATEGORY_CODE", db.String(50), nullable=False)      # 'WELDING_SOP', 'SAFETY', 'CAD_DRAWING', 'CRANE_GUIDE'
+    original_file_name = db.Column("ORIGINAL_FILE_NAME", db.String(255), nullable=False)
+    storage_uri = db.Column("STORAGE_URI", db.String(500), nullable=False)
+    file_hash_sha256 = db.Column("FILE_HASH_SHA256", db.String(64))
+    vector_collection = db.Column("VECTOR_COLLECTION", db.String(100), nullable=False)
+    ingest_status = db.Column("INGEST_STATUS", db.String(20), default="COMPLETED", nullable=False)  # 'PENDING', 'COMPLETED', 'FAILED'
+    uploaded_by = db.Column("UPLOADED_BY", db.Integer, db.ForeignKey("USERS.USER_ID"), nullable=False)
+    created_at = db.Column("CREATED_AT", db.DateTime, default=datetime.utcnow, nullable=False)
