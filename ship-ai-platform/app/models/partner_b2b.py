@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 # app.py 등에서 공용으로 생성한 db 인스턴스를 가져오거나 여기서 선언
 # from extensions import db
-from schema import db  # 프로젝트 구조에 맞게 db 임포트
+from schema import db
 
 
 # 1. 대한특수철강 B2B 공개 자재 카탈로그 View

@@ -25,138 +25,124 @@ logging.basicConfig(
 )
 logger = logging.getLogger("rag.ingest")
 
+# DDL CHECK (CATEGORY_CODE IN ('WELDING_SOP', 'SAFETY', 'CAD_DRAWING', 'CRANE_GUIDE')) 제약 준수
 CATEGORY_RULES = [
-    ("안전보건", ("안전", "kosha", "osha", "z49", "safety", "health")),
-    ("품질검사", ("품질", "검사", "inspection", "defect", "ut", "rt", "hull weld")),
-    ("장비중량물", ("중량", "crane", "rigging", "lifting", "hoist", "인양")),
-    ("작업환경기상", ("기상", "풍속", "습도", "weather", "environment", "wind")),
-    ("선급법규", ("선급", "class rule", "class_rules", "kr rule", "korean register", "kr ", "imo", "goal-based", "b2.1")),
-    ("사내문서", ("사내", "internal", "work instruction", "승인서")),
-]
-
-SOURCE_RULES = [
-    (("aws",), "AWS (미국용접학회)"),
-    (("kosha",), "안전보건공단(KOSHA)"),
-    (("osha",), "OSHA"),
-    (("twi",), "TWI (영국용접연구소)"),
-    (("kiswel",), "KISWEL (고려용접봉)"),
-    (("seah", "세아"), "세아ESAB"),
-    (("imo",), "IMO"),
-    (("kr ", "korean register", "한국선급"), "한국선급(KR)"),
+    ("SAFETY", ("안전", "보건", "비상", "대응", "kosha", "osha", "z49", "safety", "health")),
+    ("CRANE_GUIDE", ("중량", "crane", "rigging", "lifting", "hoist", "인양", "장비")),
+    ("CAD_DRAWING", ("도면", "cad", "drawing", "블록", "배치도")),
+    ("WELDING_SOP", ("용접", "품질", "검사", "인사", "근로", "임금", "보수", "휴일", "휴가", "성과", "윤리", "보안", "문서", "규정", "sop", "가이드", "운영")),
 ]
 
 
-# 공백과 경로 기호를 제거하고 소문자로 통일하여 파일명 비교 시 오차를 없애는 문자열 정규화 함수.
 def normalize_name(value: str) -> str:
+    """공백과 경로 기호를 제거하고 소문자로 통일하여 파일명 비교 시 오차를 없애는 함수."""
     value = (value or "").strip().casefold().replace("\\", "/")
     value = value.rsplit("/", 1)[-1]
     value = re.sub(r"\s+", "", value)
     return value
 
 
-# 파일명과 상위 폴더 경로의 키워드를 미리 정의된 규칙표와 대조하여 문서의 카테고리와 출처(발행처)를 자동 추론하는 함수.
-def guess_metadata(pdf_path: Path) -> tuple[str, str]:
+def guess_category_code(pdf_path: Path) -> str:
+    """파일명과 경로를 분석하여 DDL 허용 CATEGORY_CODE로 변환하는 함수."""
     name = pdf_path.name.casefold()
     folders = " ".join(part.casefold() for part in pdf_path.parts)
     search_text = f"{folders} {name}"
 
-    category = "제조기술"
-    for candidate, keywords in CATEGORY_RULES:
+    for category_code, keywords in CATEGORY_RULES:
         if any(keyword in search_text for keyword in keywords):
-            category = candidate
-            break
-
-    source = "미확인"
-    for keywords, candidate_source in SOURCE_RULES:
-        if any(keyword in search_text for keyword in keywords):
-            source = candidate_source
-            break
-    if source == "미확인":
-        source = "조선소 기술자료실"
-    return category, source
+            return category_code
+    return "WELDING_SOP"
 
 
-# 프로젝트 루트를 기준으로 상대 경로 문자열을 생성하여 운영체제 간 경로 호환성을 보장하는 유틸리티 함수.
 def relative_path(path: Path) -> str:
+    """프로젝트 루트를 기준으로 상대 경로 문자열을 생성하는 함수."""
     try:
         return path.resolve().relative_to(PROJECT_ROOT).as_posix()
     except ValueError:
         return path.resolve().as_posix()
 
 
-# 오라클 DB(DOCUMENT_METADATA)를 조회하여 기존 문서 레코드를 재활용하거나 새 메타데이터 행을 생성해 매핑하는 함수.
+def make_document_code(pdf_path: Path, collection_type: str, file_hash: str) -> str:
+    """DOCUMENT_CODE 유니크 제약조건(UK)을 만족하는 고유 코드를 생성하는 함수."""
+    prefix = "DOC-INT" if collection_type == "INTERNAL" else "DOC-PUB"
+    clean_stem = re.sub(r"[^A-Za-z0-9_-]", "", pdf_path.stem)[:20].upper()
+    if not clean_stem:
+        clean_stem = "DOC"
+    return f"{prefix}-{clean_stem}-{file_hash[-6:].upper()}"[:50]
+
+
 def find_or_create_metadata(pdf_path: Path, file_hash: str, *, dry_run: bool):
+    """02_SHIP_USER_DDL.txt 스키마에 맞춰 메타데이터를 조회하거나 생성하는 함수."""
     docs = DocumentMetadata.query.all()
 
-    exact = next((row for row in docs if (row.file_hash or "").strip().lower() == file_hash), None)
+    # 1. 기존 파일 해시(FILE_HASH_SHA256) 일치 확인
+    exact = next((row for row in docs if (row.file_hash_sha256 or "").strip().lower() == file_hash), None)
     if exact:
         return exact, False
 
     target_name = normalize_name(pdf_path.name)
-    same_name = [row for row in docs if normalize_name(row.document_name) == target_name]
+    same_name = [row for row in docs if normalize_name(row.original_file_name or row.document_title) == target_name]
 
-    reusable = next(
-        (
-            row for row in same_name
-            if not (row.file_hash or "").strip()
-            or str(row.file_path or "").strip().upper() == "SEED_DATA"
-        ),
-        None,
-    )
+    # 2. 기존 레코드 중 해시가 비어있는 행 재활용
+    reusable = next((row for row in same_name if not (row.file_hash_sha256 or "").strip()), None)
     if reusable:
         if not dry_run:
-            reusable.file_hash = file_hash
-            reusable.file_path = relative_path(pdf_path)
-            reusable.ingest_status = "QUEUED"
-            reusable.updated_at = datetime.utcnow()
+            reusable.file_hash_sha256 = file_hash
+            reusable.storage_uri = relative_path(pdf_path)
+            reusable.ingest_status = "PENDING"
         return reusable, False
 
-    category, source = guess_metadata(pdf_path)
     if dry_run:
         return None, True
 
+    # 3. 신규 행 생성 (DDL 제약조건 충족)
+    collection_type = os.getenv("DEFAULT_DOCUMENT_ACCESS_LEVEL", "INTERNAL").upper()
+    if collection_type not in ("PUBLIC", "INTERNAL"):
+        collection_type = "INTERNAL"
+
+    category_code = guess_category_code(pdf_path)
+    vector_collection = "col_internal_ship_sop" if collection_type == "INTERNAL" else "col_public_weld_std"
+    doc_code = make_document_code(pdf_path, collection_type, file_hash)
+    uploaded_by = int(os.getenv("DEFAULT_INGEST_USER_ID", "1"))
+
     row = DocumentMetadata(
-        document_name=pdf_path.name[:300],
-        category=category,
-        source=source,
-        revision="UNKNOWN",
-        access_level=os.getenv("DEFAULT_DOCUMENT_ACCESS_LEVEL", "INTERNAL").upper(),
-        file_path=relative_path(pdf_path),
-        file_hash=file_hash,
-        ingest_status="QUEUED",
-        document_status="ACTIVE",
-        uploaded_by=None,
+        document_code=doc_code,
+        document_title=pdf_path.name[:200],
+        collection_type=collection_type,
+        category_code=category_code,
+        original_file_name=pdf_path.name[:255],
+        storage_uri=relative_path(pdf_path)[:500],
+        file_hash_sha256=file_hash[:64],
+        vector_collection=vector_collection[:100],
+        ingest_status="PENDING",
+        uploaded_by=uploaded_by,
     )
     db.session.add(row)
     db.session.flush()
     return row, True
 
 
-# 개별 PDF의 중복 여부를 검사하고, 파싱·청킹·임베딩을 거쳐 ChromaDB와 오라클 DB의 처리 상태를 일치시키는 핵심 단일 적재 처리 함수.
 def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
+    """개별 PDF에 대해 파싱, 청킹, ChromaDB 적재 및 메타데이터 갱신을 수행하는 함수."""
     file_hash = sha256_file(pdf_path)
     logger.info("PDF 확인: %s | SHA256=%s", pdf_path.name, file_hash[:16])
 
     row, is_new = find_or_create_metadata(pdf_path, file_hash, dry_run=args.dry_run)
-    if row is not None and str(row.document_status or "ACTIVE").upper() != "ACTIVE":
-        logger.warning("비활성 문서이므로 건너뜀: %s (DOCUMENT_ID=%s)", pdf_path.name, row.document_id)
-        return "SKIPPED"
 
+    # 이미 벡터스토어에 인덱싱되어 있는지 확인 (변경 없음 시 스킵)
     if row is not None and store is not None and not args.force and not args.dry_run and store.is_document_indexed(
             row.document_id, file_hash):
         if row.ingest_status != "COMPLETED" and not args.dry_run:
             row.ingest_status = "COMPLETED"
-            row.updated_at = datetime.utcnow()
             db.session.commit()
         logger.info("변경 없음 건너뜀: %s (DOCUMENT_ID=%s)", pdf_path.name, row.document_id)
         return "SKIPPED"
 
     if not args.dry_run:
         assert row is not None
-        row.file_hash = file_hash
-        row.file_path = relative_path(pdf_path)
-        row.ingest_status = "PROCESSING"
-        row.updated_at = datetime.utcnow()
+        row.file_hash_sha256 = file_hash
+        row.storage_uri = relative_path(pdf_path)
+        row.ingest_status = "PENDING"
         db.session.commit()
         document_id = int(row.document_id)
     else:
@@ -191,17 +177,16 @@ def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
         assert store is not None
         count = store.replace_document_chunks(
             document_id=document_id,
-            document_name=row.document_name,
-            category=row.category,
-            source=row.source or "미확인",
-            revision=row.revision or "UNKNOWN",
+            document_name=row.document_title,
+            category=row.category_code,
+            source=row.collection_type,
+            revision="Rev.1",
             file_hash=file_hash,
             chunks=chunks,
-            access_level=row.access_level or "INTERNAL",
-            document_status=row.document_status or "ACTIVE",
+            access_level=row.collection_type,
+            document_status="ACTIVE",
         )
         row.ingest_status = "COMPLETED"
-        row.updated_at = datetime.utcnow()
         db.session.commit()
         logger.info(
             "적재 완료: DOCUMENT_ID=%s, chunks=%s, assets=%s, new_document=%s",
@@ -212,18 +197,16 @@ def process_one(pdf_path: Path, store: KnowledgeStore | None, args) -> str:
         if args.dry_run:
             raise
         db.session.rollback()
-        failed_row = db.session.get(DocumentMetadata, document_id)
+        failed_row = db.session.get(DocumentMetadata, document_id) if document_id else None
         if failed_row is not None:
             failed_row.ingest_status = "FAILED"
-            failed_row.updated_at = datetime.utcnow()
             db.session.commit()
         raise
 
 
-# CLI 명령행 인자(--dry-run, --ocr, --force 등)를 파싱하고 대상 PDF들을 순회하며 일괄 적재 및 에러 롤백을 총괄하는 진입점 함수.
 def main() -> int:
-    parser = argparse.ArgumentParser(description="PDF를 BGE-M3 semantic chunking으로 ChromaDB에 증분 적재")
-    parser.add_argument("--pdf-dir", default=str(PROJECT_ROOT / "data" / "raw_pdfs"))
+    parser = argparse.ArgumentParser(description="PDF를 BGE-M3 semantic chunking으로 ChromaDB 및 Oracle에 적재")
+    parser.add_argument("--pdf-dir", default=str(PROJECT_ROOT / "data" / "internal_pdfs"))
     parser.add_argument("--dry-run", action="store_true", help="Oracle/ChromaDB에 저장하지 않고 추출·청킹만 검사")
     parser.add_argument("--force", action="store_true", help="이미 적재된 PDF도 다시 임베딩")
     parser.add_argument("--force-reparse", action="store_true", help="PDF 파싱/청킹 캐시도 무시하고 다시 생성")
@@ -262,7 +245,7 @@ def main() -> int:
 
         logger.info("처리 결과: %s", summary)
         if store is not None:
-            logger.info("현재 RAG_V2 청크 수: %s", store.count(current_index_only=True))
+            logger.info("현재 RAG 청크 수: %s", store.count(current_index_only=True))
 
     return 1 if summary["FAILED"] else 0
 
