@@ -1,153 +1,297 @@
-"""
-run_test.py
-PostgreSQL B2B 협력사 DB 연동 및 분산 트랜잭션 전용 검증 스크립트
-"""
-import os
-import sys
 from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
+from docx import Document
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.oxml import OxmlElement, parse_xml
+from docx.oxml.ns import nsdecls, qn
+from docx.shared import Mm, Pt, RGBColor
 
 
-CURRENT_FILE = Path(__file__).resolve()
-PLATFORM_ROOT = CURRENT_FILE.parents[2]
+def set_cell_bg(cell, hex_color: str):
+  shading = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{hex_color}"/>')
+  cell._tc.get_or_add_tcPr().append(shading)
 
-if str(PLATFORM_ROOT) not in sys.path:
-    sys.path.insert(0, str(PLATFORM_ROOT))
 
-from supervisor import ship_agent_app
-from sqlalchemy import create_engine, text
-from config import Config
+def set_cell_margins(cell, top=38, bottom=38, left=90, right=90):
+  tcPr = cell._tc.get_or_add_tcPr()
+  tcMar = OxmlElement("w:tcMar")
+  for m, val in [
+      ("top", top),
+      ("bottom", bottom),
+      ("left", left),
+      ("right", right),
+  ]:
+    node = OxmlElement(f"w:{m}")
+    node.set(qn("w:w"), str(val))
+    node.set(qn("w:type"), "dxa")
+    tcMar.append(node)
+  tcPr.append(tcMar)
 
-def execute_b2b_test(case_no: int, title: str, state_input: dict, thread_id: str):
-    print("\n" + "=" * 75)
-    print(f"▶ [Test Case {case_no}] {title}")
-    print(f"  • 사용자 질의: \"{state_input.get('user_query')}\"")
-    print(f"  • 권한 컨텍스트: ERP={state_input.get('can_access_erp')}, RAG={state_input.get('can_access_internal_rag')}, 야드={state_input.get('branch_code')}")
-    print("=" * 75)
 
-    config = {"configurable": {"thread_id": thread_id}}
-    
-    try:
-        result = ship_agent_app.invoke(state_input, config=config)
-        
-        print("\n[🎯 실행 상태 결과]")
-        print(f" • Task Type        : {result.get('task_type')}")
-        print(f" • 외주 전환 필요   : {result.get('is_outsourcing_required')}")
-        
-        partner_plan = result.get("partner_erp_plan") or {}
-        selected = partner_plan.get("selected_partner") or {}
-        if selected:
-            print(f" • 선정된 협력사    : {selected.get('partner_name')} ({selected.get('partner_id')})")
-            print(f" • 조회 출처        : {partner_plan.get('source')}")
-        
-        print("\n[💬 최종 에이전트 답변]:")
-        print(result.get("final_answer"))
-        return result
-    except Exception as e:
-        print(f"\n❌ [실행 중 예외 발생]: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+def set_table_borders(table):
+  tblPr = table._tbl.tblPr
+  borders = parse_xml(f"""
+        <w:tblBorders {nsdecls("w")}>
+            <w:top w:val="single" w:sz="6" w:space="0" w:color="333333"/>
+            <w:bottom w:val="single" w:sz="6" w:space="0" w:color="333333"/>
+            <w:left w:val="single" w:sz="6" w:space="0" w:color="333333"/>
+            <w:right w:val="single" w:sz="6" w:space="0" w:color="333333"/>
+            <w:insideH w:val="single" w:sz="4" w:space="0" w:color="333333"/>
+            <w:insideV w:val="single" w:sz="4" w:space="0" w:color="333333"/>
+        </w:tblBorders>
+    """)
+  tblPr.append(borders)
 
-def check_postgres_sales_orders():
-    """PostgreSQL b2b_sales_orders 테이블에 실제 적재된 주문 레코드 물리 검증"""
-    pg_uri = Config.SQLALCHEMY_BINDS.get("partner_pg")
-    if not pg_uri:
-        print("⚠️ PARTNER_PG_DATABASE_URL이 설정되지 않아 PostgreSQL 테이블 조회를 건너뜁니다.")
-        return
 
-    print("\n" + "=" * 75)
-    print("🔍 [PostgreSQL b2b_sales_orders 테이블 실시간 적재 데이터 검증]")
-    try:
-        engine = create_engine(pg_uri, pool_pre_ping=True)
-        with engine.connect() as conn:
-            rows = conn.execute(
-                text("""
-                    SELECT b2b_order_no, client_company, hq_wo_number, partner_id,
-                           order_type, ordered_ref_code, order_qty, allocated_lot_or_id,
-                           delivery_yard_zone, order_status, 
-                           TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at_str
-                    FROM b2b_sales_orders
-                    ORDER BY created_at DESC
-                    LIMIT 3
-                """)
-            ).mappings().all()
+def style_run(run, size=8.0, bold=False, color=(17, 17, 17)):
+  run.font.name = "맑은 고딕"
+  run._element.rPr.rFonts.set(qn("w:eastAsia"), "맑은 고딕")
+  run.font.size = Pt(size)
+  run.bold = bold
+  run.font.color.rgb = RGBColor(*color)
 
-            if not rows:
-                print("   ⚠️ (현재 등록된 B2B 수주 내역이 없습니다)")
-            else:
-                for idx, r in enumerate(rows, 1):
-                    print(f"   [{idx}] 주문번호: {r['b2b_order_no']} | 상태: {r['order_status']}")
-                    print(f"       발주처: {r['client_company']} -> 협력사: {r['partner_id']}")
-                    print(f"       오더구분: {r['order_type']} | 품목코드: {r['ordered_ref_code']} | 수량: {r['order_qty']}")
-                    print(f"       배정Lot/ID: {r['allocated_lot_or_id']} | 입고구역: {r['delivery_yard_zone']}")
-                    print(f"       등록일시: {r['created_at_str']}")
-    except Exception as e:
-        print(f"   ⚠️ PostgreSQL 조회 실패: {e}")
-    print("=" * 75)
+
+def fill_cell(cell, text, is_header=False, bold=False):
+  cell.text = ""
+  cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+  set_cell_margins(cell)
+  if is_header:
+    set_cell_bg(cell, "E8EEF5")
+  p = cell.paragraphs[0]
+  p.paragraph_format.space_before = Pt(0)
+  p.paragraph_format.space_after = Pt(0)
+  run = p.add_run(text)
+  style_run(run, size=8.5, bold=(is_header or bold))
+
+
+def add_section_banner(table, title_text: str):
+  row = table.add_row()
+  merged = row.cells[0].merge(row.cells[3])
+  merged.text = ""
+  merged.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+  set_cell_bg(merged, "1F4E79")
+  set_cell_margins(merged, top=70, bottom=70, left=110, right=110)
+  p = merged.paragraphs[0]
+  p.paragraph_format.space_before = Pt(0)
+  p.paragraph_format.space_after = Pt(0)
+  run = p.add_run(title_text)
+  style_run(run, size=9.5, bold=True, color=(255, 255, 255))
+
+
+def add_kv_row(table, k1, v1, k2, v2, bold_v1=False, bold_v2=False):
+  row = table.add_row()
+  widths = [Mm(34), Mm(59), Mm(34), Mm(59)]
+  for idx, w in enumerate(widths):
+    row.cells[idx].width = w
+  fill_cell(row.cells[0], k1, is_header=True)
+  fill_cell(row.cells[1], v1, bold=bold_v1)
+  fill_cell(row.cells[2], k2, is_header=True)
+  fill_cell(row.cells[3], v2, bold=bold_v2)
+
+
+def add_span3_row(table, k1, v1):
+  row = table.add_row()
+  row.cells[0].width = Mm(34)
+  merged = row.cells[1].merge(row.cells[3])
+  merged.width = Mm(152)
+  fill_cell(row.cells[0], k1, is_header=True)
+  fill_cell(merged, v1)
+
+
+def build_template():
+  out_path = Path("./generated_docs/templates/work_order_template.docx")
+  out_path.parent.mkdir(parents=True, exist_ok=True)
+
+  doc = Document()
+  sec = doc.sections[0]
+  sec.page_width = Mm(210)
+  sec.page_height = Mm(297)
+  sec.top_margin = Mm(9)
+  sec.bottom_margin = Mm(9)
+  sec.left_margin = Mm(11)
+  sec.right_margin = Mm(11)
+
+  title_p = doc.add_paragraph()
+  title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+  title_p.paragraph_format.space_after = Pt(8)
+  t_run = title_p.add_run(
+      "선 박 블 록 용 접 작 업 지 시 서 (WELDING WORK ORDER)"
+  )
+  style_run(t_run, size=14.5, bold=True)
+
+  # 상단 결재/문서 메타 테이블
+  meta_tbl = doc.add_table(rows=0, cols=4)
+  meta_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+  meta_tbl.autofit = False
+  set_table_borders(meta_tbl)
+
+  add_kv_row(
+      meta_tbl,
+      "문서번호",
+      "{{ work_order_number }}",
+      "개정 / 상태",
+      "{{ revision_no }} / {{ approval_status }}",
+      True,
+      True,
+  )
+  add_kv_row(
+      meta_tbl,
+      "발행일자",
+      "{{ created_date }}",
+      "결재 (작성/검토/승인)",
+      (
+          "작성: AI Agent | 검토: {{ reviewed_by }} | 승인: {{ approved_by"
+          " }}"
+      ),
+  )
+  add_kv_row(
+      meta_tbl,
+      "수행구분",
+      "{{ execution_type }}",
+      "협력사명",
+      "{{ partner_name }}",
+      True,
+      False,
+  )
+
+  sp = doc.add_paragraph()
+  sp.paragraph_format.space_before = Pt(2)
+  sp.paragraph_format.space_after = Pt(2)
+
+  # 본문 5단 섹션 테이블
+  main_tbl = doc.add_table(rows=0, cols=4)
+  main_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+  main_tbl.autofit = False
+  set_table_borders(main_tbl)
+
+  # 1. 대상 블록 및 공정 위치
+  add_section_banner(main_tbl, "■ 1. 대상 블록 및 공정 위치 정보")
+  add_kv_row(
+      main_tbl,
+      "대상 호선 (SHIP_CODE)",
+      "{{ ship_code }}",
+      "대상 블록 (BLOCK_CODE)",
+      "{{ block_id }}",
+      False,
+      True,
+  )
+  add_kv_row(
+      main_tbl,
+      "용접 부재 / 블록명",
+      "{{ block_name }}",
+      "블록 중량 (WEIGHT_TON)",
+      "{{ weight_ton }} 톤",
+  )
+  add_kv_row(
+      main_tbl,
+      "작업 야드 (BRANCH)",
+      "{{ branch_name }}",
+      "작업 구역 (WORK_ZONE)",
+      "{{ work_zone }}",
+  )
+
+  # 2. 투입 인력·자재·장비
+  add_section_banner(main_tbl, "■ 2. 투입 인력 · 자재 · 장비 배정 현황")
+  add_kv_row(
+      main_tbl,
+      "담당 작업자 / 사번",
+      "{{ worker_name }} ({{ worker_id }})",
+      "선급 자격 / 인증공정",
+      "{{ cert_code }} ({{ weld_process }})",
+      True,
+      False,
+  )
+  add_kv_row(
+      main_tbl,
+      "배정 강재 Lot",
+      "{{ allocated_lot_no }}",
+      "용접 와이어 / 선점량",
+      "{{ wire_spec_text }} / {{ reserved_wire_kg }} kg",
+  )
+  add_kv_row(
+      main_tbl,
+      "배차 장비 / 차량",
+      "{{ assigned_vehicle_code }}",
+      "외주 발주(PO) 번호",
+      "{{ b2b_po_number }}",
+  )
+
+  # 3. WPS 용접 시공 조건 및 현장 비전 안전 인터록 (좌표/길이 제거, WPS/품목명 반영)
+  add_section_banner(
+      main_tbl, "■ 3. WPS 용접 시공 조건 및 현장 비전 안전 인터록"
+  )
+  add_kv_row(
+      main_tbl,
+      "적용 절차서 (WPS NO)",
+      "{{ wps_code }}",
+      "모재 강종 / 두께",
+      "{{ material }} / {{ thickness }} mm",
+      True,
+      True,
+  )
+  add_kv_row(
+      main_tbl,
+      "용접 공정 / 이음형상",
+      "{{ process }} / {{ joint_type }} ({{ weld_position }})",
+      "용가재 규격 / 품목",
+      "{{ wire_spec_text }}",
+      True,
+      False,
+  )
+  add_kv_row(
+      main_tbl,
+      "표준 전류 / 전압",
+      "{{ current_amp }} A / {{ voltage_v }} V",
+      "이송 속도 / 보호가스",
+      "{{ travel_speed }} cm/min / {{ shielding_gas }}",
+  )
+  add_kv_row(
+      main_tbl,
+      "예열 및 층간온도",
+      "{{ preheat_temp }}",
+      "선급 품질검사 (NDT)",
+      "{{ ndt_requirement }}",
+  )
+  add_span3_row(main_tbl, "용접재료 건조·관리", "{{ consumable_spec }}")
+  add_kv_row(
+      main_tbl,
+      "YOLOv11 비전 탐지 상태",
+      "{{ vision_status_text }}",
+      "작업 구역 안전 클리어런스",
+      "{{ safety_clearance_text }}",
+      False,
+      True,
+  )
+
+  # 4. 실시간 현장 기상 환경 및 필수 안전 준수사항
+  add_section_banner(
+      main_tbl,
+      "■ 4. 실시간 현장 기상 환경 및 필수 안전 준수사항 (Safety Interlock)",
+  )
+  add_span3_row(
+      main_tbl,
+      "실시간 기상 스냅샷",
+      (
+          "관측 야드: {{ location }} | 기온: {{ temp }}℃ | 풍속: {{ wind }}m/s"
+          " | 강수량: {{ rain }}mm/h | 안전 판정: {{ safety_status }}"
+      ),
+  )
+  add_span3_row(main_tbl, "필수 안전 체크리스트", "{{ safety_checklist }}")
+
+  # 5. 현장 작업 완료 확인 및 근거 규격
+  add_section_banner(main_tbl, "■ 5. 현장 작업 완료 확인 및 근거 규격")
+  add_kv_row(
+      main_tbl,
+      "작업자 확인",
+      "{{ worker_name }} (인)",
+      "현장 반장 확인",
+      "____________________ (인)",
+  )
+  add_span3_row(main_tbl, "참조 규격 (RAG 근거)", "{{ source_refs }}")
+
+  doc.save(str(out_path))
+  print(f"✅ 표준 작업지시서 템플릿 갱신 완료: {out_path.resolve()}")
+
 
 if __name__ == "__main__":
-    print("===========================================================================")
-    print("🚀 [Multi-Agent System] 외부 협력사 PostgreSQL B2B 연동 전용 검증 시작")
-    print("===========================================================================")
-
-    # -------------------------------------------------------------------------
-    # Test Case 1: 대한특수철강 B2B 자재 카탈로그 View 실시간 조회 (v_b2b_daehan_materials)
-    # -------------------------------------------------------------------------
-    execute_b2b_test(
-        case_no=1,
-        title="대한특수철강 B2B 공개 자재 카탈로그 실시간 조회 (v_b2b_daehan_materials)",
-        state_input={
-            "user_query": "사외 협력사(대한특수철강)에서 긴급 납품받을 수 있는 FCAW 용접 와이어 재고랑 단가 알려줘",
-            "user_id": "1",
-            "user_role": "MANAGER",
-            "can_access_erp": "Y",
-            "can_access_internal_rag": "Y",
-            "branch_code": "BR-ULSAN-01",
-        },
-        thread_id="test_b2b_mat_view_01"
-    )
-
-    # -------------------------------------------------------------------------
-    # Test Case 2: 동해블록용접 B2B 가용 외주 인력 View 실시간 조회 (v_b2b_donghae_workers)
-    # -------------------------------------------------------------------------
-    execute_b2b_test(
-        case_no=2,
-        title="동해블록용접 B2B 가용 외주 용접사 명단 실시간 조회 (v_b2b_donghae_workers)",
-        state_input={
-            "user_query": "협력업체(동해블록용접)에 투입 가능한 외주 용접 작업자 명단이랑 일당 단가 보여줘",
-            "user_id": "1",
-            "user_role": "MANAGER",
-            "can_access_erp": "Y",
-            "can_access_internal_rag": "Y",
-            "branch_code": "BR-ULSAN-01",
-        },
-        thread_id="test_b2b_wkr_view_02"
-    )
-
-    # -------------------------------------------------------------------------
-    # Test Case 3: 외주 발주 및 PostgreSQL 수주 창구(b2b_sales_orders) 동시 커밋
-    # -------------------------------------------------------------------------
-    execute_b2b_test(
-        case_no=3,
-        title="본사 자재 부족 시 B2B 외주 연계 및 수주 창구(b2b_sales_orders) 자동 발주 커밋",
-        state_input={
-            "user_query": "B-104 블록 김철수 반장 투입해서 작업지시서 써줘. 본사 와이어 재고가 없으니 외주 협력사로 긴급 발주 연계해줘",
-            "user_id": "1",
-            "user_role": "MANAGER",
-            "can_access_erp": "Y",
-            "can_access_internal_rag": "Y",
-            "default_workspace": "ZONE-A-BAY1",
-            "branch_code": "BR-ULSAN-01",
-            "is_action_requested": True,  # 👈 관리자 승인 상태(원장 커밋 실행)
-        },
-        thread_id="test_b2b_commit_03"
-    )
-
-    # 최종 PostgreSQL DB 적재 내역 물리 검증
-    check_postgres_sales_orders()
-
-    print("\n===========================================================================")
-    print("✅ PostgreSQL B2B 연동 단독 검증 완료")
-    print("===========================================================================")
+  build_template()

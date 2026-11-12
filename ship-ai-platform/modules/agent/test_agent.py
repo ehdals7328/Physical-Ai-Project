@@ -1,6 +1,6 @@
 """
 스마트 선박 자율 제조 멀티에이전트 단독 통합 테스트 (test_agent.py)
-Human-in-the-Loop(HITL) 관리자 승인 게이트 연동 완성본 (하드코딩 0% 정석 에이전트 아키텍처)
+Human-in-the-Loop(HITL) 관리자 승인 게이트 및 표준 작업지시서 PDF/DOCX 다운로드 연동 완성본
 """
 import os
 import sys
@@ -19,7 +19,7 @@ load_dotenv(PLATFORM_ROOT / ".env")
 from modules.agent.supervisor import ship_agent_app
 from modules.agent.tools.erp_tools import commit_erp_work_order, list_erp_workers
 from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
-from flask import Flask, jsonify, render_template_string, request
+from flask import Flask, abort, jsonify, render_template_string, request, send_from_directory
 from langchain_core.messages import HumanMessage
 
 app = Flask(__name__)
@@ -59,7 +59,7 @@ HTML_PAGE = """
     <div class="card mb-3 p-2 bg-light">
         <div class="d-flex gap-2 flex-wrap align-items-center">
             <span class="fw-bold me-2">⚡ 검증 시나리오 버튼:</span>
-            <button class="btn btn-outline-primary btn-sm" onclick="setQuery('거제 야드에서 B-305 블록 김철수 반장 투입해서 외주 협력사 연계로 작업지시서 발행해줘')">
+            <button class="btn btn-outline-primary btn-sm" onclick="setQuery('거제 야드에서 B-305 블록 정해인 반장 투입해서 외주 협력사 연계로 작업지시서 발행해줘')">
                 1. B-305 B2B 외주 & 지시서 결재 대기
             </button>
             <button class="btn btn-outline-warning btn-sm text-dark" onclick="setQuery('사내 트랜스포터 없으니까 바로 외주 배차 1대 확정해줘')">
@@ -132,6 +132,32 @@ HTML_PAGE = """
         document.getElementById("stateJson").innerText = "// 세션 초기화 완료";
     }
 
+function renderDownloadButtons(files) {
+        if (!files) return "";
+        let html = "";
+
+        // 1. PDF 파일이 생성된 경우: 웹 화면 내장 PDF 뷰어(우측 상단 다운로드/인쇄 버튼 자동 포함) 표시
+        if (files.download_pdf_url) {
+            html += `
+                <div class="mt-3 border rounded overflow-hidden shadow-sm bg-white">
+                    <div class="bg-dark text-white px-3 py-2 d-flex justify-content-between align-items-center" style="font-size: 0.85rem;">
+                        <span>📄 공식 작업지시서 미리보기 (뷰어 우측 상단에서 저장·인쇄 가능)</span>
+                        ${files.download_docx_url ? `<a href="${files.download_docx_url}" class="btn btn-sm btn-outline-light py-0 px-2" download>📝 Word(.docx) 원본</a>` : ""}
+                    </div>
+                    <iframe src="${files.download_pdf_url}" width="100%" height="580px" style="border: none; display: block;"></iframe>
+                </div>
+            `;
+        } else if (files.download_docx_url) {
+            // PDF 미생성 시 Word(.docx) 원본 다운로드 버튼만 표출
+            html += `
+                <div class="mt-2 d-flex gap-2 flex-wrap">
+                    <a href="${files.download_docx_url}" class="btn btn-sm btn-outline-primary" download>📝 Word(.docx) 원본 다운로드</a>
+                </div>
+            `;
+        }
+        return html;
+    }
+
     async function sendMessage(e) {
         e.preventDefault();
         const input = document.getElementById("userInput");
@@ -157,10 +183,13 @@ HTML_PAGE = """
             });
 
             const data = await resp.json();
-            
+
             let aiText = data.final_answer || "응답 내용이 없습니다.";
             let formattedText = aiText.replace(/\\n/g, "<br>").replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>");
-            chatBox.innerHTML += `<div class="msg-ai">${formattedText}</div>`;
+            let fileBtnsHtml = (data.generated_document && data.generated_document.files)
+                ? renderDownloadButtons(data.generated_document.files)
+                : "";
+            chatBox.innerHTML += `<div class="msg-ai">${formattedText}${fileBtnsHtml}</div>`;
 
             // DRAFT 또는 WAITING_APPROVAL 상태일 때 HITL 결재 게이트 활성화
             if (data.generated_document && (data.generated_document.status === "DRAFT" || data.generated_document.status === "WAITING_APPROVAL")) {
@@ -192,7 +221,7 @@ HTML_PAGE = """
     async function submitApproval(action) {
         if (!pendingDoc) return;
         const chatBox = document.getElementById("chatBox");
-        
+
         const gateBox = document.getElementById("approval-gate-box");
         if (gateBox) gateBox.remove();
 
@@ -211,7 +240,8 @@ HTML_PAGE = """
             });
 
             const resData = await resp.json();
-            chatBox.innerHTML += `<div class="msg-ai ${action === 'APPROVE' ? 'text-success' : 'text-danger'} fw-bold">${resData.message}</div>`;
+            let approvedBtnsHtml = resData.files ? renderDownloadButtons(resData.files) : "";
+            chatBox.innerHTML += `<div class="msg-ai ${action === 'APPROVE' ? 'text-success' : 'text-danger'} fw-bold">${resData.message}${approvedBtnsHtml}</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             if (resData.erp_commit_result) {
@@ -237,6 +267,18 @@ def index():
     return render_template_string(HTML_PAGE)
 
 
+@app.route("/api/files/download/<date_str>/<filename>")
+def download_work_order_file(date_str, filename):
+  target_dir = PLATFORM_ROOT / "generated_docs" / "outputs" / date_str
+  target_file = target_dir / filename
+  if not target_file.exists():
+    abort(404)
+  is_pdf = filename.lower().endswith(".pdf")
+  return send_from_directory(
+      str(target_dir), filename, as_attachment=not is_pdf
+  )
+
+
 @app.route("/api/chat", methods=["POST"])
 def chat_api():
     payload = request.get_json() or {}
@@ -247,10 +289,12 @@ def chat_api():
     initial_state = {
         "messages": [HumanMessage(content=user_query)],
         "user_query": user_query,
-        # 웹 테스트 시 HITL 결재 버튼을 거치도록 기본값은 False로 진입
         "hitl_approved": False,
+        "weather_data": None,          # 이전 턴 기상 데이터 잔류 방지
+        "generated_document": None,    # 이전 턴 문서 데이터 잔류 방지
+        "partner_erp_plan": None,      # 이전 턴 B2B 데이터 잔류 방지
+        "team2_plan": None,            # Team 2 스케줄러 큐 초기화
     }
-
     result = ship_agent_app.invoke(initial_state, config=config)
 
     generated_doc = result.get("generated_document")
@@ -258,32 +302,45 @@ def chat_api():
     is_action = result.get("is_action_requested", False)
 
     # 단독 외주 배차/발주 요청(scm_partner_qa) 시 B2B 조회 결과 기반으로 HITL 결재 문서 동적 생성
+
     if not generated_doc and is_action and task_type in ("scm_partner_qa", "erp_resource_qa"):
         partner_plan = result.get("partner_erp_plan") or {}
         selected = partner_plan.get("selected_partner") or {}
         params = result.get("extracted_params") or {}
 
-        p_id = selected.get("partner_id")
-        p_name = selected.get("partner_name") or p_id
-        b_type = selected.get("business_type") or result.get("outsourcing_domain") or "OUTSOURCED_B2B"
-        allocated_lot = (
-            selected.get("partner_lot_no")
-            or selected.get("assigned_vehicle_code")
-            or selected.get("assigned_worker_id")
-        )
+        # 외주 협력사 차량의 현재 운영 상태 확인
+        partner_veh_status = str(
+            selected.get("operation_status") or "STANDBY"
+        ).upper()
 
-        generated_doc = {
-            "work_order_number": f"PO-DRAFT-{p_id}",
-            "title": f"[외주 실행 결재안] {p_name} ({b_type})",
-            "status": "DRAFT",
-            "approval_status": "DRAFT",
-            "execution_type": "OUTSOURCED_B2B",
-            "allocated_lot_no": allocated_lot,
-            "assigned_vehicle_code": selected.get("assigned_vehicle_code"),
-            "partner_erp_plan": partner_plan,
-            "parameters": params,
-            "content": result.get("final_answer"),
-        }
+        # 이미 배차되어 운행 중인 차량이면 중복 결재안 생성 방지
+        if partner_veh_status != "IN_USE":
+            p_id = selected.get("partner_id") or "VEND-DAEHAN-MAT"
+            p_name = selected.get("partner_name") or p_id
+            b_type = (
+                selected.get("business_type")
+                or result.get("outsourcing_domain")
+                or "OUTSOURCED_B2B"
+            )
+
+            allocated_lot = (
+                selected.get("partner_lot_no")
+                or selected.get("assigned_vehicle_code")
+                or selected.get("assigned_worker_id")
+            )
+
+            generated_doc = {
+                "work_order_number": f"PO-DRAFT-{p_id}",
+                "title": f"[외주 실행 결재안] {p_name} ({b_type})",
+                "status": "DRAFT",
+                "approval_status": "DRAFT",
+                "execution_type": "OUTSOURCED_B2B",
+                "allocated_lot_no": allocated_lot,
+                "assigned_vehicle_code": selected.get("assigned_vehicle_code"),
+                "partner_erp_plan": partner_plan,
+                "parameters": params,
+                "content": result.get("final_answer"),
+            }
 
     preview_commit = None
     if generated_doc and generated_doc.get("status") in ("DRAFT", "WAITING_APPROVAL"):
@@ -294,6 +351,7 @@ def chat_api():
             "note": "관리자 결재 대기 중 (DB 미반영)",
         }
 
+
     state_summary = {
         "0. Thread_ID": thread_id,
         "1. Task_Type": task_type,
@@ -303,7 +361,11 @@ def chat_api():
         "5. HQ_ERP_Status": result.get("erp_resource_status"),
         "6. Outsourcing_Required": result.get("is_outsourcing_required"),
         "7. Partner_ERP_B2B": result.get("partner_erp_plan"),
-        "8. Weather_Status": result.get("weather_data", {}).get("safety_evaluation") if result.get("weather_data") else None,
+        "8. Weather_Status": (
+            result.get("weather_data", {}).get("safety_evaluation")
+            if result.get("weather_data") and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
+            else None
+        ),
         "9. ERP_Commit_Transaction": preview_commit or result.get("erp_commit_result"),
     }
 
@@ -363,29 +425,48 @@ def approve_api():
         "delivery_yard_zone": params.get("work_zone"),
     })
 
-    try:
-        final_doc_data = dict(doc)
-        final_doc_data["work_order_number"] = commit_res.get("work_order_number")
-        final_doc_data["erp_commit"] = commit_res
-        final_doc_data["status"] = "APPROVED"
-        final_doc_data["approval_status"] = "APPROVED"
+    file_links = {}
+    # doc 안에 실제 작업지시서 데이터(welding_params_json 등)가 존재하는 '작업지시서 발행(doc_generation)' 건일 때만 작업지시서 PDF/DOCX 생성
+    is_work_order_doc = bool(doc and (doc.get("welding_params_json") or doc.get("wps_code")))
 
-        export_work_order_file.invoke({
-            "document_data": final_doc_data,
-            "file_prefix": "approved_order",
-        })
+    if is_work_order_doc:
+        try:
+            final_doc_data = dict(doc)
+            final_doc_data["work_order_number"] = commit_res.get("work_order_number")
+            final_doc_data["erp_commit"] = commit_res
+            final_doc_data["status"] = "APPROVED"
+            final_doc_data["approval_status"] = "APPROVED"
+
+            export_raw = export_work_order_file.invoke({
+                "document_data": final_doc_data,
+                "file_prefix": f"weld_order_{block_id}",
+            })
+            file_links = json.loads(export_raw) if isinstance(export_raw, str) else {}
+        except Exception as e:
+            print(f"[HITL Work Order Export Notice]: {e}")
+
+    try:
         log_inspection_history.invoke({
             "session_id": commit_res.get("work_order_number", "APPROVED_SESSION"),
-            "query": f"HITL 외주/지시서 승인 완료: {block_id}",
+            "query": f"HITL 승인 완료 ({'작업지시서' if is_work_order_doc else '외주배차/발주'}): {block_id}",
             "status": "APPROVED",
         })
     except Exception as e:
         print(f"[HITL Commit Log Notice]: {e}")
 
+    # 응답 메시지도 작업지시서인지 외주 배차/발주인지 구분하여 반환
+    if is_work_order_doc:
+        msg = f"✅ [관리자 최종 승인 완료] 공식 용접 작업지시서가 확정 발행되었습니다. (문서번호: {commit_res.get('work_order_number')})"
+    else:
+        msg = (
+            f"✅ [외주 배차/발주 최종 승인 완료] 협력사(`{partner_id}`) 앞으로 외주 PO(`{commit_res.get('b2b_po_ack') or commit_res.get('work_order_number')}`)가 공식 확정되었습니다."
+        )
+
     return jsonify({
         "status": "APPROVED",
-        "message": f"✅ [관리자 최종 승인 완료] 외주 발주 및 작업지시가 공식 확정되었습니다. (식별번호: {commit_res.get('work_order_number')})",
+        "message": msg,
         "erp_commit_result": commit_res,
+        "files": file_links,
     })
 
 
