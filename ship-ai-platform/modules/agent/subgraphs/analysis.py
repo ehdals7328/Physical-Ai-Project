@@ -33,10 +33,10 @@ class UniversalQueryAnalysis(BaseModel):
     ] = Field(
         description=(
             "질의의 핵심 목적 분류:\n"
-            "- 'scm_partner_qa': 외부 협력사/하청업체의 가용 자재·단가·외주인력·일당·중장비 배차 조회 및 발주 문의\n"
+            "- 'scm_partner_qa': 외부 협력사/하청업체의 가용 자재·단가·외주인력·자격보유자·일당·중장비 배차 조회 및 발주 문의\n"
             "- 'erp_resource_qa': 본사(HQ) 내부 창고의 자재 재고 또는 본사 소유 장비 단순 조회\n"
             "- 'hr_worker_qa': 본사 내부 인사 원장(ERP_WORKER_CERT) 전체 명단 조회\n"
-            "- 'hr_safety_qa': 특정 작업자 1인의 선급 자격증 유효성 단건 검증\n"
+            "- 'hr_safety_qa': 특정 사내 작업자 1인의 선급 자격증 유효성 단건 검증\n"
             "- 'knowledge_qa': WPS 기술 규격, 안전 지침, 기상 등 도메인 지식 문의\n"
             "- 'doc_generation': 공식 작업지시서 또는 작업계획서 작성/발행 요청\n"
             "- 'chat': 일상 인사 및 일반 대화"
@@ -51,18 +51,28 @@ class UniversalQueryAnalysis(BaseModel):
         default="AUTO",
         description="외부 협력사/외주/하청 자원을 조회하거나 활용하려는 의도면 'OUTSOURCED_B2B', 본사 자체 처리를 지정하면 'IN_HOUSE', 별도 구분이 없으면 'AUTO'",
     )
-    outsourcing_domain: Optional[Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER"]] = Field(
-        default=None,
+    outsourcing_domain: Literal[
+    "OUTSOURCED_WORKER",
+    "WELDING_MATERIAL",
+    "HEAVY_TRANSPORT",
+    "NOT_APPLICABLE",
+    ] = Field(
+        default="NOT_APPLICABLE",
         description=(
-            "외부 협력사 조회 또는 외주 연계 시 대상 분야:\n"
-            "- 'WELDING_MATERIAL': 자재(와이어, 강판, 가스 등) 재고/단가/납품\n"
-            "- 'OUTSOURCED_WORKER': 외주 용접사/작업자 인력 명단/일당/파견\n"
-            "- 'HEAVY_TRANSPORT': 중량물 운송/트랜스포터/배차"
-        ),
+            "외주 연계 또는 협력사 조회(scm_partner_qa) 시 대상 자원 유형 (scm_partner_qa일 때는 반드시 앞의 3개 중 하나를 선택):\n"
+            "- 'OUTSOURCED_WORKER': 외주 용접사, 작업자, 인력 명단, 용접 공정 자격 보유 여부, 인건비/일당 문의\n"
+            "- 'WELDING_MATERIAL': 와이어, 강판, 가스 등 물리적 자재 재고·단가·납품 문의\n"
+            "- 'HEAVY_TRANSPORT': 중량물 운송, 트랜스포터, 크레인 배차 문의\n"
+            "- 'NOT_APPLICABLE': 외주나 협력사 자원과 무관한 일반 대화·사내 단순 질의"
+        )
     )
     context_action: Literal["KEEP_MERGE", "RESET_NEW"] = Field(
         default="KEEP_MERGE",
-        description="새로운 주제의 요청이면 'RESET_NEW', 직전 대화의 제원을 이어받으면 'KEEP_MERGE'",
+        description=(
+            "대화 맥락 처리 방식:\n"
+            "- 'RESET_NEW': 작업지시서 발행(doc_generation)이 아닌 별도의 단순 자원·협력사·규격 조회(scm_partner_qa, erp_resource_qa, hr_worker_qa, knowledge_qa)이거나 새로운 대상 질문일 때\n"
+            "- 'KEEP_MERGE': 직전 작업지시서 작성(doc_generation)의 누락 제원을 보충하거나 동일 작업 조건을 이어갈 때"
+        ),
     )
     target_categories: List[DocCategory] = Field(
         default_factory=list,
@@ -80,7 +90,7 @@ class UniversalQueryAnalysis(BaseModel):
     weld_position: Optional[str] = Field(None, description="용접 자세 코드")
     worker_name: Optional[str] = Field(
         None,
-        description="투입 인력의 순수 성명 (직책/호칭 제외)",
+        description="질의에 명시된 특정 인력의 순수 성명 (직책/호칭 제외, 미명시 시 반드시 None)",
     )
     equipment: Optional[str] = Field(None, description="투입 설비 또는 차량명")
     additional_specs: Dict[str, Any] = Field(
@@ -105,8 +115,9 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "제공된 [DB 등록 외부 협력사 메타데이터]와 대화 맥락을 참고하여 사용자의 질의를 구조화하세요.\n\n"
         "[판단 기준]\n"
         "- 질의 대상이 본사(Internal HQ) 자원인지, 외부 협력사(External Partner/B2B) 자원인지 구분하십시오.\n"
-        "- 외부 협력사(또는 등록된 협력사명)의 자재·단가·외주인력·일당·장비 가용성에 대한 질의는 'scm_partner_qa'로 분류하고, "
-        "preferred_execution_mode='OUTSOURCED_B2B' 및 알맞은 outsourcing_domain을 지정하십시오.\n"
+        "- 외부 협력사(또는 등록된 협력사명)의 자재·단가·외주인력·자격보유자·일당·장비 가용성에 대한 질의는 'scm_partner_qa'로 분류하고, "
+        "preferred_execution_mode='OUTSOURCED_B2B' 및 질의 대상 자원에 맞는 outsourcing_domain('OUTSOURCED_WORKER', 'WELDING_MATERIAL', 'HEAVY_TRANSPORT' 중 택1)을 반드시 지정하십시오.\n"
+        "- 단순 자원/협력사 가용성 질의(scm_partner_qa)일 때는 context_action='RESET_NEW'로 설정하여 직전 작업지시서의 인력/자재 슬롯과 섞이지 않게 하십시오.\n"
         "- 공식 작업지시서/계획서 작성 요청은 외주 연계 여부에 관계없이 'doc_generation'으로 분류하되, "
         "외주 발주 연계가 포함된 경우 preferred_execution_mode='OUTSOURCED_B2B'로 설정하십시오.",
     ),
@@ -208,6 +219,10 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
             merged_params[k] = str(v).strip()
     if res.additional_specs:
         merged_params.update(res.additional_specs)
+
+    # 일반 자원/협력사 가용성 조회 시 이전 턴의 사내 작업자 슬롯 간섭 차단 (상태 전이 원칙)
+    if res.task_type in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa") and not res.worker_name:
+        merged_params.pop("worker_name", None)
 
     if can_access_erp == "N" and res.task_type in ("erp_resource_qa", "hr_worker_qa", "scm_partner_qa"):
         blocked_msg = (

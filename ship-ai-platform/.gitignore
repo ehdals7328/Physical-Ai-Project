@@ -45,4 +45,8 @@ logs/
 .DS_Store
 Thumbs.db
 
-generated_docs
+# 자동 생성되는 작업지시서 출력물 및 감사 로그 제외 (원본 템플릿은 유지)
+generated_docs/*
+!generated_docs/templates/
+!generated_docs/templates/**
+!generated_docs/.gitkeep

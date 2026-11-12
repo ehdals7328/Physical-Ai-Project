@@ -6,13 +6,17 @@ Team 3: 거버넌스 게이트키퍼(Supervisor) 기반 작업지시서(WORK_INS
 
 import json
 from decimal import Decimal
-from typing import Any, Dict, Literal
+from typing import Any, Dict, List, Literal, Optional, Union
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
+from pydantic import BaseModel, Field
 
 from modules.agent.state import ShipAgentState
-from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
+from modules.agent.tools.document_tools import (
+    export_work_order_file,
+    log_inspection_history,
+)
 from modules.agent.tools.erp_tools import (
     calculate_required_wire_kg,
     commit_erp_work_order,
@@ -25,6 +29,7 @@ llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
 
 class DecimalEncoder(json.JSONEncoder):
     """Oracle DB의 Decimal 및 날짜/시간 객체를 JSON 안전 타입으로 자동 변환"""
+
     def default(self, obj):
         if isinstance(obj, Decimal):
             return int(obj) if obj % 1 == 0 else float(obj)
@@ -33,16 +38,55 @@ class DecimalEncoder(json.JSONEncoder):
         return super().default(obj)
 
 
+class WorkOrderGenerationOutput(BaseModel):
+    brief_summary: str = Field(
+        description="채팅창에 표시할 3줄 이내의 간결한 작업지시서 발행 핵심 요약 (세부 제원 나열 생략, 판정 결과 및 주요 주의사항만 요약)"
+    )
+    wps_code: Optional[str] = Field(
+        default=None,
+        description="참조 문서나 작업 제원에 명시된 절차서/표준 코드 ('.pdf' 파일명 입력 금지)"
+    )
+    current_amp: str = Field(
+        description="인출된 RAG 문서 기준 적정 전류 숫자 또는 범위만 기입 (단위 'A' 절대 포함 금지, 예: 200~280)"
+    )
+    voltage_v: str = Field(
+        description="인출된 RAG 문서 기준 적정 전압 숫자 또는 범위만 기입 (단위 'V' 절대 포함 금지, 예: 24~30)"
+    )
+    travel_speed_cm_min: str = Field(
+        description="인출된 RAG 문서 기준 적정 용접 이송 속도 숫자 또는 범위만 기입 (단위 'cm/min' 절대 포함 금지, 예: 25~35)"
+    )
+    shielding_gas: str = Field(
+        description="인출된 RAG 문서 기준 보호가스 종류 및 권장 유량"
+    )
+    preheat_temp_c: str = Field(
+        description="인출된 RAG 문서 및 모재 기준 예열 및 층간온도 관리 기준"
+    )
+    consumable_spec: str = Field(
+        description=(
+            "절대 용접와이어 품목명(예: 플럭스코어드 용접와이어 등)을 적지 마십시오! "
+            "인출된 RAG 문서(와이어 카탈로그 및 선박건조 안전지침)에 명시된 "
+            "용접재료의 현장 보관 온도·습도, 지면/벽 이격 거리, 흡습 및 오염 방지 관리 수칙 문장을 추출해 기입하십시오."
+        )
+    )
+    ndt_requirement: str = Field(
+        description="인출된 RAG 문서(Hull Weld Inspection 등)에 명시된 비파괴검사(VT/RT/UT/MT) 요건"
+    )
+
+
 # ==============================================================================
-# 0. Team 3 거버넌스 게이트키퍼 노드 (Supervisor / Safety Interlock Gatekeeper)
+# 0. Team 3 거버넌스 게이트키퍼 노드 (Supervisor / Safety & Process Interlock)
 # ==============================================================================
 def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type", "knowledge_qa")
 
     if task_type != "doc_generation":
-        print(f"\n👉 [Team 3 Gatekeeper]: domain_qa_writer (사유: 일반 기술/ERP/인사 질의, task_type='{task_type}')\n")
+        print(
+            f"\n👉 [Team 3 Gatekeeper]: domain_qa_writer "
+            f"(사유: 일반 기술/ERP/인사 질의, task_type='{task_type}')\n"
+        )
         return {"next": "domain_qa_writer"}
 
+    params = state.get("extracted_params") or {}
     missing = state.get("missing_params", [])
     weather = state.get("weather_data") or {}
     safety_eval = weather.get("safety_evaluation") or {}
@@ -50,13 +94,30 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
     erp_status = state.get("erp_resource_status") or {}
     vision = state.get("vision_data") or {}
 
-    # 작업자 선급 자격 유효성 검증
+    # 1. 작업자 선급 자격 유효성 및 블록 요구 공정(WPS) 상호 일치 검증
     worker_qual = erp_status.get("worker_qualification") or {}
-    is_worker_valid = erp_status.get("worker_qualified", True) and worker_qual.get("is_valid", False)
+    req_process = params.get("process")
+    worker_process = worker_qual.get("weld_process")
+
+    is_proc_matched = worker_qual.get("is_process_matched", True)
+    if (
+        req_process
+        and worker_process
+        and str(req_process).upper() != "NA"
+        and str(worker_process).upper() != "NA"
+    ):
+        if str(req_process).upper() != str(worker_process).upper():
+            is_proc_matched = False
+
+    is_worker_valid = (
+        erp_status.get("worker_qualified", True)
+        and worker_qual.get("is_valid", False)
+        and is_proc_matched
+    )
     if not worker_qual or not worker_qual.get("worker_id"):
         is_worker_valid = False
 
-    # 비전 결함, 아크 발생(용접 중 Lock), 로봇 비상정지(E-STOP) 인터록 검사
+    # 2. 비전 결함, 아크 발생(용접 중 Lock), 로봇 비상정지(E-STOP) 인터록 검사
     robot_exec = vision.get("robot_execution") or {}
     has_vision_hazard = (
         str(vision.get("inspection_status", "")).upper() == "DEFECT"
@@ -64,7 +125,10 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         or str(robot_exec.get("emergency_stop_yn", "N")).upper() == "Y"
         or any(
             det.get("is_hazard") is True
-            or any(k in str(det.get("class_name", "")).upper() for k in ["OBSTACLE", "DEFECT", "CRACK", "CLAMP_CONFLICT"])
+            or any(
+                k in str(det.get("class_name", "")).upper()
+                for k in ["OBSTACLE", "DEFECT", "CRACK", "CLAMP_CONFLICT"]
+            )
             for det in (vision.get("detections") or [])
         )
     )
@@ -84,8 +148,18 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
     print(f"   1. 작업 유형 (task_type)    : {task_type}")
     print(f"   2. 필수 제원 누락 여부      : {bool(missing)} (누락 목록: {missing})")
     print(f"   3. 기상 상태 및 안전 판정   : 상태='{weather_status}' | 판정='{safety_status}'")
-    print(f"   4. 작업자 선급 자격 유효성  : {is_worker_valid} (작업자: {worker_qual.get('worker_name')}, 상태: {worker_qual.get('status')})")
-    print(f"   5. 비전/로봇 위험 감지 여부 : {has_vision_hazard} (안전거리={vision.get('safety_clearance_yn', 'Y')})")
+    print(
+        f"   4. 작업자 선급 자격 유효성  : {is_worker_valid} "
+        f"(작업자: {worker_qual.get('worker_name')}, 상태: {worker_qual.get('status')})"
+    )
+    print(
+        f"   5. 공정(WPS) 상호 일치 여부 : {is_proc_matched} "
+        f"(블록요구:{req_process} vs 작업자인증:{worker_process})"
+    )
+    print(
+        f"   6. 비전/로봇 위험 감지 여부 : {has_vision_hazard} "
+        f"(안전거리={vision.get('safety_clearance_yn', 'Y')})"
+    )
 
     if is_blocked:
         fail_reasons = []
@@ -93,8 +167,14 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
             fail_reasons.append(f"제원누락({missing})")
         if safety_status == "STOP":
             fail_reasons.append("기상STOP(작업중지)")
-        if not is_worker_valid:
-            fail_reasons.append(f"작업자선급자격결격({worker_qual.get('worker_name', '미배정')})")
+        if not is_proc_matched:
+            fail_reasons.append(
+                f"용접공정불일치(블록요구:{req_process} != 작업자인증:{worker_process})"
+            )
+        elif not is_worker_valid:
+            fail_reasons.append(
+                f"작업자선급자격결격({worker_qual.get('worker_name', '미배정')})"
+            )
         if has_vision_hazard:
             fail_reasons.append("비전결함/용접중Lock/로봇비상정지")
         if weather_status in ("NEED_LOCATION", "NOT_FOUND", "PARSE_ERROR", "ERROR"):
@@ -130,7 +210,10 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "제공된 [사내 규격 문서(RAG)], [본사 SHIP_ERP 자원 현황], [협력사 B2B 조회 결과], [실시간 기상 정보]를 바탕으로 "
         "사용자의 질문에 명확하고 체계적인 마크다운으로 답변하세요.\n\n"
         "[안내 원칙]\n"
-        "- 사내 ERP 재고(`ERP_BOM_INVENTORY`), 대기 차량(`ERP_VEHICLES_EQUIPMENT`), 작업자 자격증(`ERP_WORKER_CERT`), 협력사(`ERP_COMPANIES`) 문의인 경우 제공된 DB 조회 데이터를 왜곡 없이 그대로 인용하세요.",
+        "1. 사내 ERP 재고(`ERP_BOM_INVENTORY`), 대기 차량(`ERP_VEHICLES_EQUIPMENT`), 작업자 자격증(`ERP_WORKER_CERT`), 협력사(`ERP_COMPANIES`) 문의인 경우 제공된 DB 조회 데이터를 왜곡 없이 그대로 인용하세요.\n"
+        "2. 사용자가 외주 발주나 배차 확정을 요청한 경우:\n"
+        "   - 만약 대상 장비/차량의 `operation_status`가 이미 `'IN_USE'`(사용/배차 중)라면, '이미 배차가 완료되어 현재 운행(IN_USE) 중이므로 중복 배차할 수 없다'고 안내하세요.\n"
+        "   - 대상 장비/차량이 `'STANDBY'`(대기 중)라면, 절대 '배차가 최종 확정 완료되었다'고 단정 짓지 말고 **'외주 배차/발주 요청안(DRAFT)이 생성되었으며, 하단 관리자 최종 승인(HITL) 클릭 시 원장에 확정 커밋됩니다'**라고 안내하세요.",
     ),
     (
         "human",
@@ -171,18 +254,46 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         }
 
     docs = state.get("retrieved_docs", [])
-    docs_text = "\n\n".join(
-        f"- [{d.get('metadata', {}).get('document_name', '규격서')} p.{d.get('metadata', {}).get('page', 1)}]: {d.get('content', '')}"
-        for d in docs
-    ) or "해당 없음"
+    docs_text = (
+        "\n\n".join(
+            f"- [{d.get('metadata', {}).get('document_name', '-')} p.{d.get('metadata', {}).get('page', 1)}]: {d.get('content', '')}"
+            for d in docs
+        )
+        or "해당 없음"
+    )
+    # 단순 ERP 재고 조회나 협력사 B2B 배차/단가 문의일 때는 이전 턴의 기상 데이터를 LLM에 전달하지 않음
+    include_weather = (
+        state.get("need_weather", False)
+        and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
+    )
+    weather_context_str = (
+        json.dumps(
+            state.get("weather_data") or {},
+            ensure_ascii=False,
+            indent=2,
+            cls=DecimalEncoder,
+        )
+        if include_weather and state.get("weather_data")
+        else "해당 없음 (기상 무관 질의)"
+    )
 
     res = (QA_PROMPT | llm).invoke({
         "task_type": task_type,
         "query": state.get("user_query", ""),
-        "erp_status": json.dumps(state.get("erp_resource_status") or {}, ensure_ascii=False, indent=2, cls=DecimalEncoder),
-        "partner_plan": json.dumps(state.get("partner_erp_plan") or {}, ensure_ascii=False, indent=2, cls=DecimalEncoder),
+        "erp_status": json.dumps(
+            state.get("erp_resource_status") or {},
+            ensure_ascii=False,
+            indent=2,
+            cls=DecimalEncoder,
+        ),
+        "partner_plan": json.dumps(
+            state.get("partner_erp_plan") or {},
+            ensure_ascii=False,
+            indent=2,
+            cls=DecimalEncoder,
+        ),
         "docs": docs_text,
-        "weather": json.dumps(state.get("weather_data") or {}, ensure_ascii=False, indent=2, cls=DecimalEncoder),
+        "weather": weather_context_str,
     })
 
     return {
@@ -201,13 +312,14 @@ TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
         "현재 작업지시서 발행을 보류해야 하는 사유를 진단하고 현장 복구 대안(Self-Healing SOP)을 제시하세요.\n\n"
         "[처방 원칙]\n"
         "1. [누락된 필수 제원]이 있는 경우: 해당 항목만 친절하게 요청하세요.\n"
-        "2. [본사 ERP 자격 검증]에서 작업자 자격증이 만료 또는 부적격(`is_valid=False`)인 경우: 선급 규정에 따라 무자격자 투입 인터록(발행 차단)을 선언하고 `ERP_WORKER_CERT` 내 유효 자격 보유자로 교체 배정을 권고하세요.\n"
-        "3. [기상 안전 판정]이 'STOP'(풍속 10m/s 초과 또는 우천)인 경우: 작업 중지 명령과 함께 사내 SOP에 따른 크레인 붐대 고정 및 방풍/보양 조치를 안내하세요.\n"
+        "2. [본사 ERP 자격 및 공정 검증]에서 작업자 자격증이 만료(`EXPIRED`), 휴직(`ON_LEAVE`), 또는 블록 요구 공정과 작업자 인증 공정이 불일치(`PROCESS_MISMATCH`)하는 경우: 선급 규정에 따라 작업지시서 발행 차단(인터록)을 선언하고 해당 공정 자격을 보유한 적격 작업자로 교체 배정하거나 전문 외주 인력을 투입하도록 권고하세요.\n"
+        "3. [기상 안전 판정]이 'STOP'인 경우: 작업 중지 명령과 함께 사내 SOP에 따른 크레인 붐대 고정 및 방풍/보양 조치를 안내하세요.\n"
         "4. [비전 검사 결과]에서 불량(`DEFECT`), 용접 중(`IN_WELDING`), 또는 로봇 비상정지(`EMERGENCY_STOP_YN='Y'`)가 감지된 경우: 즉시 원인 해소 및 재검사를 안내하세요.",
     ),
     (
         "human",
         "[사용자 요청]: {query}\n"
+        "[확정 작업 제원(블록 스펙)]: {params}\n"
         "[누락된 필수 제원]: {missing}\n"
         "[본사 ERP 자격/자원 검증]: {erp_status}\n"
         "[기상 및 안전 판정]: {weather}\n"
@@ -224,10 +336,27 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
 
     res = (TROUBLESHOOT_PROMPT | llm).invoke({
         "query": state.get("user_query", ""),
+        "params": json.dumps(
+            state.get("extracted_params") or {},
+            ensure_ascii=False,
+            cls=DecimalEncoder,
+        ),
         "missing": missing,
-        "erp_status": json.dumps(state.get("erp_resource_status") or {}, ensure_ascii=False, cls=DecimalEncoder),
-        "weather": json.dumps(state.get("weather_data") or {}, ensure_ascii=False, cls=DecimalEncoder),
-        "vision": json.dumps(state.get("vision_data") or {}, ensure_ascii=False, cls=DecimalEncoder),
+        "erp_status": json.dumps(
+            state.get("erp_resource_status") or {},
+            ensure_ascii=False,
+            cls=DecimalEncoder,
+        ),
+        "weather": json.dumps(
+            state.get("weather_data") or {},
+            ensure_ascii=False,
+            cls=DecimalEncoder,
+        ),
+        "vision": json.dumps(
+            state.get("vision_data") or {},
+            ensure_ascii=False,
+            cls=DecimalEncoder,
+        ),
         "docs": docs_text,
     })
 
@@ -253,20 +382,17 @@ WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "당신은 스마트 조선소 수석 공정 엔지니어입니다.\n"
-        "제공된 [확정 작업 제원], [ERP 사전 검토/커밋 결과], [협력사 B2B 연계 내역], [YOLOv11 비전 계측 결과], [기상 및 안전 판정], [참조 WPS 규격(RAG)]만을 "
-        "엄격한 팩트(Fact)로 참조하여 공식 **표준 작업지시서(Work Order & Work Instruction)**를 마크다운 표와 체크리스트 형식으로 작성하십시오.\n\n"
-        "[작성 및 데이터 바인딩 원칙]\n"
-        "1. **절대 금지**: 프롬프트 외부의 가상 수치나 기본값을 날조하지 마십시오.\n"
-        "2. **문서 헤더 및 ERP 오더 정보 (`WORK_ORDERS` & `MES_WORK_ORDER_DISPATCH`)**:\n"
-        "   - 작업지시 번호(`WO_NUMBER`), 호선 번호(`SHIP_CODE`), 블록 번호(`BLOCK_ID`), 작업 야드/구역(`BRANCH_CODE` / `WORK_ZONE`), 실행 구분(`IN_HOUSE` vs `OUTSOURCED_B2B`), 승인 상태를 명시하십시오.\n"
+        "제공된 [확정 작업 제원], [ERP 사전 검토/커밋 결과], [협력사 B2B 연계 내역], [YOLOv11 비전 계측 결과], [기상 및 안전 판정], [참조 WPS 및 기술 규격서(RAG)]를 "
+        "바탕으로 공식 **표준 작업지시서(Work Order & Work Instruction)**와 구조화된 시공 파라미터 필드를 모두 빈칸 없이 작성하십시오.\n\n"
+        "[작성 및 데이터 추출 원칙]\n"
+        "1. **RAG 문서 기반 적극 추출**: [참조 WPS 및 기술 규격서(RAG)]에 포함된 용접 와이어 카탈로그(세아ESAB 등), 선체 검사 지침(Hull Weld Inspection), 안전보건 지침의 수치와 규정을 면밀히 읽어 각 필드를 채우십시오. 특히 `consumable_spec`에는 와이어 이름이 아니라 보관소 온·습도 유지, 이격 보관, 개봉 후 흡습 방지 등 실제 관리 수칙을 적으십시오.\n"
+        "2. **WPS 번호(`wps_code`) 규칙**: 절대 `.pdf` 파일 이름을 `wps_code`에 넣지 마십시오. 문서 내 절차서 코드가 없으면 `WPS-{{공정}}-{{강종}}-STD` 형식으로 표준 식별 코드를 부여하십시오.\n"
         "3. **자재 Lot 추적성, 인력 자격 & 대기차량 배차 표**:\n"
-        "   - 배정 강재/와이어 Lot 번호(`ALLOCATED_LOT_NO`), 와이어 선점 수량, 투입 작업자명/사번(`WORKER_ID`) 및 선급 자격증 번호(`CERT_CODE`), 배차된 운반/지원 차량 코드(`ASSIGNED_VEHICLE_CODE`)를 바인딩하십시오.\n"
-        "   - 외주 연계 시 [협력사 B2B 연계 내역]의 협력사 코드(`PARTNER_ID`), 협력사명, 외주 발주(PO) 번호를 정확히 기재하십시오.\n"
-        "4. **WPS 공정 조건 및 YOLOv11 비전 용접 궤적 표**:\n"
-        "   - [확정 작업 제원]의 모재(`STEEL_TYPE`), 두께(`THICKNESS_MM`), 공정(`PROCESS`)과 [참조 WPS 규격(RAG)]의 공학 수치(전류, 전압, 속도, 보호가스 등)를 매핑하십시오.\n"
-        "   - [YOLOv11 비전 계측 결과]의 용접 시작점(`START_POINT_JSON`), 종료점(`END_POINT_JSON`), 예상 용접 길이(`ESTIMATED_LENGTH_MM`), 안전거리 확보 여부(`SAFETY_CLEARANCE_YN`)를 함께 표기하십시오.\n"
+        "   - 배정 강재/와이어 Lot 번호(`ALLOCATED_LOT_NO`), 와이어 품목명 및 선점 수량, 투입 작업자명/사번(`WORKER_ID`) 및 선급 자격증 번호(`CERT_CODE`), 배차된 운반/지원 차량 코드(`ASSIGNED_VEHICLE_CODE`)를 바인딩하십시오.\n"
+        "4. **비전 계측 표기 원칙**:\n"
+        "   - 로봇 전용 픽셀 좌표(`start_point_json`, `end_point_json`)는 제외하고, **비전 탐지 상태(`inspection_status`)**와 **안전 클리어런스 확보 여부(`safety_clearance_yn`)**만 표기하십시오.\n"
         "5. **실시간 현장 기상 및 안전 조치 체크리스트**:\n"
-        "   - [기상 및 안전 판정]의 실측 기온, 풍속, 습도, 강수량과 필수 안전 준수사항(`mandatory_rules`), 선행 조치(`prerequisites`)를 체크리스트(`- [ ]`)로 작성하십시오."
+        "   - [기상 및 안전 판정]의 실측 기온, 풍속, 습도, 강수량과 필수 안전 준수사항(`mandatory_rules`), 선행 조치(`prerequisites`)를 체크리스트(`- [ ]`)로 작성하십시오.",
     ),
     (
         "human",
@@ -277,7 +403,7 @@ WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
         "[협력사 B2B 연계 내역]: {partner_plan}\n"
         "[YOLOv11 비전 계측 결과(VISION_INSPECTIONS)]: {vision}\n"
         "[기상 및 안전 판정]: {weather}\n"
-        "[참조 WPS 및 안전 규격서(RAG)]:\n{docs}"
+        "[참조 WPS 및 기술 규격서(RAG)]:\n{docs}",
     ),
 ])
 
@@ -289,32 +415,42 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     weather = state.get("weather_data") or {}
     vision = state.get("vision_data") or {}
 
-    selected_partner = (partner_plan.get("selected_partner") or {}) if partner_plan else {}
+    selected_partner = (
+        (partner_plan.get("selected_partner") or {}) if partner_plan else {}
+    )
 
-    # 1. 본사(HQ) 코드 DB 동적 조회 (하드코딩 배제)
+    # 1. 본사(HQ) 코드 DB 동적 조회
     hq_code = erp_status.get("hq_company_code")
     if not hq_code:
         hq_meta = get_active_partner_from_db("HQ")
         hq_code = hq_meta.get("company_code")
 
-    # 2. 외주 수행 여부 종합 판정 (Team 1 LLM 분석 플래그 & B2B 조회 결과 기반)
+    # 2. 외주 수행 여부 종합 판정 (자격증이 정상이고 사내 재고가 충분한 직영 요청 시 IN_HOUSE 보장)
     pref_mode = state.get("preferred_execution_mode", "AUTO")
     is_outsourced = (
-        state.get("is_outsourcing_required") is True
-        or pref_mode == "OUTSOURCED_B2B"
+        pref_mode == "OUTSOURCED_B2B"
         or bool(selected_partner.get("partner_id"))
+        or (
+            state.get("is_outsourcing_required") is True
+            and not erp_status.get("stock_available", True)
+        )
     )
 
     # 3. 협력사 코드 및 품목 코드 동적 매핑
     if is_outsourced:
-        partner_id = selected_partner.get("partner_id") or erp_status.get("selected_wire_supplier")
+        partner_id = selected_partner.get("partner_id") or erp_status.get(
+            "selected_wire_supplier"
+        )
         if not partner_id:
             domain_map = {
                 "HEAVY_TRANSPORT": "LOGISTICS",
                 "OUTSOURCED_WORKER": "BLOCK_WELDING",
                 "WELDING_MATERIAL": "STEEL_SUPPLY",
             }
-            spec_field = domain_map.get(state.get("outsourcing_domain") or "WELDING_MATERIAL", "STEEL_SUPPLY")
+            spec_field = domain_map.get(
+                state.get("outsourcing_domain") or "WELDING_MATERIAL",
+                "STEEL_SUPPLY",
+            )
             fallback_comp = get_active_partner_from_db(spec_field)
             partner_id = fallback_comp.get("company_code")
 
@@ -335,7 +471,9 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     )
 
     worker_qual = erp_status.get("worker_qualification") or {}
-    worker_id = worker_qual.get("worker_id") or selected_partner.get("assigned_worker_id")
+    worker_id = worker_qual.get("worker_id") or selected_partner.get(
+        "assigned_worker_id"
+    )
     worker_name = (
         params.get("worker_name")
         or worker_qual.get("worker_name")
@@ -348,6 +486,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         else erp_status.get("assigned_vehicle_code")
     )
     block_code = params.get("block_id")
+    exec_type_str = "OUTSOURCED_B2B" if is_outsourced else "IN_HOUSE"
 
     req_wire_kg = calculate_required_wire_kg(
         estimated_length_mm=vision.get("estimated_length_mm"),
@@ -372,12 +511,13 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "reserve_wire_kg": req_wire_kg,
             "delivery_yard_zone": delivery_zone,
         })
+        erp_commit["execution_type"] = exec_type_str
         approval_status = "APPROVED"
     else:
         wo_num = state.get("work_no") or f"WO-DRAFT-{block_code}"
         erp_commit = {
             "work_order_number": wo_num,
-            "execution_type": "OUTSOURCED_B2B" if is_outsourced else "IN_HOUSE",
+            "execution_type": exec_type_str,
             "partner_id": partner_id,
             "allocated_lot_no": lot_no,
             "worker_id": worker_id,
@@ -391,10 +531,14 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     # 6. RAG 규격 및 프롬프트 인출
     docs = state.get("retrieved_docs", [])
-    docs_text = "\n\n".join(
-        f"[{d.get('metadata', {}).get('document_name', 'WPS 규격서')}]: {d.get('content', '')}"
-        for d in docs
-    ) or "사내 표준 WPS 규격 적용"
+    docs_text = (
+        "\n\n".join(
+            f"[출처문서: {d.get('metadata', {}).get('document_name', '-')} "
+            f"(p.{d.get('metadata', {}).get('page', 1)})]:\n{d.get('content', '')}"
+            for d in docs
+        )
+        or "인출된 RAG 규격 문서 없음"
+    )
 
     source_refs_list = [
         {
@@ -406,45 +550,104 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         for d in docs
     ]
 
-    res = (WORK_ORDER_PROMPT | llm).invoke({
+    vision_for_prompt = {
+        k: v
+        for k, v in vision.items()
+        if k
+        not in (
+            "start_point_json",
+            "end_point_json",
+            "centerline_waypoints_json",
+        )
+    }
+
+    structured_writer = llm.with_structured_output(WorkOrderGenerationOutput)
+    wo_out: WorkOrderGenerationOutput = (
+        WORK_ORDER_PROMPT | structured_writer
+    ).invoke({
         "query": state.get("user_query", ""),
         "params": json.dumps(params, ensure_ascii=False, cls=DecimalEncoder),
-        "erp_commit": json.dumps(erp_commit, ensure_ascii=False, cls=DecimalEncoder),
-        "erp_status": json.dumps(erp_status, ensure_ascii=False, cls=DecimalEncoder),
-        "partner_plan": json.dumps(partner_plan, ensure_ascii=False, cls=DecimalEncoder),
-        "vision": json.dumps(vision, ensure_ascii=False, cls=DecimalEncoder),
+        "erp_commit": json.dumps(
+            erp_commit, ensure_ascii=False, cls=DecimalEncoder
+        ),
+        "erp_status": json.dumps(
+            erp_status, ensure_ascii=False, cls=DecimalEncoder
+        ),
+        "partner_plan": json.dumps(
+            partner_plan, ensure_ascii=False, cls=DecimalEncoder
+        ),
+        "vision": json.dumps(
+            vision_for_prompt, ensure_ascii=False, cls=DecimalEncoder
+        ),
         "weather": json.dumps(weather, ensure_ascii=False, cls=DecimalEncoder),
         "docs": docs_text,
     })
-    answer = res.content
+
+    # 👇 기존 answer = wo_out.markdown_content 대신 간결한 3줄 브리핑 카드로 조립
+    safety_eval = weather.get("safety_evaluation") or {}
+    safety_status_str = safety_eval.get("status", "PASS")
+
+    answer = (
+        f"### 📋 공식 작업지시서 발행 브리핑 (`{erp_commit.get('work_order_number')}`)\n"
+        f"- **대상 블록 / 제원**: `{block_code}` ({params.get('material', '-')} {params.get('thickness', '-')}, {params.get('process', '-')})\n"
+        f"- **투입 인력 / 자재**: {worker_name} (`{worker_id}`) / `{wire_item_code}` ({req_wire_kg} kg 선점)\n"
+        f"- **현장 안전 및 시공 요약**: `{safety_status_str}` — {wo_out.brief_summary}"
+    )
 
     if approval_status == "DRAFT":
-        admin_notice = "\n\n> ⚠️ **[관리자 결재 대기 (`APPROVAL_STATUS: DRAFT`)]** 본 작업지침서는 초안 상태입니다. 관리자(MANAGER/ADMIN) 승인 시 `MES_WORK_ORDER_DISPATCH` 원장 커밋 및 로봇 파라미터 인가가 확정됩니다."
+        admin_notice = (
+            "\n\n> ⚠️ **[관리자 결재 대기 (`APPROVAL_STATUS: DRAFT`)]** 본"
+            " 작업지침서는 초안 상태입니다. 관리자(MANAGER/ADMIN) 승인 시"
+            " `MES_WORK_ORDER_DISPATCH` 원장 커밋 및 로봇 파라미터 인가가"
+            " 확정됩니다."
+        )
     else:
-        admin_notice = f"\n\n> ✅ **[원장 커밋 완료 (`STATUS: COMMITTED`)]** 공식 작업지시 번호 `{erp_commit.get('work_order_number')}`로 `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 완료되었습니다."
+        admin_notice = (
+            "\n\n> ✅ **[원장 커밋 완료 (`STATUS: COMMITTED`)]** 공식 작업지시"
+            f" 번호 `{erp_commit.get('work_order_number')}`로"
+            " `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 완료되었습니다."
+        )
 
     full_answer = answer + admin_notice
 
+    # PDF 파일명이 wps_code로 들어가는 현상 원천 차단
+    candidate_wps = (
+        params.get("wps_code")
+        or (erp_status.get("block_master") or {}).get("wps_code")
+        or wo_out.wps_code
+    )
+    if not candidate_wps or str(candidate_wps).lower().endswith(".pdf"):
+        proc_str = params.get("process") or "WELD"
+        mat_str = params.get("material") or "STD"
+        resolved_wps_code = f"WPS-{proc_str}-{mat_str}-001"
+    else:
+        resolved_wps_code = candidate_wps
+
     welding_params_payload = {
+        "wps_code": resolved_wps_code,
         "process_code": params.get("process"),
         "material_grade": params.get("material"),
         "thickness_mm": params.get("thickness"),
-        "weld_position": params.get("weld_position"),
-        "start_point": vision.get("start_point_json"),
-        "end_point": vision.get("end_point_json"),
-        "estimated_length_mm": vision.get("estimated_length_mm"),
-        "safety_clearance_yn": vision.get("safety_clearance_yn", "Y"),
+        "weld_position": params.get("weld_position") or worker_qual.get("cert_code"),
+        "current_amp": wo_out.current_amp,
+        "voltage_v": wo_out.voltage_v,
+        "travel_speed_cm_min": wo_out.travel_speed_cm_min,
+        "shielding_gas": wo_out.shielding_gas,
+        "preheat_temp_c": wo_out.preheat_temp_c,
+        "consumable_spec": wo_out.consumable_spec,
+        "ndt_requirement": wo_out.ndt_requirement,
+        "safety_clearance_yn": vision.get("safety_clearance_yn"),
     }
 
-    # WORK_INSTRUCTIONS DDL Check Constraint 준수 ('DRAFT', 'APPROVED', 'REJECTED')
     generated_doc = {
         "work_id": state.get("work_id"),
         "work_order_number": erp_commit.get("work_order_number"),
+        "wps_code": resolved_wps_code,
         "revision_no": "Rev.1",
         "title": f"[{approval_status}] {params.get('block_id', '')} {params.get('material', '')} {params.get('thickness', '')} 작업지시서".strip(),
         "status": approval_status,
         "approval_status": approval_status,
-        "execution_type": erp_commit.get("execution_type"),
+        "execution_type": exec_type_str,
         "allocated_lot_no": lot_no,
         "assigned_vehicle_code": vehicle_code,
         "wire_item_code": wire_item_code,
@@ -459,17 +662,25 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "weather": weather,
         "content": full_answer,
         "instruction_text": full_answer,
+        "erp_resource_status": erp_status,
     }
 
     try:
-        export_work_order_file.invoke({
+        export_raw = export_work_order_file.invoke({
             "document_data": generated_doc,
             "file_prefix": f"weld_order_{block_code}",
         })
+        export_meta = (
+            json.loads(export_raw) if isinstance(export_raw, str) else {}
+        )
+        generated_doc["files"] = export_meta
 
         safety_eval = weather.get("safety_evaluation") or {}
         audit_status = safety_eval.get("status", "PASS")
-        full_query_log = f"[제원: {json.dumps(params, ensure_ascii=False, cls=DecimalEncoder)}] | 발화: {state.get('user_query', '')}"
+        full_query_log = (
+            f"[제원: {json.dumps(params, ensure_ascii=False, cls=DecimalEncoder)}] "
+            f"| 발화: {state.get('user_query', '')}"
+        )
 
         log_inspection_history.invoke({
             "session_id": erp_commit.get("work_order_number", "DRAFT_SESSION"),
@@ -488,7 +699,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 4. Team 3 SubGraph 조립 (Gatekeeper Supervisor 중심 구조)
+# 4. Team 3 SubGraph 조립
 # ==============================================================================
 builder = StateGraph(ShipAgentState)
 
