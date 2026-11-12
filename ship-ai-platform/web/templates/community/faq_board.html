@@ -1,0 +1,255 @@
+<!-- web/templates/community/faq_board.html -->
+{% extends "layout/base.html" %}
+{% block title %}사내 커뮤니티 & FAQ 게시판 | K-SHIPYARD AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* DC/루리웹 스타일 촘촘하고 깔끔한 게시판 테이블 */
+    .comm-table th {
+        background-color: #f1f5f9;
+        border-top: 2px solid var(--shi-blue);
+        border-bottom: 1px solid #cbd5e1;
+        font-size: 0.85rem;
+        color: #334155;
+        text-align: center;
+        padding: 11px 8px;
+    }
+    .comm-table td {
+        font-size: 0.9rem;
+        padding: 10px 8px;
+        border-bottom: 1px solid #e2e8f0;
+        vertical-align: middle;
+    }
+    .comm-table tr:hover td {
+        background-color: #f8fafc;
+    }
+    .post-link {
+        color: #0f172a;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .post-link:hover {
+        color: var(--shi-blue);
+        text-decoration: underline;
+    }
+    .reply-cnt {
+        color: #dc2626;
+        font-weight: 700;
+        font-size: 0.82rem;
+        margin-left: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-5" style="min-height: 92vh; padding-top: 100px !important; background-color: #f4f7fb;">
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, msg in messages %}
+                    <div class="alert alert-{{ category }} py-2 small shadow-sm">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 상단 접이식 공식 FAQ 안내 -->
+        <div class="bg-white border rounded-3 p-3 mb-3 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <span class="badge bg-primary me-2">공식 FAQ</span>
+                    <strong class="small text-dark">자주 묻는 시스템/권한 안내 (클릭하여 펼치기)</strong>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary py-0" data-bs-toggle="collapse" data-bs-target="#topFaqBox">
+                    FAQ 열기/닫기 ▾
+                </button>
+            </div>
+            <div class="collapse mt-3 border-top pt-3 small text-secondary" id="topFaqBox">
+                <div class="mb-2"><strong>Q. 외부 협력사 계정인데 사내 SOP 문서가 검색되지 않습니다.</strong><br>
+                └ 보안 정책상 협력사(EXTERNAL)는 공공 규격(KOSHA)만 기본 열람됩니다. 사내 SOP 권한이 필요하면 게시판에 요청 글을 남겨주세요.</div>
+                <div><strong>Q. 익명(ㅇㅇ)으로 글을 쓰면 관리자에게도 이름이 안 보이나요?</strong><br>
+                └ 게시판 화면에는 'ㅇㅇ(익명)'으로 표시되며, 작성자 본인이 로그인했을 때만 삭제 버튼과 하단 [내가 쓴 글] 목록에 표시됩니다.</div>
+            </div>
+        </div>
+
+        <!-- =================================================================
+             1. 메인 전체 게시글 목록 (DC/루리웹형 테이블)
+        ================================================================== -->
+        <div class="bg-white border rounded-3 p-4 shadow-sm mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold mb-1" style="color: var(--shi-navy);">📋 스마트야드 사내 소통 갤러리</h4>
+                    <p class="text-secondary small mb-0">현장 기술 질문, 자재/장비 요청, 익명 건의사항을 자유롭게 나누는 공간입니다.</p>
+                </div>
+                <button class="btn btn-shi-primary btn-sm px-4 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#writeModal">
+                    ✏️ 글쓰기
+                </button>
+            </div>
+
+            <!-- 말머리(탭) 필터 -->
+            <div class="d-flex flex-wrap gap-1 mb-3">
+                {% for cat in ['ALL', '현장기술', '자재/장비', '익명건의', '일반문의'] %}
+                <a href="/service/faq?category={{ cat }}"
+                   class="btn btn-sm {{ 'btn-dark fw-bold' if selected_category == cat else 'btn-outline-secondary' }}">
+                    {{ '전체글' if cat == 'ALL' else cat }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <!-- 게시글 목록 테이블 -->
+            <div class="table-responsive">
+                <table class="table comm-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">번호</th>
+                            <th style="width: 95px;">말머리</th>
+                            <th class="text-start">제목</th>
+                            <th style="width: 160px;">글쓴이</th>
+                            <th style="width: 120px;">작성일</th>
+                            <th style="width: 75px;">조회</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in posts %}
+                        {% set r_cnt = reply_counts.get(p.board_id, 0) %}
+                        <tr>
+                            <td class="text-center text-muted">{{ p.board_id }}</td>
+                            <td class="text-center">
+                                <span class="badge {{ 'bg-danger' if p.category == '익명건의' else 'bg-secondary' }}">
+                                    {{ p.category }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/service/faq/{{ p.board_id }}?category={{ selected_category }}" class="post-link">
+                                    {{ p.title }}
+                                    {% if r_cnt > 0 %}
+                                        <span class="reply-cnt">[{{ r_cnt }}]</span>
+                                    {% endif %}
+                                </a>
+                            </td>
+                            <td class="text-center text-secondary small">
+                                {{ p.writer_display }}
+                            </td>
+                            <td class="text-center text-muted small">
+                                {{ p.created_at.strftime('%m.%d %H:%M') if p.created_at else '' }}
+                            </td>
+                            <td class="text-center text-muted small">{{ p.view_count }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-secondary">등록된 게시글이 없습니다. 첫 글을 작성해 보세요!</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <!-- =================================================================
+             2. 하단: 내가 쓴 게시글 목록 (실명 + 익명 내 글 모아보기 & 즉시 삭제)
+        ================================================================== -->
+        <div class="bg-white border rounded-3 p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0" style="color: var(--shi-navy);">
+                    📝 내가 쓴 게시글 <span class="badge bg-primary ms-1">{{ my_posts|length }}건</span>
+                </h5>
+                <span class="small text-muted">* 본인이 익명(ㅇㅇ)으로 작성한 글도 이곳에서 확인 및 삭제할 수 있습니다.</span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table comm-table mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">번호</th>
+                            <th style="width: 95px;">말머리</th>
+                            <th class="text-start">내가 쓴 제목</th>
+                            <th style="width: 130px;">표시 이름</th>
+                            <th style="width: 120px;">작성일</th>
+                            <th style="width: 75px;">조회</th>
+                            <th style="width: 85px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for mp in my_posts %}
+                        {% set mr_cnt = reply_counts.get(mp.board_id, 0) %}
+                        <tr>
+                            <td class="text-center text-muted">{{ mp.board_id }}</td>
+                            <td class="text-center"><span class="badge bg-light text-dark border">{{ mp.category }}</span></td>
+                            <td>
+                                <a href="/service/faq/{{ mp.board_id }}" class="post-link fw-bold">
+                                    {{ mp.title }}
+                                    {% if mr_cnt > 0 %}<span class="reply-cnt">[{{ mr_cnt }}]</span>{% endif %}
+                                </a>
+                            </td>
+                            <td class="text-center small text-secondary">{{ mp.writer_display }}</td>
+                            <td class="text-center small text-muted">{{ mp.created_at.strftime('%m.%d %H:%M') if mp.created_at else '' }}</td>
+                            <td class="text-center small text-muted">{{ mp.view_count }}</td>
+                            <td class="text-center">
+                                <form method="POST" action="/service/faq/delete/{{ mp.board_id }}"
+                                      onsubmit="return confirm('이 게시글을 삭제하시겠습니까?');" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0 px-2" style="font-size: 0.75rem;">삭제</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted small">아직 내가 작성한 게시글이 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- 글쓰기 모달 창 -->
+<div class="modal fade" id="writeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="/service/faq/write">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" style="color: var(--shi-navy);">✏️ 새 게시글 작성</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">말머리 선택</label>
+                            <select name="category" class="form-select">
+                                <option value="현장기술">현장기술</option>
+                                <option value="자재/장비">자재/장비</option>
+                                <option value="익명건의">익명건의</option>
+                                <option value="일반문의">일반문의</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 d-flex align-items-end">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" name="is_anonymous" value="Y" id="modalAnonSwitch">
+                                <label class="form-check-label small fw-bold text-danger" for="modalAnonSwitch">
+                                    🔒 익명(ㅇㅇ)으로 등록하기 (이름/부서 비공개)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">제목 *</label>
+                            <input type="text" name="title" class="form-control" placeholder="제목을 입력하세요" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">본문 내용 *</label>
+                            <textarea name="content" rows="6" class="form-control" placeholder="내용을 자유롭게 작성하세요." required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-shi-primary px-4">등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
