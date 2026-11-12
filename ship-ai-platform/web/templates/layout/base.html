@@ -1,0 +1,185 @@
+<!-- web/templates/layout/base.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}K-SHIPYARD AI | 스마트 조선소 자율 용접 플랫폼{% endblock %}</title>
+
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .profile-circle-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            padding: 4px 12px 4px 6px;
+            border-radius: 50px;
+            border: 1.5px solid #cbd5e1;
+            background: #f8fafc;
+            transition: all 0.25s ease;
+        }
+        .profile-circle-btn:hover {
+            border-color: var(--shi-blue);
+            background: #eef5ff;
+            box-shadow: 0 4px 12px rgba(0, 78, 162, 0.12);
+        }
+        .avatar-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--shi-blue);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- 상단 고정 네비게이션 바 -->
+    <header class="navbar navbar-expand-lg fixed-top shi-header" id="siteHeader">
+        <div class="container">
+            <a class="shi-brand d-flex align-items-center gap-2" href="/">
+                <span>🚢</span>
+                <span>K-SHIPYARD <span class="sub-brand">AI</span></span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shiNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="shiNavbar">
+                <!-- ⭐ 중앙 네비게이션: work_order 제거 & 'AI 어시스턴트'로 명칭 변경 -->
+                <ul class="navbar-nav mx-auto gap-lg-3">
+                    <li class="nav-item">
+                        <a class="nav-link shi-nav-link {{ 'active' if request.path.startswith('/service/assistant') }}"
+                           href="/service/assistant">
+                            🤖 AI 어시스턴트
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link shi-nav-link {{ 'active' if request.path == '/service/vision' }}"
+                           href="/service/vision">
+                            👁️ 비전 용접선 탐지
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link shi-nav-link {{ 'active' if request.path == '/service/history' }}"
+                           href="/service/history">
+                            📊 작업이력·ERP
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link shi-nav-link {{ 'active' if request.path.startswith('/service/faq') }}"
+                           href="/service/faq">
+                            ❓ 사내문의·FAQ
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- 우측 영역 -->
+                <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+                    {% if session.get('user_id') %}
+                        <a href="/mypage" class="profile-circle-btn" title="개인정보 및 권한 관리">
+                            <div class="avatar-circle">
+                                {{ session.get('full_name', '유')[0] }}
+                            </div>
+                            <div class="text-start lh-1 pe-1">
+                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">
+                                    {{ session.get('full_name') }}
+                                    {% if session.get('role') == 'ADMIN' %}
+                                        <span class="badge bg-danger ms-1" style="font-size: 0.68rem;">ADMIN</span>
+                                    {% elif session.get('role') == 'MANAGER' %}
+                                        <span class="badge bg-primary ms-1" style="font-size: 0.68rem;">관리자</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary ms-1" style="font-size: 0.68rem;">작업자</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted" style="font-size: 0.72rem;">마이페이지 · 설정</small>
+                            </div>
+                        </a>
+                        <a href="/logout" class="btn btn-outline-secondary btn-sm rounded-pill px-3">로그아웃</a>
+                    {% else %}
+                        <a href="/login" class="btn btn-shi-outline btn-sm px-3 py-2 rounded-pill">로그인</a>
+                        <a href="/register" class="btn btn-shi-primary btn-sm px-3 py-2 rounded-pill">계정발급 신청</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="shi-footer">
+        <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
+            <div>
+                <h5 class="text-white fw-bold mb-1">[수정] 프로젝트/플랫폼 이름</h5>
+                <p class="small mb-0">[수정] 비전공자도 이해할 수 있는 한 줄 서비스 설명 입력</p>
+            </div>
+            <div class="small mt-3 mt-md-0">
+                © 2026 Autonomous Ship Welding Physical AI Project. All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/jquery-3.7.1.min.js"></script>
+    <script src="/static/js/bootstrap.min.js"></script>
+
+    <!-- ⭐ 글로벌 타임존 자동 변환기: DB의 UTC 시간을 접속한 컴퓨터의 로컬 시간으로 즉시 변환 -->
+    <script>
+        window.formatToLocalTime = function(utcString, includeDate = true) {
+            if (!utcString || utcString === '-') return '-';
+            let cleanStr = String(utcString).trim();
+
+            // '2026-11-12 06:11:00' 처럼 타임존 표기가 없는 문자열이면 UTC('Z')로 인식하도록 보정
+            if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(cleanStr)) {
+                cleanStr = cleanStr.replace(/\s+/, 'T') + 'Z';
+            } else if (/^\d{2}\/\d{2}\s+\d{2}:\d{2}$/.test(cleanStr)) {
+                // '11/12 06:11' 형태인 경우 올해 연도를 붙여 UTC로 변환
+                const year = new Date().getFullYear();
+                cleanStr = `${year}-${cleanStr.replace('/', '-').replace(/\s+/, 'T')}:00Z`;
+            }
+
+            const dateObj = new Date(cleanStr);
+            if (isNaN(dateObj.getTime())) return utcString; // 변환 불가 시 원본 반환
+
+            // 현재 작동 중인 컴퓨터의 로컬 시간대(OS 기준)로 연-월-일 시:분:초 추출
+            const pad = (n) => String(n).padStart(2, '0');
+            const yyyy = dateObj.getFullYear();
+            const mm = pad(dateObj.getMonth() + 1);
+            const dd = pad(dateObj.getDate());
+            const hh = pad(dateObj.getHours());
+            const min = pad(dateObj.getMinutes());
+            const sec = pad(dateObj.getSeconds());
+
+            return includeDate ? `${yyyy}-${mm}-${dd} ${hh}:${min}:${sec}` : `${mm}/${dd} ${hh}:${min}`;
+        };
+
+        // 페이지 로드 시 '.utc-time' 클래스가 붙은 모든 시간 텍스트를 내 컴퓨터 시간으로 자동 변환!
+        window.applyLocalTimeElements = function() {
+            document.querySelectorAll('.utc-time').forEach(el => {
+                const raw = el.getAttribute('data-utc') || el.innerText.trim();
+                const shortMode = el.getAttribute('data-short') === 'true';
+                if (raw && raw !== '-') {
+                    el.setAttribute('data-utc', raw);
+                    el.innerText = window.formatToLocalTime(raw, !shortMode);
+                }
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', window.applyLocalTimeElements);
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

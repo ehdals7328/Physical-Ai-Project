@@ -1,0 +1,633 @@
+<!-- web/templates/service/history.html -->
+{% extends "layout/base.html" %}
+{% block title %}작업이력·ERP 커스텀 대시보드 | K-SHIPYARD AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .widget-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.25s ease;
+    }
+    .widget-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .widget-body {
+        padding: 18px 20px;
+        flex-grow: 1;
+        overflow-x: auto;
+    }
+    .dash-table th {
+        background: #f8fafc;
+        font-size: 0.78rem;
+        color: #475569;
+        padding: 9px 10px;
+        border-bottom: 1px solid #cbd5e1;
+        white-space: nowrap;
+    }
+    .dash-table td {
+        font-size: 0.84rem;
+        padding: 9px 10px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* 커스터마이징 컨트롤 바 */
+    .customizer-drawer {
+        background: #ffffff;
+        border: 2px solid var(--shi-blue);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(0, 78, 162, 0.12);
+    }
+    .widget-ctrl-bar {
+        display: none;
+        gap: 4px;
+    }
+    .customizing-mode .widget-ctrl-bar {
+        display: inline-flex !important;
+    }
+    .customizing-mode .widget-card {
+        border: 2px dashed #60a5fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4" style="min-height: 92vh; padding-top: 95px !important; background-color: #f4f7fb;">
+    <div class="container">
+
+        <!-- 상단 타이틀 & 내 화면 커스터마이징 버튼 -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="badge bg-primary">CUSTOM WORKSPACE</span>
+                    <span class="small text-secondary">
+                        <strong>{{ me.full_name }} ({{ me.role }})</strong>님의 권한에 맞춰 활성화된 작업이력 & ERP 통합 보드입니다.
+                    </span>
+                </div>
+                <h3 class="fw-bold mb-0" style="color: var(--shi-navy);">📊 작업이력 · ERP 자원 통합 대시보드</h3>
+            </div>
+
+            <div class="d-flex gap-2 mt-2 mt-md-0">
+                <button type="button" class="btn btn-shi-outline btn-sm px-3 py-2 rounded-pill fw-bold" id="btnToggleCustomizer">
+                    ⚙️ 내 화면 커스터마이징 (위젯 편집)
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill" id="btnResetLayout">
+                    ↺ 기본 배치로 초기화
+                </button>
+            </div>
+        </div>
+
+        <!-- 실시간 알림 배너 -->
+        <div id="dashToast" class="alert alert-success d-none py-2 small fw-bold shadow-sm"></div>
+
+        <!-- [커스터마이징 패널] 로봇 위젯 제거 완료 -->
+        <div class="customizer-drawer d-none" id="customizerDrawer">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div>
+                    <h6 class="fw-bold mb-0" style="color: var(--shi-blue);">🎨 내 권한 맞춤 위젯 커스터마이징</h6>
+                    <small class="text-secondary">
+                        보고 싶은 위젯을 켜고 끄거나, 각 위젯 우측 상단의 <strong>[↔ 크기 (50% / 100%)]</strong> 및 <strong>[▲/▼ 순서 이동]</strong> 버튼으로 화면을 구성하세요.
+                    </small>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill fw-bold" id="btnCloseCustomizer">
+                    완료
+                </button>
+            </div>
+
+            <div class="row g-2 small">
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-my-orders" id="chkMyOrders" checked>
+                        <label class="form-check-label fw-bold" for="chkMyOrders">📝 내가 내린 작업지시 내역</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-all-orders" id="chkAllOrders" checked>
+                        <label class="form-check-label fw-bold" for="chkAllOrders">📋 현장 전체 작업오더 이력</label>
+                    </div>
+                </div>
+
+                {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-bom" id="chkErpBom" checked>
+                        <label class="form-check-label fw-bold text-primary" for="chkErpBom">📦 [ERP] 자재·와이어 재고</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-worker" id="chkErpWorker" checked>
+                        <label class="form-check-label fw-bold text-primary" for="chkErpWorker">👷 [ERP] 작업자·자격증 원장</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-equip" id="chkErpEquip" checked>
+                        <label class="form-check-label fw-bold text-primary" for="chkErpEquip">🚜 [ERP] 대기차량·설비 배차</label>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
+                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-dispatch" id="chkErpDispatch" checked>
+                        <label class="form-check-label fw-bold text-primary" for="chkErpDispatch">📑 [MES] 직영·외주 배정원장</label>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-md-4">
+                    <div class="p-2 border rounded-3 bg-secondary-subtle text-muted">
+                        🔒 [ERP 위젯 잠김] ERP 조회 권한(CAN_ACCESS_ERP=Y) 필요
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+
+        <!-- 대시보드 위젯 그리드 컨테이너 -->
+        <div class="row g-4" id="widgetGrid">
+
+            <!-- [위젯 1] 내가 작업지시 내렸던 내역 -->
+            <div class="col-lg-12 dash-widget-item" data-wid="w-my-orders" data-size="12">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-primary-subtle text-primary me-1">MY ORDERS</span>
+                            <strong style="color: var(--shi-navy);">📝 내가 내린 작업지시 내역 ({{ my_orders|length }}건)</strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="widget-ctrl-bar">
+                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget" title="가로폭 50% / 100% 전환">↔ 크기</button>
+                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                            </div>
+                            <a href="/service/assistant" class="btn btn-shi-primary btn-sm py-1 px-3 rounded-pill" style="font-size: 0.78rem;">
+                                + 새 작업지시 내리기
+                            </a>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>작업번호</th>
+                                    <th>블록 / 작업구역</th>
+                                    <th>작업 제목</th>
+                                    <th>시공 조건</th>
+                                    <th>진행 상태</th>
+                                    <th>AI 지침서</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in my_orders %}
+                                {% set wo = item.wo %}
+                                {% set inst = item.inst %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ wo.work_no }}</td>
+                                    <td>
+                                        <span class="fw-bold">{{ wo.block_code }}</span>
+                                        <small class="text-muted ms-1">({{ wo.work_zone }})</small>
+                                    </td>
+                                    <td>{{ wo.work_title }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">{{ wo.material_grade }} {{ wo.thickness_mm }}mm</span>
+                                        <span class="badge bg-secondary">{{ wo.process_code }} ({{ wo.weld_position }})</span>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm order-status-select" data-woid="{{ wo.work_id }}" style="width: 130px; font-size: 0.76rem;">
+                                            <option value="READY" {{ 'selected' if wo.status_code == 'READY' }}>READY (대기)</option>
+                                            <option value="IN_PROGRESS" {{ 'selected' if wo.status_code == 'IN_PROGRESS' }}>IN_PROGRESS</option>
+                                            <option value="COMPLETED" {{ 'selected' if wo.status_code == 'COMPLETED' }}>COMPLETED</option>
+                                            <option value="SUSPENDED" {{ 'selected' if wo.status_code == 'SUSPENDED' }}>SUSPENDED</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        {% if inst %}
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
+                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
+                                                data-status="{{ inst.approval_status }}"
+                                                data-params="{{ inst.welding_params_json }}"
+                                                data-text="{{ inst.instruction_text }}">
+                                            📄 지침서 보기
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted small">미생성</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted small">
+                                        아직 직접 발주/요청하신 작업지시가 없습니다. [AI 어시스턴트]에서 작업지시를 생성해 보세요!
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [위젯 2] 현장 전체 작업오더 이력 -->
+            <div class="col-lg-12 dash-widget-item" data-wid="w-all-orders" data-size="12">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-dark me-1">ALL WORK ORDERS</span>
+                            <strong style="color: var(--shi-navy);">📋 현장 전체 용접 작업오더 이력 ({{ all_orders|length }}건)</strong>
+                        </div>
+                        <div class="widget-ctrl-bar">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>작업관리번호</th>
+                                    <th>호선 / 블록</th>
+                                    <th>작업 제목</th>
+                                    <th>야드 / 작업구역</th>
+                                    <th>시공 제원</th>
+                                    <th>요청자</th>
+                                    <th>진행 상태</th>
+                                    <th>지침서</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in all_orders %}
+                                {% set wo = item.wo %}
+                                {% set inst = item.inst %}
+                                <tr>
+                                    <td class="fw-bold">{{ wo.work_no }}</td>
+                                    <td>{{ wo.ship_code }} / <strong>{{ wo.block_code }}</strong></td>
+                                    <td>{{ wo.work_title }}</td>
+                                    <td>{{ wo.work_region }} · <span class="text-primary fw-semibold">{{ wo.work_zone }}</span></td>
+                                    <td>{{ wo.process_code }} · {{ wo.material_grade }} ({{ wo.thickness_mm }}T, {{ wo.weld_position }})</td>
+                                    <td>{{ item.requester_name }}</td>
+                                    <td>
+                                        <span class="badge {{ 'bg-success' if wo.status_code == 'COMPLETED' else ('bg-primary' if wo.status_code == 'IN_PROGRESS' else 'bg-secondary') }}">
+                                            {{ wo.status_code }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if inst %}
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
+                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
+                                                data-status="{{ inst.approval_status }}"
+                                                data-params="{{ inst.welding_params_json }}"
+                                                data-text="{{ inst.instruction_text }}">
+                                            📄 열람
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted small">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ERP 권한 보유자 전용 위젯 4종 -->
+            {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
+
+            <!-- [위젯 3 - ERP] 자재 및 와이어 재고 원장 -->
+            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-bom" data-size="6">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-success me-1">SHIP_ERP · BOM</span>
+                            <strong style="color: var(--shi-navy);">📦 사내 자재 및 와이어 재고 원장</strong>
+                        </div>
+                        <div class="widget-ctrl-bar">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>품번</th>
+                                    <th>품목명</th>
+                                    <th>LOT 번호</th>
+                                    <th>총 재고</th>
+                                    <th>선점(예약)</th>
+                                    <th>가용 수량</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bom in erp_bom %}
+                                {% set avail = (bom.total_qty or 0) - (bom.reserved_qty or 0) %}
+                                <tr>
+                                    <td class="fw-bold">{{ bom.item_code }}</td>
+                                    <td>{{ bom.item_name }}</td>
+                                    <td class="small text-muted">{{ bom.lot_no }}</td>
+                                    <td>{{ bom.total_qty }} {{ bom.unit }}</td>
+                                    <td class="text-danger fw-semibold">{{ bom.reserved_qty }} {{ bom.unit }}</td>
+                                    <td class="fw-bold text-success">{{ avail }} {{ bom.unit }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [위젯 4 - ERP] 대기차량 및 중장비 마스터 -->
+            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-equip" data-size="6">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-success me-1">SHIP_ERP · FLEET</span>
+                            <strong style="color: var(--shi-navy);">🚜 자재운용 대기차량 및 중장비 마스터</strong>
+                        </div>
+                        <div class="widget-ctrl-bar">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>설비코드</th>
+                                    <th>장비/차량명</th>
+                                    <th>분류</th>
+                                    <th>현재 구역</th>
+                                    <th>운용 상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for eq in erp_equipments %}
+                                <tr>
+                                    <td class="fw-bold">{{ eq.asset_code }}</td>
+                                    <td>{{ eq.asset_name }} ({{ eq.max_load_ton }}t)</td>
+                                    <td><span class="badge bg-light text-dark border">{{ eq.asset_category }}</span></td>
+                                    <td>{{ eq.current_zone }}</td>
+                                    <td>
+                                        <span class="badge {{ 'bg-success' if eq.operation_status == 'STANDBY' else 'bg-warning text-dark' }}">
+                                            {{ eq.operation_status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [위젯 5 - ERP] 작업자 및 선급 자격증 원장 -->
+            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-worker" data-size="6">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-success me-1">SHIP_ERP · HR CERT</span>
+                            <strong style="color: var(--shi-navy);">👷 직영·협력사 작업자 및 선급 자격증 원장</strong>
+                        </div>
+                        <div class="widget-ctrl-bar">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>사번</th>
+                                    <th>성명 (직책)</th>
+                                    <th>고용/야드</th>
+                                    <th>보유 자격증</th>
+                                    <th>만료일 / 상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for wk in erp_workers %}
+                                <tr>
+                                    <td class="fw-bold">{{ wk.worker_id }}</td>
+                                    <td><strong>{{ wk.worker_name }}</strong> <small class="text-muted">({{ wk.role }})</small></td>
+                                    <td>{{ wk.employment_type }} · {{ wk.branch_code }}</td>
+                                    <td><span class="badge bg-primary-subtle text-primary">{{ wk.cert_code }}</span></td>
+                                    <td>
+                                        <small>{{ wk.cert_expiry_date }}</small>
+                                        <span class="badge {{ 'bg-success' if wk.status == 'VALID' else 'bg-danger' }} ms-1">
+                                            {{ wk.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- [위젯 6 - MES] 작업·자재·인력·차량 배정 원장 -->
+            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-dispatch" data-size="6">
+                <div class="widget-card">
+                    <div class="widget-header">
+                        <div>
+                            <span class="badge bg-success me-1">SHIP_ERP · MES DISPATCH</span>
+                            <strong style="color: var(--shi-navy);">📑 MES 작업·자재·인력·차량 배정 원장</strong>
+                        </div>
+                        <div class="widget-ctrl-bar">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
+                            <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>작업지시번호</th>
+                                    <th>블록 / 수행방식</th>
+                                    <th>배정 자재 LOT</th>
+                                    <th>투입 작업자</th>
+                                    <th>배차 설비</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for dp in erp_dispatches %}
+                                <tr>
+                                    <td class="fw-bold text-primary">{{ dp.wo_number }}</td>
+                                    <td>
+                                        <strong>{{ dp.block_id }}</strong>
+                                        <span class="badge {{ 'bg-info text-dark' if dp.execution_type == 'IN_HOUSE' else 'bg-warning text-dark' }}">
+                                            {{ dp.execution_type }}
+                                        </span>
+                                    </td>
+                                    <td class="small">{{ dp.allocated_lot_no }}</td>
+                                    <td>{{ dp.worker_name }} ({{ dp.worker_id }})</td>
+                                    <td>{{ dp.assigned_vehicle_code or '-' }}</td>
+                                    <td><span class="badge bg-success">{{ dp.status }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {% endif %}
+
+        </div>
+    </div>
+</section>
+
+<!-- AI 작업지침서 상세 열람 모달 -->
+<div class="modal fade" id="instDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <span class="badge bg-primary" id="modalInstStatus">APPROVED</span>
+                </div>
+                <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
+                <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
+                <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
+                <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $, bootstrap */
+$(document).ready(function() {
+    const LAYOUT_STORAGE_KEY = 'custom_dash_layout_v2_user_{{ me.user_id }}';
+
+    function saveDashboardLayout() {
+        const layout = [];
+        $('#widgetGrid .dash-widget-item').each(function() {
+            const wid = $(this).data('wid');
+            const size = $(this).attr('data-size') || '6';
+            const visible = !$(this).hasClass('d-none');
+            layout.push({ wid: wid, size: size, visible: visible });
+        });
+        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+    }
+
+    function loadDashboardLayout() {
+        const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
+        if (!raw) return;
+        try {
+            const layout = JSON.parse(raw);
+            const grid = $('#widgetGrid');
+            layout.forEach(item => {
+                const el = grid.find(`.dash-widget-item[data-wid="${item.wid}"]`);
+                if (el.length) {
+                    grid.append(el);
+                    el.removeClass('col-lg-6 col-lg-12').addClass(`col-lg-${item.size}`).attr('data-size', item.size);
+                    if (item.visible) {
+                        el.removeClass('d-none');
+                        $(`.widget-toggle-chk[value="${item.wid}"]`).prop('checked', true);
+                    } else {
+                        el.addClass('d-none');
+                        $(`.widget-toggle-chk[value="${item.wid}"]`).prop('checked', false);
+                    }
+                }
+            });
+        } catch (e) {}
+    }
+
+    loadDashboardLayout();
+
+    $('#btnToggleCustomizer, #btnCloseCustomizer').on('click', function() {
+        $('#customizerDrawer').toggleClass('d-none');
+        $('#widgetGrid').toggleClass('customizing-mode');
+    });
+
+    $('.widget-toggle-chk').on('change', function() {
+        const wid = $(this).val();
+        const isChecked = $(this).is(':checked');
+        const target = $(`.dash-widget-item[data-wid="${wid}"]`);
+        if (isChecked) target.removeClass('d-none');
+        else target.addClass('d-none');
+        saveDashboardLayout();
+    });
+
+    $(document).on('click', '.btn-resize-widget', function() {
+        const item = $(this).closest('.dash-widget-item');
+        const currentSize = item.attr('data-size') || '6';
+        const nextSize = (currentSize === '6') ? '12' : '6';
+        item.removeClass('col-lg-6 col-lg-12').addClass(`col-lg-${nextSize}`).attr('data-size', nextSize);
+        saveDashboardLayout();
+    });
+
+    $(document).on('click', '.btn-move-up', function() {
+        const item = $(this).closest('.dash-widget-item');
+        const prev = item.prev('.dash-widget-item');
+        if (prev.length) {
+            item.insertBefore(prev);
+            saveDashboardLayout();
+        }
+    });
+
+    $(document).on('click', '.btn-move-down', function() {
+        const item = $(this).closest('.dash-widget-item');
+        const next = item.next('.dash-widget-item');
+        if (next.length) {
+            item.insertAfter(next);
+            saveDashboardLayout();
+        }
+    });
+
+    $('#btnResetLayout').on('click', function() {
+        localStorage.removeItem(LAYOUT_STORAGE_KEY);
+        location.reload();
+    });
+
+    $('.order-status-select').on('change', function() {
+        const woid = $(this).data('woid');
+        const nextStatus = $(this).val();
+        $.ajax({
+            url: '/service/api/history/order-status',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ work_id: woid, status_code: nextStatus }),
+            success: function(res) {
+                $('#dashToast').removeClass('d-none alert-danger').addClass('alert-success').text('✅ ' + res.message);
+            }
+        });
+    });
+
+    $('.btn-view-inst').on('click', function() {
+        $('#modalInstTitle').text($(this).data('title'));
+        $('#modalInstStatus').text($(this).data('status'));
+        $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
+        $('#modalInstText').text($(this).data('text'));
+        const modal = new bootstrap.Modal(document.getElementById('instDetailModal'));
+        modal.show();
+    });
+});
+</script>
+{% endblock %}

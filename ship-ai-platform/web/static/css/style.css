@@ -1,0 +1,377 @@
+/* web/static/css/style.css */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+:root {
+    --shi-blue: #004ea2;         /* 메인 로열 블루 */
+    --shi-navy: #0a1f44;         /* 딥 오션 네이비 (강조 타이틀용) */
+    --shi-sky: #0072ce;          /* 서브 액센트 블루 */
+    --shi-light-bg: #f4f7fb;     /* 밝은 블루그레이 섹션 배경 */
+    --shi-white: #ffffff;
+    --text-dark: #111827;
+    --text-gray: #4b5563;
+    --border-line: #e5e7eb;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-snap-type: y proximity;
+}
+
+body {
+    font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+    background-color: var(--shi-white);
+    color: var(--text-dark);
+    overflow-x: hidden;
+}
+
+/* =====================================================================
+   1. 상단 고정 헤더 (화이트 GNB)
+====================================================================== */
+.shi-header {
+    padding: 20px 0;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-line);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1030;
+}
+
+.shi-header.scrolled {
+    padding: 13px 0;
+    background: #ffffff;
+    box-shadow: 0 6px 24px rgba(0, 78, 162, 0.08);
+}
+
+.shi-brand {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--shi-blue) !important;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+}
+
+.shi-brand span.sub-brand {
+    color: var(--shi-navy);
+    font-weight: 700;
+}
+
+.shi-nav-link {
+    color: var(--text-dark) !important;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 8px 18px !important;
+    position: relative;
+    transition: color 0.25s ease;
+}
+
+.shi-nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 3px;
+    background-color: var(--shi-blue);
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.shi-nav-link:hover,
+.shi-nav-link.active {
+    color: var(--shi-blue) !important;
+}
+
+.shi-nav-link:hover::after,
+.shi-nav-link.active::after {
+    width: 70%;
+}
+
+.btn-shi-primary {
+    background-color: var(--shi-blue);
+    color: #ffffff;
+    font-weight: 600;
+    border: 1px solid var(--shi-blue);
+    transition: all 0.25s ease;
+}
+
+.btn-shi-primary:hover {
+    background-color: var(--shi-navy);
+    border-color: var(--shi-navy);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.btn-shi-outline {
+    background-color: transparent;
+    color: var(--shi-blue);
+    font-weight: 600;
+    border: 1.5px solid var(--shi-blue);
+    transition: all 0.25s ease;
+}
+
+.btn-shi-outline:hover {
+    background-color: var(--shi-blue);
+    color: #ffffff;
+}
+
+/* =====================================================================
+   2. 우측 고정 섹션 인디케이터 (우측 도트 네비게이션)
+====================================================================== */
+.section-dots {
+    position: fixed;
+    right: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1020;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.section-dots a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    text-decoration: none;
+    gap: 10px;
+}
+
+.section-dots .dot-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--shi-blue);
+    opacity: 0;
+    transform: translateX(8px);
+    transition: all 0.25s ease;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 3px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.section-dots .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50px;
+    background-color: #cbd5e1;
+    transition: all 0.3s ease;
+}
+
+.section-dots a:hover .dot-label,
+.section-dots a.active .dot-label {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.section-dots a.active .dot {
+    height: 28px;
+    background-color: var(--shi-blue);
+}
+
+/* =====================================================================
+   3. 풀페이지 스크롤텔링 섹션 레이아웃
+====================================================================== */
+.shi-section {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    padding: 120px 0 90px;
+    position: relative;
+    border-bottom: 1px solid var(--border-line);
+    overflow: hidden;
+}
+
+.bg-shi-white { background-color: var(--shi-white); }
+.bg-shi-gray { background-color: var(--shi-light-bg); }
+.bg-shi-hero {
+    background: linear-gradient(135deg, #f0f6ff 0%, #ffffff 60%, #e6f0fa 100%);
+}
+
+.shi-eng-tag {
+    display: inline-block;
+    color: var(--shi-blue);
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--shi-blue);
+    padding-left: 10px;
+}
+
+.shi-title {
+    font-size: clamp(2rem, 3.6vw, 3rem);
+    font-weight: 800;
+    color: var(--shi-navy);
+    line-height: 1.28;
+    letter-spacing: -0.8px;
+}
+
+.shi-desc {
+    font-size: 1.1rem;
+    color: var(--text-gray);
+    line-height: 1.8;
+}
+
+/* =====================================================================
+   4. 양방향 스크롤텔링 애니메이션 (올리고 내릴 때마다 반복 재생)
+====================================================================== */
+/* 아래에서 위로 떠오르는 효과 */
+.anim-up {
+    opacity: 0;
+    transform: translateY(60px);
+    transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 왼쪽에서 오른쪽으로 슬라이드 등장 */
+.anim-left {
+    opacity: 0;
+    transform: translateX(-70px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 오른쪽에서 왼쪽으로 슬라이드 등장 */
+.anim-right {
+    opacity: 0;
+    transform: translateX(70px);
+    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 이미지 스케일 줌인 효과 */
+.anim-scale {
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 화면에 들어왔을 때 활성화 클래스 */
+.in-view {
+    opacity: 1 !important;
+    transform: translate(0, 0) scale(1) !important;
+}
+
+/* 순차 등장 딜레이 (카드 1 -> 2 -> 3) */
+.delay-1 { transition-delay: 0.12s; }
+.delay-2 { transition-delay: 0.26s; }
+.delay-3 { transition-delay: 0.40s; }
+
+/* =====================================================================
+   5. 사진 플레이스홀더 & 카드 & Event 탭
+====================================================================== */
+.shi-img-box {
+    width: 100%;
+    min-height: 350px;
+    background: #eef3f9;
+    border: 2px dashed #93b4d8;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+    color: var(--shi-navy);
+    transition: all 0.3s ease;
+}
+
+.shi-img-box:hover {
+    border-color: var(--shi-blue);
+    background: #e5effa;
+}
+
+.shi-card {
+    background: #ffffff;
+    border: 1px solid var(--border-line);
+    border-top: 4px solid var(--shi-blue);
+    border-radius: 12px;
+    padding: 32px 26px;
+    height: 100%;
+    box-shadow: 0 8px 24px rgba(10, 31, 68, 0.04);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.shi-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 18px 36px rgba(0, 78, 162, 0.12);
+}
+
+/* Event 섹션 탭 */
+.shi-event-wrap {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 40px;
+    border: 1px solid var(--border-line);
+    box-shadow: 0 12px 32px rgba(10, 31, 68, 0.06);
+}
+
+.shi-tab-btn {
+    width: 100%;
+    padding: 16px 20px;
+    border: 1px solid var(--border-line);
+    background: #f8fafc;
+    color: var(--text-gray);
+    font-weight: 700;
+    border-radius: 10px;
+    transition: all 0.25s ease;
+}
+
+.shi-tab-btn.active,
+.shi-tab-btn:hover {
+    background: var(--shi-blue);
+    color: #ffffff;
+    border-color: var(--shi-blue);
+    box-shadow: 0 6px 16px rgba(0, 78, 162, 0.25);
+}
+
+/* 하단 스크롤 안내 마우스 아이콘 */
+.scroll-mouse {
+    position: absolute;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    color: var(--shi-blue);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.mouse-icon {
+    width: 24px;
+    height: 38px;
+    border: 2px solid var(--shi-blue);
+    border-radius: 14px;
+    margin: 0 auto 6px;
+    position: relative;
+}
+
+.mouse-wheel {
+    width: 4px;
+    height: 8px;
+    background: var(--shi-blue);
+    border-radius: 2px;
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: wheelMove 1.6s infinite;
+}
+
+@keyframes wheelMove {
+    0% { opacity: 1; top: 6px; }
+    100% { opacity: 0; top: 20px; }
+}
+
+.shi-footer {
+    background: #0a192f;
+    color: #94a3b8;
+    padding: 45px 0;
+}
+
+@media (max-width: 991px) {
+    .section-dots { display: none; }
+}

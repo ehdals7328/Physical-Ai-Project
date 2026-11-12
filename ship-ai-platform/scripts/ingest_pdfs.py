@@ -14,8 +14,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from app import create_app  # noqa: E402
-from app.models.schema import db, DocumentMetadata  # noqa: E402
+from web import create_web  # noqa: E402
+from web.models.schema import db, DocumentMetadata  # noqa: E402
 from modules.knowledge.rag_pipeline import build_chunks_for_pdf, sha256_file  # noqa: E402
 from modules.knowledge.retriever import KnowledgeStore  # noqa: E402
 
@@ -228,10 +228,10 @@ def main() -> int:
         return 0
 
     logger.info("대상 PDF: %s개 | 폴더: %s", len(pdf_files), pdf_dir)
-    app = create_app()
+    web = create_web()
     summary = {"COMPLETED": 0, "SKIPPED": 0, "FAILED": 0, "DRY_RUN": 0}
 
-    with app.app_context():
+    with web.app_context():
         store = None if args.dry_run else KnowledgeStore()
         for index, pdf_path in enumerate(pdf_files, start=1):
             logger.info("[%s/%s] 시작: %s", index, len(pdf_files), pdf_path.name)

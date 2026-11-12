@@ -7,6 +7,10 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'ship-welding-secret-key-2026')
+
+    # ⭐ HTML(Jinja2 템플릿) 수정 시 캐시 없이 즉시 화면에 반영!
+    TEMPLATES_AUTO_RELOAD = True
+
     # 1) 기본 DB (SHIP_USER: 웹 관제, 지침서, 비전, 감사로그)
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'SHIP_USER_DATABASE_URL',

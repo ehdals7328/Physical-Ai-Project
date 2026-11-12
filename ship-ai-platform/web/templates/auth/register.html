@@ -1,0 +1,110 @@
+<!-- web/templates/register.html -->
+{% extends "layout/base.html" %}
+{% block title %}임직원·협력사 계정 발급 신청 | K-SHIPYARD AI{% endblock %}
+
+{% block content %}
+<section class="py-5" style="min-height: 92vh; padding-top: 120px !important; background-color: #f0f4f8;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="bg-white border rounded-4 shadow-sm p-4 p-lg-5">
+                    <div class="border-bottom pb-3 mb-4">
+                        <span class="badge bg-primary-subtle text-primary mb-2">ACCOUNT REQUEST FORM</span>
+                        <h3 class="fw-bold mb-1" style="color: var(--shi-navy);">임직원 및 협력사 계정 발급 신청서</h3>
+                        <p class="text-secondary small mb-0">
+                            작성하신 정보는 인사/ERP 원장과 대조되며, <strong>관리자 최종 승인 완료 시 입력하신 이메일로 승인 완료 메일을 보내드립니다.</strong>
+                        </p>
+                    </div>
+
+                    <form method="POST" action="/register" id="registerForm">
+                        <!-- 1. 기본 인적 및 계정 정보 -->
+                        <h6 class="fw-bold text-primary mb-3">1. 신청자 기본 정보 (USERS 개인정보)</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">신청 아이디 (로그인 ID) *</label>
+                                <input type="text" name="username" class="form-control" placeholder="예: emp_hong, sub_kim" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">성명 (본명) *</label>
+                                <input type="text" name="full_name" class="form-control" placeholder="예: 홍길동" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">화면 표시 이름 (닉네임/직함)</label>
+                                <input type="text" name="display_name" class="form-control" placeholder="예: 홍길동(중조립1팀)">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">승인 안내 수신 이메일 *</label>
+                                <input type="email" name="email" class="form-control" placeholder="example@ksmartship.co.kr" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">비밀번호 *</label>
+                                <input type="password" name="password" class="form-control" placeholder="8자 이상 입력" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">소속 구분 (USER_TYPE) *</label>
+                                <select name="user_type" id="userTypeSelect" class="form-select" required>
+                                    <option value="INTERNAL">INTERNAL (본사 직영 임직원)</option>
+                                    <option value="EXTERNAL">EXTERNAL (외부 사내외 협력사/프리랜서)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- 2. 현장 소속 및 ERP 연동 정보 -->
+                        <h6 class="fw-bold text-primary mb-3">2. 현장 배치 및 ERP 연동 정보</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">소속 회사 코드 (ERP_COMPANY_CODE) *</label>
+                                <select name="erp_company_code" id="companySelect" class="form-select">
+                                    <option value="COMP-HQ">COMP-HQ (한국스마트조선해양 본사)</option>
+                                    <option value="VEND-DONGHAE-WELD">VEND-DONGHAE-WELD (동해블록용접)</option>
+                                    <option value="VEND-HANKOOK-TP">VEND-HANKOOK-TP (한국중량물운송)</option>
+                                    <option value="VEND-KOREA-CAD">VEND-KOREA-CAD (코리아선박설계연구소)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">소속 사업장/야드 (ERP_BRANCH_CODE) *</label>
+                                <select name="erp_branch_code" class="form-select">
+                                    <option value="BR-ULSAN-01">BR-ULSAN-01 (울산 제1야드 중조립 A동)</option>
+                                    <option value="BR-GEOJE-01">BR-GEOJE-01 (거제 제2야드 대조립 도크)</option>
+                                    <option value="BR-ULS-SUB01">BR-ULS-SUB01 (동해블록 사내협력 작업장)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">소속 부서/공정 팀명 *</label>
+                                <input type="text" name="department_name" class="form-control" placeholder="예: 중조립생산1팀" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">주 작업 구역 (DEFAULT_WORKSPACE)</label>
+                                <select name="default_workspace" class="form-select">
+                                    <option value="ZONE-A-BAY1">ZONE-A-BAY1 (울산 A동 1베이)</option>
+                                    <option value="ZONE-A-BAY2">ZONE-A-BAY2 (울산 A동 2베이)</option>
+                                    <option value="SUB-ZONE-1">SUB-ZONE-1 (협력사 1구역)</option>
+                                    <option value="DOCK-1">DOCK-1 (거제 제1도크)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">ERP 사원번호 (ERP_EMPLOYEE_CODE)</label>
+                                <input type="text" name="erp_employee_code" class="form-control" placeholder="예: EMP-1004, SUB-2005">
+                            </div>
+                        </div>
+
+                        <!-- 안내 문구 박스 -->
+                        <div class="alert alert-primary d-flex align-items-center gap-3 small mb-4">
+                            <div class="fs-4">📧</div>
+                            <div>
+                                <strong>관리자 승인 후 활성화 안내</strong><br>
+                                신청 즉시 계정이 활성화되지 않으며, 시스템 관리자(ADMIN) 또는 현장 관리자(MANAGER)가 자격 및 소속 확인 후 승인하면 <strong>입력하신 이메일로 계정 활성화 완료 메일을 보내드립니다.</strong>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="/login" class="btn btn-outline-secondary px-4">취소</a>
+                            <button type="submit" class="btn btn-shi-primary px-5">계정 발급 신청하기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
