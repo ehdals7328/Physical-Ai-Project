@@ -1,0 +1,122 @@
+<!-- web/templates/login.html -->
+{% extends "layout/base.html" %}
+{% block title %}통합 인증 로그인 | K-SHIPYARD AI{% endblock %}
+
+{% block content %}
+<section class="py-5" style="min-height: 92vh; padding-top: 130px !important; background-color: #f0f4f8;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- 공기업 스타일 상단 보안 안내 바 -->
+                <div class="bg-white border rounded-top-4 p-3 px-4 d-flex justify-content-between align-items-center shadow-sm">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary">보안접속 ON</span>
+                        <span class="small text-secondary fw-semibold">스마트 조선해양 자율용접 통합업무포털 (사내·협력사 겸용)</span>
+                    </div>
+                    <span class="small text-muted">문의: 스마트제조보안팀 (내선 1004)</span>
+                </div>
+
+                <!-- 메인 로그인 박스 (좌측 공지/안내 + 우측 로그인 폼) -->
+                <div class="bg-white border border-top-0 rounded-bottom-4 shadow-sm overflow-hidden">
+                    <div class="row g-0">
+                        <!-- 좌측: 공기업 포털 안내 영역 -->
+                        <div class="col-md-5 p-4 p-lg-5 text-white d-flex flex-column justify-content-between"
+                             style="background: linear-gradient(160deg, #004ea2 0%, #0a1f44 100%);">
+                            <div>
+                                <span class="badge bg-light text-primary fw-bold mb-3">INTEGRATED AUTH</span>
+                                <h3 class="fw-bold mb-3">임직원 및 협력사<br>통합 인증 시스템</h3>
+                                <p class="small opacity-75 lh-lg">
+                                    본 시스템은 사내 직영 엔지니어 및 인가된 협력업체 작업자 전용 플랫폼입니다.<br>
+                                    최초 접속자는 <strong>[계정 발급 신청]</strong> 후 관리자의 승인을 받아야 로그인이 가능합니다.
+                                </p>
+                            </div>
+
+                            <div class="border-top border-light border-opacity-25 pt-3 mt-4 small opacity-75">
+                                <div class="fw-bold mb-1">🔒 계정 발급 및 보안 수칙</div>
+                                <ul class="ps-3 mb-0" style="font-size: 0.8rem; line-height: 1.7;">
+                                    <li>신규 신청 계정은 관리자 승인 후 이메일이 발송됩니다.</li>
+                                    <li>5회 이상 비밀번호 오류 시 계정이 보호 잠금됩니다.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 우측: 로그인 입력 폼 -->
+                        <div class="col-md-7 p-4 p-lg-5">
+                            <h4 class="fw-bold mb-1" style="color: var(--shi-navy);">업무포털 로그인</h4>
+                            <p class="text-secondary small mb-4">부여받은 아이디(사번)와 비밀번호를 입력해 주십시오.</p>
+
+                            <!-- Flash 알림 메시지 출력 영역 -->
+                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                {% if messages %}
+                                    {% for category, msg in messages %}
+                                        <div class="alert alert-{{ category }} small py-2 px-3">{{ msg }}</div>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
+
+                            <form method="POST" action="/login">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold small text-dark">아이디 (사번 / 계정 ID)</label>
+                                    <input type="text" name="username" id="loginUsername" class="form-control form-control-lg fs-6"
+                                           placeholder="예: admin, eng_choi, op_yoon" required>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label fw-bold small text-dark">비밀번호</label>
+                                    <input type="password" name="password" id="loginPassword" class="form-control form-control-lg fs-6"
+                                           placeholder="비밀번호를 입력하세요" required>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-shi-primary btn-lg fs-6 py-3">
+                                        통합 로그인
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="d-flex justify-content-between align-items-center border-top mt-4 pt-3 small">
+                                <span class="text-secondary">아직 사내/협력사 계정이 없으신가요?</span>
+                                <a href="/register" class="fw-bold text-decoration-none" style="color: var(--shi-blue);">
+                                    신규 계정 발급 신청 →
+                                </a>
+                            </div>
+
+                            <!-- 개발/시연 편의용 샘플 계정 빠른 채우기 버튼 -->
+                            <div class="mt-4 p-3 rounded-3 bg-light border">
+                                <div class="small fw-bold text-secondary mb-2">⚡ 시연/테스트용 DB 기본 계정 (클릭 시 자동입력 / 초기비번: 1234)</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <button type="button" class="btn btn-outline-danger btn-sm quick-login" data-id="admin">
+                                        정관리 (ADMIN)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm quick-login" data-id="eng_choi">
+                                        최선임 (MANAGER)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm quick-login" data-id="op_yoon">
+                                        윤로봇 (외주 오퍼레이터)
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm quick-login" data-id="weld_kang">
+                                        강숙련 (외주 용접공)
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $ */
+$(document).ready(function() {
+    $('.quick-login').on('click', function() {
+        $('#loginUsername').val($(this).data('id'));
+        $('#loginPassword').val('1234');
+    });
+});
+</script>
+{% endblock %}
