@@ -1,0 +1,385 @@
+<!-- web/templates/layout/main.html -->
+{% extends "layout/base.html" %}
+
+{% block content %}
+
+<!-- 우측 고정 섹션 인디케이터 (클릭 시 이동 & 스크롤 시 자동 활성화) -->
+<nav class="section-dots" id="sectionDots">
+    <a href="#sec-hero" class="active" data-target="sec-hero">
+        <span class="dot-label">MAIN</span><span class="dot"></span>
+    </a>
+    <a href="#sec-background" data-target="sec-background">
+        <span class="dot-label">BACKGROUND</span><span class="dot"></span>
+    </a>
+    <a href="#sec-service" data-target="sec-service">
+        <span class="dot-label">OUR SERVICE</span><span class="dot"></span>
+    </a>
+    <a href="#sec-event" data-target="sec-event">
+        <span class="dot-label">EVENT</span><span class="dot"></span>
+    </a>
+    <a href="#sec-vision" data-target="sec-vision">
+        <span class="dot-label">VISION</span><span class="dot"></span>
+    </a>
+</nav>
+
+
+<!-- =====================================================================
+     [SECTION 1] 메인 비주얼 배너 (Hero)
+     - 좌측에서 타이틀이 슬라이드 인(anim-left), 우측에서 사진이 줌인(anim-scale)
+====================================================================== -->
+<section class="shi-section bg-shi-hero" id="sec-hero">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <!-- 좌측 텍스트 영역 -->
+            <div class="col-lg-6 scroll-trigger anim-left">
+                <!-- [수정] 영문 서브 태그 문구를 수정하세요 -->
+                <span class="shi-eng-tag">[수정] SMART SHIPBUILDING AI</span>
+
+                <!-- [수정] 메인 타이틀: 우리 프로젝트가 무엇을 하는지 비전공자도 한눈에 알 수 있는 문구 작성 -->
+                <h1 class="shi-title mb-4">
+                    [수정] 메인 큰 제목 입력<br>
+                    <span style="color: var(--shi-blue);">[수정] 강조할 파란색 핵심 문구</span>
+                </h1>
+
+                <!-- [수정] 메인 서브 설명: PPT 도입부의 핵심 기획 의도를 2~3줄로 쉽게 풀어서 작성하세요 -->
+                <p class="shi-desc mb-5">
+                    [수정] 여기에 우리 웹 서비스가 어떤 문제를 해결하고 무엇을 하는 곳인지 비전공자 눈높이에 맞춘 요약 설명을 적으세요.
+                </p>
+
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="#sec-background" class="btn btn-shi-primary btn-lg px-4">스토리 스크롤 내려보기 ↓</a>
+                    <a href="#sec-event" class="btn btn-shi-outline btn-lg px-4">인터랙티브 Event 체험</a>
+                </div>
+            </div>
+
+            <!-- 우측 대표 비주얼 이미지 영역 -->
+            <div class="col-lg-6 scroll-trigger anim-scale delay-1">
+                <!-- [수정] 대표 이미지 넣는 곳: <img src="/static/images/파일명.jpg" class="img-fluid rounded-4 shadow"> 로 교체 -->
+                <div class="shi-img-box">
+                    <div class="fs-1 mb-2">🚢</div>
+                    <h5 class="fw-bold">[수정] 메인 대표 사진 / 영상 넣을 자리</h5>
+                    <p class="small text-secondary mb-0 mt-1">
+                        선박 건조 현장 사진, 용접 로봇 이미지, 또는 PPT 메인 비주얼 이미지를 넣으세요.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 하단 마우스 스크롤 인디케이터 -->
+    <div class="scroll-mouse">
+        <div class="mouse-icon"><div class="mouse-wheel"></div></div>
+        <span>SCROLL</span>
+    </div>
+</section>
+
+
+<!-- =====================================================================
+     [SECTION 2] 도입 배경 (왜 이 프로젝트를 기획했는가?)
+     - 스크롤을 내리거나 올릴 때마다 카드 3개가 순차적으로(delay-1,2,3) 솟아오름
+====================================================================== -->
+<section class="shi-section bg-shi-white" id="sec-background">
+    <div class="container">
+        <div class="text-center mb-5 scroll-trigger anim-up">
+            <span class="shi-eng-tag">01. BACKGROUND</span>
+            <!-- [수정] 도입 배경 큰 제목 -->
+            <h2 class="shi-title mt-1">[수정] 도입 배경 제목 (예: 왜 조선소 현장에 이 서비스가 필요할까요?)</h2>
+            <!-- [수정] 도입 배경 부연 설명 -->
+            <p class="shi-desc mt-2 mx-auto" style="max-width: 700px;">
+                [수정] PPT의 '프로젝트 배경 및 문제 정의' 내용을 비전공자가 공감할 수 있게 적어주세요.
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <!-- 카드 1 -->
+            <div class="col-md-4 scroll-trigger anim-up delay-1">
+                <div class="shi-card">
+                    <!-- [수정] 배경 카드 1 사진 자리 -->
+                    <div class="shi-img-box mb-4" style="min-height: 170px;">
+                        <strong>[수정] 배경 사진 1</strong>
+                        <span class="small text-secondary">(예: 숙련공 감소 / 위험한 작업 환경)</span>
+                    </div>
+                    <!-- [수정] 배경 카드 1 제목 및 설명 -->
+                    <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">[수정] 문제점 / 배경 1 제목</h4>
+                    <p class="text-secondary mb-0">[수정] 비전공자도 쉽게 이해할 수 있는 설명 2~3줄을 입력하세요.</p>
+                </div>
+            </div>
+
+            <!-- 카드 2 -->
+            <div class="col-md-4 scroll-trigger anim-up delay-2">
+                <div class="shi-card">
+                    <!-- [수정] 배경 카드 2 사진 자리 -->
+                    <div class="shi-img-box mb-4" style="min-height: 170px;">
+                        <strong>[수정] 배경 사진 2</strong>
+                        <span class="small text-secondary">(예: 매번 달라지는 용접 위치와 날씨 변수)</span>
+                    </div>
+                    <!-- [수정] 배경 카드 2 제목 및 설명 -->
+                    <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">[수정] 문제점 / 배경 2 제목</h4>
+                    <p class="text-secondary mb-0">[수정] 비전공자도 쉽게 이해할 수 있는 설명 2~3줄을 입력하세요.</p>
+                </div>
+            </div>
+
+            <!-- 카드 3 -->
+            <div class="col-md-4 scroll-trigger anim-up delay-3">
+                <div class="shi-card">
+                    <!-- [수정] 배경 카드 3 사진 자리 -->
+                    <div class="shi-img-box mb-4" style="min-height: 170px;">
+                        <strong>[수정] 배경 사진 3</strong>
+                        <span class="small text-secondary">(예: 복잡한 안전규정 확인 및 자재·인력 수배)</span>
+                    </div>
+                    <!-- [수정] 배경 카드 3 제목 및 설명 -->
+                    <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">[수정] 문제점 / 배경 3 제목</h4>
+                    <p class="text-secondary mb-0">[수정] 비전공자도 쉽게 이해할 수 있는 설명 2~3줄을 입력하세요.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- =====================================================================
+     [SECTION 3] 우리가 프로젝트에서 하는 일 (핵심 서비스 스크롤텔링)
+     - 좌/우에서 교차하며 슬라이드 인(anim-left / anim-right) 되는 다이나믹 레이아웃
+====================================================================== -->
+<section class="shi-section bg-shi-gray" id="sec-service">
+    <div class="container">
+        <div class="text-center mb-5 scroll-trigger anim-up">
+            <span class="shi-eng-tag">02. WHAT WE DO</span>
+            <!-- [수정] 우리가 하는 일 섹션 제목 -->
+            <h2 class="shi-title mt-1">[수정] 우리 웹 서비스가 하는 일 제목</h2>
+            <p class="shi-desc mt-2">[수정] 아키텍처 대신 사용자가 우리 사이트에서 무엇을 할 수 있는지 스토리로 보여줍니다.</p>
+        </div>
+
+        <!-- 스토리 블록 1: 좌측 사진(anim-left) + 우측 설명(anim-right) -->
+        <div class="row align-items-center g-5 mb-5">
+            <div class="col-lg-6 scroll-trigger anim-left">
+                <!-- [수정] 핵심 기능 1 이미지 (예: 비전 카메라가 용접선과 크레인을 인식한 사진) -->
+                <div class="shi-img-box" style="min-height: 280px;">
+                    <h5 class="fw-bold">[수정] 서비스 기능 1 이미지 넣을 자리</h5>
+                    <p class="small text-secondary mb-0">PPT의 비전 탐지(용접선, 블록, 크레인 훅 인식) 결과 이미지를 넣으세요.</p>
+                </div>
+            </div>
+            <div class="col-lg-6 scroll-trigger anim-right delay-1">
+                <span class="badge bg-primary px-3 py-2 mb-2">STEP 01</span>
+                <!-- [수정] 기능 1 제목 및 설명 -->
+                <h3 class="fw-bold mb-3" style="color: var(--shi-navy);">[수정] 첫 번째 기능 제목 (보는 AI)</h3>
+                <p class="shi-desc mb-0">
+                    [수정] 현장 영상에서 어디를 용접해야 하는지 스스로 찾고, 위험 요소를 감지하는 과정을 비전공자 눈높이로 적으세요.
+                </p>
+            </div>
+        </div>
+
+        <!-- 스토리 블록 2: 좌측 설명(anim-left) + 우측 사진(anim-right) -->
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6 order-lg-2 scroll-trigger anim-right">
+                <!-- [수정] 핵심 기능 2 이미지 (예: AI가 작성한 작업지시서 및 자원 배정 화면 사진) -->
+                <div class="shi-img-box" style="min-height: 280px;">
+                    <h5 class="fw-bold">[수정] 서비스 기능 2 이미지 넣을 자리</h5>
+                    <p class="small text-secondary mb-0">AI 에이전트가 규정과 날씨를 반영해 작업지시서를 만들어주는 화면을 넣으세요.</p>
+                </div>
+            </div>
+            <div class="col-lg-6 order-lg-1 scroll-trigger anim-left delay-1">
+                <span class="badge bg-primary px-3 py-2 mb-2">STEP 02</span>
+                <!-- [수정] 기능 2 제목 및 설명 -->
+                <h3 class="fw-bold mb-3" style="color: var(--shi-navy);">[수정] 두 번째 기능 제목 (생각하는 AI)</h3>
+                <p class="shi-desc mb-0">
+                    [수정] 사내 규정 문서와 현장 날씨, 창고 자재까지 AI가 알아서 확인해 최적의 작업 지시서를 작성해 주는 과정을 적으세요.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- =====================================================================
+     [SECTION 4] Contents 내 Event 섹션 (인터랙티브 클릭형 콘텐츠)
+====================================================================== -->
+<section class="shi-section bg-shi-white" id="sec-event">
+    <div class="container">
+        <div class="text-center mb-5 scroll-trigger anim-up">
+            <span class="shi-eng-tag">03. INTERACTIVE EVENT</span>
+            <!-- [수정] Event 섹션 제목 및 안내 문구 -->
+            <h2 class="shi-title mt-1">[수정] 인터랙티브 Event 섹션 제목</h2>
+            <p class="shi-desc mt-2">[수정] 방문자가 직접 탭 버튼을 클릭하며 우리 프로젝트의 시나리오를 체험하는 공간입니다.</p>
+        </div>
+
+        <div class="shi-event-wrap scroll-trigger anim-scale delay-1">
+            <!-- [수정] 이벤트 탭 버튼 3개 이름 -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <button class="shi-tab-btn active" data-tab="ev1">[수정] Event 탭 버튼 1</button>
+                </div>
+                <div class="col-md-4">
+                    <button class="shi-tab-btn" data-tab="ev2">[수정] Event 탭 버튼 2</button>
+                </div>
+                <div class="col-md-4">
+                    <button class="shi-tab-btn" data-tab="ev3">[수정] Event 탭 버튼 3</button>
+                </div>
+            </div>
+
+            <!-- 탭 클릭 시 전환되는 영역 -->
+            <div class="row align-items-center g-4 pt-2" id="eventDisplay">
+                <div class="col-lg-6">
+                    <!-- [수정] 이벤트 탭별 이미지 표시 영역 -->
+                    <div class="shi-img-box" id="evImgBox" style="min-height: 260px;">
+                        [수정] Event 탭 1 선택 시 보여줄 사진 자리
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <span class="badge bg-primary-subtle text-primary mb-2" id="evBadge">EVENT 01</span>
+                    <!-- [수정] 이벤트 탭별 제목 및 설명 표시 영역 (하단 스크립트에서 텍스트 수정) -->
+                    <h3 class="fw-bold mb-3" style="color: var(--shi-navy);" id="evTitle">[수정] Event 1 제목 영역</h3>
+                    <p class="shi-desc mb-0" id="evDesc">
+                        [수정] 각 탭 버튼을 클릭했을 때 바뀔 설명 텍스트입니다. 아래 script의 eventContents 객체에서 내용을 수정하세요.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- =====================================================================
+     [SECTION 5] 기대효과 & 서비스 시작 유도 (마무리 섹션)
+====================================================================== -->
+<section class="shi-section bg-shi-gray" id="sec-vision">
+    <div class="container text-center">
+        <div class="scroll-trigger anim-up">
+            <span class="shi-eng-tag">04. OUR VISION</span>
+            <!-- [수정] 마지막 섹션 제목 및 설명 -->
+            <h2 class="shi-title mt-1 mb-4">[수정] 프로젝트 기대효과 및 비전 제목</h2>
+            <p class="shi-desc mx-auto mb-5" style="max-width: 680px;">
+                [수정] PPT 마지막 장의 '기대효과' 및 '향후 발전 방향(2차 로봇 제어 등)'을 비전공자가 이해하기 쉽게 요약해 적으세요.
+            </p>
+        </div>
+
+        <!-- 기대효과 요약 카드 3개 -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-4 scroll-trigger anim-up delay-1">
+                <div class="shi-card text-center">
+                    <h3 class="fw-bold" style="color: var(--shi-blue);">[수정] 효과 키워드 1</h3>
+                    <p class="text-secondary mb-0 mt-2">[수정] 기대효과 1 설명 입력</p>
+                </div>
+            </div>
+            <div class="col-md-4 scroll-trigger anim-up delay-2">
+                <div class="shi-card text-center">
+                    <h3 class="fw-bold" style="color: var(--shi-blue);">[수정] 효과 키워드 2</h3>
+                    <p class="text-secondary mb-0 mt-2">[수정] 기대효과 2 설명 입력</p>
+                </div>
+            </div>
+            <div class="col-md-4 scroll-trigger anim-up delay-3">
+                <div class="shi-card text-center">
+                    <h3 class="fw-bold" style="color: var(--shi-blue);">[수정] 효과 키워드 3</h3>
+                    <p class="text-secondary mb-0 mt-2">[수정] 기대효과 3 설명 입력</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로그인 및 실제 서비스 이동 유도 버튼 -->
+        <div class="scroll-trigger anim-scale delay-2">
+            <!-- [수정] 추후 로그인 페이지 라우터와 연결 -->
+            <a href="#" class="btn btn-shi-primary btn-lg px-5 py-3 rounded-pill shadow">
+                [수정] 로그인하고 AI 웹 서비스 시작하기 →
+            </a>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $ */
+$(document).ready(function() {
+
+    // 1. 스크롤 시 상단 헤더 스타일 변경
+    $(window).on('scroll', function() {
+        if ($(window).scrollTop() > 50) {
+            $('#siteHeader').addClass('scrolled');
+        } else {
+            $('#siteHeader').removeClass('scrolled');
+        }
+    });
+
+    // 2. ⭐ 핵심: 스크롤 올리고 내릴 때마다 매번 다시 작동하는 양방향 IntersectionObserver
+    const triggerObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // 화면에 들어오면 애니메이션 실행
+                entry.target.classList.add('in-view');
+            } else {
+                // 화면에서 벗어나면 클래스를 제거하여 다시 스크롤할 때 재작동하도록 설정!
+                entry.target.classList.remove('in-view');
+            }
+        });
+    }, {
+        threshold: 0.18 // 요소가 18% 보일 때 트리거
+    });
+
+    document.querySelectorAll('.scroll-trigger').forEach(el => {
+        triggerObserver.observe(el);
+    });
+
+    // 3. 현재 보고 있는 섹션에 맞춰 우측 도트(Dot) 네비게이션 & 상단 메뉴 자동 하이라이트
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const currentId = entry.target.getAttribute('id');
+
+                // 우측 도트 활성화 갱신
+                $('#sectionDots a').removeClass('active');
+                $(`#sectionDots a[data-target="${currentId}"]`).addClass('active');
+
+                // 상단 네비게이션 바 메뉴 활성화 갱신
+                $('.shi-nav-link').removeClass('active');
+                $(`.shi-nav-link[data-section="${currentId}"]`).addClass('active');
+            }
+        });
+    }, {
+        threshold: 0.45
+    });
+
+    document.querySelectorAll('.shi-section').forEach(sec => {
+        sectionObserver.observe(sec);
+    });
+
+    // 4. [수정] Event 섹션 탭 클릭 시 전환될 내용을 여기서 수정하세요
+    const eventContents = {
+        ev1: {
+            badge: "EVENT 01",
+            imgText: "[수정] Event 탭 1 선택 시 보여줄 사진 자리",
+            title: "[수정] Event 1 제목을 입력하세요",
+            desc: "[수정] 첫 번째 버튼을 클릭했을 때 비전공자에게 보여줄 인터랙티브 설명을 작성하세요."
+        },
+        ev2: {
+            badge: "EVENT 02",
+            imgText: "[수정] Event 탭 2 선택 시 보여줄 사진 자리",
+            title: "[수정] Event 2 제목을 입력하세요",
+            desc: "[수정] 두 번째 버튼을 클릭했을 때 비전공자에게 보여줄 인터랙티브 설명을 작성하세요."
+        },
+        ev3: {
+            badge: "EVENT 03",
+            imgText: "[수정] Event 탭 3 선택 시 보여줄 사진 자리",
+            title: "[수정] Event 3 제목을 입력하세요",
+            desc: "[수정] 세 번째 버튼을 클릭했을 때 비전공자에게 보여줄 인터랙티브 설명을 작성하세요."
+        }
+    };
+
+    $('.shi-tab-btn').on('click', function() {
+        $('.shi-tab-btn').removeClass('active');
+        $(this).addClass('active');
+
+        const key = $(this).data('tab');
+        const item = eventContents[key];
+
+        $('#eventDisplay').stop(true, true).fadeOut(150, function() {
+            $('#evBadge').text(item.badge);
+            $('#evImgBox').text(item.imgText);
+            $('#evTitle').text(item.title);
+            $('#evDesc').text(item.desc);
+            $('#eventDisplay').fadeIn(220);
+        });
+    });
+});
+</script>
+{% endblock %}

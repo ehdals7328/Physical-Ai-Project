@@ -1,0 +1,796 @@
+<!-- web/templates/service/assistant.html -->
+{% extends "layout/base.html" %}
+{% block title %}AI 어시스턴트 | K-SHIPYARD AI{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+    .chat-bubble-ai table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 0.82rem;
+    }
+    .chat-bubble-ai th, .chat-bubble-ai td {
+        border: 1px solid #cbd5e1;
+        padding: 6px 8px;
+        text-align: center;
+    }
+    .chat-bubble-ai th {
+        background-color: #f1f5f9;
+        font-weight: 700;
+        color: var(--shi-navy);
+    }
+    .chat-bubble-ai h2, .chat-bubble-ai h3, .chat-bubble-ai h4 {
+        font-size: 1.02rem;
+        font-weight: 800;
+        color: var(--shi-navy);
+        margin-top: 6px;
+        margin-bottom: 6px;
+    }
+    .chat-bubble-ai p:last-child { margin-bottom: 0; }
+
+    .session-list-scroll {
+        max-height: 330px;
+        overflow-y: auto;
+    }
+    .session-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 10px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        color: #334155;
+        margin-bottom: 6px;
+        background: #f8fafc;
+    }
+    .session-item:hover {
+        background: #eef5ff;
+        border-color: #cbd5e1;
+    }
+    .session-item.active {
+        background: #e0edff;
+        border-color: var(--shi-blue);
+        color: var(--shi-blue);
+        font-weight: 700;
+    }
+    .btn-del-session {
+        border: none;
+        background: transparent;
+        color: #94a3b8;
+        font-size: 0.95rem;
+        font-weight: 800;
+        padding: 2px 8px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .btn-del-session:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .wo-builder-panel {
+        background: #f0f6ff;
+        border: 1.5px solid #93c5fd;
+        border-radius: 14px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+    }
+    .wo-builder-panel .form-label {
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--shi-navy);
+        margin-bottom: 3px;
+    }
+
+    .auto-expand-textarea {
+        resize: none;
+        overflow-y: hidden;
+        min-height: 48px;
+        max-height: 240px;
+        line-height: 1.55;
+        font-size: 0.94rem;
+        transition: height 0.12s ease;
+    }
+    .template-chip-btn {
+        font-size: 0.8rem;
+        font-weight: 700;
+        border-radius: 50px;
+        padding: 5px 14px;
+    }
+    .hitl-approval-card {
+        background: #fffbeb;
+        border: 1.5px solid #fcd34d;
+        border-radius: 14px;
+        padding: 16px;
+        margin-top: 10px;
+        color: #78350f;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4" style="min-height: 92vh; padding-top: 90px !important; background-color: #f4f7fb;">
+    <div class="container">
+        <div class="row g-3">
+
+            <!-- 좌측 사이드바: 권한 요약 + 대화방 목록 + 빠른 예시 -->
+            <div class="col-lg-3">
+                <div class="bg-white border rounded-4 p-3 shadow-sm d-flex flex-column" style="height: 82vh;">
+
+                    <div class="p-2 px-3 rounded-3 bg-light border small mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong class="text-dark">🔐 {{ me.full_name }} ({{ me.role }})</strong>
+                            <span class="badge bg-secondary" style="font-size: 0.65rem;">{{ me.user_type }}</span>
+                        </div>
+                        <div class="text-muted" style="font-size: 0.75rem;">
+                            {{ me.erp_branch_code or 'BR-ULSAN-01' }} · {{ me.default_workspace or 'ZONE-A-BAY1' }}
+                        </div>
+                        <div class="d-flex gap-1 mt-2 pt-1 border-top">
+                            <span class="badge {{ 'bg-success' if me.can_access_erp == 'Y' else 'bg-secondary' }}" style="font-size: 0.68rem;">
+                                ERP: {{ me.can_access_erp }}
+                            </span>
+                            <span class="badge {{ 'bg-success' if me.can_access_internal_rag == 'Y' else 'bg-secondary' }}" style="font-size: 0.68rem;">
+                                사내RAG: {{ me.can_access_internal_rag }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold small" style="color: var(--shi-navy);">💬 내 대화방 목록</span>
+                        <button type="button" id="btnNewChat" class="btn btn-shi-primary btn-sm py-1 px-2 rounded-pill" style="font-size: 0.75rem;">
+                            + 새 대화
+                        </button>
+                    </div>
+
+                    <div class="session-list-scroll flex-grow-1 pe-1 mb-3" id="sessionListBox">
+                        {% set ns = namespace(found=false) %}
+                        {% for s in session_list %}
+                            {% if s.session_id == thread_id %}{% set ns.found = true %}{% endif %}
+                        {% endfor %}
+                        {% if not ns.found %}
+                        <div class="session-item active" data-sid="{{ thread_id }}">
+                            <div class="text-truncate small flex-grow-1" onclick="location.href='/service/assistant?sid={{ thread_id }}'">
+                                🟢 새 대화 진행 중...
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% for s in session_list %}
+                        <div class="session-item {{ 'active' if s.session_id == thread_id }}"
+                             id="session-row-{{ s.session_id }}"
+                             data-sid="{{ s.session_id }}">
+                            <div class="text-truncate me-2 flex-grow-1" style="max-width: 170px;"
+                                 onclick="location.href='/service/assistant?sid={{ s.session_id }}'">
+                                <div class="small text-truncate">{{ s.title }}</div>
+                                <div class="text-muted utc-time" data-short="true" style="font-size: 0.68rem;">{{ s.updated_at }}</div>
+                            </div>
+                            <!-- ⭐ 클릭 시 즉시 DOM에서 삭제하고 DB에 영구 숨김 기록 -->
+                            <button type="button" class="btn-del-session"
+                                    onclick="deleteSessionRow(event, '{{ s.session_id }}', this)"
+                                    title="대화방 지우기 (DB에는 보존)">
+                                ✕
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="text-center text-muted small py-4">
+                            저장된 이전 대화가 없습니다.
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="border-top pt-2">
+                        <div class="fw-bold small text-secondary mb-2" style="font-size: 0.78rem;">⚡ 원클릭 질문 예시</div>
+                        <div class="d-grid gap-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
+                                AH36 20mm 강판 1G 맞대기 FCAW 용접 시 예열 온도와 전류·전압 기준 알려줘
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
+                                등록된 작업자 전체 명단이랑 자격증 상태 보여줘
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
+                                창고에 남아있는 강판이랑 용접 와이어 재고 알려줘
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
+                                B-104 블록에 조객원 작업자 투입해서 작업지시서 써줘
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 우측 메인: 단일 헤더 + DB 연동 지부별 실시간 카메라 패널 + 채팅창 -->
+            <div class="col-lg-9">
+                <div class="bg-white border rounded-4 shadow-sm d-flex flex-column" style="height: 82vh;">
+
+                    <!-- 단일 상단 헤더 -->
+                    <div class="p-3 px-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <span class="fw-bold" style="color: var(--shi-navy);">🤖 K-Shipyard AI Assistant</span>
+                            <span class="badge bg-light text-secondary border ms-2" id="threadBadge">{{ thread_id }}</span>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-bold" id="btnToggleMiniVision">
+                                👁️ 지부별 실시간 비전(CCTV) 열기
+                            </button>
+                            <a href="/vision/" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                                🗺️ 전체 지도·비전 관제로
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- ⭐ 하드코딩 0%! DB(ERP_BRANCHES)에서 동적으로 늘어나는 지부/카메라 선택 & NVR 저장 경로 패널 -->
+                    <div class="border-bottom bg-dark text-white p-3 d-none" id="miniVisionPanel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom border-secondary">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-danger" id="miniLiveBadge">● LIVE CAM</span>
+
+                                <!-- 1) Oracle ERP_BRANCHES 테이블 연동 동적 드롭다운 -->
+                                <select id="astBranchSelect" class="form-select form-select-sm bg-dark text-white border-secondary fw-bold" style="width: 245px;">
+                                    {% for br in branches %}
+                                    <option value="{{ br.branch_code }}"
+                                            data-cam="{{ br.camera_code or ('CAM-' ~ br.branch_code) }}"
+                                            data-stream="{{ br.default_video or 'video1.mp4' }}"
+                                            data-region="{{ br.region_name }}">
+                                        🏭 {{ br.branch_name }} ({{ br.camera_code or br.branch_code }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+
+                                <!-- 2) 어색한 .mp4 대신 실시간 카메라 스트림 아카이브 경로 표시 -->
+                                <span class="badge bg-black border border-secondary text-info font-monospace px-2 py-2" id="astStorageUriBadge">
+                                    📁 s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live_stream
+                                </span>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-warning btn-sm fw-bold py-0 px-2" id="btnAstPauseVision">⏸️ 일시정지</button>
+                                <button type="button" class="btn btn-outline-light btn-sm py-0 px-2" id="btnAstReconnectVision">🔄 스트림 재연결</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 text-white" id="btnCloseMiniVision">✕ 닫기</button>
+                            </div>
+                        </div>
+
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-7 text-center">
+                                <img src="" id="astVisionImg" class="img-fluid rounded-3 border border-secondary"
+                                     style="max-height: 230px; min-height: 180px; background: #000;" alt="실시간 카메라 스트림 연결 중...">
+                            </div>
+                            <div class="col-md-5 small">
+                                <div class="mb-1">
+                                    <span class="text-white-50">수신 카메라 채널:</span>
+                                    <strong class="text-info ms-1" id="astCamLabel">CAM-ULS-BAY1</strong>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="text-white-50">스냅샷 저장소:</span>
+                                    <span class="font-monospace text-white-50 ms-1" style="font-size: 0.74rem;">/static/captures/frame_*.jpg</span>
+                                </div>
+                                <div class="p-2 rounded bg-black bg-opacity-50 border border-secondary mb-2">
+                                    <div class="text-warning fw-bold mb-1" id="astJointStatus">용접선 탐색 대기 중...</div>
+                                    <div class="text-white-50" style="font-size: 0.76rem;" id="astObjStatus">인식 객체: 수신 중</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 채팅 메시지 영역 -->
+                    <div class="p-4 flex-grow-1 overflow-auto" id="chatWindow" style="background: #f8fafc;">
+                        <div class="mb-3">
+                            <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm chat-bubble-ai" style="max-width: 90%;">
+                                <div class="small fw-bold text-primary mb-1">AI 어시스턴트</div>
+                                <div class="small text-dark">
+                                    안녕하세요, <strong>{{ me.full_name }}</strong>님! 궁금한 기술 규정이나 ERP 재고를 질문해 보세요.<br>
+                                    상단의 <strong>[👁️ 지부별 실시간 비전 열기]</strong>로 원하는 야드 카메라를 보면서 작업지시를 내릴 수 있습니다.
+                                </div>
+                            </div>
+                        </div>
+
+                        {% for log in chat_logs %}
+                            {% if log.role_code == 'USER' %}
+                            <div class="mb-3 text-end">
+                                <div class="d-inline-block text-white rounded-4 p-3 shadow-sm text-start"
+                                     style="max-width: 80%; background-color: var(--shi-blue); white-space: pre-line;">
+                                    <div class="small">{{ log.content }}</div>
+                                </div>
+                            </div>
+                            {% elif log.role_code == 'ASSISTANT' %}
+                            <div class="mb-3">
+                                <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm chat-bubble-ai" style="max-width: 92%;">
+                                    <div class="small fw-bold text-primary mb-1">AI 어시스턴트</div>
+                                    <div class="small text-dark markdown-body">{{ log.content }}</div>
+                                    {% if log.sources %}
+                                    <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-1">
+                                        {% for s in log.sources %}
+                                        <span class="badge {{ 'bg-danger-subtle text-danger' if s.collection_type == 'INTERNAL' else 'bg-primary-subtle text-primary' }} border">
+                                            📄 {{ s.title }} (p.{{ s.page }})
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+
+                    <!-- 하단 입력 영역 -->
+                    <div class="p-3 border-top bg-white rounded-bottom-4">
+
+                        <!-- 스마트 작업지시 작성 도우미 (야드 선택도 DB 연동!) -->
+                        <div class="wo-builder-panel d-none" id="woBuilderPanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold small text-primary">
+                                    🛠️ 작업지시 스마트 작성 도우미 <span class="text-secondary fw-normal">(선택·입력 시 문장이 자동 조립됩니다)</span>
+                                </span>
+                                <button type="button" class="btn-close btn-sm" id="btnCloseBuilder"></button>
+                            </div>
+
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-2">
+                                    <label class="form-label">블록 번호 *</label>
+                                    <input type="text" id="bBlock" class="form-control form-control-sm"
+                                           list="blockOptions" placeholder="예: B-104, BLK-E102">
+                                    <datalist id="blockOptions">
+                                        <option value="BLK-E102">엔진룸 블록 (AH36 20T)</option>
+                                        <option value="B-104">선수 블록 (SS400 10T)</option>
+                                        <option value="B-305">선미 블록 (EH36 25T)</option>
+                                    </datalist>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">작업 야드 (DB연동)</label>
+                                    <select id="bRegion" class="form-select form-select-sm">
+                                        {% for br in branches %}
+                                        <option value="{{ br.region_name }}">{{ br.branch_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">모재 강종</label>
+                                    <select id="bMaterial" class="form-select form-select-sm">
+                                        <option value="">블록기준 자동</option>
+                                        <option value="AH36">AH36</option>
+                                        <option value="SS400">SS400</option>
+                                        <option value="EH36">EH36</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">판 두께</label>
+                                    <input type="text" id="bThickness" class="form-control form-control-sm" placeholder="예: 20T">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">공정 / 자세</label>
+                                    <select id="bProcess" class="form-select form-select-sm">
+                                        <option value="FCAW / 1G">FCAW / 1G</option>
+                                        <option value="FCAW / 2F">FCAW / 2F</option>
+                                        <option value="SAW / 1G">SAW / 1G</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">투입 작업자 *</label>
+                                    <input type="text" id="bWorker" class="form-control form-control-sm"
+                                           list="workerOptions" placeholder="예: 최선임, 김철수">
+                                    <datalist id="workerOptions">
+                                        <option value="최선임">울산 용접반장 (유효)</option>
+                                        <option value="김철수">거제 용접공 (유효)</option>
+                                        <option value="윤로봇">울산 로봇오퍼레이터 (유효)</option>
+                                        <option value="강숙련">울산 외주 용접공 (유효)</option>
+                                        <option value="조객원">자격만료 테스트 (EXPIRED)</option>
+                                    </datalist>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-2 pt-2 border-top">
+                                <button type="button" class="btn btn-outline-primary btn-sm fw-bold" id="btnApplyToInput">
+                                    ✍️ 채팅 입력창에 채우기
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm fw-bold" id="btnDirectSendBuilder">
+                                    🚀 바로 작업지시서 생성
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-primary template-chip-btn" id="btnToggleBuilder">
+                                    📋 작업지시 스마트 작성기 열기
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary template-chip-btn" id="btnInsertBlankForm">
+                                    📝 빈 양식 틀만 넣기
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary template-chip-btn d-none" id="btnShrinkInput">
+                                    ↕ 입력창 줄이기
+                                </button>
+                            </div>
+                            <span class="text-muted" style="font-size: 0.74rem;">
+                                💡 <strong>Enter</strong> 전송 · <strong>Shift + Enter</strong> 줄바꿈
+                            </span>
+                        </div>
+
+                        <form id="assistantForm" class="d-flex align-items-end gap-2">
+                            <textarea id="questionInput" rows="1" class="form-control auto-expand-textarea"
+                                      placeholder="질문을 입력하거나 [📋 작업지시 스마트 작성기]로 손쉽게 작업지시를 내리세요..." required></textarea>
+                            <button type="submit" id="sendBtn" class="btn btn-shi-primary px-4 py-2 fw-bold text-nowrap" style="height: 48px;">
+                                전송
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $, marked */
+// ⭐ [핵심 해결] X 버튼 클릭 시 즉시 화면에서 지우고 백엔드에 영구 숨김 전송
+function deleteSessionRow(e, targetSid, btnEl) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const currentThreadId = '{{ thread_id }}';
+    const rowEl = $(btnEl).closest('.session-item');
+
+    // 1. 기다리지 않고 화면에서 즉시 삭제!
+    rowEl.fadeOut(120, function() { $(this).remove(); });
+
+    // 2. 서버 세션 & DB에 영구 숨김 마커 기록
+    $.ajax({
+        url: '/service/api/assistant/hide-session',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ session_id: targetSid }),
+        success: function(res) {
+            if (targetSid === currentThreadId || (res && res.was_current)) {
+                location.href = '/service/assistant';
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    const chatWindow = $('#chatWindow');
+    const textarea = document.getElementById('questionInput');
+    let pendingDoc = null;
+    let astVisionTimer = null;
+    let isAstVisionPaused = false;
+
+    $(window).on('beforeunload pagehide', function() {
+        if (astVisionTimer) clearInterval(astVisionTimer);
+        $('#astVisionImg').attr('src', '');
+    });
+
+    // 지부(야드) 선택 시 카메라 채널 및 NVR 저장 경로 업데이트
+    function updateAstCameraMeta() {
+        const opt = $('#astBranchSelect').find('option:selected');
+        const brCode = opt.val() || 'BR-ULSAN-01';
+        const camCode = opt.data('cam') || 'CAM-ULS-BAY1';
+        $('#astCamLabel').text(camCode);
+        $('#astStorageUriBadge').text(`📁 s3://k-shipyard-nvr/${brCode}/${camCode}/live_stream`);
+    }
+
+    function startAstVisionStream() {
+        isAstVisionPaused = false;
+        updateAstCameraMeta();
+        $('#btnAstPauseVision').text('⏸️ 일시정지').removeClass('btn-success').addClass('btn-warning');
+        $('#miniLiveBadge').removeClass('bg-secondary').addClass('bg-danger').text('● LIVE CAM');
+        $('#astVisionImg').attr('src', '/vision/video_feed?t=' + Date.now());
+
+        if (!astVisionTimer) {
+            astVisionTimer = setInterval(function() {
+                if (isAstVisionPaused) return;
+                $.getJSON('/vision/detections', function(data) {
+                    const preds = data.predictions || [];
+                    const joints = preds.filter(p => p.class === 'weld_joint');
+                    if (joints.length > 0) {
+                        $('#astJointStatus').text(`✅ 용접선 ${joints.length}건 포착됨 (ID #${joints[0].tracker_id})`);
+                    } else {
+                        $('#astJointStatus').text('용접선 탐색 중...');
+                    }
+                    const names = preds.map(p => `${p.class}(${Math.round((p.confidence||0)*100)}%)`).slice(0, 4).join(', ');
+                    $('#astObjStatus').text(preds.length ? `인식됨(${preds.length}): ${names}` : '인식된 객체 없음');
+                });
+            }, 1600);
+        }
+    }
+
+    function stopAstVisionStream() {
+        $('#astVisionImg').attr('src', '');
+        if (astVisionTimer) {
+            clearInterval(astVisionTimer);
+            astVisionTimer = null;
+        }
+    }
+
+    $('#btnToggleMiniVision').on('click', function() {
+        const panel = $('#miniVisionPanel');
+        if (panel.hasClass('d-none')) {
+            panel.removeClass('d-none');
+            startAstVisionStream();
+        } else {
+            panel.addClass('d-none');
+            stopAstVisionStream();
+        }
+    });
+
+    $('#btnCloseMiniVision').on('click', function() {
+        $('#miniVisionPanel').addClass('d-none');
+        stopAstVisionStream();
+    });
+
+    // DB 연동 야드 드롭다운 변경 시 해당 지부의 카메라 스트림으로 즉시 전환
+    $('#astBranchSelect').on('change', function() {
+        const opt = $(this).find('option:selected');
+        const streamKey = opt.data('stream') || 'video1.mp4';
+        updateAstCameraMeta();
+        $.getJSON('/vision/change_video/' + encodeURIComponent(streamKey), function() {
+            startAstVisionStream();
+        });
+    });
+
+    $('#btnAstPauseVision').on('click', function() {
+        $.getJSON('/vision/pause');
+        isAstVisionPaused = !isAstVisionPaused;
+        if (isAstVisionPaused) {
+            $('#astVisionImg').attr('src', '');
+            $('#miniLiveBadge').removeClass('bg-danger').addClass('bg-secondary').text('⏸️ PAUSED');
+            $(this).text('▶️ 재생').removeClass('btn-warning').addClass('btn-success');
+        } else {
+            startAstVisionStream();
+        }
+    });
+
+    $('#btnAstReconnectVision').on('click', function() {
+        stopAstVisionStream();
+        setTimeout(startAstVisionStream, 150);
+    });
+
+    // 입력 임시저장 복원 & Textarea 유동 확장
+    const DRAFT_KEY = 'ast_draft_text_{{ me.user_id }}';
+    function adjustTextareaHeight(minHeightPx = 48) {
+        textarea.style.height = 'auto';
+        const nextHeight = Math.min(Math.max(textarea.scrollHeight, minHeightPx), 240);
+        textarea.style.height = nextHeight + 'px';
+        textarea.style.overflowY = (textarea.scrollHeight > 240) ? 'auto' : 'hidden';
+        if (nextHeight > 70) $('#btnShrinkInput').removeClass('d-none');
+        else $('#btnShrinkInput').addClass('d-none');
+    }
+
+    const savedDraft = localStorage.getItem(DRAFT_KEY);
+    if (savedDraft) {
+        $('#questionInput').val(savedDraft);
+        adjustTextareaHeight();
+    }
+
+    $('#questionInput').on('input', function() {
+        localStorage.setItem(DRAFT_KEY, $(this).val());
+        adjustTextareaHeight();
+    });
+
+    $('#questionInput').on('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            $('#assistantForm').trigger('submit');
+        }
+    });
+
+    $('#btnShrinkInput').on('click', function() {
+        textarea.style.height = '48px';
+        $(this).addClass('d-none');
+    });
+
+    // 스마트 작업지시 작성 도우미
+    $('#btnToggleBuilder').on('click', function() {
+        $('#woBuilderPanel').toggleClass('d-none');
+        if (!$('#woBuilderPanel').hasClass('d-none')) $('#bBlock').focus();
+    });
+    $('#btnCloseBuilder').on('click', () => $('#woBuilderPanel').addClass('d-none'));
+
+    function buildWorkOrderQuery() {
+        const block = $('#bBlock').val().trim() || 'B-104';
+        const region = $('#bRegion').val();
+        const mat = $('#bMaterial').val();
+        const thick = $('#bThickness').val().trim();
+        const proc = $('#bProcess').val();
+        const worker = $('#bWorker').val().trim() || '최선임';
+
+        let lines = [`[작업지시서 발행 요청]`];
+        lines.push(`• 대상 블록 번호 : ${block}`);
+        lines.push(`• 작업 야드 : ${region}`);
+        if (mat) lines.push(`• 모재 강종 : ${mat}`);
+        if (thick) lines.push(`• 판재 두께 : ${thick}`);
+        if (proc) lines.push(`• 용접 공정/자세 : ${proc}`);
+        lines.push(`• 투입 작업자 : ${worker}`);
+        lines.push(`위 조건으로 사내 규정과 기상을 반영해 작업지시서를 작성해줘.`);
+        return lines.join('\n');
+    }
+
+    $('#btnApplyToInput').on('click', function() {
+        const text = buildWorkOrderQuery();
+        $('#woBuilderPanel').addClass('d-none');
+        $('#questionInput').val(text).focus();
+        localStorage.setItem(DRAFT_KEY, text);
+        adjustTextareaHeight(165);
+    });
+
+    $('#btnDirectSendBuilder').on('click', function() {
+        const text = buildWorkOrderQuery();
+        $('#woBuilderPanel').addClass('d-none');
+        $('#questionInput').val(text);
+        $('#assistantForm').trigger('submit');
+    });
+
+    $('#btnInsertBlankForm').on('click', function() {
+        const blankForm =
+`[작업지시서 발행 요청]
+• 블록 번호 :
+• 작업 야드 :
+• 모재 / 두께 :
+• 투입 작업자 :
+위 조건으로 작업지시서 작성해줘.`;
+        $('#questionInput').val(blankForm).focus();
+        adjustTextareaHeight(155);
+    });
+
+    $('.sample-q').on('click', function() {
+        $('#questionInput').val($(this).text().trim()).focus();
+        adjustTextareaHeight();
+    });
+
+    function renderMarkdown(text) {
+        if (typeof marked !== 'undefined') return marked.parse(text || '');
+        return $('<div>').text(text).html().replace(/\n/g, '<br>');
+    }
+
+    $('.markdown-body').each(function() {
+        $(this).html(renderMarkdown($(this).text()));
+    });
+    chatWindow.scrollTop(chatWindow[0].scrollHeight);
+
+    $('#btnNewChat').on('click', function() {
+        $.post('/service/api/assistant/reset', function(res) {
+            if (res.status === 'SUCCESS') {
+                location.href = '/service/assistant?sid=' + res.thread_id;
+            }
+        });
+    });
+
+    $('#assistantForm').on('submit', function(e) {
+        e.preventDefault();
+        const question = $('#questionInput').val().trim();
+        if (!question) return;
+
+        chatWindow.append(`
+            <div class="mb-3 text-end">
+                <div class="d-inline-block text-white rounded-4 p-3 shadow-sm text-start"
+                     style="max-width: 80%; background-color: var(--shi-blue); white-space: pre-line;">
+                    <div class="small">${$('<div>').text(question).html()}</div>
+                </div>
+            </div>
+        `);
+
+        $('#questionInput').val('');
+        localStorage.removeItem(DRAFT_KEY);
+        textarea.style.height = '48px';
+        $('#btnShrinkInput').addClass('d-none');
+
+        const loadingId = 'loading-' + Date.now();
+        chatWindow.append(`
+            <div class="mb-3" id="${loadingId}">
+                <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm small text-secondary">
+                    <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+                    AI 어시스턴트가 답변 및 작업지시를 작성 중입니다...
+                </div>
+            </div>
+        `);
+
+        $('#sendBtn').prop('disabled', true).text('처리 중...');
+        chatWindow.scrollTop(chatWindow[0].scrollHeight);
+
+        $.ajax({
+            url: '/service/api/assistant/ask',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ question: question }),
+            success: function(res) {
+                $(`#${loadingId}`).remove();
+
+                let sourceBadges = '';
+                if (res.sources && res.sources.length > 0) {
+                    const items = res.sources.map(s => {
+                        const badgeClass = (s.collection_type === 'INTERNAL')
+                            ? 'bg-danger-subtle text-danger'
+                            : 'bg-primary-subtle text-primary';
+                        return `<span class="badge ${badgeClass} border me-1">📄 ${s.title} (p.${s.page})</span>`;
+                    }).join('');
+                    sourceBadges = `<div class="mt-2 pt-2 border-top">${items}</div>`;
+                }
+
+                let hitlHtml = '';
+                if (res.generated_document && res.generated_document.status === 'WAITING_APPROVAL') {
+                    pendingDoc = res.generated_document;
+                    const docTitle = pendingDoc.title || '작업지시 및 자원 배정 결재안';
+                    hitlHtml = `
+                        <div class="hitl-approval-card" id="hitlGateBox">
+                            <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: ${$('<div>').text(docTitle).html()}]</div>
+                            <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
+                                    👍 최종 승인 및 ERP 원장 커밋
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
+                                    ❌ 요청 반려 (Rollback)
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                const metaBadge = `<span class="badge bg-light text-secondary border ms-2" style="font-size:0.7rem;">${res.task_type} · ${res.execution_time_ms}ms</span>`;
+
+                chatWindow.append(`
+                    <div class="mb-3">
+                        <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm chat-bubble-ai" style="max-width: 92%;">
+                            <div class="small fw-bold text-primary mb-2">
+                                AI 어시스턴트 ${metaBadge}
+                            </div>
+                            <div class="small text-dark">${renderMarkdown(res.answer)}</div>
+                            ${sourceBadges}
+                            ${hitlHtml}
+                        </div>
+                    </div>
+                `);
+                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            },
+            error: function(xhr) {
+                $(`#${loadingId}`).remove();
+                const errMsg = xhr.responseJSON ? xhr.responseJSON.message : '통신 오류가 발생했습니다.';
+                chatWindow.append(`
+                    <div class="mb-3">
+                        <div class="d-inline-block bg-danger-subtle text-danger border rounded-4 p-3 small">
+                            ❌ ${errMsg}
+                        </div>
+                    </div>
+                `);
+                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            },
+            complete: function() {
+                $('#sendBtn').prop('disabled', false).text('전송');
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-hitl-decision', function() {
+        if (!pendingDoc) return;
+        const action = $(this).data('action');
+        $('#hitlGateBox').find('button').prop('disabled', true);
+
+        $.ajax({
+            url: '/service/api/assistant/approve',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ action: action, doc: pendingDoc }),
+            success: function(res) {
+                $('#hitlGateBox').remove();
+                const colorClass = (action === 'APPROVE') ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+                chatWindow.append(`
+                    <div class="mb-3">
+                        <div class="d-inline-block ${colorClass} border rounded-4 p-3 small fw-bold shadow-sm">
+                            ${res.message}
+                        </div>
+                    </div>
+                `);
+                pendingDoc = null;
+                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

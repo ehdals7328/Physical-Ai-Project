@@ -1,0 +1,537 @@
+<!-- web/templates/service/vision.html -->
+{% extends "layout/base.html" %}
+{% block title %}스마트 야드 GIS 지도 & 실시간 비전 관제 | K-SHIPYARD AI{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    /* 1. 상단 GIS 지도 (대륙 복제 방지) */
+    #yardMap {
+        width: 100%;
+        height: 390px;
+        border-radius: 16px;
+        border: 2px solid #cbd5e1;
+        background: #cad2d3;
+        z-index: 1;
+        transition: height 0.3s ease;
+    }
+    #yardMap.minimized {
+        height: 185px;
+    }
+
+    .pin-hq {
+        background: #004ea2;
+        color: #ffffff;
+        border: 2.5px solid #ffffff;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        box-shadow: 0 3px 10px rgba(0, 78, 162, 0.7);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    .pin-hq:hover { transform: scale(1.25); background: #0284c7; }
+    .pin-partner {
+        background: #dc2626;
+        color: #ffffff;
+        border: 2px solid #ffffff;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        font-weight: 800;
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.75);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    .pin-partner:hover { transform: scale(1.3); }
+
+    /* 2. 실시간 비전 비디오 박스 */
+    .vision-player-wrapper {
+        background: #0f172a;
+        border-radius: 16px;
+        overflow: hidden;
+        position: relative;
+        min-height: 460px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #cbd5e1;
+    }
+    .vision-player-wrapper img {
+        width: 100%;
+        max-height: 540px;
+        object-fit: contain;
+    }
+    .live-badge-bar {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        display: flex;
+        gap: 8px;
+        z-index: 10;
+    }
+
+    /* 3. 우측 비전 상태 요약 카드 */
+    .status-summary-card {
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 24px 22px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+    }
+    .status-summary-card .card-label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+    .status-summary-card .card-value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--shi-navy);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="py-4" style="min-height: 92vh; padding-top: 92px !important; background-color: #f4f7fb;">
+    <div class="container">
+
+        <!-- =================================================================
+             1. 상단: 스마트 야드 & 외주 협력사 GIS 관제 지도 (단일 지도 고정)
+        ================================================================== -->
+        <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+                <div>
+                    <span class="badge bg-primary mb-1">GIS LOCATION MAP</span>
+                    <h4 class="fw-bold mb-0" style="color: var(--shi-navy);">
+                        🗺️ 조선소 야드 지부 및 외주 협력사 위치 관제
+                    </h4>
+                    <p class="small text-secondary mb-0 mt-1">
+                        🔵 <strong>파란 핀(본사 야드)</strong>을 클릭하면 해당 공장으로 확대되며 아래에 실시간 카메라가 연결됩니다.
+                        {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
+                            (🔴 <strong>빨간 핀</strong>: 계약 중인 외주 협력사)
+                        {% endif %}
+                    </p>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-pill" id="btnResetMapZoom">
+                        🗺️ 한반도 전체 보기
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-pill" id="btnToggleMap">
+                        ↕ 지도 접기/펼치기
+                    </button>
+                </div>
+            </div>
+
+            <!-- DB 연동 지부/업체 퀵 선택 바 -->
+            <div class="d-flex flex-wrap align-items-center gap-2 py-2 mb-2 border-top border-bottom small" id="mapQuickSelectBar">
+                <span class="fw-bold text-dark me-1">📍 지부/업체 바로 선택:</span>
+                <span class="text-muted">DB에서 위치 정보를 불러오는 중...</span>
+            </div>
+
+            <div id="yardMap"></div>
+        </div>
+
+
+        <!-- =================================================================
+             2. 중단: 실시간 비전 화면 (좌측 8칸) + 비전 인식 현황 (우측 4칸)
+             (1차 웹 단계에 맞춰 로봇 제어 박스 완전 제거!)
+        ================================================================== -->
+        <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm" id="liveConsoleSection">
+            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-3 gap-2">
+                <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-primary" id="branchCodeBadge">BR-ULSAN-01</span>
+                        <span class="badge bg-dark font-monospace" id="storagePathBadge">
+                            📁 NVR 저장경로: s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live
+                        </span>
+                    </div>
+                    <h4 class="fw-bold mb-0" style="color: var(--shi-navy);" id="branchTitleText">
+                        👁️ 울산 제1야드 (중조립 A동) 실시간 비전 모니터링
+                    </h4>
+                </div>
+
+                <!-- 우측: DB 연동 야드/카메라 채널 선택 & 스트림 제어 -->
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <select id="visionCameraSelect" class="form-select form-select-sm fw-bold" style="width: 245px;">
+                        {% for br in branches %}
+                        <option value="{{ br.branch_code }}"
+                                data-bname="{{ br.branch_name }}"
+                                data-cam="{{ br.camera_code or ('CAM-' ~ br.branch_code) }}"
+                                data-stream="{{ br.default_video or 'video1.mp4' }}">
+                            📹 {{ br.branch_name }} ({{ br.camera_code or br.branch_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <button type="button" class="btn btn-warning btn-sm fw-bold px-3" id="btnPauseStream">
+                        ⏸️ 일시정지
+                    </button>
+
+                    <button type="button" class="btn btn-outline-dark btn-sm fw-bold px-3" id="btnReconnectStream">
+                        🔄 카메라 재연결
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-4 align-items-stretch">
+                <!-- 좌측 8칸: 실시간 카메라 스트림 -->
+                <div class="col-lg-8">
+                    <div class="vision-player-wrapper h-100">
+                        <div class="live-badge-bar">
+                            <span class="badge bg-danger px-3 py-2" id="liveStatusPill">● LIVE CAMERA</span>
+                            <span class="badge bg-dark px-3 py-2" id="camNameBadge">CAM-ULS-BAY1</span>
+                        </div>
+                        <img src="/vision/video_feed" id="liveStreamImg" alt="실시간 비전 스트림"
+                             onerror="this.style.display='none'; document.getElementById('streamOfflineBox').classList.remove('d-none');">
+                        <div id="streamOfflineBox" class="text-center text-white-50 p-4 d-none">
+                            <div class="fs-1 mb-2">⏸️</div>
+                            <h5 class="text-white fw-bold">카메라 스트림 일시정지 / 대기 중</h5>
+                            <p class="small mb-0">상단의 [▶️ 다시 재생] 또는 [🔄 카메라 재연결]을 누르면 즉시 연결됩니다.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 우측 4칸: 비전 용접선 & 객체 인식 요약 카드 2개 -->
+                <div class="col-lg-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="status-summary-card">
+                            <div class="card-label">용접선(Weld Joint) 추적 현황</div>
+                            <div class="card-value text-primary" id="jointStatusText">탐색 대기 중...</div>
+                            <div class="small text-secondary mt-2" id="jointSubText">
+                                화면 내 용접 이음새가 포착되면 시작·종료 궤적이 자동 추출됩니다.
+                            </div>
+                        </div>
+
+                        <div class="status-summary-card mb-0">
+                            <div class="card-label">실시간 프레임 객체 인식 현황</div>
+                            <div class="card-value text-dark" id="objCountText">0개 객체 인식</div>
+                            <div class="small text-secondary mt-2" id="detectedObjectsText">
+                                인식된 클래스: 대기 중
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid mt-3">
+                        <button type="button" class="btn btn-shi-primary fw-bold py-2" id="btnManualSaveDb">
+                            📸 현재 카메라 스냅샷 즉시 기록하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- =================================================================
+             3. 하단: 비전 탐지 이력 (촬영 날짜 및 시간 표시)
+        ================================================================== -->
+        <div class="bg-white border rounded-4 p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <span class="badge bg-dark me-1">VISION LOGS</span>
+                    <strong class="fs-5" style="color: var(--shi-navy);">📋 비전 용접선 탐지 기록</strong>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" id="btnRefreshDb">
+                    🔄 새로고침
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle small mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>기록 번호</th>
+                            <th>촬영 카메라</th>
+                            <th>탐지된 객체 요약</th>
+                            <th>자동 추출된 용접 시작점 ➔ 끝점</th>
+                            <th>예상 용접 길이</th>
+                            <th>촬영 일시 (날짜 · 시간)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dbUnifiedTbody">
+                        {% for i in recent_inspections %}
+                        <tr>
+                            <td class="fw-bold text-primary">기록 #{{ i.inspection_id }}</td>
+                            <td>CAM-ULS-BAY1</td>
+                            <td>weld_joint, block, hook</td>
+                            <td class="font-monospace">{{ i.start_point_json }} ➔ {{ i.end_point_json }}</td>
+                            <td class="fw-bold">{{ i.estimated_length_mm }} mm</td>
+                            <td class="text-secondary fw-semibold utc-time">
+                                {{ i.created_at.strftime('%Y-%m-%d %H:%M:%S') if i.created_at else '-' }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">기록된 비전 탐지 내역이 없습니다.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $, L */
+$(document).ready(function() {
+    let latestDetectionPayload = null;
+    let savedTrackerIds = new Set();
+    let currentCameraCode = 'CAM-ULS-BAY1';
+    let currentStreamKey = 'video1.mp4';
+    let isStreamPaused = false;
+    let pollTimer = null;
+
+    $(window).on('beforeunload pagehide', function() {
+        if (pollTimer) clearInterval(pollTimer);
+        $('#liveStreamImg').attr('src', '');
+    });
+
+    // 단일 대륙/한반도 지도 초기화
+    const koreaBounds = L.latLngBounds(L.latLng(32.5, 124.0), L.latLng(39.0, 132.5));
+    const map = L.map('yardMap', {
+        center: [35.38, 129.10],
+        zoom: 8,
+        minZoom: 7,
+        maxZoom: 18,
+        maxBounds: koreaBounds,
+        maxBoundsViscosity: 1.0,
+        worldCopyJump: false
+    });
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        noWrap: true,
+        bounds: koreaBounds,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    function reconnectVideoStream() {
+        isStreamPaused = false;
+        $('#btnPauseStream').text('⏸️ 일시정지').removeClass('btn-success').addClass('btn-warning');
+        $('#liveStatusPill').removeClass('bg-secondary').addClass('bg-danger').text('● LIVE CAMERA');
+        $('#streamOfflineBox').addClass('d-none');
+        $('#liveStreamImg').attr('src', '');
+        setTimeout(function() {
+            $('#liveStreamImg').attr('src', '/vision/video_feed?t=' + Date.now()).show();
+        }, 120);
+    }
+
+    function switchYardCamera(b) {
+        currentCameraCode = b.camera_code;
+        currentStreamKey = b.default_video || 'video1.mp4';
+
+        $('#branchCodeBadge').text(b.branch_code);
+        $('#branchTitleText').text(`👁️ ${b.branch_name} 실시간 비전 모니터링`);
+        $('#camNameBadge').text(b.camera_code);
+        $('#storagePathBadge').text(`📁 NVR 저장경로: s3://k-shipyard-nvr/${b.branch_code}/${b.camera_code}/live`);
+        $('#visionCameraSelect').val(b.branch_code);
+
+        $.getJSON('/vision/change_video/' + encodeURIComponent(currentStreamKey), function() {
+            reconnectVideoStream();
+        });
+    }
+
+    $.getJSON('/vision/api/map-markers', function(res) {
+        if (res.status !== 'SUCCESS') return;
+
+        const quickBar = $('#mapQuickSelectBar');
+        quickBar.html('<span class="fw-bold text-dark me-1">📍 지부/업체 바로 선택:</span>');
+
+        res.hq_branches.forEach(b => {
+            const hqIcon = L.divIcon({
+                className: '',
+                html: `<div class="pin-hq">🏭</div>`,
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            const m = L.marker([b.lat, b.lng], { icon: hqIcon, zIndexOffset: 1000 }).addTo(map);
+            m.bindTooltip(`
+                <div class="p-1">
+                    <span class="badge bg-primary mb-1">본사 야드 (${b.branch_code})</span>
+                    <div class="fw-bold text-dark">${b.branch_name}</div>
+                    <div class="small text-secondary">${b.address}</div>
+                    <div class="small fw-bold text-primary mt-1">👉 클릭 시 확대 및 실시간 카메라 연결</div>
+                </div>
+            `, { direction: 'top', offset: [0, -14] });
+
+            m.on('click', function() {
+                map.flyTo([b.lat, b.lng], 14, { duration: 0.6 });
+                switchYardCamera(b);
+            });
+
+            const btn = $(`<button type="button" class="btn btn-primary btn-sm py-0 px-2 rounded-pill">🏭 ${b.branch_name}</button>`);
+            btn.on('click', function() {
+                map.flyTo([b.lat, b.lng], 14, { duration: 0.6 });
+                m.openTooltip();
+                switchYardCamera(b);
+            });
+            quickBar.append(btn);
+        });
+
+        if (res.can_see_partners && res.partners) {
+            res.partners.forEach(p => {
+                const partnerIcon = L.divIcon({
+                    className: '',
+                    html: `<div class="pin-partner">외</div>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
+                });
+
+                const pm = L.marker([p.lat, p.lng], { icon: partnerIcon, zIndexOffset: 500 }).addTo(map);
+                const tooltipHtml = `
+                    <div class="p-1" style="min-width: 220px;">
+                        <span class="badge bg-danger mb-1">계약중 협력사 (${p.company_code})</span>
+                        <div class="fw-bold text-dark">${p.company_name}</div>
+                        <div class="small text-secondary">${p.company_type} · 대표: ${p.representative}</div>
+                        <div class="small text-muted">📍 ${p.address || ''}</div>
+                        <div class="border-top pt-1 mt-1">
+                            <div class="small text-primary fw-bold">📅 계약기간: ${p.contract_period}</div>
+                            <div class="small text-success fw-semibold">📦 ${p.shared_b2b_resources || ''}</div>
+                        </div>
+                    </div>
+                `;
+                pm.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -10] });
+                pm.on('click', function() {
+                    map.flyTo([p.lat, p.lng], 14, { duration: 0.6 });
+                    pm.openTooltip();
+                });
+
+                const pBtn = $(`<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 rounded-pill">🔴 ${p.company_name}</button>`);
+                pBtn.on('click', function() {
+                    map.flyTo([p.lat, p.lng], 14, { duration: 0.6 });
+                    pm.openTooltip();
+                });
+                quickBar.append(pBtn);
+            });
+        }
+    });
+
+    $('#visionCameraSelect').on('change', function() {
+        const opt = $(this).find('option:selected');
+        switchYardCamera({
+            branch_code: opt.val(),
+            branch_name: opt.data('bname'),
+            camera_code: opt.data('cam'),
+            default_video: opt.data('stream')
+        });
+    });
+
+    $('#btnResetMapZoom').on('click', function() {
+        map.flyTo([35.38, 129.10], 8, { duration: 0.5 });
+    });
+
+    $('#btnToggleMap').on('click', function() {
+        $('#yardMap').toggleClass('minimized');
+        setTimeout(() => map.invalidateSize(), 320);
+    });
+
+    function updateReadableStatus(data) {
+        latestDetectionPayload = data;
+        const preds = data.predictions || [];
+        $('#objCountText').text(`${preds.length}개 객체 인식`);
+
+        if (preds.length === 0) {
+            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('탐색 대기 중...');
+            $('#detectedObjectsText').text('현재 프레임에 인식된 객체가 없습니다.');
+            return;
+        }
+
+        const joints = preds.filter(p => p.class === 'weld_joint');
+        const summaryNames = preds.map(p => `${p.class}(${Math.round((p.confidence||0)*100)}%)`).slice(0, 5).join(', ');
+        $('#detectedObjectsText').text(`인식됨: ${summaryNames}`);
+
+        if (joints.length > 0) {
+            $('#jointStatusText').removeClass('text-secondary').addClass('text-primary').text(`✅ 용접선 ${joints.length}건 포착됨 (ID #${joints[0].tracker_id})`);
+            if (joints[0].tracker_id && !savedTrackerIds.has(joints[0].tracker_id)) {
+                savedTrackerIds.add(joints[0].tracker_id);
+                saveSnapshotToDb(true);
+            }
+        } else {
+            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('용접선 탐색 중...');
+        }
+    }
+
+    function pollVision() {
+        if (isStreamPaused) return;
+        $.getJSON('/vision/detections', function(data) { updateReadableStatus(data); });
+    }
+    pollTimer = setInterval(pollVision, 1500);
+    pollVision();
+
+    $('#btnPauseStream').on('click', function() {
+        $.getJSON('/vision/pause');
+        isStreamPaused = !isStreamPaused;
+        if (isStreamPaused) {
+            $('#liveStreamImg').attr('src', '').hide();
+            $('#streamOfflineBox').removeClass('d-none');
+            $('#liveStatusPill').removeClass('bg-danger').addClass('bg-secondary').text('⏸️ PAUSED');
+            $(this).text('▶️ 다시 재생').removeClass('btn-warning').addClass('btn-success');
+        } else {
+            reconnectVideoStream();
+        }
+    });
+
+    $('#btnReconnectStream').on('click', () => reconnectVideoStream());
+
+    function saveSnapshotToDb(isAuto = true) {
+        if (!latestDetectionPayload || !latestDetectionPayload.predictions || latestDetectionPayload.predictions.length === 0) {
+            if (!isAuto) alert('현재 프레임에 탐지된 객체가 없습니다.');
+            return;
+        }
+        $.ajax({
+            url: '/vision/api/save-snapshot',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                work_id: 1,
+                camera_code: currentCameraCode,
+                video_name: currentStreamKey,
+                auto_mode: isAuto,
+                detection_data: latestDetectionPayload
+            }),
+            success: function(res) {
+                if (res.status === 'SUCCESS') refreshDbTable();
+            }
+        });
+    }
+
+    function refreshDbTable() {
+        $.getJSON('/vision/api/db-records', function(res) {
+            if (res.status !== 'SUCCESS') return;
+            const rows = res.inspections.map(i => `
+                <tr>
+                    <td class="fw-bold text-primary">기록 #${i.inspection_id}</td>
+                    <td>${i.camera_code}</td>
+                    <td>${i.detected_objects_str}</td>
+                    <td class="font-monospace">${i.start_point} ➔ ${i.end_point}</td>
+                    <td class="fw-bold">${i.length_mm} mm</td>
+                    <td class="text-secondary fw-semibold">${window.formatToLocalTime(i.created_at)}</td>
+                </tr>
+            `).join('');
+            if (rows) $('#dbUnifiedTbody').html(rows);
+        });
+    }
+
+    $('#btnManualSaveDb').on('click', () => saveSnapshotToDb(false));
+    $('#btnRefreshDb').on('click', () => refreshDbTable());
+    refreshDbTable();
+});
+</script>
+{% endblock %}
