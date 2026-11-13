@@ -1,0 +1,11 @@
+# 가상환경 폴더 제외 (실제 생성한 폴더명 입력)
+.venv/
+project_env/
+venv/
+
+# 파이썬 캐시 및 환경변수
+__pycache__/
+*.pyc
+.env
+
+.vscode/

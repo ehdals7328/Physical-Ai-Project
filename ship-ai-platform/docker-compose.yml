@@ -1,0 +1,49 @@
+services:
+  version: '3.8'
+
+  services:
+    oracle-db:
+      image: gvenzl/oracle-xe:21-slim
+      container_name: ship-oracle-xe
+      environment:
+        - ORACLE_PASSWORD=admin1234
+      ports:
+        - "1521:1521"
+      volumes:
+        - oracle_data:/opt/oracle/oradata
+      restart: always
+
+    postgres-db:
+      image: postgres:16-alpine
+      container_name: ship-partner-pg
+      environment:
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_DB=partner_b2b
+      ports:
+        - "5432:5432"
+      volumes:
+        - pg_data:/var/lib/postgresql/data
+      restart: always
+
+    ship-web:
+      build: .
+      container_name: ship-ai-web
+      ports:
+        - "80:5000"
+      env_file:
+        - .env
+      volumes:
+        - ./web:/app/web
+        - ./modules:/app/modules
+        - ./scripts:/app/scripts
+        - ./data:/app/data
+        - ./web/static/captures:/app/web/static/captures
+      depends_on:
+        - oracle-db
+        - postgres-db
+      restart: always
+
+  volumes:
+    oracle_data:
+    pg_data:
