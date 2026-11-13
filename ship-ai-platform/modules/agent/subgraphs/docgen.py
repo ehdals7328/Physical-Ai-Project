@@ -47,24 +47,24 @@ class WorkOrderGenerationOutput(BaseModel):
         description="참조 문서나 작업 제원에 명시된 절차서/표준 코드 ('.pdf' 파일명 입력 금지)"
     )
     current_amp: str = Field(
-        description="인출된 RAG 문서 기준 적정 전류 숫자 또는 범위만 기입 (단위 'A' 절대 포함 금지, 예: 200~280)"
+        description="대상 공정(FCAW/SAW 등) 및 판두께에 부합하는 적정 전류 숫자 또는 범위만 기입 (단위 'A' 절대 포함 금지, 예: FCAW 200~280 / SAW 550~700)"
     )
     voltage_v: str = Field(
-        description="인출된 RAG 문서 기준 적정 전압 숫자 또는 범위만 기입 (단위 'V' 절대 포함 금지, 예: 24~30)"
+        description="대상 공정(FCAW/SAW 등) 및 판두께에 부합하는 적정 전압 숫자 또는 범위만 기입 (단위 'V' 절대 포함 금지, 예: FCAW 24~30 / SAW 28~34)"
     )
     travel_speed_cm_min: str = Field(
-        description="인출된 RAG 문서 기준 적정 용접 이송 속도 숫자 또는 범위만 기입 (단위 'cm/min' 절대 포함 금지, 예: 25~35)"
+        description="대상 공정 및 판두께에 부합하는 적정 용접 이송 속도 숫자 또는 범위만 기입 (단위 'cm/min' 절대 포함 금지, 예: 25~45)"
     )
     shielding_gas: str = Field(
-        description="인출된 RAG 문서 기준 보호가스 종류 및 권장 유량"
+        description="SAW 공정인 경우 반드시 '입상 플럭스 차폐 (보호가스 미사용)'으로 기입하고, FCAW/GMAW인 경우에만 보호가스 종류 및 유량 기입"
     )
     preheat_temp_c: str = Field(
-        description="인출된 RAG 문서 및 모재 기준 예열 및 층간온도 관리 기준"
+        description="인출된 RAG 문서 및 모재 강종·두께 기준 예열 및 층간온도 관리 기준"
     )
     consumable_spec: str = Field(
         description=(
             "절대 용접와이어 품목명(예: 플럭스코어드 용접와이어 등)을 적지 마십시오! "
-            "인출된 RAG 문서(와이어 카탈로그 및 선박건조 안전지침)에 명시된 "
+            "인출된 RAG 문서(와이어/플럭스 카탈로그 및 선박건조 안전지침)에 명시된 "
             "용접재료의 현장 보관 온도·습도, 지면/벽 이격 거리, 흡습 및 오염 방지 관리 수칙 문장을 추출해 기입하십시오."
         )
     )
@@ -91,11 +91,39 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
     weather = state.get("weather_data") or {}
     safety_eval = weather.get("safety_evaluation") or {}
     safety_status = safety_eval.get("status", "PASS")
-    erp_status = state.get("erp_resource_status") or {}
+    erp_status = dict(state.get("erp_resource_status") or {})
     vision = state.get("vision_data") or {}
 
     # 1. 작업자 선급 자격 유효성 및 블록 요구 공정(WPS) 상호 일치 검증
-    worker_qual = erp_status.get("worker_qualification") or {}
+    worker_qual = dict(erp_status.get("worker_qualification") or {})
+    partner_plan = state.get("partner_erp_plan") or {}
+    selected_partner = partner_plan.get("selected_partner") or {}
+    ext_worker_id = (
+        selected_partner.get("assigned_worker_id")
+        or selected_partner.get("ext_worker_id")
+        or selected_partner.get("worker_id")
+    )
+
+    # 본사 원장에 없으나(NOT_FOUND) 외주 협력사 B2B 원장에서 적격 작업자가 확인된 경우 자격 승계
+    if worker_qual.get("status") == "NOT_FOUND" and ext_worker_id:
+        ext_valid = bool(selected_partner.get("can_accept_order", True))
+        worker_qual = {
+            "worker_id": ext_worker_id,
+            "worker_name": selected_partner.get("worker_name"),
+            "role": selected_partner.get("role", "WELDER"),
+            "company_code": selected_partner.get("partner_id", "VEND-DONGHAE-WELD"),
+            "branch_code": params.get("branch_code"),
+            "cert_code": selected_partner.get("cert_code"),
+            "weld_process": selected_partner.get("weld_process"),
+            "cert_expiry_date": str(selected_partner.get("cert_expiry_date", "")),
+            "status": "VALID" if ext_valid else "UNAVAILABLE",
+            "is_valid": ext_valid,
+            "is_process_matched": True,
+            "mismatch_reason": None,
+        }
+        erp_status["worker_qualification"] = worker_qual
+        erp_status["worker_qualified"] = ext_valid
+
     req_process = params.get("process")
     worker_process = worker_qual.get("weld_process")
 
@@ -172,23 +200,36 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
                 f"용접공정불일치(블록요구:{req_process} != 작업자인증:{worker_process})"
             )
         elif not is_worker_valid:
-            fail_reasons.append(
-                f"작업자선급자격결격({worker_qual.get('worker_name', '미배정')})"
-            )
+            if not worker_qual or not worker_qual.get("worker_id"):
+                fail_reasons.append("투입작업자미배정(작업자 성명 미확인)")
+            else:
+                fail_reasons.append(
+                    f"작업자선급자격결격({worker_qual.get('worker_name')}: {worker_qual.get('status')})"
+                )
         if has_vision_hazard:
             fail_reasons.append("비전결함/용접중Lock/로봇비상정지")
         if weather_status in ("NEED_LOCATION", "NOT_FOUND", "PARSE_ERROR", "ERROR"):
             fail_reasons.append(f"기상조회실패({weather_status})")
 
+        erp_status["interlock_fail_reasons"] = fail_reasons
+        if not is_worker_valid:
+            erp_status["worker_qualified"] = False
+
         chosen_node = "troubleshooter_agent"
         print(f"👉 [최종 결정]: {chosen_node} (차단 사유: {', '.join(fail_reasons)})")
         print("=" * 65 + "\n")
-        return {"next": chosen_node}
+        return {
+            "next": chosen_node,
+            "erp_resource_status": erp_status,
+        }
 
     chosen_node = "work_order_writer"
     print(f"👉 [최종 결정]: {chosen_node} (모든 안전 및 ERP 인터록 통과)")
     print("=" * 65 + "\n")
-    return {"next": chosen_node}
+    return {
+        "next": chosen_node,
+        "erp_resource_status": erp_status,
+    }
 
 
 def route_from_gatekeeper(
@@ -261,7 +302,6 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         )
         or "해당 없음"
     )
-    # 단순 ERP 재고 조회나 협력사 B2B 배차/단가 문의일 때는 이전 턴의 기상 데이터를 LLM에 전달하지 않음
     include_weather = (
         state.get("need_weather", False)
         and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
@@ -309,16 +349,20 @@ TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "당신은 조선소 안전 거버넌스 및 공정 트러블슈팅 에이전트입니다.\n"
-        "현재 작업지시서 발행을 보류해야 하는 사유를 진단하고 현장 복구 대안(Self-Healing SOP)을 제시하세요.\n\n"
+        "거버넌스 게이트키퍼에 의해 작업지시서 발행이 **강제 차단(HOLD)**되었습니다.\n"
+        "제공된 [게이트키퍼 인터록 차단 사유]를 최우선으로 명확히 설명하고 현장 복구 대안(Self-Healing SOP)을 제시하세요.\n"
+        "⚠️ 절대 '보류해야 하는 사유가 없다'거나 '작업지시서를 발행할 수 있다'고 답변하지 마십시오.\n\n"
         "[처방 원칙]\n"
         "1. [누락된 필수 제원]이 있는 경우: 해당 항목만 친절하게 요청하세요.\n"
-        "2. [본사 ERP 자격 및 공정 검증]에서 작업자 자격증이 만료(`EXPIRED`), 휴직(`ON_LEAVE`), 또는 블록 요구 공정과 작업자 인증 공정이 불일치(`PROCESS_MISMATCH`)하는 경우: 선급 규정에 따라 작업지시서 발행 차단(인터록)을 선언하고 해당 공정 자격을 보유한 적격 작업자로 교체 배정하거나 전문 외주 인력을 투입하도록 권고하세요.\n"
-        "3. [기상 안전 판정]이 'STOP'인 경우: 작업 중지 명령과 함께 사내 SOP에 따른 크레인 붐대 고정 및 방풍/보양 조치를 안내하세요.\n"
-        "4. [비전 검사 결과]에서 불량(`DEFECT`), 용접 중(`IN_WELDING`), 또는 로봇 비상정지(`EMERGENCY_STOP_YN='Y'`)가 감지된 경우: 즉시 원인 해소 및 재검사를 안내하세요.",
+        "2. 투입 작업자가 미배정되었거나 인사 원장에서 확인되지 않은 경우: 투입할 적격 작업자 성명(예: 최선임, 김철수 등)을 명시하여 재요청하도록 안내하세요.\n"
+        "3. 작업자 자격증이 만료(`EXPIRED`), 휴직(`ON_LEAVE`), 또는 블록 요구 공정과 작업자 인증 공정이 불일치(`PROCESS_MISMATCH`)하는 경우: 선급 규정에 따라 작업지시서 발행 차단(인터록)을 선언하고 해당 공정 자격을 보유한 적격 작업자로 교체 배정하거나 전문 외주 인력을 투입하도록 권고하세요.\n"
+        "4. [기상 안전 판정]이 'STOP'인 경우: 작업 중지 명령과 함께 사내 SOP에 따른 크레인 붐대 고정 및 방풍/보양 조치를 안내하세요.\n"
+        "5. [비전 검사 결과]에서 불량(`DEFECT`), 용접 중(`IN_WELDING`), 또는 로봇 비상정지(`EMERGENCY_STOP_YN='Y'`)가 감지된 경우: 즉시 원인 해소 및 재검사를 안내하세요.",
     ),
     (
         "human",
         "[사용자 요청]: {query}\n"
+        "[게이트키퍼 인터록 차단 사유]: {fail_reasons}\n"
         "[확정 작업 제원(블록 스펙)]: {params}\n"
         "[누락된 필수 제원]: {missing}\n"
         "[본사 ERP 자격/자원 검증]: {erp_status}\n"
@@ -331,32 +375,19 @@ TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
 
 def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
     missing = state.get("missing_params", [])
+    erp_status = state.get("erp_resource_status") or {}
+    fail_reasons = erp_status.get("interlock_fail_reasons") or ["거버넌스 안전/자격 인터록 조건 미충족"]
     docs = state.get("retrieved_docs", [])
     docs_text = "\n".join(str(d.get("content", ""))[:400] for d in docs[:2])
 
     res = (TROUBLESHOOT_PROMPT | llm).invoke({
         "query": state.get("user_query", ""),
-        "params": json.dumps(
-            state.get("extracted_params") or {},
-            ensure_ascii=False,
-            cls=DecimalEncoder,
-        ),
+        "fail_reasons": ", ".join(fail_reasons),
+        "params": json.dumps(state.get("extracted_params") or {}, ensure_ascii=False, cls=DecimalEncoder),
         "missing": missing,
-        "erp_status": json.dumps(
-            state.get("erp_resource_status") or {},
-            ensure_ascii=False,
-            cls=DecimalEncoder,
-        ),
-        "weather": json.dumps(
-            state.get("weather_data") or {},
-            ensure_ascii=False,
-            cls=DecimalEncoder,
-        ),
-        "vision": json.dumps(
-            state.get("vision_data") or {},
-            ensure_ascii=False,
-            cls=DecimalEncoder,
-        ),
+        "erp_status": json.dumps(erp_status, ensure_ascii=False, cls=DecimalEncoder),
+        "weather": json.dumps(state.get("weather_data") or {}, ensure_ascii=False, cls=DecimalEncoder),
+        "vision": json.dumps(state.get("vision_data") or {}, ensure_ascii=False, cls=DecimalEncoder),
         "docs": docs_text,
     })
 
@@ -385,14 +416,11 @@ WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
         "제공된 [확정 작업 제원], [ERP 사전 검토/커밋 결과], [협력사 B2B 연계 내역], [YOLOv11 비전 계측 결과], [기상 및 안전 판정], [참조 WPS 및 기술 규격서(RAG)]를 "
         "바탕으로 공식 **표준 작업지시서(Work Order & Work Instruction)**와 구조화된 시공 파라미터 필드를 모두 빈칸 없이 작성하십시오.\n\n"
         "[작성 및 데이터 추출 원칙]\n"
-        "1. **RAG 문서 기반 적극 추출**: [참조 WPS 및 기술 규격서(RAG)]에 포함된 용접 와이어 카탈로그(세아ESAB 등), 선체 검사 지침(Hull Weld Inspection), 안전보건 지침의 수치와 규정을 면밀히 읽어 각 필드를 채우십시오. 특히 `consumable_spec`에는 와이어 이름이 아니라 보관소 온·습도 유지, 이격 보관, 개봉 후 흡습 방지 등 실제 관리 수칙을 적으십시오.\n"
-        "2. **WPS 번호(`wps_code`) 규칙**: 절대 `.pdf` 파일 이름을 `wps_code`에 넣지 마십시오. 문서 내 절차서 코드가 없으면 `WPS-{{공정}}-{{강종}}-STD` 형식으로 표준 식별 코드를 부여하십시오.\n"
-        "3. **자재 Lot 추적성, 인력 자격 & 대기차량 배차 표**:\n"
-        "   - 배정 강재/와이어 Lot 번호(`ALLOCATED_LOT_NO`), 와이어 품목명 및 선점 수량, 투입 작업자명/사번(`WORKER_ID`) 및 선급 자격증 번호(`CERT_CODE`), 배차된 운반/지원 차량 코드(`ASSIGNED_VEHICLE_CODE`)를 바인딩하십시오.\n"
-        "4. **비전 계측 표기 원칙**:\n"
-        "   - 로봇 전용 픽셀 좌표(`start_point_json`, `end_point_json`)는 제외하고, **비전 탐지 상태(`inspection_status`)**와 **안전 클리어런스 확보 여부(`safety_clearance_yn`)**만 표기하십시오.\n"
-        "5. **실시간 현장 기상 및 안전 조치 체크리스트**:\n"
-        "   - [기상 및 안전 판정]의 실측 기온, 풍속, 습도, 강수량과 필수 안전 준수사항(`mandatory_rules`), 선행 조치(`prerequisites`)를 체크리스트(`- [ ]`)로 작성하십시오.",
+        "1. **RAG 문서 기반 적극 추출**: [참조 WPS 및 기술 규격서(RAG)]에 포함된 용접 와이어/플럭스 카탈로그, 선체 검사 지침(Hull Weld Inspection), 안전보건 지침의 수치와 규정을 면밀히 읽어 각 필드를 채우십시오. 특히 `consumable_spec`에는 와이어 이름이 아니라 보관소 온·습도 유지, 이격 보관, 개봉 후 흡습 방지 등 실제 관리 수칙을 적으십시오.\n"
+        "2. **공정별 물리/시공 정합성 엄수**:\n"
+        "   - 대상 공정이 `SAW`(서브머지드 아크 용접)인 경우 보호가스(`CO2`, `Ar`)를 절대 기재하지 말고 `'입상 플럭스 차폐 (보호가스 미사용)'`으로 기입하며, `FCAW` 카탈로그의 저전류(180~250A) 수치를 SAW에 혼용하지 말고 해당 강종·두께에 맞는 SAW 시공 조건(예: 550~700A, 28~34V)을 기재하십시오.\n"
+        "3. **WPS 번호(`wps_code`) 규칙**: 절대 `.pdf` 파일 이름을 `wps_code`에 넣지 마십시오. 문서 내 절차서 코드가 없으면 `WPS-{{공정}}-{{강종}}-STD` 형식으로 표준 식별 코드를 부여하십시오.\n"
+        "4. **비전 계측 표기 원칙**: 로봇 전용 픽셀 좌표(`start_point_json`, `end_point_json`)는 제외하고, 비전 탐지 상태와 안전 클리어런스 확보 여부만 반영하십시오.",
     ),
     (
         "human",
@@ -409,8 +437,8 @@ WORK_ORDER_PROMPT = ChatPromptTemplate.from_messages([
 
 
 def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
-    params = state.get("extracted_params") or {}
-    erp_status = state.get("erp_resource_status") or {}
+    params = dict(state.get("extracted_params") or {})
+    erp_status = dict(state.get("erp_resource_status") or {})
     partner_plan = state.get("partner_erp_plan") or {}
     weather = state.get("weather_data") or {}
     vision = state.get("vision_data") or {}
@@ -425,7 +453,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         hq_meta = get_active_partner_from_db("HQ")
         hq_code = hq_meta.get("company_code")
 
-    # 2. 외주 수행 여부 종합 판정 (자격증이 정상이고 사내 재고가 충분한 직영 요청 시 IN_HOUSE 보장)
+    # 2. 외주 수행 여부 종합 판정
     pref_mode = state.get("preferred_execution_mode", "AUTO")
     is_outsourced = (
         pref_mode == "OUTSOURCED_B2B"
@@ -463,7 +491,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         partner_id = hq_code
         wire_item_code = erp_status.get("selected_wire_code")
 
-    # 4. 자재 Lot, 작업자, 차량, 와이어 소요량 동적 산출
+    # 4. 자재 Lot, 작업자, 야드별 대기 장비, 와이어 소요량 동적 산출
     lot_no = (
         selected_partner.get("partner_lot_no")
         if is_outsourced and selected_partner.get("partner_lot_no")
@@ -480,11 +508,26 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         or selected_partner.get("worker_name")
     )
 
+    branch_info = erp_status.get("branch_info") or {}
+    target_branch = str(
+        params.get("branch_code") or branch_info.get("branch_code") or state.get("branch_code") or ""
+    ).upper()
+
     vehicle_code = (
         selected_partner.get("assigned_vehicle_code")
         if is_outsourced and selected_partner.get("assigned_vehicle_code")
         else erp_status.get("assigned_vehicle_code")
     )
+    if not vehicle_code:
+        for eq in (erp_status.get("vehicles_equipment") or []):
+            if (
+                str(eq.get("branch_code", "")).upper() == target_branch
+                and str(eq.get("operation_status", "")).upper() == "STANDBY"
+            ):
+                vehicle_code = eq.get("asset_code")
+                erp_status["assigned_vehicle_code"] = vehicle_code
+                break
+
     block_code = params.get("block_id")
     exec_type_str = "OUTSOURCED_B2B" if is_outsourced else "IN_HOUSE"
 
@@ -493,17 +536,23 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         weight_ton=params.get("weight_ton"),
     )
 
-    delivery_zone = params.get("work_zone") or state.get("default_workspace")
+    # 블록/지부 기본 작업 구역 우선 적용 (관리자 기본 구역과 야드가 다른 경우 오매핑 방지)
+    delivery_zone = (
+        params.get("work_zone")
+        or branch_info.get("default_zone")
+        or state.get("default_workspace")
+    )
+    if delivery_zone:
+        params["work_zone"] = delivery_zone
 
-    # 5. ERP 원장 커밋 (HITL 승인 또는 즉시 실행 요청 시)
-    if state.get("hitl_approved") or state.get("is_action_requested"):
+    # 5. ERP 원장 커밋 (반드시 관리자 HITL 최종 승인 시에만 실행)
+    if state.get("hitl_approved") is True:
         erp_commit = commit_erp_work_order.invoke({
             "block_id": block_code,
             "material": params.get("material", ""),
             "allocated_lot_no": lot_no,
             "worker_name": worker_name,
             "worker_id": worker_id,
-            "work_no": state.get("work_no"),
             "assigned_vehicle_code": vehicle_code,
             "wire_item_code": wire_item_code,
             "is_outsourced": is_outsourced,
@@ -583,7 +632,6 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "docs": docs_text,
     })
 
-    # 👇 기존 answer = wo_out.markdown_content 대신 간결한 3줄 브리핑 카드로 조립
     safety_eval = weather.get("safety_evaluation") or {}
     safety_status_str = safety_eval.get("status", "PASS")
 
@@ -610,7 +658,6 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     full_answer = answer + admin_notice
 
-    # PDF 파일명이 wps_code로 들어가는 현상 원천 차단
     candidate_wps = (
         params.get("wps_code")
         or (erp_status.get("block_master") or {}).get("wps_code")
@@ -623,6 +670,11 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     else:
         resolved_wps_code = candidate_wps
 
+    # SAW 공정 보호가스 물리 정합성 보정
+    resolved_shielding_gas = wo_out.shielding_gas
+    if str(params.get("process") or "").upper() == "SAW":
+        resolved_shielding_gas = "입상 플럭스 차폐 (보호가스 미사용)"
+
     welding_params_payload = {
         "wps_code": resolved_wps_code,
         "process_code": params.get("process"),
@@ -632,7 +684,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "current_amp": wo_out.current_amp,
         "voltage_v": wo_out.voltage_v,
         "travel_speed_cm_min": wo_out.travel_speed_cm_min,
-        "shielding_gas": wo_out.shielding_gas,
+        "shielding_gas": resolved_shielding_gas,
         "preheat_temp_c": wo_out.preheat_temp_c,
         "consumable_spec": wo_out.consumable_spec,
         "ndt_requirement": wo_out.ndt_requirement,

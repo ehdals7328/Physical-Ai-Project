@@ -168,7 +168,6 @@
                                 <div class="small text-truncate">{{ s.title }}</div>
                                 <div class="text-muted utc-time" data-short="true" style="font-size: 0.68rem;">{{ s.updated_at }}</div>
                             </div>
-                            <!-- ⭐ 클릭 시 즉시 DOM에서 삭제하고 DB에 영구 숨김 기록 -->
                             <button type="button" class="btn-del-session"
                                     onclick="deleteSessionRow(event, '{{ s.session_id }}', this)"
                                     title="대화방 지우기 (DB에는 보존)">
@@ -223,13 +222,12 @@
                         </div>
                     </div>
 
-                    <!-- ⭐ 하드코딩 0%! DB(ERP_BRANCHES)에서 동적으로 늘어나는 지부/카메라 선택 & NVR 저장 경로 패널 -->
+                    <!-- DB(ERP_BRANCHES) 연동 지부/카메라 선택 & NVR 저장 경로 패널 -->
                     <div class="border-bottom bg-dark text-white p-3 d-none" id="miniVisionPanel">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 pb-2 border-bottom border-secondary">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="badge bg-danger" id="miniLiveBadge">● LIVE CAM</span>
 
-                                <!-- 1) Oracle ERP_BRANCHES 테이블 연동 동적 드롭다운 -->
                                 <select id="astBranchSelect" class="form-select form-select-sm bg-dark text-white border-secondary fw-bold" style="width: 245px;">
                                     {% for br in branches %}
                                     <option value="{{ br.branch_code }}"
@@ -241,7 +239,6 @@
                                     {% endfor %}
                                 </select>
 
-                                <!-- 2) 어색한 .mp4 대신 실시간 카메라 스트림 아카이브 경로 표시 -->
                                 <span class="badge bg-black border border-secondary text-info font-monospace px-2 py-2" id="astStorageUriBadge">
                                     📁 s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live_stream
                                 </span>
@@ -310,6 +307,36 @@
                                         {% endfor %}
                                     </div>
                                     {% endif %}
+                                    {% if log.files and (log.files.download_pdf_url or log.files.download_docx_url) %}
+                                    <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">
+                                        {% if log.files.download_pdf_url %}
+                                        {% set pdf_href = log.files.download_pdf_url if log.files.download_pdf_url.startswith('/service/') else '/service' ~ log.files.download_pdf_url %}
+                                        <a href="{{ pdf_href }}" class="btn btn-outline-danger btn-sm fw-bold" target="_blank" rel="noopener">
+                                            {{ '👁️ 최종 승인본 PDF 미리보기' if log.approval_status == 'APPROVED' else '👁️ 작업지시서 초안 PDF 미리보기' }}
+                                        </a>
+                                        {% endif %}
+                                        {% if log.files.download_docx_url %}
+                                        {% set docx_href = log.files.download_docx_url if log.files.download_docx_url.startswith('/service/') else '/service' ~ log.files.download_docx_url %}
+                                        <a href="{{ docx_href }}" class="btn btn-outline-primary btn-sm fw-bold" download>
+                                            {{ '📝 최종 승인본 Word(.docx)' if log.approval_status == 'APPROVED' else '📝 Word(.docx) 다운로드' }}
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    {% if log.approval_status == 'DRAFT' and log.pending_doc %}
+                                    <div class="hitl-approval-card" id="hitlGateBox" data-doc="{{ log.pending_doc | tojson | forceescape }}">
+                                        <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: {{ log.pending_doc.title or '작업지시 및 자원 배정 결재안' }}]</div>
+                                        <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
+                                        <div class="d-flex gap-2">
+                                            <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
+                                                👍 최종 승인 및 ERP 원장 커밋
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
+                                                ❌ 요청 반려 (Rollback)
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}
@@ -319,7 +346,7 @@
                     <!-- 하단 입력 영역 -->
                     <div class="p-3 border-top bg-white rounded-bottom-4">
 
-                        <!-- 스마트 작업지시 작성 도우미 (야드 선택도 DB 연동!) -->
+                        <!-- 스마트 작업지시 작성 도우미 -->
                         <div class="wo-builder-panel d-none" id="woBuilderPanel">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="fw-bold small text-primary">
@@ -429,7 +456,6 @@
 {% block extra_scripts %}
 <script>
 /* global $, marked */
-// ⭐ [핵심 해결] X 버튼 클릭 시 즉시 화면에서 지우고 백엔드에 영구 숨김 전송
 function deleteSessionRow(e, targetSid, btnEl) {
     e.preventDefault();
     e.stopPropagation();
@@ -437,10 +463,8 @@ function deleteSessionRow(e, targetSid, btnEl) {
     const currentThreadId = '{{ thread_id }}';
     const rowEl = $(btnEl).closest('.session-item');
 
-    // 1. 기다리지 않고 화면에서 즉시 삭제!
     rowEl.fadeOut(120, function() { $(this).remove(); });
 
-    // 2. 서버 세션 & DB에 영구 숨김 마커 기록
     $.ajax({
         url: '/service/api/assistant/hide-session',
         method: 'POST',
@@ -452,6 +476,28 @@ function deleteSessionRow(e, targetSid, btnEl) {
             }
         }
     });
+}
+
+// PDF / DOCX 다운로드 URL 접두사 보정 및 버튼 HTML 조립
+function resolveDownloadUrl(url) {
+    if (!url) return '';
+    return url.startsWith('/service/') ? url : '/service' + url;
+}
+
+function buildFileDownloadHtml(files, isApproved = false) {
+    if (!files || (!files.download_pdf_url && !files.download_docx_url)) return '';
+    const pdfLabel = isApproved ? '👁️ 최종 승인본 PDF 미리보기' : '👁️ 작업지시서 초안 PDF 미리보기';
+    const docxLabel = isApproved ? '📝 최종 승인본 Word(.docx)' : '📝 Word(.docx) 다운로드';
+
+    let html = '<div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">';
+    if (files.download_pdf_url) {
+        html += `<a href="${resolveDownloadUrl(files.download_pdf_url)}" class="btn btn-outline-danger btn-sm fw-bold" target="_blank" rel="noopener">${pdfLabel}</a>`;
+    }
+    if (files.download_docx_url) {
+        html += `<a href="${resolveDownloadUrl(files.download_docx_url)}" class="btn btn-outline-primary btn-sm fw-bold" download>${docxLabel}</a>`;
+    }
+    html += '</div>';
+    return html;
 }
 
 $(document).ready(function() {
@@ -466,7 +512,6 @@ $(document).ready(function() {
         $('#astVisionImg').attr('src', '');
     });
 
-    // 지부(야드) 선택 시 카메라 채널 및 NVR 저장 경로 업데이트
     function updateAstCameraMeta() {
         const opt = $('#astBranchSelect').find('option:selected');
         const brCode = opt.val() || 'BR-ULSAN-01';
@@ -524,7 +569,6 @@ $(document).ready(function() {
         stopAstVisionStream();
     });
 
-    // DB 연동 야드 드롭다운 변경 시 해당 지부의 카메라 스트림으로 즉시 전환
     $('#astBranchSelect').on('change', function() {
         const opt = $(this).find('option:selected');
         const streamKey = opt.data('stream') || 'video1.mp4';
@@ -551,7 +595,6 @@ $(document).ready(function() {
         setTimeout(startAstVisionStream, 150);
     });
 
-    // 입력 임시저장 복원 & Textarea 유동 확장
     const DRAFT_KEY = 'ast_draft_text_{{ me.user_id }}';
     function adjustTextareaHeight(minHeightPx = 48) {
         textarea.style.height = 'auto';
@@ -585,7 +628,6 @@ $(document).ready(function() {
         $(this).addClass('d-none');
     });
 
-    // 스마트 작업지시 작성 도우미
     $('#btnToggleBuilder').on('click', function() {
         $('#woBuilderPanel').toggleClass('d-none');
         if (!$('#woBuilderPanel').hasClass('d-none')) $('#bBlock').focus();
@@ -712,8 +754,14 @@ $(document).ready(function() {
                     sourceBadges = `<div class="mt-2 pt-2 border-top">${items}</div>`;
                 }
 
+                // 초안 PDF / DOCX 다운로드 버튼 렌더링
+                const fileButtonsHtml = (res.generated_document && res.generated_document.files)
+                    ? buildFileDownloadHtml(res.generated_document.files, false)
+                    : '';
+
+                // DRAFT 또는 WAITING_APPROVAL 상태일 때 HITL 결재 게이트 렌더링
                 let hitlHtml = '';
-                if (res.generated_document && res.generated_document.status === 'WAITING_APPROVAL') {
+                if (res.generated_document && (res.generated_document.status === 'DRAFT' || res.generated_document.status === 'WAITING_APPROVAL')) {
                     pendingDoc = res.generated_document;
                     const docTitle = pendingDoc.title || '작업지시 및 자원 배정 결재안';
                     hitlHtml = `
@@ -742,6 +790,7 @@ $(document).ready(function() {
                             </div>
                             <div class="small text-dark">${renderMarkdown(res.answer)}</div>
                             ${sourceBadges}
+                            ${fileButtonsHtml}
                             ${hitlHtml}
                         </div>
                     </div>
@@ -767,6 +816,10 @@ $(document).ready(function() {
     });
 
     $(document).on('click', '.btn-hitl-decision', function() {
+        if (!pendingDoc) {
+            const savedDocAttr = $('#hitlGateBox').attr('data-doc');
+            if (savedDocAttr) pendingDoc = JSON.parse(savedDocAttr);
+        }
         if (!pendingDoc) return;
         const action = $(this).data('action');
         $('#hitlGateBox').find('button').prop('disabled', true);
@@ -777,16 +830,41 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({ action: action, doc: pendingDoc }),
             success: function(res) {
+                const parentBubble = $('#hitlGateBox').closest('.chat-bubble-ai');
                 $('#hitlGateBox').remove();
+
+                if (action === 'APPROVE') {
+                    parentBubble.find('blockquote').replaceWith(
+                        `<blockquote class="text-success fw-bold">✅ [원장 커밋 완료 (STATUS: COMMITTED)] 관리자 최종 승인이 확정되었습니다.</blockquote>`
+                    );
+                }
+
                 const colorClass = (action === 'APPROVE') ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger';
+                const approvedFileHtml = (action === 'APPROVE' && res.files)
+                    ? buildFileDownloadHtml(res.files, true)
+                    : '';
+
                 chatWindow.append(`
                     <div class="mb-3">
                         <div class="d-inline-block ${colorClass} border rounded-4 p-3 small fw-bold shadow-sm">
-                            ${res.message}
+                            <div>${res.message}</div>
+                            ${approvedFileHtml}
                         </div>
                     </div>
                 `);
                 pendingDoc = null;
+                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            },
+            error: function(xhr) {
+                $('#hitlGateBox').find('button').prop('disabled', false);
+                const errMsg = xhr.responseJSON ? xhr.responseJSON.message : '결재 처리 중 오류가 발생했습니다.';
+                chatWindow.append(`
+                    <div class="mb-3">
+                        <div class="d-inline-block bg-danger-subtle text-danger border rounded-4 p-3 small fw-bold">
+                            ❌ ${errMsg}
+                        </div>
+                    </div>
+                `);
                 chatWindow.scrollTop(chatWindow[0].scrollHeight);
             }
         });

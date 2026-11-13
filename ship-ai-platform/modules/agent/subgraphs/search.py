@@ -34,13 +34,11 @@ def team2_supervisor_node(state: ShipAgentState) -> Dict[str, Any]:
     """
     plan = state.get("team2_plan")
 
-    # 최초 진입 시 task_type 및 실제 ERP 진단 결과를 기반으로 필요한 워커 큐(Queue) 동적 생성
     if plan is None:
         task_type = state.get("task_type", "knowledge_qa")
         erp_status = state.get("erp_resource_status") or {}
         user_q = state.get("user_query", "")
 
-        # 실제 외주 연계가 필요한 경우만 정확히 판별 (직영 작업 시 불필요한 B2B DB 호출 차단)
         explicit_outsource = (
             state.get("preferred_execution_mode") == "OUTSOURCED_B2B"
             or any(k in user_q for k in ["외주", "협력사", "사외", "대한특수", "동해블록", "한국중량"])
@@ -95,17 +93,26 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
     if not can_access_internal and categories:
         categories = [c for c in categories if c != "internal_docs"]
 
-    # 작업지시서(doc_generation) 발행 시: Team 1이 ERP_BLOCK_MASTER에서 동기화한 실제 블록 제원으로
-    # WPS 시공 조건 쿼리와 자재 건조/비파괴검사 쿼리를 동적 생성하여 최우선 검색
     effective_queries: List[str] = []
     if task_type == "doc_generation":
-        proc = params.get("process") or ""
-        mat = params.get("material") or ""
-        thk = params.get("thickness") or ""
-        jnt = params.get("joint_type") or ""
+        proc = str(params.get("process") or "").upper().strip()
+        mat = str(params.get("material") or "").strip()
+        thk = str(params.get("thickness") or "").strip()
+        jnt = str(params.get("joint_type") or "").strip()
         spec_tokens = " ".join(str(x) for x in [proc, mat, thk, jnt] if x).strip()
 
-        if spec_tokens:
+        if proc == "SAW":
+            # SAW 전용 엔지니어링 쿼리 (FCAW 플럭스코어드 와이어 카탈로그 혼입 방지)
+            effective_queries.append(
+                f"SAW 서브머지드 아크 용접 {mat} {thk} {jnt} WPS 전류 전압 속도 입상 플럭스 예열 층간온도".strip()
+            )
+            effective_queries.append(
+                "SAW 서브머지드 아크 용접 플럭스 건조 온도 300℃ 보온 호퍼 흡습 방지 비파괴검사 RT UT"
+            )
+            effective_queries.append(
+                f"{mat} {thk} SAW 맞대기 용접 시공 조건 선급 검사 기준".strip()
+            )
+        elif spec_tokens:
             effective_queries.append(
                 f"{spec_tokens} WPS 용접 시공 조건 전류 전압 속도 보호가스 예열 층간온도"
             )
@@ -125,7 +132,6 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
 
     for q in effective_queries[:4]:
         try:
-            # 작업지시서 생성 시 카테고리 제한으로 인해 WPS/SOP 청크가 누락되지 않도록 전체 컬렉션 탐색 허용
             search_cats = None if task_type == "doc_generation" else categories
             raw_items = search_knowledge_by_categories(
                 query=q, categories=search_cats, top_k=4
@@ -187,7 +193,7 @@ GRADER_PROMPT = ChatPromptTemplate.from_messages([
         "system",
         "당신은 기술 문서 적합성 감사 AI(Evaluator)입니다.\n"
         "검색된 문서 청크들이 [사용자 질의]에 답변하거나 작업을 수행하는 데 참고 자료가 되는지 평가하여 인덱스 번호를 반환하세요.\n"
-        "- [작업 유형]이 'doc_generation'(작업지시서 발행)인 경우: 용접 시공 조건(전류, 전압, 속도, 가스, 예열/층간온도), 용접봉/와이어/플럭스 건조 및 보관 기준, 비파괴검사(NDT), 또는 현장 안전 수칙 중 하나라도 포함된 문서는 모두 채택하십시오.\n"
+        "- [작업 유형]이 'doc_generation'(작업지시서 발행)인 경우: 대상 용접 공정에 부합하는 용접 시공 조건(전류, 전압, 속도, 가스/플럭스, 예열/층간온도), 용접재료 건조 및 보관 기준, 비파괴검사(NDT), 또는 현장 안전 수칙 문서를 채택하십시오.\n"
         "- 일반 기술/과정 질문인 경우 [누적 작업 제원]과 무관하더라도 질문과 관련된 문서라면 반드시 포함하십시오.",
     ),
     (
@@ -309,9 +315,14 @@ def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
     erp_status = state.get("erp_resource_status") or {}
     params = state.get("extracted_params") or {}
     query = state.get("user_query", "")
+    worker_qual = erp_status.get("worker_qualification") or {}
 
     shortage_domain = state.get("outsourcing_domain")
-    if not shortage_domain:
+
+    # 본사 원장에 없는 작업자(NOT_FOUND)가 지정된 경우 외주 인력(OUTSOURCED_WORKER) 조회를 최우선 적용
+    if params.get("worker_name") and worker_qual.get("status") == "NOT_FOUND":
+        shortage_domain = "OUTSOURCED_WORKER"
+    elif shortage_domain in (None, "NOT_APPLICABLE"):
         classifier = llm.with_structured_output(
             OutsourcingRequirement, method="function_calling"
         )
@@ -337,15 +348,11 @@ def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
                 else "WELDING_MATERIAL"
             )
 
-    req_wire_kg = calculate_required_wire_kg(
-        estimated_length_mm=None,
-        weight_ton=params.get("weight_ton"),
-    )
-
     partner_plan = query_partner_erp_b2b.invoke({
         "outsourcing_domain": shortage_domain,
         "material": params.get("material") or "",
         "process": params.get("process") or "",
+        "worker_name": params.get("worker_name") or "",
     })
     return {"partner_erp_plan": partner_plan}
 
@@ -364,7 +371,6 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
             "camera_code": params.get("camera_code"),
         })
 
-    # location이 없거나 구역 코드인 경우 ERP_BRANCHES DB에서 지역명 동적 조회
     location = params.get("location")
     if not location or "ZONE" in str(location).upper():
         branch_code = params.get("branch_code") or state.get("branch_code")

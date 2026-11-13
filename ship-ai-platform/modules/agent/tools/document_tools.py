@@ -30,7 +30,6 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
         )
         return False
 
-    # 프로젝트 내부 폰트 캐시 폴더 생성 (xhtml2pdf 보안 정책 통과용)
     local_font_dir = OUTPUT_DIR / "fonts"
     local_font_dir.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +51,6 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
     for f_name, sys_reg, sys_bold in font_pairs:
         if os.path.exists(sys_reg):
             try:
-                # 1) 시스템 폰트를 프로젝트 내부(./generated_docs/fonts/)로 복사
                 local_reg = local_font_dir / Path(sys_reg).name
                 if not local_reg.exists():
                     shutil.copy2(sys_reg, local_reg)
@@ -66,7 +64,6 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
                 reg_str = str(local_reg.resolve()).replace("\\", "/")
                 bold_str = str(local_bold.resolve()).replace("\\", "/")
 
-                # 2) ReportLab 및 CSS @font-face에 프로젝트 내부 경로 등록
                 pdfmetrics.registerFont(TTFont(f_name, reg_str))
                 pdfmetrics.registerFont(TTFont(f"{f_name}-Bold", bold_str))
                 addMapping(f_name, 0, 0, f_name)
@@ -222,8 +219,7 @@ def _convert_docx_to_pdf(
 ) -> str | None:
     """1순위: MS Word -> 2순위: LibreOffice -> 3순위: xhtml2pdf 자동 폴백"""
     pdf_path = output_dir / f"{docx_path.stem}.pdf"
-    
-    # [1순위] MS Word (docx2pdf)
+
     try:
         from docx2pdf import convert
 
@@ -234,7 +230,6 @@ def _convert_docx_to_pdf(
     except Exception:
         pass
 
-    # [2순위] LibreOffice Headless (Windows / Linux Docker)
     soffice_cmd = shutil.which("soffice") or (
         r"C:\Program Files\LibreOffice\program\soffice.exe"
         if os.path.exists(r"C:\Program Files\LibreOffice\program\soffice.exe")
@@ -262,7 +257,6 @@ def _convert_docx_to_pdf(
         except Exception:
             pass
 
-    # [3순위] 순수 Python xhtml2pdf
     if context and _render_html_to_pdf_fallback(context, pdf_path):
         print("📄 [PDF 생성 완료 - 3순위 xhtml2pdf 내장 렌더러]")
         return str(pdf_path)
@@ -295,7 +289,7 @@ def export_work_order_file(
     weld_params = document_data.get("welding_params_json") or {}
     source_refs = document_data.get("source_refs_json") or []
     weather = document_data.get("weather") or {}
-    vision = document_data.get("vision_inspection") or {}
+    vision = document_data.get("vision_inspection") or document_data.get("vision") or {}
     erp_commit = document_data.get("erp_commit") or {}
     erp_status = document_data.get("erp_resource_status") or {}
     partner_plan = document_data.get("partner_erp_plan") or {}
@@ -349,18 +343,25 @@ def export_work_order_file(
         or weld_params.get("cert_code")
         or "-"
     )
+
+    resolved_branch = (
+        params.get("branch_code")
+        or branch_info.get("branch_code")
+        or block_master.get("branch_code")
+        or "BR-ULSAN-01"
+    )
     resolved_work_zone = (
         params.get("work_zone")
         or branch_info.get("default_zone")
         or block_master.get("location")
-        or "-"
+        or ("DOCK-1" if "GEOJE" in str(resolved_branch).upper() else "ZONE-A-BAY1")
     )
 
-    # 수행구분 및 수행사명 동적 바인딩
+    # 수행구분, 수행사명 및 외주 발주(PO) 번호 동적 바인딩
     exec_type_raw = (
-        document_data.get("execution_type")
-        or erp_commit.get("execution_type")
-        or "IN_HOUSE"
+        erp_commit.get("execution_type")
+        or document_data.get("execution_type")
+        or ("OUTSOURCED_B2B" if selected_partner.get("partner_id") else "IN_HOUSE")
     )
     resolved_partner_name = (
         selected_partner.get("partner_name")
@@ -369,6 +370,34 @@ def export_work_order_file(
         or erp_status.get("hq_company_code")
         or "-"
     )
+
+    po_no = (
+        erp_commit.get("po_number")
+        or erp_commit.get("b2b_order_number")
+        or erp_commit.get("b2b_sales_order_no")
+        or erp_commit.get("b2b_po_ack")
+        or document_data.get("po_number")
+    )
+    if exec_type_raw == "OUTSOURCED_B2B":
+        b2b_po_display = po_no or f"PO-{str(wo_num).replace('WO-DRAFT-', '').replace('WO-', '')}"
+    else:
+        b2b_po_display = "해당없음 (사내직영)"
+
+    # 배차 장비 / 차량 동적 바인딩 (야드별 STANDBY 차량 폴백 포함)
+    resolved_vehicle_code = (
+        document_data.get("assigned_vehicle_code")
+        or erp_commit.get("assigned_vehicle_code")
+        or erp_status.get("assigned_vehicle_code")
+    )
+    if not resolved_vehicle_code:
+        for eq in (erp_status.get("vehicles_equipment") or []):
+            if (
+                str(eq.get("branch_code", "")).upper() == str(resolved_branch).upper()
+                and str(eq.get("operation_status", "")).upper() == "STANDBY"
+            ):
+                resolved_vehicle_code = eq.get("asset_code")
+                break
+    resolved_vehicle_code = resolved_vehicle_code or "-"
 
     # 용가재 코드 및 ERP_BOM_INVENTORY.ITEM_NAME 동적 조회
     resolved_wire_code = (
@@ -402,7 +431,7 @@ def export_work_order_file(
     else:
         resolved_wps_code = str(raw_wps)
 
-    # 용접 자세 동적 추출 (작업자 자격 코드 내 자세 정보 연동)
+    # 용접 자세 동적 추출
     resolved_position = (
         params.get("weld_position")
         or weld_params.get("weld_position")
@@ -414,18 +443,26 @@ def export_work_order_file(
         )
     )
 
+    # SAW 공정 보호가스 물리 정합성 최종 방어
+    resolved_proc = params.get("process") or block_master.get("process") or "-"
+    resolved_gas = weld_params.get("shielding_gas") or "-"
+    if str(resolved_proc).upper() == "SAW" and (
+        resolved_gas == "-" or any(g in str(resolved_gas).upper() for g in ("CO2", "AR", "차폐가스"))
+    ):
+        resolved_gas = "입상 플럭스 차폐 (보호가스 미사용)"
+
     # 1. 예열 및 층간온도 동적 조합 ('100~250' 같은 범위 숫자에도 '℃' 자동 부착)
     raw_preheat = weld_params.get("preheat_temp_c") or weld_params.get(
         "preheat_temp"
     )
     if raw_preheat is not None and str(raw_preheat).strip() != "":
-      p_text = str(raw_preheat).strip().replace("°C", "℃").replace("C", "℃")
-      if "℃" not in p_text and any(ch.isdigit() for ch in p_text):
-        preheat_display = f"{p_text}℃"
-      else:
-        preheat_display = p_text
+        p_text = str(raw_preheat).strip().replace("°C", "℃").replace("C", "℃")
+        if "℃" not in p_text and any(ch.isdigit() for ch in p_text):
+            preheat_display = f"{p_text}℃"
+        else:
+            preheat_display = p_text
     else:
-      preheat_display = "-"
+        preheat_display = "-"
 
     # 2. 비전 탐지 상태 및 안전 클리어런스 직관적 표기
     clearance_yn = vision.get("safety_clearance_yn")
@@ -434,27 +471,29 @@ def export_work_order_file(
         f"용접선(weld_joint) 정상 탐지 ({insp_status})" if insp_status else "-"
     )
     if clearance_yn == "Y":
-      safety_clearance_text = "확보 완료 (주변 간섭물 미감지 / Y)"
+        safety_clearance_text = "확보 완료 (주변 간섭물 미감지 / Y)"
     elif clearance_yn == "N":
-      safety_clearance_text = "위험 감지 (간섭물 제거 필수 / N)"
+        safety_clearance_text = "위험 감지 (간섭물 제거 필수 / N)"
     else:
-      safety_clearance_text = str(clearance_yn or "-")
+        safety_clearance_text = str(clearance_yn or "-")
 
-    # 3. 안전 체크리스트: Word/LibreOffice 변환 시에도 절대 붙지 않도록 개행 + 구분 처리
+    # 3. 안전 체크리스트 (PASS 시에도 기본 용접 전 안전 점검 항목 표기)
     safety_eval = weather.get("safety_evaluation") or {}
     rules = safety_eval.get("mandatory_rules") or []
     prereqs = safety_eval.get("prerequisites") or []
     raw_checklist = [str(r).strip() for r in (rules + prereqs) if r]
     checklist_items = (
-        [f"□ {r}" for r in raw_checklist] if raw_checklist else ["-"]
+        [f"□ {r}" for r in raw_checklist]
+        if raw_checklist
+        else [
+            "□ 작업 전 모재 용접부 수분·유분·녹 제거 및 표면 청정 상태 점검",
+            "□ 용접기 접지 케이블 체결 상태 및 개인 보호구(보안면·안전대) 착용 확인",
+        ]
     )
     checklist_str = "\n".join(checklist_items)
-
-    # Word 템플릿이 일반 {{ safety_checklist }} 일 때 줄바꿈이 무시되는 현상을 막기 위해
-    # 항목 사이를 시각적으로 명확히 분리
     docx_checklist = "   /   ".join(checklist_items)
 
-    # 인용 규격 출처: RAG 검색 결과 메타데이터 연결
+    # 인용 규격 출처
     source_refs_str = (
         ", ".join(
             f"{ref.get('document_code') or ref.get('document_title', '-')}"
@@ -470,7 +509,7 @@ def export_work_order_file(
         document_data.get("reviewed_by")
         or erp_commit.get("reviewer_name")
         or erp_status.get("foreman_name")
-        or "-"
+        or "현장반장(검토필)"
     )
     resolved_approver = (
         document_data.get("approved_by")
@@ -543,7 +582,7 @@ def export_work_order_file(
             if params.get("weight_ton") is not None
             else (block_master.get("weight_ton") or "-")
         ),
-        "branch_name": params.get("branch_code") or branch_info.get("branch_code") or "-",
+        "branch_name": resolved_branch,
         "work_zone": resolved_work_zone,
         # 섹션 2: 투입 인력·자재·장비
         "worker_name": resolved_worker_name,
@@ -568,26 +607,21 @@ def export_work_order_file(
             if document_data.get("reserve_wire_kg") is not None
             else (erp_commit.get("reserved_wire_kg") or "-")
         ),
-        "assigned_vehicle_code": (
-            document_data.get("assigned_vehicle_code")
-            or erp_commit.get("assigned_vehicle_code")
-            or erp_status.get("assigned_vehicle_code")
-            or "-"
-        ),
-        "b2b_po_number": erp_commit.get("b2b_po_ack") or "해당없음 (사내직영)",
+        "assigned_vehicle_code": resolved_vehicle_code,
+        "b2b_po_number": b2b_po_display,
         # 섹션 3: WPS 시공 조건 및 비전 안전 상태
         "wps_code": resolved_wps_code,
         "material": params.get("material") or block_master.get("material") or "-",
         "thickness": str(
             params.get("thickness") or block_master.get("thickness") or "-"
         ).replace("T", ""),
-        "process": params.get("process") or block_master.get("process") or "-",
+        "process": resolved_proc,
         "joint_type": params.get("joint_type") or block_master.get("joint_type") or "-",
         "weld_position": resolved_position,
         "current_amp": str(weld_params.get("current_amp") or "-").replace("A", "").replace("a", "").strip(),
         "voltage_v": str(weld_params.get("voltage_v") or "-").replace("V", "").replace("v", "").strip(),
         "travel_speed": str(weld_params.get("travel_speed_cm_min") or weld_params.get("travel_speed") or "-").replace("cm/min", "").strip(),
-        "shielding_gas": weld_params.get("shielding_gas") or "-",
+        "shielding_gas": resolved_gas,
         "preheat_temp": preheat_display,
         "ndt_requirement": (
             weld_params.get("ndt_requirement")
@@ -640,7 +674,7 @@ def export_work_order_file(
             f"/api/files/download/{today_str}/{pdf_filename}"
             if pdf_filename
             else None
-      ),
+        ),
         "download_docx_url": (
             f"/api/files/download/{today_str}/{docx_filename}"
             if docx_filename

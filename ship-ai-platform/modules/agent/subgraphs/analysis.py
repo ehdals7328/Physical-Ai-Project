@@ -89,8 +89,8 @@ class UniversalQueryAnalysis(BaseModel):
     process: Optional[str] = Field(None, description="용접 공정 코드")
     weld_position: Optional[str] = Field(None, description="용접 자세 코드")
     worker_name: Optional[str] = Field(
-        None,
-        description="질의에 명시된 특정 인력의 순수 성명 (직책/호칭 제외, 미명시 시 반드시 None)",
+    None,
+    description="질의에 명시된 특정 인력의 순수 성명. 한국인 이름이 직책처럼 보이더라도(예: '최선임 반장' -> '최선임', '김철수 작업자' -> '김철수') 사람 이름은 반드시 추출하고 뒤에 붙은 직책/호칭(반장, 작업자, 용접사, 님)만 제외할 것",
     )
     equipment: Optional[str] = Field(None, description="투입 설비 또는 차량명")
     additional_specs: Dict[str, Any] = Field(
