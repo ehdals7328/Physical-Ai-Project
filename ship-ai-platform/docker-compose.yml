@@ -1,49 +1,64 @@
 services:
-  version: '3.8'
+  # 1. 외부 협력사 B2B 데이터베이스 (PostgreSQL)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: ship-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres1234}
+      POSTGRES_DB: ${POSTGRES_DB:-partner_b2b}
+      TZ: Asia/Seoul
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-partner_b2b}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  services:
-    oracle-db:
-      image: gvenzl/oracle-xe:21-slim
-      container_name: ship-oracle-xe
-      environment:
-        - ORACLE_PASSWORD=admin1234
-      ports:
-        - "1521:1521"
-      volumes:
-        - oracle_data:/opt/oracle/oradata
-      restart: always
+  # 2. 본사 시스템(SHIP_USER) 및 ERP(SHIP_ERP) 데이터베이스 (Oracle XE)
+  oracle-db:
+    image: gvenzl/oracle-xe:21-slim
+    container_name: ship-oracle
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-oracle1234}
+      TZ: Asia/Seoul
+    ports:
+      - "1521:1521"
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
-    postgres-db:
-      image: postgres:16-alpine
-      container_name: ship-partner-pg
-      environment:
-        - POSTGRES_USER=postgres
-        - POSTGRES_PASSWORD=postgres
-        - POSTGRES_DB=partner_b2b
-      ports:
-        - "5432:5432"
-      volumes:
-        - pg_data:/var/lib/postgresql/data
-      restart: always
+  # 3. Physical AI 통합 플랫폼 서버 (Flask + LangGraph Agent + ChromaDB + YOLOv11 Vision)
+  ship-ai-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ship-ai-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      oracle-db:
+        condition: service_Started
 
-    ship-web:
-      build: .
-      container_name: ship-ai-web
-      ports:
-        - "80:5000"
-      env_file:
-        - .env
-      volumes:
-        - ./web:/app/web
-        - ./modules:/app/modules
-        - ./scripts:/app/scripts
-        - ./data:/app/data
-        - ./web/static/captures:/app/web/static/captures
-      depends_on:
-        - oracle-db
-        - postgres-db
-      restart: always
-
-  volumes:
-    oracle_data:
-    pg_data:
+volumes:
+  postgres_data:
+  oracle_data:
