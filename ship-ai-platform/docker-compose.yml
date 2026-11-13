@@ -57,7 +57,7 @@ services:
       postgres-db:
         condition: service_healthy
       oracle-db:
-        condition: service_Started
+        condition: service_started
 
 volumes:
   postgres_data:
