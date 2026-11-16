@@ -1,11 +1,84 @@
-# 가상환경 폴더 제외 (실제 생성한 폴더명 입력)
-.venv/
-project_env/
-venv/
-
-# 파이썬 캐시 및 환경변수
-__pycache__/
-*.pyc
+# ==========================================
+# 1. 보안 및 환경 변수 (절대 커밋 금지)
+# ==========================================
 .env
+**/.env
+.env.*
+**/.env.*
+!.env.example
+!**/.env.example
 
+# ==========================================
+# 2. 가상환경 및 IDE 설정 (하위 폴더 포함 전체 제외)
+# ==========================================
+.venv/
+**/.venv/
+venv/
+**/venv/
+project_env/
+**/project_env/
+ENV/
+env/
+.idea/
+**/.idea/
 .vscode/
+**/.vscode/
+*.iml
+
+# ==========================================
+# 3. 파이썬 바이트코드 및 캐시
+# ==========================================
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+**/.pytest_cache/
+
+# ==========================================
+# 4. RAG 대용량 데이터, PDF, DB 및 압축 백업
+# ==========================================
+data/
+**/data/
+ship-ai-platform/data/
+*.db
+*.sqlite3
+chromadb/
+**/chromadb/
+raw_pdfs/
+**/raw_pdfs/
+internal_pdfs/
+**/internal_pdfs/
+uploads/
+**/uploads/
+*.zip
+
+# ==========================================
+# 5. 비전 모델 가중치 및 대용량 아티팩트
+# ==========================================
+modules/vision/weights/
+**/weights/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+*.engine
+*.weights
+
+# ==========================================
+# 6. 로그, OS 캐시 및 자동 생성 작업지시서
+# ==========================================
+*.log
+logs/
+**/logs/
+.DS_Store
+Thumbs.db
+
+generated_docs/*
+**/generated_docs/*
+!generated_docs/templates/
+!generated_docs/templates/**
+!generated_docs/.gitkeep
+!**/generated_docs/templates/
+!**/generated_docs/templates/**
+!**/generated_docs/.gitkeep
