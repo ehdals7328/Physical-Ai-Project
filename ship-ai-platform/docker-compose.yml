@@ -32,7 +32,7 @@ services:
     image: gvenzl/oracle-xe:21-slim
     container_name: ship-oracle
     restart: unless-stopped
-    shm_size: '1g'
+    shm_size: '2g'
     deploy:
       resources:
         limits:
@@ -59,7 +59,7 @@ services:
       dockerfile: Dockerfile
     container_name: ship-ai-web
     restart: unless-stopped
-    shm_size: '1g'
+    shm_size: '2g'
     deploy:
       resources:
         limits:
