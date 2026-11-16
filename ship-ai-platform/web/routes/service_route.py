@@ -3,12 +3,14 @@ import sys
 import json
 import time
 import uuid
+import ast
 import traceback
 from pathlib import Path
 from functools import wraps
+from datetime import datetime
 from dotenv import load_dotenv
 
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, abort, send_from_directory
 from sqlalchemy import func
 from langchain_core.messages import HumanMessage
 
@@ -44,8 +46,39 @@ def login_required(f):
         if "user_id" not in session:
             flash("해당 서비스는 임직원 및 협력사 로그인 후 이용하실 수 있습니다.", "warning")
             return redirect(url_for("auth.login"))
+        curr_user = User.query.get(session["user_id"])
+        if not curr_user or curr_user.is_active != "Y":
+            session.clear()
+            flash("비활성화(사용 중지)된 계정입니다. 관리자에게 문의하세요.", "danger")
+            return redirect(url_for("auth.login"))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def _read_clob(val) -> str:
+    """Oracle CLOB(oracledb.LOB) 객체 또는 문자열을 안전하게 str로 변환"""
+    if val is None:
+        return ""
+    if hasattr(val, "read"):
+        return val.read() or ""
+    return str(val)
+
+
+def _parse_json_or_literal(val) -> list:
+    """Oracle CLOB에서 읽은 JSON(쌍따옴표/홑따옴표 모두 허용)을 안전하게 list로 파싱"""
+    raw_str = _read_clob(val).strip()
+    if not raw_str:
+        return []
+    try:
+        parsed = json.loads(raw_str)
+        return parsed if isinstance(parsed, list) else []
+    except Exception:
+        try:
+            parsed = ast.literal_eval(raw_str)
+            return parsed if isinstance(parsed, list) else []
+        except Exception as e:
+            print(f"⚠️ [retrieval_chunks_json 파싱 경고]: {e}")
+            return []
 
 
 # =====================================================================
@@ -55,7 +88,6 @@ def _get_user_session_list(user_id: int, hidden_list: list = None):
     """
     DB에 저장된 대화 세션 목록을 추출하되,
     사용자가 목록에서 지운 세션(ROLE_CODE='SYSTEM', CONTENT='HIDDEN_BY_USER')은 영구 제외!
-    (원본 USER/ASSISTANT 대화 데이터는 DB에 100% 그대로 보존됨)
     """
     rows = (
         AgentChatHistory.query
@@ -67,15 +99,13 @@ def _get_user_session_list(user_id: int, hidden_list: list = None):
         .all()
     )
 
-    # 1) DB에 영구 숨김 마커(HIDDEN_BY_USER)가 찍힌 세션 ID 수집
     db_hidden_sids = {
         r.session_id for r in rows
-        if r.role_code == "SYSTEM" and r.content == "HIDDEN_BY_USER"
+        if r.role_code == "SYSTEM" and str(r.content or "").strip() == "HIDDEN_BY_USER"
     }
     if hidden_list:
         db_hidden_sids.update(hidden_list)
 
-    # 2) 숨기지 않은 세션만 목록으로 구성
     sessions_map = {}
     for r in rows:
         sid = r.session_id
@@ -127,21 +157,30 @@ def assistant_page():
     formatted_logs = []
     for log in chat_logs:
         chunks = []
-        if log.retrieval_chunks_json:
-            try:
-                chunks = json.loads(log.retrieval_chunks_json)
-            except Exception:
-                chunks = []
+        saved_files = None
+        saved_status = "DRAFT"
+        saved_doc = None
+        raw_list = _parse_json_or_literal(log.retrieval_chunks_json)
+        for item in raw_list:
+            if isinstance(item, dict) and item.get("_type") == "WORK_ORDER_FILES":
+                saved_files = item.get("files")
+                saved_status = item.get("approval_status", "DRAFT")
+                saved_doc = item.get("doc")
+            else:
+                chunks.append(item)
+
         formatted_logs.append({
             "role_code": log.role_code,
-            "content": log.content,
+            "content": _read_clob(log.content),
             "sources": chunks,
+            "files": saved_files,
+            "approval_status": saved_status,
+            "pending_doc": saved_doc,
             "created_at": log.created_at.strftime("%H:%M") if log.created_at else "",
         })
 
     session_list = _get_user_session_list(user.user_id, hidden_sessions)
 
-    # ⭐ 하드코딩 제거: Oracle SHIP_ERP.ERP_BRANCHES 테이블에서 활성 야드 목록을 직접 조회!
     active_branches = (
         ErpBranch.query
         .filter_by(status_code="ACTIVE")
@@ -155,7 +194,7 @@ def assistant_page():
         thread_id=thread_id,
         chat_logs=formatted_logs,
         session_list=session_list,
-        branches=active_branches,  # DB 야드 목록 전달
+        branches=active_branches,
     )
 
 
@@ -172,29 +211,23 @@ def reset_assistant_session():
 @service_bp.route("/api/assistant/hide-session", methods=["POST"])
 @login_required
 def hide_assistant_session():
-    """
-    ⭐ X 버튼 클릭 시 대화방 영구 숨김 처리
-    (CK_ACH_CHUNKS_JSON 제약조건 통과를 위해 retrieval_chunks_json='[]' 명시)
-    """
+    """X 버튼 클릭 시 대화방 영구 숨김 처리"""
     data = request.get_json(silent=True) or {}
     target_sid = str(data.get("session_id") or "").strip()
     user = User.query.get_or_404(session["user_id"])
 
-    # 1) 브라우저 세션에도 즉시 등록
     hidden = list(session.get("hidden_assistant_sessions", []))
     if target_sid and target_sid not in hidden:
         hidden.append(target_sid)
         session["hidden_assistant_sessions"] = hidden
         session.modified = True
 
-    # 2) Oracle DB에도 SYSTEM 마커 기록 (재접속/서버 재시작 후에도 영구 숨김 유지)
     if target_sid:
         try:
             exists = AgentChatHistory.query.filter_by(
                 session_id=target_sid,
                 user_id=user.user_id,
                 role_code="SYSTEM",
-                content="HIDDEN_BY_USER",
             ).first()
             if not exists:
                 hide_marker = AgentChatHistory(
@@ -202,7 +235,7 @@ def hide_assistant_session():
                     user_id=user.user_id,
                     role_code="SYSTEM",
                     content="HIDDEN_BY_USER",
-                    retrieval_chunks_json="[]",  # JSON 제약조건 안전 통과
+                    retrieval_chunks_json="[]",
                 )
                 db.session.add(hide_marker)
                 db.session.commit()
@@ -256,6 +289,7 @@ def ask_assistant_agent():
             "messages": [HumanMessage(content=question)],
             "user_query": question,
             "user_id": str(user.user_id),
+            "user_name": f"{user.full_name} ({user.erp_employee_code or user.username})",
             "user_role": user.role,
             "user_type": user.user_type,
             "can_access_erp": user.can_access_erp or "N",
@@ -263,6 +297,12 @@ def ask_assistant_agent():
             "can_control_robot": user.can_control_robot or "N",
             "default_workspace": user.default_workspace or "ZONE-A-BAY1",
             "branch_code": user.erp_branch_code or "BR-ULSAN-01",
+            "hitl_approved": False,
+            "generated_document": None,
+            "weather_data": None,
+            "vision_data": None,
+            "partner_erp_plan": None,
+            "team2_plan": None,
         }
         config = {"configurable": {"thread_id": thread_id}}
 
@@ -286,14 +326,93 @@ def ask_assistant_agent():
             })
 
         # 4) AI 답변 DB 저장
+        chunks_to_save = list(sources)
+        doc_snapshot = None
+        if generated_doc and generated_doc.get("files"):
+            doc_snapshot = {
+                k: generated_doc.get(k)
+                for k in (
+                    "title", "status", "approval_status", "execution_type",
+                    "work_order_number", "allocated_lot_no", "assigned_vehicle_code",
+                    "wire_item_code", "reserve_wire_kg", "parameters",
+                    "welding_params_json", "source_refs_json", "external_env_json",
+                    "weather", "vision_inspection", "reviewed_by",
+                    "erp_resource_status", "erp_commit", "partner_erp_plan",
+                    "instruction_text", "content", "files",
+                )
+                if generated_doc.get(k) is not None
+            }
+            chunks_to_save.append({
+                "_type": "WORK_ORDER_FILES",
+                "files": generated_doc["files"],
+                "approval_status": generated_doc.get("approval_status", "DRAFT"),
+                "doc": doc_snapshot,
+            })
+
         ai_msg = AgentChatHistory(
             session_id=thread_id,
             user_id=user.user_id,
             role_code="ASSISTANT",
             content=answer_text,
-            retrieval_chunks_json=json.dumps(sources, ensure_ascii=False) if sources else None,
+            retrieval_chunks_json=json.dumps(chunks_to_save, ensure_ascii=False, default=str) if chunks_to_save else None,
         )
         db.session.add(ai_msg)
+
+        # 4-1) 작업지시서 초안(DRAFT)이 생성된 경우 WORK_ORDERS(READY) & WORK_INSTRUCTIONS(DRAFT) 선적재
+        draft_work_id = None
+        if generated_doc and generated_doc.get("approval_status") == "DRAFT":
+            params_draft = generated_doc.get("parameters") or {}
+            erp_commit_draft = generated_doc.get("erp_commit") or {}
+            block_id_draft = params_draft.get("block_id") or "BLK-E102"
+            base_wo_no = (
+                generated_doc.get("work_order_number")
+                or erp_commit_draft.get("work_order_number")
+                or f"WO-DRAFT-{block_id_draft}"
+            )
+            draft_wo_no = f"{base_wo_no}-{uuid.uuid4().hex[:4].upper()}"
+
+            raw_thick = str(params_draft.get("thickness", "20")).upper().replace("T", "").replace("MM", "").strip()
+            thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else 20.0
+
+            draft_wo = WorkOrder(
+                work_no=draft_wo_no,
+                work_title=generated_doc.get("title") or f"[DRAFT] {block_id_draft} 자동용접 작업지시",
+                work_description=f"AI 어시스턴트 기안 ({user.full_name} 요청 · 관리자 결재 대기)",
+                ship_code=params_draft.get("ship_code") or "HN-2026-301",
+                block_code=block_id_draft,
+                work_region=params_draft.get("branch_code") or user.erp_branch_code or "BR-ULSAN-01",
+                work_zone=params_draft.get("work_zone") or user.default_workspace or "ZONE-A-BAY1",
+                process_code=params_draft.get("process") or "FCAW",
+                material_grade=params_draft.get("material") or "AH36",
+                thickness_mm=thickness_val,
+                weld_position=params_draft.get("weld_position") or "1G",
+                status_code="READY",
+                requested_by=user.user_id,
+            )
+            db.session.add(draft_wo)
+            db.session.flush()
+            draft_work_id = draft_wo.work_id
+
+            # 전체 generated_doc 페이로드를 그대로 보존해 승인 시 빈칸 없이 100% 복원
+            draft_inst = WorkInstruction(
+                work_id=draft_wo.work_id,
+                revision_no="Rev.1",
+                instruction_text=generated_doc.get("instruction_text") or generated_doc.get("content") or "작업지침 본문",
+                welding_params_json=json.dumps(generated_doc.get("welding_params_json") or params_draft, ensure_ascii=False, default=str),
+                source_refs_json=json.dumps(generated_doc.get("source_refs_json") or [], ensure_ascii=False, default=str),
+                external_env_json=json.dumps({
+                    "weather": generated_doc.get("external_env_json") or {},
+                    "files": generated_doc.get("files") or {},
+                    "_draft_payload": generated_doc,
+                    "_source_session_id": thread_id,
+                }, ensure_ascii=False, default=str),
+                approval_status="DRAFT",
+                approved_by=None,
+            )
+            db.session.add(draft_inst)
+            db.session.flush()
+            generated_doc["work_id"] = draft_wo.work_id
+            generated_doc["instruction_id"] = draft_inst.instruction_id
 
         # 5) AGENT_EXECUTIONS 로그 저장
         intent_map = {
@@ -309,7 +428,7 @@ def ask_assistant_agent():
         exec_log = AgentExecution(
             session_id=thread_id,
             user_id=user.user_id,
-            work_id=None,
+            work_id=draft_work_id,
             intent_type=mapped_intent,
             current_state=f"COMPLETED_{task_type.upper()}",
             selected_tools_json=json.dumps({"task_type": task_type, "rag_count": len(sources)}, ensure_ascii=False),
@@ -349,77 +468,257 @@ def approve_work_instruction():
     payload = request.get_json(silent=True) or {}
     action = payload.get("action", "APPROVE")
     doc = payload.get("doc") or {}
+
+    work_id = payload.get("work_id") or doc.get("work_id")
+    instruction_id = payload.get("instruction_id") or doc.get("instruction_id")
+
+    # 대시보드 결재함에서 work_id / instruction_id만 넘어온 경우 DB에서 전체 초안 페이로드 복원
+    target_wo = WorkOrder.query.get(work_id) if work_id else None
+    target_inst = WorkInstruction.query.get(instruction_id) if instruction_id else (
+        WorkInstruction.query.filter_by(work_id=target_wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+        if target_wo else None
+    )
+
+    source_session_id = None
+    if target_inst and target_inst.external_env_json:
+        try:
+            env_meta = json.loads(_read_clob(target_inst.external_env_json))
+            if isinstance(env_meta, dict):
+                saved_payload = env_meta.get("_draft_payload")
+                if isinstance(saved_payload, dict) and not doc.get("welding_params_json"):
+                    doc = saved_payload
+                source_session_id = env_meta.get("_source_session_id")
+        except Exception as e:
+            print(f"⚠️ [_draft_payload 복원 경고]: {e}")
+
     params = doc.get("parameters") or {}
     partner_plan = doc.get("partner_erp_plan") or {}
-    is_outsourced = (doc.get("execution_type") == "OUTSOURCED_B2B")
+    is_outsourced = (
+        doc.get("execution_type") == "OUTSOURCED_B2B"
+        or bool((partner_plan.get("selected_partner") or {}).get("partner_id"))
+    )
 
     if action == "REJECT":
+        if target_inst:
+            target_inst.approval_status = "REJECTED"
+            target_inst.approved_by = user.user_id
+        if target_wo:
+            target_wo.status_code = "SUSPENDED"
+            target_wo.work_title = str(target_wo.work_title or "").replace("[DRAFT]", "[REJECTED]")
+        db.session.commit()
         return jsonify({
             "status": "REJECTED",
-            "message": "❌ [요청 반려] 관리자에 의해 작업지시서 및 자원 배정이 반려(Rollback)되었습니다."
+            "message": f"❌ [요청 반려] {user.full_name} 관리자에 의해 작업지시서 및 자원 배정이 반려(Rollback)되었습니다."
         })
 
     try:
         from modules.agent.tools.erp_tools import commit_erp_work_order
+        from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
 
         selected_partner = (partner_plan.get("selected_partner") or {}) if partner_plan else {}
-        lot_no = doc.get("allocated_lot_no") or "LOT-E71T1-202610-01"
-        block_id = params.get("block_id") or "BLK-E102"
+        erp_commit_draft = doc.get("erp_commit") or {}
+        erp_res_status = doc.get("erp_resource_status") or {}
+        worker_qual = erp_res_status.get("worker_qualification") or {}
+
+        lot_no = doc.get("allocated_lot_no") or erp_commit_draft.get("allocated_lot_no") or erp_res_status.get("assigned_lot_no") or "LOT-E71T1-202610-01"
+        block_id = params.get("block_id") or (target_wo.block_code if target_wo else "BLK-E102")
+        worker_id = erp_commit_draft.get("worker_id") or worker_qual.get("worker_id")
+        worker_name = erp_commit_draft.get("worker_name") or params.get("worker_name") or worker_qual.get("worker_name") or user.full_name
+        vehicle_code = doc.get("assigned_vehicle_code") or erp_commit_draft.get("assigned_vehicle_code") or erp_res_status.get("assigned_vehicle_code")
+        wire_code = doc.get("wire_item_code") or erp_res_status.get("selected_wire_code")
+        req_wire_kg = doc.get("reserve_wire_kg") or erp_commit_draft.get("reserved_wire_kg") or 15.0
+        branch_default_zone = (erp_res_status.get("branch_info") or {}).get("default_zone")
+        delivery_zone = (
+            params.get("work_zone")
+            or branch_default_zone
+            or (target_wo.work_zone if target_wo else None)
+            or user.default_workspace
+            or "ZONE-A-BAY1"
+        )
+        resolved_partner_id = (
+            selected_partner.get("partner_id")
+            or erp_commit_draft.get("partner_id")
+            or "COMP-HQ"
+        )
 
         commit_res = commit_erp_work_order.invoke({
             "block_id": block_id,
-            "material": params.get("material", "AH36"),
+            "material": params.get("material") or (target_wo.material_grade if target_wo else "AH36"),
             "allocated_lot_no": lot_no,
-            "worker_name": params.get("worker_name", user.full_name),
+            "worker_name": worker_name,
+            "worker_id": worker_id,
+            "assigned_vehicle_code": vehicle_code,
+            "wire_item_code": wire_code,
             "is_outsourced": is_outsourced,
-            "partner_id": selected_partner.get("partner_id") or "COMP-HQ",
-            "reserve_wire_kg": 15.0,
+            "partner_id": resolved_partner_id,
+            "reserve_wire_kg": req_wire_kg,
+            "delivery_yard_zone": delivery_zone,
         })
 
         wo_no = commit_res.get("work_order_number") or f"WO-{uuid.uuid4().hex[:8].upper()}"
+        approver_label = f"{user.full_name} ({user.erp_employee_code or user.username})"
+
+        if not target_wo and doc.get("work_order_number"):
+            target_wo = WorkOrder.query.filter_by(work_no=doc.get("work_order_number")).first()
+
+        requester_user = User.query.get(target_wo.requested_by) if (target_wo and target_wo.requested_by) else user
+        reviewer_label = f"{requester_user.full_name} ({requester_user.erp_employee_code or requester_user.username})"
+
+        final_doc_data = dict(doc)
+        final_doc_data["work_order_number"] = wo_no
+        final_doc_data["erp_commit"] = commit_res
+        final_doc_data["status"] = "APPROVED"
+        final_doc_data["approval_status"] = "APPROVED"
+        final_doc_data["reviewed_by"] = reviewer_label
+        final_doc_data["approved_by"] = approver_label
+        if not final_doc_data.get("weather") and final_doc_data.get("external_env_json"):
+            final_doc_data["weather"] = final_doc_data["external_env_json"]
+
+        export_raw = export_work_order_file.invoke({
+            "document_data": final_doc_data,
+            "file_prefix": f"weld_order_{block_id}",
+        })
+        file_links = json.loads(export_raw) if isinstance(export_raw, str) else {}
+
+        log_inspection_history.invoke({
+            "session_id": wo_no,
+            "query": f"HITL 관리자 승인 완료 ({approver_label}): {block_id}",
+            "status": "APPROVED",
+        })
 
         raw_thick = str(params.get("thickness", "20")).upper().replace("T", "").replace("MM", "").strip()
         thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else 20.0
+        clean_title = str(doc.get("title") or f"{block_id} 자동용접 작업지시").replace("[DRAFT]", "[APPROVED]")
 
-        new_wo = WorkOrder(
-            work_no=wo_no,
-            work_title=doc.get("title") or f"{block_id} 자동용접 작업지시",
-            work_description=f"AI 어시스턴트 발행 ({user.full_name} 승인)",
-            ship_code=params.get("ship_code") or "HN-2026-301",
-            block_code=block_id,
-            work_region=user.erp_branch_code or "BR-ULSAN-01",
-            work_zone=params.get("work_zone") or user.default_workspace or "ZONE-A-BAY1",
-            process_code=params.get("process") or "FCAW",
-            material_grade=params.get("material") or "AH36",
-            thickness_mm=thickness_val,
-            weld_position=params.get("weld_position") or "1G",
-            status_code="IN_PROGRESS",
-            requested_by=user.user_id,
-        )
-        db.session.add(new_wo)
-        db.session.flush()
+        if target_wo:
+            target_wo.work_no = wo_no
+            target_wo.work_title = clean_title
+            target_wo.work_description = f"AI 어시스턴트 발행 ({approver_label} 승인)"
+            target_wo.work_zone = delivery_zone
+            target_wo.status_code = "IN_PROGRESS"
+            target_wo.updated_at = datetime.utcnow()
+            db.session.flush()
+            active_wo = target_wo
+        else:
+            active_wo = WorkOrder(
+                work_no=wo_no,
+                work_title=clean_title,
+                work_description=f"AI 어시스턴트 발행 ({approver_label} 승인)",
+                ship_code=params.get("ship_code") or "HN-2026-301",
+                block_code=block_id,
+                work_region=params.get("branch_code") or user.erp_branch_code or "BR-ULSAN-01",
+                work_zone=delivery_zone,
+                process_code=params.get("process") or "FCAW",
+                material_grade=params.get("material") or "AH36",
+                thickness_mm=thickness_val,
+                weld_position=params.get("weld_position") or "1G",
+                status_code="IN_PROGRESS",
+                requested_by=user.user_id,
+            )
+            db.session.add(active_wo)
+            db.session.flush()
 
-        new_inst = WorkInstruction(
-            work_id=new_wo.work_id,
-            revision_no="Rev.1",
-            instruction_text=doc.get("instruction_text") or doc.get("content") or "작업지침 본문",
-            welding_params_json=json.dumps(doc.get("welding_params_json") or params, ensure_ascii=False),
-            source_refs_json=json.dumps(doc.get("source_refs_json") or [], ensure_ascii=False),
-            external_env_json=json.dumps(doc.get("external_env_json") or {}, ensure_ascii=False),
-            approval_status="APPROVED",
-            approved_by=user.user_id,
-        )
-        db.session.add(new_inst)
+        if not target_inst:
+            target_inst = (
+                WorkInstruction.query
+                .filter_by(work_id=active_wo.work_id)
+                .order_by(WorkInstruction.instruction_id.desc())
+                .first()
+            )
+
+        if target_inst:
+            target_inst.approval_status = "APPROVED"
+            target_inst.approved_by = user.user_id
+            try:
+                prev_env = json.loads(_read_clob(target_inst.external_env_json)) if target_inst.external_env_json else {}
+                if not isinstance(prev_env, dict):
+                    prev_env = {"weather": prev_env}
+            except Exception:
+                prev_env = {}
+            prev_env["files"] = file_links
+            target_inst.external_env_json = json.dumps(prev_env, ensure_ascii=False, default=str)
+        else:
+            target_inst = WorkInstruction(
+                work_id=active_wo.work_id,
+                revision_no="Rev.1",
+                instruction_text=doc.get("instruction_text") or doc.get("content") or "작업지침 본문",
+                welding_params_json=json.dumps(doc.get("welding_params_json") or params, ensure_ascii=False),
+                source_refs_json=json.dumps(doc.get("source_refs_json") or [], ensure_ascii=False),
+                external_env_json=json.dumps({
+                    "weather": doc.get("external_env_json") or {},
+                    "files": file_links,
+                }, ensure_ascii=False),
+                approval_status="APPROVED",
+                approved_by=user.user_id,
+            )
+            db.session.add(target_inst)
+
+        # 기안자의 원래 대화방 말풍선도 APPROVED 상태로 동기화
+        target_sid = source_session_id or session.get("assistant_thread_id")
+        if target_sid and file_links:
+            last_ai_msg = (
+                AgentChatHistory.query
+                .filter_by(session_id=target_sid, role_code="ASSISTANT")
+                .order_by(AgentChatHistory.message_id.desc())
+                .first()
+            )
+            if last_ai_msg:
+                existing_chunks = _parse_json_or_literal(last_ai_msg.retrieval_chunks_json)
+                existing_chunks = [
+                    c for c in existing_chunks
+                    if not (isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES")
+                ]
+                existing_chunks.append({
+                    "_type": "WORK_ORDER_FILES",
+                    "files": file_links,
+                    "approval_status": "APPROVED",
+                    "doc": None,
+                })
+                last_ai_msg.retrieval_chunks_json = json.dumps(existing_chunks, ensure_ascii=False, default=str)
+
+                prev_content = _read_clob(last_ai_msg.content)
+                draft_wo_no = erp_commit_draft.get("work_order_number") or f"WO-DRAFT-{block_id}"
+                updated_content = prev_content.replace(draft_wo_no, wo_no)
+
+                draft_notice_prefix = "> ⚠️ **[관리자 결재 대기 (`APPROVAL_STATUS: DRAFT`)]**"
+                committed_notice = (
+                    f"> ✅ **[원장 커밋 완료 (`STATUS: COMMITTED`)]** {approver_label} 결재로 "
+                    f"공식 작업지시 번호 `{wo_no}`의 `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 확정되었습니다."
+                )
+
+                if draft_notice_prefix in updated_content:
+                    updated_content = updated_content.split(draft_notice_prefix)[0].rstrip() + "\n\n" + committed_notice
+                elif "[원장 커밋 완료" not in updated_content:
+                    updated_content = updated_content + "\n\n" + committed_notice
+
+                last_ai_msg.content = updated_content
         db.session.commit()
 
         return jsonify({
             "status": "APPROVED",
-            "message": f"✅ [최종 승인 완료] 작업번호 [{wo_no}]로 ERP 자원 배정 및 지침서 등록이 확정되었습니다!"
+            "message": f"✅ [최종 승인 완료] {approver_label} 결재로 작업번호 [{wo_no}] ERP 자원 배정 및 지침서 등록이 확정되었습니다!",
+            "files": file_links,
         })
     except Exception as e:
         db.session.rollback()
         traceback.print_exc()
         return jsonify({"status": "ERROR", "message": f"승인 커밋 오류: {str(e)}"}), 500
+
+
+@service_bp.route("/api/files/download/<date_str>/<filename>", methods=["GET"])
+@login_required
+def download_generated_work_order(date_str, filename):
+    target_dir = PROJECT_ROOT / "generated_docs" / "outputs" / date_str
+    target_file = target_dir / filename
+    if not target_file.exists():
+        abort(404)
+
+    is_pdf = filename.lower().endswith(".pdf")
+    return send_from_directory(
+        str(target_dir),
+        filename,
+        as_attachment=not is_pdf,
+    )
 
 
 # =====================================================================
@@ -578,20 +877,34 @@ def vision_page():
 # =====================================================================
 # 4. 작업이력 서비스 페이지 라우트
 # =====================================================================
-from datetime import datetime
-from web.models import (
-    RobotExecution,
-    ErpBlockMaster,
-    ErpBomInventory,
-    ErpWorkerCert,
-    ErpVehiclesEquipment,
-    MesWorkOrderDispatch,
-)
+def _extract_inst_pdf_url(inst) -> str:
+    """WorkInstruction의 external_env_json에서 PDF 다운로드 URL을 추출하되, 실제 파일 존재 시에만 반환"""
+    if not inst or not inst.external_env_json:
+        return ""
+    try:
+        meta = json.loads(_read_clob(inst.external_env_json))
+        if not isinstance(meta, dict):
+            return ""
+        files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
+        raw_url = files.get("download_pdf_url") or ""
+        if not raw_url:
+            return ""
+
+        parts = raw_url.strip("/").split("/")
+        if len(parts) >= 2:
+            date_str, filename = parts[-2], parts[-1]
+            if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
+                return ""
+
+        return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
+    except Exception:
+        return ""
+
 
 @service_bp.route("/history", methods=["GET"])
 @login_required
 def history_page():
-    """작업이력 및 ERP 자원관리 대시보드 (무거운 로봇 제어는 Vision 페이지로 이관 완료!)"""
+    """작업이력 및 ERP 자원관리 대시보드"""
     user = User.query.get_or_404(session["user_id"])
 
     my_orders_raw = (
@@ -608,7 +921,11 @@ def history_page():
             .order_by(WorkInstruction.instruction_id.desc())
             .first()
         )
-        my_orders.append({"wo": wo, "inst": inst})
+        my_orders.append({
+            "wo": wo,
+            "inst": inst,
+            "pdf_url": _extract_inst_pdf_url(inst),
+        })
 
     all_orders_raw = WorkOrder.query.order_by(WorkOrder.work_id.desc()).all()
     user_map = {u.user_id: u.full_name for u in User.query.all()}
@@ -624,6 +941,7 @@ def history_page():
             "wo": wo,
             "requester_name": user_map.get(wo.requested_by, "시스템"),
             "inst": inst,
+            "pdf_url": _extract_inst_pdf_url(inst),
         })
 
     erp_bom, erp_workers, erp_equipments, erp_dispatches = [], [], [], []
@@ -633,11 +951,19 @@ def history_page():
         erp_equipments = ErpVehiclesEquipment.query.order_by(ErpVehiclesEquipment.asset_code.asc()).all()
         erp_dispatches = MesWorkOrderDispatch.query.order_by(MesWorkOrderDispatch.created_at.desc()).all()
 
+    pending_approvals = []
+    if user.role in ("ADMIN", "MANAGER"):
+        for item in all_orders:
+            inst = item.get("inst")
+            if inst and inst.approval_status == "DRAFT":
+                pending_approvals.append(item)
+
     return render_template(
         "service/history.html",
         me=user,
         my_orders=my_orders,
         all_orders=all_orders,
+        pending_approvals=pending_approvals,
         erp_bom=erp_bom,
         erp_workers=erp_workers,
         erp_equipments=erp_equipments,
@@ -658,7 +984,7 @@ def control_robot_status():
 
     data = request.get_json(silent=True) or {}
     robot_id = data.get("robot_exec_id")
-    command = data.get("command")  # 'ESTOP', 'RESUME_IDLE', 'START_WELD', 'PAUSE'
+    command = data.get("command")
 
     robot = RobotExecution.query.get_or_404(robot_id)
 

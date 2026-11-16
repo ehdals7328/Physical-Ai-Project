@@ -40,6 +40,7 @@ class ShipAgentState(TypedDict, total=False):
 
     # 2. SHIP_USER.USERS 권한(RBAC) 및 작업 오더(WORK_ORDERS) 컨텍스트
     user_id: Optional[str]                        # USERS.USER_ID
+    user_name: Optional[str]                      
     user_role: Optional[str]                      # WORKER | MANAGER | ADMIN
     user_type: Optional[str]                      # INTERNAL | EXTERNAL
     can_access_erp: Optional[str]                 # 'Y' | 'N'
