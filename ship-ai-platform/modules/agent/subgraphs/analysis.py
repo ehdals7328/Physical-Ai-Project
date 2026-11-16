@@ -18,7 +18,7 @@ from modules.agent.tools.erp_tools import (
     list_registered_partners_from_db,
 )
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="gpt-5-mini")
 
 
 class UniversalQueryAnalysis(BaseModel):

@@ -92,7 +92,7 @@
         <!-- 실시간 알림 배너 -->
         <div id="dashToast" class="alert alert-success d-none py-2 small fw-bold shadow-sm"></div>
 
-        <!-- [커스터마이징 패널] 로봇 위젯 제거 완료 -->
+        <!-- [커스터마이징 패널] -->
         <div class="customizer-drawer d-none" id="customizerDrawer">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <div>
@@ -158,6 +158,80 @@
 
         <!-- 대시보드 위젯 그리드 컨테이너 -->
         <div class="row g-4" id="widgetGrid">
+            {% if me.role in ('ADMIN', 'MANAGER') %}
+            <!-- [위젯 0] 관리자 전용 HITL 결재 대기함 -->
+            <div class="col-lg-12 dash-widget-item" data-wid="w-pending-approvals" data-size="12">
+                <div class="widget-card" style="border: 2px solid #f59e0b;">
+                    <div class="widget-header" style="background-color: #fffbeb;">
+                        <div>
+                            <span class="badge bg-warning text-dark me-1">HITL APPROVAL QUEUE</span>
+                            <strong style="color: #92400e;">🛡️ 관리자 작업지시 결재 대기함 ({{ pending_approvals|length }}건)</strong>
+                        </div>
+                        <span class="small text-muted">현장 작업자/반장이 상신한 초안(DRAFT)을 검토 후 최종 승인 또는 반려합니다.</span>
+                    </div>
+                    <div class="widget-body">
+                        <table class="table dash-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>임시번호</th>
+                                    <th>기안자</th>
+                                    <th>블록 / 구역</th>
+                                    <th>작업 제목</th>
+                                    <th>시공 제원</th>
+                                    <th>지침서</th>
+                                    <th>결재 처리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pending_approvals %}
+                                {% set wo = item.wo %}
+                                {% set inst = item.inst %}
+                                <tr id="approval-row-{{ wo.work_id }}">
+                                    <td class="fw-bold text-warning-emphasis">{{ wo.work_no }}</td>
+                                    <td><strong>{{ item.requester_name }}</strong></td>
+                                    <td>{{ wo.block_code }} <small class="text-muted">({{ wo.work_zone }})</small></td>
+                                    <td>{{ wo.work_title }}</td>
+                                    <td>{{ wo.process_code }} · {{ wo.material_grade }} ({{ wo.thickness_mm }}T)</td>
+                                    <td>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-view-inst"
+                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) 초안 검토"
+                                                data-status="{{ inst.approval_status }}"
+                                                data-pdf="{{ item.pdf_url }}"
+                                                data-params="{{ inst.welding_params_json }}"
+                                                data-text="{{ inst.instruction_text }}">
+                                            📄 초안 열람
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <button type="button" class="btn btn-success btn-sm py-0 px-2 fw-bold btn-dash-approve"
+                                                    data-action="APPROVE"
+                                                    data-woid="{{ wo.work_id }}"
+                                                    data-instid="{{ inst.instruction_id }}">
+                                                👍 최종 승인
+                                            </button>
+                                            <button type="button" class="btn btn-danger btn-sm py-0 px-2 fw-bold btn-dash-approve"
+                                                    data-action="REJECT"
+                                                    data-woid="{{ wo.work_id }}"
+                                                    data-instid="{{ inst.instruction_id }}">
+                                                ❌ 반려
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-3 text-muted small">
+                                        현재 결재 대기 중인 작업지시서 초안(DRAFT)이 없습니다.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- [위젯 1] 내가 작업지시 내렸던 내역 -->
             <div class="col-lg-12 dash-widget-item" data-wid="w-my-orders" data-size="12">
@@ -218,6 +292,7 @@
                                         <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
                                                 data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
                                                 data-status="{{ inst.approval_status }}"
+                                                data-pdf="{{ item.pdf_url }}"
                                                 data-params="{{ inst.welding_params_json }}"
                                                 data-text="{{ inst.instruction_text }}">
                                             📄 지침서 보기
@@ -289,6 +364,7 @@
                                         <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
                                                 data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
                                                 data-status="{{ inst.approval_status }}"
+                                                data-pdf="{{ item.pdf_url }}"
                                                 data-params="{{ inst.welding_params_json }}"
                                                 data-text="{{ inst.instruction_text }}">
                                             📄 열람
@@ -497,22 +573,30 @@
     </div>
 </section>
 
-<!-- AI 작업지침서 상세 열람 모달 -->
+<!-- AI 작업지침서 상세 열람 모달 (PDF 우선 뷰어 + 텍스트 폴백) -->
 <div class="modal fade" id="instDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
                     <span class="badge bg-primary" id="modalInstStatus">APPROVED</span>
+                    <a href="#" id="modalOpenNewTab" class="btn btn-outline-danger btn-sm fw-bold d-none" target="_blank" rel="noopener">
+                        🔗 새 탭에서 PDF 크게 열기
+                    </a>
                 </div>
-                <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
-                <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
-                <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
-                <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
+                <div id="modalPdfBox" class="d-none border rounded-3 overflow-hidden mb-2">
+                    <iframe id="modalPdfViewer" src="" style="width: 100%; height: 72vh; border: none; display: block;"></iframe>
+                </div>
+                <div id="modalFallbackBox">
+                    <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
+                    <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
+                    <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
+                    <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -620,13 +704,63 @@ $(document).ready(function() {
         });
     });
 
-    $('.btn-view-inst').on('click', function() {
+    $(document).on('click', '.btn-view-inst', function() {
+        const pdfUrl = $(this).data('pdf');
         $('#modalInstTitle').text($(this).data('title'));
         $('#modalInstStatus').text($(this).data('status'));
-        $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
-        $('#modalInstText').text($(this).data('text'));
+
+        if (pdfUrl) {
+            $('#modalPdfViewer').attr('src', pdfUrl);
+            $('#modalOpenNewTab').attr('href', pdfUrl).removeClass('d-none');
+            $('#modalPdfBox').removeClass('d-none');
+            $('#modalFallbackBox').addClass('d-none');
+        } else {
+            $('#modalPdfViewer').attr('src', '');
+            $('#modalOpenNewTab').addClass('d-none');
+            $('#modalPdfBox').addClass('d-none');
+            $('#modalFallbackBox').removeClass('d-none');
+            $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
+            $('#modalInstText').text($(this).data('text'));
+        }
+
         const modal = new bootstrap.Modal(document.getElementById('instDetailModal'));
         modal.show();
+    });
+
+    document.getElementById('instDetailModal').addEventListener('hidden.bs.modal', function () {
+        $('#modalPdfViewer').attr('src', '');
+    });
+
+    $(document).on('click', '.btn-dash-approve', function() {
+        const btn = $(this);
+        const action = btn.data('action');
+        const woid = btn.data('woid');
+        const instid = btn.data('instid');
+        const row = $(`#approval-row-${woid}`);
+
+        row.find('button').prop('disabled', true);
+
+        $.ajax({
+            url: '/service/api/assistant/approve',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: action,
+                work_id: woid,
+                instruction_id: instid,
+                doc: {}
+            }),
+            success: function(res) {
+                const alertClass = (action === 'APPROVE') ? 'alert-success' : 'alert-warning';
+                $('#dashToast').removeClass('d-none alert-danger alert-success alert-warning').addClass(alertClass).text(res.message);
+                setTimeout(() => location.reload(), 1200);
+            },
+            error: function(xhr) {
+                row.find('button').prop('disabled', false);
+                const errMsg = xhr.responseJSON ? xhr.responseJSON.message : '결재 처리 중 오류가 발생했습니다.';
+                $('#dashToast').removeClass('d-none alert-success').addClass('alert-danger').text('❌ ' + errMsg);
+            }
+        });
     });
 });
 </script>

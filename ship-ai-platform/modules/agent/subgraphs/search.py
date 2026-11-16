@@ -21,7 +21,7 @@ from modules.agent.tools.retriever_tools import search_knowledge_by_categories
 from modules.agent.tools.vision_tools import get_vision_inspection_status
 from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="gpt-5-mini")
 
 
 # ==============================================================================
