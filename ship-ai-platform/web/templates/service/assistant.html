@@ -324,18 +324,28 @@
                                     </div>
                                     {% endif %}
                                     {% if log.approval_status == 'DRAFT' and log.pending_doc %}
-                                    <div class="hitl-approval-card" id="hitlGateBox" data-doc="{{ log.pending_doc | tojson | forceescape }}">
-                                        <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: {{ log.pending_doc.title or '작업지시 및 자원 배정 결재안' }}]</div>
-                                        <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
-                                        <div class="d-flex gap-2">
-                                            <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
-                                                👍 최종 승인 및 ERP 원장 커밋
-                                            </button>
-                                            <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
-                                                ❌ 요청 반려 (Rollback)
-                                            </button>
+                                        {% if me.role in ('ADMIN', 'MANAGER') %}
+                                        <div class="hitl-approval-card" id="hitlGateBox" data-doc="{{ log.pending_doc | tojson | forceescape }}">
+                                            <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: {{ log.pending_doc.title or '작업지시 및 자원 배정 결재안' }}]</div>
+                                            <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
+                                                    👍 최종 승인 및 ERP 원장 커밋
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
+                                                    ❌ 요청 반려 (Rollback)
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                        {% else %}
+                                        <div class="hitl-approval-card" style="background: #eff6ff; border-color: #93c5fd; color: #1e3a8a;">
+                                            <div class="fw-bold small mb-1">📨 [관리자 승인 요청 상신 완료: {{ log.pending_doc.title or '작업지시 초안' }}]</div>
+                                            <div class="small">
+                                                작업지시서 초안이 생성되어 <strong>관리자(MANAGER/ADMIN) 결재 대기함</strong>으로 승인 요청이 전달되었습니다.
+                                                관리자 결재 완료 후 공식 작업오더 배정 및 ERP 원장 커밋이 확정됩니다.
+                                            </div>
+                                        </div>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </div>
@@ -686,8 +696,10 @@ $(document).ready(function() {
     });
 
     function renderMarkdown(text) {
-        if (typeof marked !== 'undefined') return marked.parse(text || '');
-        return $('<div>').text(text).html().replace(/\n/g, '<br>');
+        // 숫자 사이의 범위 표기(예: 200~260)가 GFM 취소선(~~)으로 오인식되는 현상 방지
+        const safeText = (text || '').replace(/(\d)\s*~\s*(\d)/g, '$1∼$2');
+        if (typeof marked !== 'undefined') return marked.parse(safeText);
+        return $('<div>').text(safeText).html().replace(/\n/g, '<br>');
     }
 
     $('.markdown-body').each(function() {
@@ -760,24 +772,37 @@ $(document).ready(function() {
                     : '';
 
                 // DRAFT 또는 WAITING_APPROVAL 상태일 때 HITL 결재 게이트 렌더링
+                const isApprover = "{{ 'true' if me.role in ('ADMIN', 'MANAGER') else 'false' }}" === "true";
                 let hitlHtml = '';
                 if (res.generated_document && (res.generated_document.status === 'DRAFT' || res.generated_document.status === 'WAITING_APPROVAL')) {
                     pendingDoc = res.generated_document;
                     const docTitle = pendingDoc.title || '작업지시 및 자원 배정 결재안';
-                    hitlHtml = `
-                        <div class="hitl-approval-card" id="hitlGateBox">
-                            <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: ${$('<div>').text(docTitle).html()}]</div>
-                            <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
-                                    👍 최종 승인 및 ERP 원장 커밋
-                                </button>
-                                <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
-                                    ❌ 요청 반려 (Rollback)
-                                </button>
+                    if (isApprover) {
+                        hitlHtml = `
+                            <div class="hitl-approval-card" id="hitlGateBox">
+                                <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: ${$('<div>').text(docTitle).html()}]</div>
+                                <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
+                                        👍 최종 승인 및 ERP 원장 커밋
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
+                                        ❌ 요청 반려 (Rollback)
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        hitlHtml = `
+                            <div class="hitl-approval-card" style="background: #eff6ff; border-color: #93c5fd; color: #1e3a8a;">
+                                <div class="fw-bold small mb-1">📨 [관리자 승인 요청 상신 완료: ${$('<div>').text(docTitle).html()}]</div>
+                                <div class="small">
+                                    작업지시서 초안이 생성되어 <strong>관리자(MANAGER/ADMIN) 결재 대기함</strong>으로 승인 요청이 전달되었습니다.
+                                    관리자 결재 완료 후 공식 작업오더 배정 및 ERP 원장 커밋이 확정됩니다.
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
 
                 const metaBadge = `<span class="badge bg-light text-secondary border ms-2" style="font-size:0.7rem;">${res.task_type} · ${res.execution_time_ms}ms</span>`;

@@ -5,6 +5,7 @@ Team 3: 거버넌스 게이트키퍼(Supervisor) 기반 작업지시서(WORK_INS
 """
 
 import json
+import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional, Union
 from langchain_core.prompts import ChatPromptTemplate
@@ -24,7 +25,7 @@ from modules.agent.tools.erp_tools import (
     list_erp_workers,
 )
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.1)
+llm = ChatOpenAI(model="gpt-5.1")
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -251,7 +252,9 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "제공된 [사내 규격 문서(RAG)], [본사 SHIP_ERP 자원 현황], [협력사 B2B 조회 결과], [실시간 기상 정보]를 바탕으로 "
         "사용자의 질문에 명확하고 체계적인 마크다운으로 답변하세요.\n\n"
         "[안내 원칙]\n"
-        "1. 사내 ERP 재고(`ERP_BOM_INVENTORY`), 대기 차량(`ERP_VEHICLES_EQUIPMENT`), 작업자 자격증(`ERP_WORKER_CERT`), 협력사(`ERP_COMPANIES`) 문의인 경우 제공된 DB 조회 데이터를 왜곡 없이 그대로 인용하세요.\n"
+        "1. 사내 ERP 재고(`ERP_BOM_INVENTORY`), 대기 차량(`ERP_VEHICLES_EQUIPMENT`), 작업자 자격증(`ERP_WORKER_CERT`), 협력사(`ERP_COMPANIES`) 문의인 경우:\n"
+        "   - 사용자가 특정 야드 또는 '내 담당 야드'를 문의한 경우, 반드시 해당 `branch_code`(예: 거제=`BR-GEOJE-01`, 울산=`BR-ULSAN-01`)에 속한 자재 및 장비만 필터링하여 안내하세요.\n"
+        "   - 장비 현황 답변 시 각 장비의 `operation_status` 컬럼을 정확히 확인하여 `'STANDBY'`인 장비는 **대기 중(가용)**으로, `'IN_USE'`인 장비는 **운행 중**으로 명확히 구분해 표기하세요.\n"
         "2. 사용자가 외주 발주나 배차 확정을 요청한 경우:\n"
         "   - 만약 대상 장비/차량의 `operation_status`가 이미 `'IN_USE'`(사용/배차 중)라면, '이미 배차가 완료되어 현재 운행(IN_USE) 중이므로 중복 배차할 수 없다'고 안내하세요.\n"
         "   - 대상 장비/차량이 `'STANDBY'`(대기 중)라면, 절대 '배차가 최종 확정 완료되었다'고 단정 짓지 말고 **'외주 배차/발주 요청안(DRAFT)이 생성되었으며, 하단 관리자 최종 승인(HITL) 클릭 시 원장에 확정 커밋됩니다'**라고 안내하세요.",
@@ -453,11 +456,13 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         hq_meta = get_active_partner_from_db("HQ")
         hq_code = hq_meta.get("company_code")
 
-    # 2. 외주 수행 여부 종합 판정
+    # 2. 외주 수행 여부 종합 판정 (명시적 외주 요청 또는 사내 자원/자격 부족 시에만 외주 전환)
     pref_mode = state.get("preferred_execution_mode", "AUTO")
+    hq_worker_missing = (erp_status.get("worker_qualification") or {}).get("status") == "NOT_FOUND"
     is_outsourced = (
         pref_mode == "OUTSOURCED_B2B"
-        or bool(selected_partner.get("partner_id"))
+        or erp_status.get("require_outsourcing") is True
+        or hq_worker_missing
         or (
             state.get("is_outsourcing_required") is True
             and not erp_status.get("stock_available", True)
@@ -563,7 +568,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         erp_commit["execution_type"] = exec_type_str
         approval_status = "APPROVED"
     else:
-        wo_num = state.get("work_no") or f"WO-DRAFT-{block_code}"
+        wo_num = state.get("work_no") or f"WO-DRAFT-{block_code}-{uuid.uuid4().hex[:4].upper()}"
         erp_commit = {
             "work_order_number": wo_num,
             "execution_type": exec_type_str,
@@ -699,6 +704,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "title": f"[{approval_status}] {params.get('block_id', '')} {params.get('material', '')} {params.get('thickness', '')} 작업지시서".strip(),
         "status": approval_status,
         "approval_status": approval_status,
+        "reviewed_by": state.get("user_name") or "현장검토대기",  # 👈 추가
         "execution_type": exec_type_str,
         "allocated_lot_no": lot_no,
         "assigned_vehicle_code": vehicle_code,

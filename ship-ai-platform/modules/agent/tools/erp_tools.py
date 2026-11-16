@@ -500,51 +500,37 @@ def query_partner_erp_b2b(
                     "selected_partner": selected,
                 }
 
-            # 2. 외주 용접 인력 협력사 (동해블록용접)
+            # 2. 외주 용접 인력 협력사 (동해블록용접 / 남해해양플랜트용접 등)
             elif domain == "OUTSOURCED_WORKER":
                 rows = conn.execute(
                     text("SELECT * FROM v_b2b_donghae_workers")
                 ).mappings().all()
                 workers = [dict(r) for r in rows]
                 selected = None
-
-                clean_w_name = None
-                if worker_name:
-                    clean_w_name = re.sub(
-                        r"\s*(반장|작업자|용접사|용접공|오퍼레이터|기사|엔지니어|팀장|님)$",
-                        "",
-                        str(worker_name).strip(),
-                    ).strip()
-
                 if workers:
-                    if clean_w_name:
+                    # 지정된 작업자명(worker_name)이 있으면 해당 작업자를 최우선 선택
+                    if worker_name:
                         for w in workers:
-                            if str(w.get("worker_name", "")).strip() == clean_w_name:
+                            if str(w.get("worker_name", "")).strip() == str(worker_name).strip():
                                 selected = dict(w)
                                 break
-                    else:
-                        req_proc = str(process or "").upper().strip()
+                    if not selected:
                         for w in workers:
-                            if w.get("can_accept_order", True) and (
-                                not req_proc or str(w.get("weld_process", "")).upper() == req_proc
-                            ):
+                            if w.get("can_accept_order", True):
                                 selected = dict(w)
                                 break
-                        if not selected:
-                            for w in workers:
-                                if w.get("can_accept_order", True):
-                                    selected = dict(w)
-                                    break
+                    if not selected:
+                        selected = dict(workers[0])
 
-                if selected:
-                    w_id = (
-                        selected.get("assigned_worker_id")
-                        or selected.get("ext_worker_id")
-                        or selected.get("worker_id")
-                    )
-                    selected["assigned_worker_id"] = w_id
-                    selected.setdefault("partner_id", "VEND-DONGHAE-WELD")
-                    selected.setdefault("partner_name", "동해블록용접(주)")
+                    p_id = selected.get("partner_id") or "VEND-DONGHAE-WELD"
+                    partner_name_map = {
+                        "VEND-DONGHAE-WELD": "동해블록용접(주)",
+                        "VEND-NAMHAE-ENG": "남해해양플랜트용접",
+                        "VEND-KOREA-CAD": "한국선체설계외주(주)",
+                    }
+                    selected["partner_id"] = p_id
+                    if not selected.get("partner_name"):
+                        selected["partner_name"] = partner_name_map.get(p_id, p_id)
                     selected.setdefault("business_type", "OUTSOURCED_WORKER")
 
                 return {
@@ -646,6 +632,23 @@ def commit_erp_work_order(
             if w_row:
                 resolved_worker_id = w_row["worker_id"]
 
+        # 👇 [추가] FK_DISPATCH_WORKER 무결성 보장: Oracle 본사 원장(ERP_WORKER_CERT) 등록 여부 확인
+        fk_worker_id = conn.execute(
+            text("SELECT worker_id FROM ERP_WORKER_CERT WHERE worker_id = :wid"),
+            {"wid": resolved_worker_id},
+        ).scalar()
+
+        # 외부 협력사(PostgreSQL) 전용 작업자(EXT-WELD-905 등)인 경우 본사 현장 담당자(EMP-*)를 FK 대리 매핑
+        if not fk_worker_id:
+            fk_worker_id = conn.execute(
+                text("""
+                    SELECT worker_id FROM ERP_WORKER_CERT
+                    WHERE status = 'VALID'
+                    ORDER BY CASE WHEN role = 'WELD_LEADER' THEN 0 ELSE 1 END, worker_id ASC
+                    FETCH FIRST 1 ROWS ONLY
+                """)
+            ).scalar() or "EMP-1002"
+
         if wire_item_code:
             wire_row = conn.execute(
                 text("""
@@ -683,7 +686,7 @@ def commit_erp_work_order(
                 ) VALUES (
                     :wo_no, :b_id, :exec_type, :p_id,
                     :lot_no, :w_id, :w_name,
-                    :veh_code, 'COMMITTED', CURRENT_TIMESTAMP
+                    :veh_code, 'COMMITTED', TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS')
                 )
             """),
             {
@@ -692,8 +695,8 @@ def commit_erp_work_order(
                 "exec_type": exec_type,
                 "p_id": partner_id,
                 "lot_no": allocated_lot_no,
-                "w_id": resolved_worker_id,
-                "w_name": worker_name,
+                "w_id": fk_worker_id,        # 👈 Oracle FK 통과용 본사 담당자 사번(EMP-1002)
+                "w_name": worker_name,       # 👈 실제 투입 외주 작업자 실명('문해양')은 그대로 기록
                 "veh_code": assigned_vehicle_code,
             },
         )
@@ -709,19 +712,22 @@ def commit_erp_work_order(
                 p_conn.execute(
                     text("""
                         INSERT INTO b2b_sales_orders (
-                            b2b_order_no, client_company, partner_id, ref_wo_number,
-                            block_id, material_grade, delivery_zone, order_status, created_at
+                            b2b_order_no, client_company, hq_wo_number, partner_id,
+                            order_type, ordered_ref_code, order_qty,
+                            allocated_lot_or_id, delivery_yard_zone, order_status, created_at
                         ) VALUES (
-                            :po_no, '한국스마트조선해양', :p_id, :wo_no,
-                            :b_id, :mat, :zone, 'CONFIRMED', CURRENT_TIMESTAMP
+                            :po_no, 'COMP-HQ', :wo_no, :p_id,
+                            'OUTSOURCED_B2B', :ref_code, :qty,
+                            :lot_or_id, :zone, 'CONFIRMED', CURRENT_TIMESTAMP
                         )
                     """),
                     {
                         "po_no": po_no,
-                        "p_id": partner_id,
                         "wo_no": wo_no,
-                        "b_id": block_id,
-                        "mat": material,
+                        "p_id": partner_id,
+                        "ref_code": wire_item_code or resolved_worker_id,
+                        "qty": reserve_wire_kg,
+                        "lot_or_id": allocated_lot_no or resolved_worker_id,
                         "zone": delivery_yard_zone,
                     },
                 )
