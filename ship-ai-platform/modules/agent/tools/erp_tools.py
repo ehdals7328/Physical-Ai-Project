@@ -1,7 +1,7 @@
 """
 modules/agent/tools/erp_tools.py
-본사 Oracle SHIP_ERP 및 외부 협력사 PostgreSQL B2B 연동 도구
-- config.py 및 .env의 SHIP_ERP_DATABASE_URL / PARTNER_PG_DATABASE_URL 직접 로드
+본사 Oracle SHIP_ERP 및 외부 협력사 FastMCP B2B 게이트웨이 연동 도구
+- 본사 Oracle(SHIP_ERP_DATABASE_URL)만 직접 접속하며, 협력사 PostgreSQL은 partner_mcp_client를 통해 MCP 통신으로 분리
 - 용접 공정(WPS) 상호 일치 검증 및 대상 야드 우선 배차 로직 탑재
 """
 
@@ -14,27 +14,25 @@ from dotenv import load_dotenv
 from langchain_core.tools import tool
 from sqlalchemy import create_engine, text
 
+from modules.agent.tools.partner_mcp_client import (
+    dispatch_partner_b2b_order_via_mcp,
+    query_partner_b2b_via_mcp,
+)
+
 # 프로젝트 루트의 .env 로드 (config.py와 동일한 환경변수 사용)
 PLATFORM_ROOT = Path(__file__).resolve().parents[3]
 load_dotenv(PLATFORM_ROOT / ".env")
 
 # ==============================================================================
-# 1. SQLAlchemy DB 엔진 설정 (.env의 SHIP_ERP_DATABASE_URL / PARTNER_PG_DATABASE_URL 사용)
+# 1. SQLAlchemy DB 엔진 설정 (본사 Oracle SHIP_ERP 전용)
 # ==============================================================================
 ORACLE_URI = os.getenv("SHIP_ERP_DATABASE_URL")
-PG_URI = os.getenv("PARTNER_PG_DATABASE_URL")
 
 try:
     erp_engine = create_engine(ORACLE_URI, pool_pre_ping=True) if ORACLE_URI else None
 except Exception as e:
     print(f"⚠️ [Oracle SHIP_ERP 엔진 초기화 경고]: {e}")
     erp_engine = None
-
-try:
-    pg_engine = create_engine(PG_URI, pool_pre_ping=True) if PG_URI else None
-except Exception as e:
-    print(f"⚠️ [PostgreSQL B2B 엔진 초기화 경고]: {e}")
-    pg_engine = None
 
 
 # ==============================================================================
@@ -268,7 +266,8 @@ def check_hq_erp_resources(
                     "branch_name": br_row["branch_name"],
                     "default_zone": "DOCK-1" if "GEOJE" in str(br_row["branch_code"]).upper() else "ZONE-A-BAY1",
                 }
-            # 👇 [추가] 2-1. 해당 야드 소속 현장 반장/관리자(검토자) 동적 조회
+
+            # 2-1. 해당 야드 소속 현장 반장/관리자(검토자) 동적 조회
             foreman_row = conn.execute(
                 text("""
                     SELECT worker_name, worker_id
@@ -295,7 +294,6 @@ def check_hq_erp_resources(
 
             # 3. 작업자 선급 자격증 유효성 및 용접 공정(WPS) 일치 검증
             if worker_name:
-                # 👇 [추가] "최선임 반장", "김철수 용접사", "윤로봇 님" 등에서 직책/호칭 제거 후 순수 성명 추출
                 clean_worker_name = re.sub(
                     r"\s*(반장|작업자|용접사|용접공|오퍼레이터|기사|엔지니어|팀장|님)$",
                     "",
@@ -311,7 +309,7 @@ def check_hq_erp_resources(
                         ORDER BY cert_expiry_date DESC
                         FETCH FIRST 1 ROWS ONLY
                     """),
-                    {"worker_name": clean_worker_name},  # 👈 여기 파라미터도 clean_worker_name으로 변경
+                    {"worker_name": clean_worker_name},
                 ).mappings().first()
 
                 if w_row:
@@ -424,7 +422,6 @@ def check_hq_erp_resources(
             all_eq = [dict(r) for r in eq_rows]
             result["vehicles_equipment"] = all_eq
 
-            # 대상 야드(target_branch) 내 STANDBY 장비 중 운반차량(VEHICLE_*) 우선, 없으면 크레인(CRANE) 배정
             branch_standby = [
                 eq for eq in all_eq
                 if str(eq.get("branch_code", "")).upper() == str(target_branch).upper()
@@ -458,144 +455,58 @@ def query_partner_erp_b2b(
     worker_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    외부 협력사 PostgreSQL B2B ERP View(v_b2b_daehan_materials, v_b2b_donghae_workers, v_b2b_hankook_transporters)를
-    조회하여 실시간 외주 자재 단가/재고, 가용 용접사, 중량물 트랜스포터 배차 가능 현황을 반환합니다.
+    외부 협력사 FastMCP B2B 게이트웨이 서버(partner_mcp_server.py)를 호출하여
+    실시간 외주 자재 단가/재고, 가용 용접사, 중량물 트랜스포터 배차 가능 현황을 반환합니다.
     """
     domain = (outsourcing_domain or "WELDING_MATERIAL").upper()
-    timestamp_iso = datetime.now().isoformat()
+    mcp_res = query_partner_b2b_via_mcp(
+        outsourcing_domain=domain,
+        material=material,
+        process=process,
+        partner_id=partner_id,
+        worker_name=worker_name,
+    )
 
-    if not pg_engine:
-        return {
-            "status": "ERROR",
-            "error_message": "PARTNER_PG_DATABASE_URL이 설정되지 않았습니다.",
-            "b2b_inquiry_timestamp": timestamp_iso,
-        }
-
-    try:
-        with pg_engine.connect() as conn:
-            # 1. 용접 자재 / 철판 협력사 (대한특수철강)
-            if domain == "WELDING_MATERIAL":
-                rows = conn.execute(
-                    text("SELECT * FROM v_b2b_daehan_materials")
+    # 중량물 운송(HEAVY_TRANSPORT) 시 협력사 MCP에 등록된 트랜스포터 뷰가 비어 있으면 본사 협력사 자산 원장 폴백 조회
+    if (
+        domain not in ("WELDING_MATERIAL", "OUTSOURCED_WORKER")
+        and mcp_res.get("status") == "SUCCESS"
+        and not mcp_res.get("available_transporters")
+        and erp_engine
+    ):
+        try:
+            with erp_engine.connect() as ora_conn:
+                ora_rows = ora_conn.execute(
+                    text("""
+                        SELECT e.asset_code AS assigned_vehicle_code,
+                               e.asset_name,
+                               e.asset_category,
+                               e.company_code AS partner_id,
+                               c.company_name AS partner_name,
+                               e.branch_code,
+                               e.current_zone,
+                               e.operation_status,
+                               e.max_load_ton,
+                               e.driver_worker_id
+                        FROM ERP_VEHICLES_EQUIPMENT e
+                        LEFT JOIN ERP_COMPANIES c ON e.company_code = c.company_code
+                        WHERE e.company_code != 'COMP-HQ'
+                        ORDER BY e.asset_code ASC
+                    """)
                 ).mappings().all()
-                items = [dict(r) for r in rows]
-                selected = None
-                if items:
-                    for it in items:
-                        if "WIRE" in str(it.get("supplier_sku", "")).upper() or "와이어" in str(it.get("item_name", "")):
-                            selected = dict(it)
-                            break
-                    if not selected:
-                        selected = dict(items[0])
-
-                    selected.setdefault("partner_id", "VEND-DAEHAN-MAT")
-                    selected.setdefault("partner_name", "대한특수철강")
-                    selected.setdefault("business_type", "WELDING_MATERIAL")
-
-                return {
-                    "status": "SUCCESS",
-                    "b2b_inquiry_timestamp": timestamp_iso,
-                    "source": "PostgreSQL PARTNER_B2B (v_b2b_daehan_materials)",
-                    "available_items": items,
-                    "selected_partner": selected,
-                }
-
-            # 2. 외주 용접 인력 협력사 (동해블록용접 / 남해해양플랜트용접 등)
-            elif domain == "OUTSOURCED_WORKER":
-                rows = conn.execute(
-                    text("SELECT * FROM v_b2b_donghae_workers")
-                ).mappings().all()
-                workers = [dict(r) for r in rows]
-                selected = None
-                if workers:
-                    # 지정된 작업자명(worker_name)이 있으면 해당 작업자를 최우선 선택
-                    if worker_name:
-                        for w in workers:
-                            if str(w.get("worker_name", "")).strip() == str(worker_name).strip():
-                                selected = dict(w)
-                                break
-                    if not selected:
-                        for w in workers:
-                            if w.get("can_accept_order", True):
-                                selected = dict(w)
-                                break
-                    if not selected:
-                        selected = dict(workers[0])
-
-                    p_id = selected.get("partner_id") or "VEND-DONGHAE-WELD"
-                    partner_name_map = {
-                        "VEND-DONGHAE-WELD": "동해블록용접(주)",
-                        "VEND-NAMHAE-ENG": "남해해양플랜트용접",
-                        "VEND-KOREA-CAD": "한국선체설계외주(주)",
-                    }
-                    selected["partner_id"] = p_id
-                    if not selected.get("partner_name"):
-                        selected["partner_name"] = partner_name_map.get(p_id, p_id)
-                    selected.setdefault("business_type", "OUTSOURCED_WORKER")
-
-                return {
-                    "status": "SUCCESS",
-                    "b2b_inquiry_timestamp": timestamp_iso,
-                    "source": "PostgreSQL PARTNER_B2B (v_b2b_donghae_workers)",
-                    "available_workers": workers,
-                    "selected_partner": selected,
-                }
-
-            # 3. 중량물 운송 / 트랜스포터 협력사 (한국중량물운송)
-            else:
-                transporters = []
-                source_name = "PostgreSQL PARTNER_B2B (v_b2b_hankook_transporters)"
-                try:
-                    rows = conn.execute(
-                        text("SELECT * FROM v_b2b_hankook_transporters")
-                    ).mappings().all()
-                    transporters = [dict(r) for r in rows]
-                except Exception:
-                    # PostgreSQL에 v_b2b_hankook_transporters 뷰가 없는 경우 Oracle 협력사 장비 원장에서 동적 폴백 조회
-                    if erp_engine:
-                        with erp_engine.connect() as ora_conn:
-                            ora_rows = ora_conn.execute(
-                                text("""
-                                    SELECT e.asset_code AS assigned_vehicle_code,
-                                           e.asset_name,
-                                           e.asset_category,
-                                           e.company_code AS partner_id,
-                                           c.company_name AS partner_name,
-                                           e.branch_code,
-                                           e.current_zone,
-                                           e.operation_status,
-                                           e.max_load_ton,
-                                           e.driver_worker_id
-                                    FROM ERP_VEHICLES_EQUIPMENT e
-                                    LEFT JOIN ERP_COMPANIES c ON e.company_code = c.company_code
-                                    WHERE e.company_code != 'COMP-HQ'
-                                    ORDER BY e.asset_code ASC
-                                """)
-                            ).mappings().all()
-                            transporters = [dict(r) for r in ora_rows]
-                            source_name = "ERP_VEHICLES_EQUIPMENT (Partner Asset View)"
-
-                selected = None
+                transporters = [dict(r) for r in ora_rows]
                 if transporters:
                     selected = dict(transporters[0])
                     selected.setdefault("partner_id", "VEND-HANKOOK-TP")
                     selected.setdefault("partner_name", "한국중량물운송(주)")
                     selected.setdefault("business_type", "HEAVY_TRANSPORT")
+                    mcp_res["available_transporters"] = transporters
+                    mcp_res["selected_partner"] = selected
+                    mcp_res["source"] = "ERP_VEHICLES_EQUIPMENT (Partner Asset Fallback)"
+        except Exception as e:
+            print(f"⚠️ [HEAVY_TRANSPORT Oracle 폴백 조회 참고]: {e}")
 
-                return {
-                    "status": "SUCCESS",
-                    "b2b_inquiry_timestamp": timestamp_iso,
-                    "source": source_name,
-                    "available_transporters": transporters,
-                    "selected_partner": selected,
-                }
-
-    except Exception as e:
-        return {
-            "status": "ERROR",
-            "error_message": str(e),
-            "b2b_inquiry_timestamp": timestamp_iso,
-        }
+    return mcp_res
 
 
 @tool
@@ -612,7 +523,7 @@ def commit_erp_work_order(
     reserve_wire_kg: float = 15.0,
     delivery_yard_zone: str = "ZONE-A-BAY1",
 ) -> Dict[str, Any]:
-    """관리자 승인(HITL) 완료 후 Oracle MES 원장 커밋 및 외주 시 PostgreSQL B2B 수주 원장을 동시 갱신합니다."""
+    """관리자 승인(HITL) 완료 후 Oracle MES 원장 커밋 및 외주 시 협력사 FastMCP 게이트웨이를 통해 수주 원장을 동시 갱신합니다."""
     now_str = datetime.now().strftime("%Y%m%d-%H%M%S")
     committed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     wo_no = f"WO-{now_str}"
@@ -632,7 +543,7 @@ def commit_erp_work_order(
             if w_row:
                 resolved_worker_id = w_row["worker_id"]
 
-        # 👇 [추가] FK_DISPATCH_WORKER 무결성 보장: Oracle 본사 원장(ERP_WORKER_CERT) 등록 여부 확인
+        # FK_DISPATCH_WORKER 무결성 보장: Oracle 본사 원장(ERP_WORKER_CERT) 등록 여부 확인
         fk_worker_id = conn.execute(
             text("SELECT worker_id FROM ERP_WORKER_CERT WHERE worker_id = :wid"),
             {"wid": resolved_worker_id},
@@ -695,44 +606,31 @@ def commit_erp_work_order(
                 "exec_type": exec_type,
                 "p_id": partner_id,
                 "lot_no": allocated_lot_no,
-                "w_id": fk_worker_id,        # 👈 Oracle FK 통과용 본사 담당자 사번(EMP-1002)
-                "w_name": worker_name,       # 👈 실제 투입 외주 작업자 실명('문해양')은 그대로 기록
+                "w_id": fk_worker_id,        # Oracle FK 통과용 본사 담당자 사번(EMP-1002)
+                "w_name": worker_name,       # 실제 투입 외주 작업자 실명 그대로 기록
                 "veh_code": assigned_vehicle_code,
             },
         )
 
-    # 2. 외주 연계(OUTSOURCED_B2B)인 경우 PostgreSQL PARTNER_B2B 수주 원장 동시 기록
+    # 2. 외주 연계(OUTSOURCED_B2B)인 경우 협력사 FastMCP 게이트웨이를 통해 수주 원장 동시 기록
     po_no = None
     b2b_ack = None
     if is_outsourced:
         po_no = f"PO-{now_str}"
         b2b_ack = f"ACK-{wo_no}-{partner_id}"
-        try:
-            with pg_engine.begin() as p_conn:
-                p_conn.execute(
-                    text("""
-                        INSERT INTO b2b_sales_orders (
-                            b2b_order_no, client_company, hq_wo_number, partner_id,
-                            order_type, ordered_ref_code, order_qty,
-                            allocated_lot_or_id, delivery_yard_zone, order_status, created_at
-                        ) VALUES (
-                            :po_no, 'COMP-HQ', :wo_no, :p_id,
-                            'OUTSOURCED_B2B', :ref_code, :qty,
-                            :lot_or_id, :zone, 'CONFIRMED', CURRENT_TIMESTAMP
-                        )
-                    """),
-                    {
-                        "po_no": po_no,
-                        "wo_no": wo_no,
-                        "p_id": partner_id,
-                        "ref_code": wire_item_code or resolved_worker_id,
-                        "qty": reserve_wire_kg,
-                        "lot_or_id": allocated_lot_no or resolved_worker_id,
-                        "zone": delivery_yard_zone,
-                    },
-                )
-        except Exception as e:
-            print(f"⚠️ [PostgreSQL B2B 수주 원장 기록 참고]: {e}")
+        mcp_order_res = dispatch_partner_b2b_order_via_mcp(
+            po_no=po_no,
+            wo_no=wo_no,
+            partner_id=partner_id,
+            ordered_ref_code=wire_item_code or resolved_worker_id,
+            order_qty=reserve_wire_kg,
+            allocated_lot_or_id=allocated_lot_no or resolved_worker_id,
+            delivery_yard_zone=delivery_yard_zone,
+        )
+        if mcp_order_res.get("status") not in ("CONFIRMED", "SUCCESS"):
+            print(f"⚠️ [Partner FastMCP 수주 원장 기록 참고]: {mcp_order_res}")
+        elif mcp_order_res.get("b2b_ack"):
+            b2b_ack = mcp_order_res["b2b_ack"]
 
     return {
         "erp_transaction_status": "COMMITTED",

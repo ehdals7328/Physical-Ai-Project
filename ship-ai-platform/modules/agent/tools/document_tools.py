@@ -12,7 +12,8 @@ from typing import Any, Dict
 from docxtpl import DocxTemplate, Listing
 from langchain_core.tools import tool
 
-OUTPUT_DIR = Path("./generated_docs")
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+OUTPUT_DIR = PROJECT_ROOT / "generated_docs"
 TEMPLATE_PATH = OUTPUT_DIR / "templates" / "work_order_template.docx"
 DAILY_OUTPUT_ROOT = OUTPUT_DIR / "outputs"
 
@@ -34,11 +35,19 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
     local_font_dir.mkdir(parents=True, exist_ok=True)
 
     font_pairs = [
+        # 👇 [1순위 추가] 프로젝트 내 동봉된 폰트 (Docker / Windows / Mac 공통 100% 작동)
+        (
+            "KorFont",
+            str(local_font_dir / "malgun.ttf"),
+            str(local_font_dir / "malgunbd.ttf"),
+        ),
+        # [2순위] Windows 시스템 기본 폰트
         (
             "KorFont",
             r"C:\Windows\Fonts\malgun.ttf",
             r"C:\Windows\Fonts\malgunbd.ttf",
         ),
+        # [3순위] Linux(Docker) 나눔고딕 패키지 폰트
         (
             "KorFont",
             "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
