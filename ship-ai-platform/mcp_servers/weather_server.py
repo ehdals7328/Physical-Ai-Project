@@ -13,7 +13,9 @@ from openai import OpenAI
 logging.getLogger("mcp.server.streamable_http").setLevel(logging.CRITICAL)
 logging.getLogger("uvicorn.error").setLevel(logging.ERROR)
 
-load_dotenv()
+from pathlib import Path
+PLATFORM_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PLATFORM_ROOT / ".env")
 
 weatherapi_key = os.getenv("WEATHER_API_KEY") or os.getenv("OPENWEATHER_API_KEY")
 openai_client = OpenAI()
