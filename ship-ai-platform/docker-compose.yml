@@ -1,7 +1,7 @@
 services:
-  # 1. 외부 협력사 B2B 데이터베이스 (PostgreSQL)
+  # 1. 외부 협력사 B2B 데이터베이스 (로컬과 동일한 PostgreSQL 16 버전)
   postgres-db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: ship-postgres
     restart: unless-stopped
     environment:
@@ -37,7 +37,7 @@ services:
       timeout: 10s
       retries: 10
 
-  # 3. Physical AI 통합 플랫폼 서버 (Flask + LangGraph Agent + ChromaDB + YOLOv11 Vision)
+  # 3. Physical AI 통합 플랫폼 서버 (Flask + LangGraph + ChromaDB + YOLOv11)
   ship-ai-app:
     build:
       context: .
