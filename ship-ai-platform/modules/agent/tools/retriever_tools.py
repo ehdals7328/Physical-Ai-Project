@@ -1,10 +1,14 @@
 # modules/agent/tools/retriever_tools.py
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from langchain_core.tools import tool
 from modules.knowledge.retriever import KnowledgeStore
 
 # 싱글톤 인스턴스
 store = KnowledgeStore()
+
+# 동일 쿼리 반복 임베딩(BAAI/bge-m3) 지연을 막기 위한 인메모리 캐시
+_SEARCH_CACHE: Dict[Tuple[str, Optional[str], int], List[dict[str, Any]]] = {}
+_MAX_CACHE_SIZE = 128
 
 
 def _format_search_results(items: List[dict[str, Any]]) -> str:
@@ -32,7 +36,10 @@ def search_knowledge(
     top_k: int = 4
 ) -> List[dict[str, Any]]:
     """ChromaDB 지식베이스에서 카테고리 필터(선택)를 반영하여 유사도 상위 문서를 인출합니다."""
-    # 1. 1차 시도: 기본 검색 (access_level 제약 없이 순수 텍스트/카테고리 유사도 검색)
+    cache_key = (query.strip(), category, top_k)
+    if cache_key in _SEARCH_CACHE:
+        return [dict(item) for item in _SEARCH_CACHE[cache_key]]
+
     search_kwargs: dict[str, Any] = {
         "query": query,
         "top_k": top_k,
@@ -43,7 +50,6 @@ def search_knowledge(
     try:
         results = store.search(**search_kwargs)
     except TypeError:
-        # store.search 시그니처 호환 처리
         search_kwargs.pop("category", None)
         try:
             results = store.search(**search_kwargs)
@@ -54,7 +60,6 @@ def search_knowledge(
         print(f"[Retriever Search Error]: {e}")
         results = []
 
-    # 2. 카테고리 필터 때문에 비어있는 경우 전체 검색으로 Fallback
     if not results and category:
         search_kwargs.pop("category", None)
         try:
@@ -62,7 +67,6 @@ def search_knowledge(
         except Exception:
             results = []
 
-    # 3. 만약 store.search()에 필수 인자로 allowed_access_levels가 필요하다면 그때만 보완 호출
     if not results:
         try:
             search_kwargs["allowed_access_levels"] = ["INTERNAL", "PUBLIC", "CONFIDENTIAL", "ALL"]
@@ -70,7 +74,13 @@ def search_knowledge(
         except Exception:
             pass
 
-    return results or []
+    final_results = results or []
+    if final_results:
+        if len(_SEARCH_CACHE) >= _MAX_CACHE_SIZE:
+            _SEARCH_CACHE.pop(next(iter(_SEARCH_CACHE)))
+        _SEARCH_CACHE[cache_key] = [dict(item) for item in final_results]
+
+    return final_results
 
 
 def search_knowledge_by_category(

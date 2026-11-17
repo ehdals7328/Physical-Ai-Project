@@ -152,8 +152,8 @@
                             {% if s.session_id == thread_id %}{% set ns.found = true %}{% endif %}
                         {% endfor %}
                         {% if not ns.found %}
-                        <div class="session-item active" data-sid="{{ thread_id }}">
-                            <div class="text-truncate small flex-grow-1" onclick="location.href='/service/assistant?sid={{ thread_id }}'">
+                        <div class="session-item active" id="currentNewSessionRow" data-sid="{{ thread_id }}">
+                            <div class="text-truncate small flex-grow-1" id="currentNewSessionTitle" onclick="location.href='/service/assistant?sid={{ thread_id }}'">
                                 🟢 새 대화 진행 중...
                             </div>
                         </div>
@@ -191,7 +191,7 @@
                                 등록된 작업자 전체 명단이랑 자격증 상태 보여줘
                             </button>
                             <button type="button" class="btn btn-outline-secondary btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
-                                창고에 남아있는 강판이랑 용접 와이어 재고 알려줘
+                                용접해야 할 부분 있어?
                             </button>
                             <button type="button" class="btn btn-outline-danger btn-sm text-start text-truncate sample-q" style="font-size: 0.75rem;">
                                 B-104 블록에 조객원 작업자 투입해서 작업지시서 써줘
@@ -413,7 +413,7 @@
                                         <option value="최선임">울산 용접반장 (유효)</option>
                                         <option value="김철수">거제 용접공 (유효)</option>
                                         <option value="윤로봇">울산 로봇오퍼레이터 (유효)</option>
-                                        <option value="강숙련">울산 외주 용접공 (유효)</option>
+                                        <option value="문해양">거제 외주 SAW 용접사 (유효)</option>
                                         <option value="조객원">자격만료 테스트 (EXPIRED)</option>
                                     </datalist>
                                 </div>
@@ -488,7 +488,6 @@ function deleteSessionRow(e, targetSid, btnEl) {
     });
 }
 
-// PDF / DOCX 다운로드 URL 접두사 보정 및 버튼 HTML 조립
 function resolveDownloadUrl(url) {
     if (!url) return '';
     return url.startsWith('/service/') ? url : '/service' + url;
@@ -513,12 +512,16 @@ function buildFileDownloadHtml(files, isApproved = false) {
 $(document).ready(function() {
     const chatWindow = $('#chatWindow');
     const textarea = document.getElementById('questionInput');
+    const currentThreadId = '{{ thread_id }}';
+    const isApprover = "{{ 'true' if me.role in ('ADMIN', 'MANAGER') else 'false' }}" === "true";
     let pendingDoc = null;
     let astVisionTimer = null;
     let isAstVisionPaused = false;
+    let pollTimer = null;
 
     $(window).on('beforeunload pagehide', function() {
         if (astVisionTimer) clearInterval(astVisionTimer);
+        if (pollTimer) clearInterval(pollTimer);
         $('#astVisionImg').attr('src', '');
     });
 
@@ -696,7 +699,6 @@ $(document).ready(function() {
     });
 
     function renderMarkdown(text) {
-        // 숫자 사이의 범위 표기(예: 200~260)가 GFM 취소선(~~)으로 오인식되는 현상 방지
         const safeText = (text || '').replace(/(\d)\s*~\s*(\d)/g, '$1∼$2');
         if (typeof marked !== 'undefined') return marked.parse(safeText);
         return $('<div>').text(safeText).html().replace(/\n/g, '<br>');
@@ -715,10 +717,157 @@ $(document).ready(function() {
         });
     });
 
+    function appendLoadingBubble(loadingId, textMsg = 'AI 어시스턴트가 백그라운드에서 답변 및 작업지시를 작성 중입니다... (다른 화면 이동 후 복귀해도 계속 진행됩니다)') {
+        if ($(`#${loadingId}`).length) return;
+        chatWindow.append(`
+            <div class="mb-3" id="${loadingId}">
+                <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm small text-secondary">
+                    <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+                    ${textMsg}
+                </div>
+            </div>
+        `);
+        chatWindow.scrollTop(chatWindow[0].scrollHeight);
+    }
+
+    function appendAiMessageBubble(res) {
+        if (res.status === 'FAILED') {
+            chatWindow.append(`
+                <div class="mb-3">
+                    <div class="d-inline-block bg-danger-subtle text-danger border rounded-4 p-3 small">
+                        ${renderMarkdown(res.answer || '❌ 백그라운드 처리 중 오류가 발생했습니다.')}
+                    </div>
+                </div>
+            `);
+            chatWindow.scrollTop(chatWindow[0].scrollHeight);
+            return;
+        }
+
+        let sourceBadges = '';
+        if (res.sources && res.sources.length > 0) {
+            const items = res.sources.map(s => {
+                const badgeClass = (s.collection_type === 'INTERNAL')
+                    ? 'bg-danger-subtle text-danger'
+                    : 'bg-primary-subtle text-primary';
+                return `<span class="badge ${badgeClass} border me-1">📄 ${s.title} (p.${s.page})</span>`;
+            }).join('');
+            sourceBadges = `<div class="mt-2 pt-2 border-top">${items}</div>`;
+        }
+
+        const filesObj = res.files || (res.generated_document && res.generated_document.files);
+        const isApprovedDoc = (res.approval_status === 'APPROVED') || (res.generated_document && res.generated_document.status === 'APPROVED');
+        const fileButtonsHtml = filesObj ? buildFileDownloadHtml(filesObj, isApprovedDoc) : '';
+
+        let hitlHtml = '';
+        if (!isApprovedDoc && res.generated_document && (res.generated_document.status === 'DRAFT' || res.generated_document.status === 'WAITING_APPROVAL')) {
+            pendingDoc = res.generated_document;
+            const docTitle = pendingDoc.title || '작업지시 및 자원 배정 결재안';
+            if (isApprover) {
+                hitlHtml = `
+                    <div class="hitl-approval-card" id="hitlGateBox">
+                        <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: ${$('<div>').text(docTitle).html()}]</div>
+                        <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
+                                👍 최종 승인 및 ERP 원장 커밋
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
+                                ❌ 요청 반려 (Rollback)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                hitlHtml = `
+                    <div class="hitl-approval-card" style="background: #eff6ff; border-color: #93c5fd; color: #1e3a8a;">
+                        <div class="fw-bold small mb-1">📨 [관리자 승인 요청 상신 완료: ${$('<div>').text(docTitle).html()}]</div>
+                        <div class="small">
+                            작업지시서 초안이 생성되어 <strong>관리자(MANAGER/ADMIN) 결재 대기함</strong>으로 승인 요청이 전달되었습니다.
+                            관리자 결재 완료 후 공식 작업오더 배정 및 ERP 원장 커밋이 확정됩니다.
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        const metaBadge = res.task_type
+            ? `<span class="badge bg-light text-secondary border ms-2" style="font-size:0.7rem;">${res.task_type} · ${res.execution_time_ms || 0}ms</span>`
+            : '';
+
+        chatWindow.append(`
+            <div class="mb-3">
+                <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm chat-bubble-ai" style="max-width: 92%;">
+                    <div class="small fw-bold text-primary mb-2">
+                        AI 어시스턴트 ${metaBadge}
+                    </div>
+                    <div class="small text-dark">${renderMarkdown(res.answer)}</div>
+                    ${sourceBadges}
+                    ${fileButtonsHtml}
+                    ${hitlHtml}
+                </div>
+            </div>
+        `);
+        chatWindow.scrollTop(chatWindow[0].scrollHeight);
+    }
+
+    function startPollingExecution(sessionId, loadingId) {
+        if (pollTimer) clearInterval(pollTimer);
+        $('#sendBtn').prop('disabled', true).text('처리 중...');
+
+        pollTimer = setInterval(function() {
+            $.ajax({
+                url: '/service/api/assistant/status/' + encodeURIComponent(sessionId),
+                method: 'GET',
+                success: function(statusRes) {
+                    if (statusRes.status === 'RUNNING') {
+                        return;
+                    }
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                    $(`#${loadingId}`).remove();
+                    $('#sendBtn').prop('disabled', false).text('전송');
+
+                    if (statusRes.status === 'SUCCESS' || statusRes.status === 'FAILED') {
+                        appendAiMessageBubble(statusRes);
+                    }
+                },
+                error: function() {
+                    // 일시적 네트워크 지연 시 다음 주기에 재시도
+                }
+            });
+        }, 1500);
+    }
+
+    // 페이지 재진입 또는 뒤로가기(bfcache) 복귀 시 백그라운드 작업이 진행 중이면 자동 복구
+    const initialIsRunning = "{{ 'true' if is_running else 'false' }}" === "true";
+    if (initialIsRunning) {
+        const resumeLoadingId = 'loading-resume-' + Date.now();
+        appendLoadingBubble(resumeLoadingId, '이전 화면 이탈 중 실행되던 AI 작업을 이어서 수신 중입니다...');
+        startPollingExecution(currentThreadId, resumeLoadingId);
+    }
+
+    $(window).on('pageshow', function(e) {
+        if (e.originalEvent && e.originalEvent.persisted && !pollTimer) {
+            $.getJSON('/service/api/assistant/status/' + encodeURIComponent(currentThreadId), function(statusRes) {
+                if (statusRes.status === 'RUNNING') {
+                    const bfLoadingId = 'loading-bf-' + Date.now();
+                    appendLoadingBubble(bfLoadingId, '백그라운드 AI 작업 진행 중...');
+                    startPollingExecution(currentThreadId, bfLoadingId);
+                }
+            });
+        }
+    });
+
     $('#assistantForm').on('submit', function(e) {
         e.preventDefault();
         const question = $('#questionInput').val().trim();
         if (!question) return;
+
+        // 좌측 사이드바 '새 대화 진행 중...' 타이틀을 첫 질문으로 즉시 갱신
+        const newTitleEl = $('#currentNewSessionTitle');
+        if (newTitleEl.length && newTitleEl.text().includes('새 대화 진행 중')) {
+            newTitleEl.text(question.split('\n')[0].slice(0, 24));
+        }
 
         chatWindow.append(`
             <div class="mb-3 text-end">
@@ -735,17 +884,8 @@ $(document).ready(function() {
         $('#btnShrinkInput').addClass('d-none');
 
         const loadingId = 'loading-' + Date.now();
-        chatWindow.append(`
-            <div class="mb-3" id="${loadingId}">
-                <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm small text-secondary">
-                    <span class="spinner-border spinner-border-sm text-primary me-2"></span>
-                    AI 어시스턴트가 답변 및 작업지시를 작성 중입니다...
-                </div>
-            </div>
-        `);
-
+        appendLoadingBubble(loadingId);
         $('#sendBtn').prop('disabled', true).text('처리 중...');
-        chatWindow.scrollTop(chatWindow[0].scrollHeight);
 
         $.ajax({
             url: '/service/api/assistant/ask',
@@ -753,77 +893,12 @@ $(document).ready(function() {
             contentType: 'application/json',
             data: JSON.stringify({ question: question }),
             success: function(res) {
-                $(`#${loadingId}`).remove();
-
-                let sourceBadges = '';
-                if (res.sources && res.sources.length > 0) {
-                    const items = res.sources.map(s => {
-                        const badgeClass = (s.collection_type === 'INTERNAL')
-                            ? 'bg-danger-subtle text-danger'
-                            : 'bg-primary-subtle text-primary';
-                        return `<span class="badge ${badgeClass} border me-1">📄 ${s.title} (p.${s.page})</span>`;
-                    }).join('');
-                    sourceBadges = `<div class="mt-2 pt-2 border-top">${items}</div>`;
-                }
-
-                // 초안 PDF / DOCX 다운로드 버튼 렌더링
-                const fileButtonsHtml = (res.generated_document && res.generated_document.files)
-                    ? buildFileDownloadHtml(res.generated_document.files, false)
-                    : '';
-
-                // DRAFT 또는 WAITING_APPROVAL 상태일 때 HITL 결재 게이트 렌더링
-                const isApprover = "{{ 'true' if me.role in ('ADMIN', 'MANAGER') else 'false' }}" === "true";
-                let hitlHtml = '';
-                if (res.generated_document && (res.generated_document.status === 'DRAFT' || res.generated_document.status === 'WAITING_APPROVAL')) {
-                    pendingDoc = res.generated_document;
-                    const docTitle = pendingDoc.title || '작업지시 및 자원 배정 결재안';
-                    if (isApprover) {
-                        hitlHtml = `
-                            <div class="hitl-approval-card" id="hitlGateBox">
-                                <div class="fw-bold small mb-1">🛡️ [HITL 관리자 결재 게이트: ${$('<div>').text(docTitle).html()}]</div>
-                                <div class="small mb-2">생성된 작업지시서 및 자원 배정 내역을 검토 후 승인 여부를 선택하세요.</div>
-                                <div class="d-flex gap-2">
-                                    <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision" data-action="APPROVE">
-                                        👍 최종 승인 및 ERP 원장 커밋
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-sm fw-bold btn-hitl-decision" data-action="REJECT">
-                                        ❌ 요청 반려 (Rollback)
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        hitlHtml = `
-                            <div class="hitl-approval-card" style="background: #eff6ff; border-color: #93c5fd; color: #1e3a8a;">
-                                <div class="fw-bold small mb-1">📨 [관리자 승인 요청 상신 완료: ${$('<div>').text(docTitle).html()}]</div>
-                                <div class="small">
-                                    작업지시서 초안이 생성되어 <strong>관리자(MANAGER/ADMIN) 결재 대기함</strong>으로 승인 요청이 전달되었습니다.
-                                    관리자 결재 완료 후 공식 작업오더 배정 및 ERP 원장 커밋이 확정됩니다.
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-
-                const metaBadge = `<span class="badge bg-light text-secondary border ms-2" style="font-size:0.7rem;">${res.task_type} · ${res.execution_time_ms}ms</span>`;
-
-                chatWindow.append(`
-                    <div class="mb-3">
-                        <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm chat-bubble-ai" style="max-width: 92%;">
-                            <div class="small fw-bold text-primary mb-2">
-                                AI 어시스턴트 ${metaBadge}
-                            </div>
-                            <div class="small text-dark">${renderMarkdown(res.answer)}</div>
-                            ${sourceBadges}
-                            ${fileButtonsHtml}
-                            ${hitlHtml}
-                        </div>
-                    </div>
-                `);
-                chatWindow.scrollTop(chatWindow[0].scrollHeight);
+                const targetSid = res.session_id || currentThreadId;
+                startPollingExecution(targetSid, loadingId);
             },
             error: function(xhr) {
                 $(`#${loadingId}`).remove();
+                $('#sendBtn').prop('disabled', false).text('전송');
                 const errMsg = xhr.responseJSON ? xhr.responseJSON.message : '통신 오류가 발생했습니다.';
                 chatWindow.append(`
                     <div class="mb-3">
@@ -833,9 +908,6 @@ $(document).ready(function() {
                     </div>
                 `);
                 chatWindow.scrollTop(chatWindow[0].scrollHeight);
-            },
-            complete: function() {
-                $('#sendBtn').prop('disabled', false).text('전송');
             }
         });
     });

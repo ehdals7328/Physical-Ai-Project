@@ -27,20 +27,36 @@ def _calc_pixel_length_mm(waypoints: List[List[float]], scale_mm_per_px: float =
     return round(total_px * scale_mm_per_px, 1)
 
 
+def _lookup_work_order_meta(conn, work_id: Any) -> Dict[str, Any]:
+    """WORK_ORDERS 테이블에서 연결된 블록/작업번호 정보를 안전하게 보조 조회합니다."""
+    if work_id is None:
+        return {}
+    try:
+        row = conn.execute(
+            text("SELECT * FROM WORK_ORDERS WHERE work_id = :wid FETCH FIRST 1 ROWS ONLY"),
+            {"wid": work_id},
+        ).mappings().first()
+        if not row:
+            return {}
+        return {
+            "work_no": row.get("work_no"),
+            "block_id": row.get("block_id") or row.get("block_code"),
+            "work_status": row.get("status") or row.get("work_status"),
+        }
+    except Exception:
+        return {}
+
+
 @tool
 def get_vision_inspection_status(
     work_id: Optional[str] = None,
     camera_code: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    [Oracle SHIP_USER 비전 & 로봇 상태 통합 조회]
-    VISION_ANALYSES, VISION_DETECTIONS, VISION_INSPECTIONS 및 ROBOT_EXECUTIONS 테이블을 조회하여
-    용접 상태(WELDING_STATE), 시작/종료 좌표, 예상 용접 길이, 간섭 객체 여부(SAFETY_CLEARANCE_YN),
-    로봇 비상정지(EMERGENCY_STOP_YN) 상태를 반환합니다.
+    [Oracle SHIP_USER 비전 & 로봇 상태 단건 조회 - 작업지시서 및 안전 인터록용]
     """
     try:
         with user_engine.connect() as conn:
-            # 1) 최신 VISION_ANALYSES 세션 조회
             sql_ana = """
                 SELECT analysis_id, work_id, camera_code, original_image_uri,
                        visualized_image_uri, image_width, image_height,
@@ -56,7 +72,6 @@ def get_vision_inspection_status(
                 {"work_id": str(work_id) if work_id else None, "camera_code": camera_code},
             ).mappings().first()
 
-            # 조건에 맞는 행이 없으면 가장 최근 분석 세션 1건 조회
             if not ana_row:
                 ana_row = conn.execute(
                     text(
@@ -78,7 +93,6 @@ def get_vision_inspection_status(
             analysis_id = ana_row["analysis_id"]
             actual_work_id = ana_row["work_id"] or work_id
 
-            # 2) 해당 세션의 VISION_DETECTIONS 조회
             sql_det = """
                 SELECT detection_id, class_id, class_name, confidence, tracker_id,
                        bbox_x, bbox_y, bbox_width, bbox_height, centerline_waypoints_json
@@ -116,7 +130,6 @@ def get_vision_inspection_status(
                     "centerline_waypoints": wp_parsed if c_name == "weld_joint" else None,
                 })
 
-            # 3) VISION_INSPECTIONS 조회
             sql_ins = """
                 SELECT inspection_id, start_point_json, end_point_json,
                        estimated_length_mm, safety_clearance_yn,
@@ -152,7 +165,6 @@ def get_vision_inspection_status(
                     dd = ins_row["defect_detail_json"]
                     defect_detail = json.loads(dd) if isinstance(dd, str) else dd
 
-            # 4) ROBOT_EXECUTIONS 상태 확인 (비상정지 등)
             robot_status = None
             try:
                 r_row = conn.execute(
@@ -198,4 +210,144 @@ def get_vision_inspection_status(
             "welding_state": "BEFORE_WELD",
             "safety_clearance_yn": "Y",
             "detections": [],
+        }
+
+
+@tool
+def get_vision_overview_for_qa(
+    block_id: Optional[str] = None,
+    camera_code: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    [자연어 비전 관제 질의 전용 조회 도구]
+    "용접해야 할 부분 있어?", "지금 비전 탐지 상황 알려줘", "결함이나 간섭 위험 있어?" 등의 질의에 대해
+    Oracle SHIP_USER의 VISION_ANALYSES, VISION_INSPECTIONS, VISION_DETECTIONS, ROBOT_EXECUTIONS를
+    종합 집계하여 원시 픽셀 좌표 없이 깔끔한 상태 브리핑 데이터를 반환합니다.
+    """
+    try:
+        with user_engine.connect() as conn:
+            sql_list = """
+                SELECT
+                    va.analysis_id,
+                    va.work_id,
+                    va.camera_code,
+                    va.welding_state,
+                    va.status_code AS analysis_status,
+                    va.created_at AS captured_at,
+                    vi.inspection_id,
+                    vi.safety_clearance_yn,
+                    vi.inspection_status,
+                    vi.defect_detail_json
+                FROM VISION_ANALYSES va
+                LEFT JOIN VISION_INSPECTIONS vi
+                    ON va.analysis_id = vi.analysis_id
+                WHERE (:camera_code IS NULL OR UPPER(va.camera_code) = UPPER(:camera_code))
+                ORDER BY va.created_at DESC
+                FETCH FIRST 20 ROWS ONLY
+            """
+            rows = conn.execute(
+                text(sql_list),
+                {"camera_code": camera_code.strip() if camera_code else None},
+            ).mappings().all()
+
+            records: List[Dict[str, Any]] = []
+            pending_weld_targets: List[Dict[str, Any]] = []
+            in_welding_targets: List[Dict[str, Any]] = []
+            completed_targets: List[Dict[str, Any]] = []
+            hazard_or_defect_targets: List[Dict[str, Any]] = []
+
+            for r in rows:
+                aid = r["analysis_id"]
+                wid = r["work_id"]
+                wo_meta = _lookup_work_order_meta(conn, wid)
+                resolved_block = wo_meta.get("block_id")
+
+                if block_id and resolved_block and str(resolved_block).upper() != str(block_id).upper():
+                    continue
+
+                # 탐지된 객체 요약 (좌표 제외, 클래스별 개수만 집계)
+                det_rows = conn.execute(
+                    text(
+                        "SELECT class_name, COUNT(*) AS cnt "
+                        "FROM VISION_DETECTIONS WHERE analysis_id = :aid GROUP BY class_name"
+                    ),
+                    {"aid": aid},
+                ).mappings().all()
+                detected_summary = {str(d["class_name"]): int(d["cnt"]) for d in det_rows}
+                has_weld_joint = detected_summary.get("weld_joint", 0) > 0
+
+                w_state = str(r["welding_state"] or "BEFORE_WELD").upper()
+                i_status = str(r["inspection_status"] or "BEFORE_WELD").upper()
+                clearance = str(r["safety_clearance_yn"] or "Y").upper()
+
+                defect_raw = r["defect_detail_json"]
+                defect_info = (
+                    json.loads(defect_raw)
+                    if isinstance(defect_raw, str) and defect_raw.strip()
+                    else defect_raw
+                )
+
+                item = {
+                    "analysis_id": aid,
+                    "work_id": wid,
+                    "work_no": wo_meta.get("work_no"),
+                    "block_id": resolved_block or f"WORK-{wid}" if wid else "미매핑 블록",
+                    "camera_code": r["camera_code"],
+                    "welding_state": w_state,
+                    "inspection_status": i_status,
+                    "weld_joint_detected": has_weld_joint,
+                    "detected_objects": detected_summary,
+                    "safety_clearance_yn": clearance,
+                    "defect_detail": defect_info,
+                    "captured_at": str(r["captured_at"]) if r["captured_at"] else None,
+                }
+                records.append(item)
+
+                if w_state == "BEFORE_WELD" or i_status == "BEFORE_WELD":
+                    pending_weld_targets.append(item)
+                elif w_state == "IN_WELDING":
+                    in_welding_targets.append(item)
+                else:
+                    completed_targets.append(item)
+
+                if clearance == "N" or i_status == "DEFECT":
+                    hazard_or_defect_targets.append(item)
+
+            # 로봇 실행 상태 요약
+            robots: List[Dict[str, Any]] = []
+            try:
+                r_rows = conn.execute(
+                    text(
+                        "SELECT equipment_code, robot_name, robot_status, current_location_desc, "
+                        "battery_percent, emergency_stop_yn, ros2_node_status "
+                        "FROM ROBOT_EXECUTIONS ORDER BY robot_exec_id ASC"
+                    )
+                ).mappings().all()
+                for rb in r_rows:
+                    robots.append(dict(rb))
+            except Exception:
+                pass
+
+            return {
+                "status": "SUCCESS" if records else "NO_DATA",
+                "total_records": len(records),
+                "summary_counts": {
+                    "pending_weld_count": len(pending_weld_targets),
+                    "in_welding_count": len(in_welding_targets),
+                    "completed_count": len(completed_targets),
+                    "hazard_or_defect_count": len(hazard_or_defect_targets),
+                },
+                "pending_weld_targets": pending_weld_targets,
+                "in_welding_targets": in_welding_targets,
+                "completed_targets": completed_targets,
+                "hazard_or_defect_targets": hazard_or_defect_targets,
+                "robots": robots,
+                "all_recent_records": records[:10],
+            }
+
+    except Exception as e:
+        return {
+            "status": "ERROR",
+            "error": f"비전 관제 현황 조회 오류: {str(e)}",
+            "total_records": 0,
         }
