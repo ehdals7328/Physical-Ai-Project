@@ -4,13 +4,26 @@ import json
 import time
 import uuid
 import ast
+import threading
 import traceback
 from pathlib import Path
 from functools import wraps
 from datetime import datetime
 from dotenv import load_dotenv
 
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, abort, send_from_directory
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    session,
+    redirect,
+    url_for,
+    flash,
+    jsonify,
+    abort,
+    send_from_directory,
+    current_app,
+)
 from sqlalchemy import func
 from langchain_core.messages import HumanMessage
 
@@ -81,6 +94,32 @@ def _parse_json_or_literal(val) -> list:
             return []
 
 
+def _check_session_running(user_id: int, thread_id: str) -> bool:
+    """해당 대화방에 현재 백그라운드 실행 중(RUNNING)인 작업이 있는지 확인합니다."""
+    latest_exec = (
+        AgentExecution.query
+        .filter_by(user_id=user_id, session_id=thread_id)
+        .order_by(AgentExecution.execution_id.desc())
+        .first()
+    )
+    if not latest_exec or latest_exec.status_code != "RUNNING":
+        return False
+
+    # 서버 강제 종료 등으로 5분(300초) 이상 멈춘 고아 RUNNING 상태는 FAILED로 자동 정리
+    if latest_exec.created_at:
+        try:
+            elapsed_sec = (datetime.utcnow() - latest_exec.created_at).total_seconds()
+            if elapsed_sec > 300:
+                latest_exec.status_code = "FAILED"
+                latest_exec.current_state = "TIMEOUT"
+                latest_exec.error_message = "백그라운드 작업 시간 초과(300초)"
+                db.session.commit()
+                return False
+        except Exception:
+            pass
+    return True
+
+
 # =====================================================================
 # 1. AI 통합 어시스턴트 (/service/assistant) - 대화방 목록 & 스마트 빌더 연동
 # =====================================================================
@@ -142,6 +181,7 @@ def assistant_page():
         session["assistant_thread_id"] = f"ast_{user.username}_{uuid.uuid4().hex[:6]}"
 
     thread_id = session["assistant_thread_id"]
+    is_running = _check_session_running(user.user_id, thread_id)
 
     chat_logs = (
         AgentChatHistory.query
@@ -195,6 +235,7 @@ def assistant_page():
         chat_logs=formatted_logs,
         session_list=session_list,
         branches=active_branches,
+        is_running=is_running,
     )
 
 
@@ -256,11 +297,182 @@ def hide_assistant_session():
     })
 
 
+def _run_assistant_background(
+    app,
+    user_id: int,
+    thread_id: str,
+    exec_id: int,
+    question: str,
+    state_input: dict,
+):
+    """브라우저 페이지 이동과 무관하게 백그라운드 스레드에서 에이전트를 끝까지 실행하고 DB에 커밋합니다."""
+    start_ts = time.time()
+    with app.app_context():
+        try:
+            from modules.agent.supervisor import ship_agent_app
+
+            config = {"configurable": {"thread_id": thread_id}}
+            result = ship_agent_app.invoke(state_input, config=config)
+            elapsed_ms = round((time.time() - start_ts) * 1000, 2)
+
+            user = User.query.get(user_id)
+            exec_log = AgentExecution.query.get(exec_id)
+
+            answer_text = result.get("final_answer") or "응답을 생성하지 못했습니다."
+            task_type = result.get("task_type") or "knowledge_qa"
+            retrieved_docs = result.get("retrieved_docs") or []
+            generated_doc = result.get("generated_document")
+
+            # 1) 인용된 RAG 문서 출처 정리
+            sources = []
+            for d in retrieved_docs:
+                meta = d.get("metadata") or {}
+                sources.append({
+                    "doc_code": meta.get("document_code") or "DOC-RAG",
+                    "title": meta.get("document_name") or "기술규격 문서",
+                    "page": meta.get("page") or 1,
+                    "collection_type": meta.get("collection_type") or "PUBLIC",
+                })
+
+            # 2) AI 답변 DB 저장
+            chunks_to_save = list(sources)
+            if generated_doc and generated_doc.get("files"):
+                doc_snapshot = {
+                    k: generated_doc.get(k)
+                    for k in (
+                        "title", "status", "approval_status", "execution_type",
+                        "work_order_number", "allocated_lot_no", "assigned_vehicle_code",
+                        "wire_item_code", "reserve_wire_kg", "parameters",
+                        "welding_params_json", "source_refs_json", "external_env_json",
+                        "weather", "vision_inspection", "reviewed_by",
+                        "erp_resource_status", "erp_commit", "partner_erp_plan",
+                        "instruction_text", "content", "files",
+                    )
+                    if generated_doc.get(k) is not None
+                }
+                chunks_to_save.append({
+                    "_type": "WORK_ORDER_FILES",
+                    "files": generated_doc["files"],
+                    "approval_status": generated_doc.get("approval_status", "DRAFT"),
+                    "doc": doc_snapshot,
+                })
+
+            ai_msg = AgentChatHistory(
+                session_id=thread_id,
+                user_id=user_id,
+                role_code="ASSISTANT",
+                content=answer_text,
+                retrieval_chunks_json=json.dumps(chunks_to_save, ensure_ascii=False, default=str) if chunks_to_save else None,
+            )
+            db.session.add(ai_msg)
+
+            # 3) 작업지시서 초안(DRAFT) 생성 시 WORK_ORDERS(READY) & WORK_INSTRUCTIONS(DRAFT) 선적재
+            draft_work_id = None
+            if generated_doc and generated_doc.get("approval_status") == "DRAFT":
+                params_draft = generated_doc.get("parameters") or {}
+                erp_commit_draft = generated_doc.get("erp_commit") or {}
+                block_id_draft = params_draft.get("block_id") or "BLK-E102"
+                base_wo_no = (
+                    generated_doc.get("work_order_number")
+                    or erp_commit_draft.get("work_order_number")
+                    or f"WO-DRAFT-{block_id_draft}"
+                )
+                draft_wo_no = f"{base_wo_no}-{uuid.uuid4().hex[:4].upper()}"
+
+                raw_thick = str(params_draft.get("thickness", "20")).upper().replace("T", "").replace("MM", "").strip()
+                thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else 20.0
+
+                draft_wo = WorkOrder(
+                    work_no=draft_wo_no,
+                    work_title=generated_doc.get("title") or f"[DRAFT] {block_id_draft} 자동용접 작업지시",
+                    work_description=f"AI 어시스턴트 기안 ({user.full_name if user else '담당자'} 요청 · 관리자 결재 대기)",
+                    ship_code=params_draft.get("ship_code") or "HN-2026-301",
+                    block_code=block_id_draft,
+                    work_region=params_draft.get("branch_code") or (user.erp_branch_code if user else None) or "BR-ULSAN-01",
+                    work_zone=params_draft.get("work_zone") or (user.default_workspace if user else None) or "ZONE-A-BAY1",
+                    process_code=params_draft.get("process") or "FCAW",
+                    material_grade=params_draft.get("material") or "AH36",
+                    thickness_mm=thickness_val,
+                    weld_position=params_draft.get("weld_position") or "1G",
+                    status_code="READY",
+                    requested_by=user_id,
+                )
+                db.session.add(draft_wo)
+                db.session.flush()
+                draft_work_id = draft_wo.work_id
+
+                draft_inst = WorkInstruction(
+                    work_id=draft_wo.work_id,
+                    revision_no="Rev.1",
+                    instruction_text=generated_doc.get("instruction_text") or generated_doc.get("content") or "작업지침 본문",
+                    welding_params_json=json.dumps(generated_doc.get("welding_params_json") or params_draft, ensure_ascii=False, default=str),
+                    source_refs_json=json.dumps(generated_doc.get("source_refs_json") or [], ensure_ascii=False, default=str),
+                    external_env_json=json.dumps({
+                        "weather": generated_doc.get("external_env_json") or {},
+                        "files": generated_doc.get("files") or {},
+                        "_draft_payload": generated_doc,
+                        "_source_session_id": thread_id,
+                    }, ensure_ascii=False, default=str),
+                    approval_status="DRAFT",
+                    approved_by=None,
+                )
+                db.session.add(draft_inst)
+                db.session.flush()
+                generated_doc["work_id"] = draft_wo.work_id
+                generated_doc["instruction_id"] = draft_inst.instruction_id
+
+            # 4) AGENT_EXECUTIONS 상태를 RUNNING -> SUCCESS로 갱신
+            intent_map = {
+                "doc_generation": "DOC_GENERATION",
+                "knowledge_qa": "WPS_LOOKUP",
+                "vision_inspection_qa": "MCP_TOOL",
+                "erp_resource_qa": "MCP_TOOL",
+                "hr_worker_qa": "MCP_TOOL",
+                "hr_safety_qa": "MCP_TOOL",
+                "scm_partner_qa": "MCP_TOOL",
+            }
+            if exec_log:
+                exec_log.work_id = draft_work_id
+                exec_log.intent_type = intent_map.get(task_type, "QA")
+                exec_log.current_state = f"COMPLETED_{task_type.upper()}"
+                exec_log.selected_tools_json = json.dumps(
+                    {"task_type": task_type, "rag_count": len(sources)}, ensure_ascii=False
+                )
+                exec_log.execution_time_ms = elapsed_ms
+                exec_log.status_code = "SUCCESS"
+                exec_log.error_message = None
+
+            db.session.commit()
+            print(f"✅ [Background Agent 완료] session={thread_id}, task={task_type}, 소요={elapsed_ms}ms")
+
+        except Exception as e:
+            db.session.rollback()
+            traceback.print_exc()
+            try:
+                exec_log = AgentExecution.query.get(exec_id)
+                if exec_log:
+                    exec_log.status_code = "FAILED"
+                    exec_log.current_state = "ERROR"
+                    exec_log.error_message = f"{type(e).__name__}: {str(e)}"
+                err_msg = AgentChatHistory(
+                    session_id=thread_id,
+                    user_id=user_id,
+                    role_code="ASSISTANT",
+                    content=f"❌ 에이전트 처리 중 오류가 발생했습니다: {type(e).__name__} - {str(e)}",
+                    retrieval_chunks_json=None,
+                )
+                db.session.add(err_msg)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        finally:
+            db.session.remove()
+
+
 @service_bp.route("/api/assistant/ask", methods=["POST"])
 @login_required
 def ask_assistant_agent():
-    """사용자 질문을 받아 modules/agent/supervisor.py의 ship_agent_app을 실행"""
-    start_ts = time.time()
+    """사용자 질문을 DB에 기록하고 백그라운드 스레드에서 에이전트를 비동기 실행합니다."""
     try:
         data = request.get_json(silent=True) or {}
         question = data.get("question", "").strip()
@@ -271,7 +483,15 @@ def ask_assistant_agent():
         thread_id = session.get("assistant_thread_id") or f"ast_{user.username}_{uuid.uuid4().hex[:6]}"
         session["assistant_thread_id"] = thread_id
 
-        # 1) 사용자 질문 DB 기록
+        # 이미 같은 대화방에 실행 중인 작업이 있으면 중복 실행 방지
+        if _check_session_running(user.user_id, thread_id):
+            return jsonify({
+                "status": "RUNNING",
+                "session_id": thread_id,
+                "message": "이전 요청을 백그라운드에서 처리 중입니다.",
+            }), 202
+
+        # 1) 사용자 질문 및 RUNNING 상태 실행 로그 즉시 커밋
         user_msg = AgentChatHistory(
             session_id=thread_id,
             user_id=user.user_id,
@@ -280,10 +500,20 @@ def ask_assistant_agent():
             retrieval_chunks_json=None,
         )
         db.session.add(user_msg)
-        db.session.commit()
 
-        # 2) LangGraph Supervisor Agent 호출
-        from modules.agent.supervisor import ship_agent_app
+        exec_log = AgentExecution(
+            session_id=thread_id,
+            user_id=user.user_id,
+            work_id=None,
+            intent_type="QA",
+            current_state="RUNNING_AGENT",
+            selected_tools_json=None,
+            execution_time_ms=0.0,
+            status_code="RUNNING",
+            error_message=None,
+        )
+        db.session.add(exec_log)
+        db.session.commit()
 
         state_input = {
             "messages": [HumanMessage(content=question)],
@@ -304,157 +534,94 @@ def ask_assistant_agent():
             "partner_erp_plan": None,
             "team2_plan": None,
         }
-        config = {"configurable": {"thread_id": thread_id}}
 
-        result = ship_agent_app.invoke(state_input, config=config)
-        elapsed_ms = round((time.time() - start_ts) * 1000, 2)
-
-        answer_text = result.get("final_answer") or "응답을 생성하지 못했습니다."
-        task_type = result.get("task_type") or "knowledge_qa"
-        retrieved_docs = result.get("retrieved_docs") or []
-        generated_doc = result.get("generated_document")
-
-        # 3) 인용된 RAG 문서 출처 정리
-        sources = []
-        for d in retrieved_docs:
-            meta = d.get("metadata") or {}
-            sources.append({
-                "doc_code": meta.get("document_code") or "DOC-RAG",
-                "title": meta.get("document_name") or "기술규격 문서",
-                "page": meta.get("page") or 1,
-                "collection_type": meta.get("collection_type") or "PUBLIC",
-            })
-
-        # 4) AI 답변 DB 저장
-        chunks_to_save = list(sources)
-        doc_snapshot = None
-        if generated_doc and generated_doc.get("files"):
-            doc_snapshot = {
-                k: generated_doc.get(k)
-                for k in (
-                    "title", "status", "approval_status", "execution_type",
-                    "work_order_number", "allocated_lot_no", "assigned_vehicle_code",
-                    "wire_item_code", "reserve_wire_kg", "parameters",
-                    "welding_params_json", "source_refs_json", "external_env_json",
-                    "weather", "vision_inspection", "reviewed_by",
-                    "erp_resource_status", "erp_commit", "partner_erp_plan",
-                    "instruction_text", "content", "files",
-                )
-                if generated_doc.get(k) is not None
-            }
-            chunks_to_save.append({
-                "_type": "WORK_ORDER_FILES",
-                "files": generated_doc["files"],
-                "approval_status": generated_doc.get("approval_status", "DRAFT"),
-                "doc": doc_snapshot,
-            })
-
-        ai_msg = AgentChatHistory(
-            session_id=thread_id,
-            user_id=user.user_id,
-            role_code="ASSISTANT",
-            content=answer_text,
-            retrieval_chunks_json=json.dumps(chunks_to_save, ensure_ascii=False, default=str) if chunks_to_save else None,
+        app_obj = current_app._get_current_object()
+        worker = threading.Thread(
+            target=_run_assistant_background,
+            args=(app_obj, user.user_id, thread_id, exec_log.execution_id, question, state_input),
+            daemon=True,
         )
-        db.session.add(ai_msg)
-
-        # 4-1) 작업지시서 초안(DRAFT)이 생성된 경우 WORK_ORDERS(READY) & WORK_INSTRUCTIONS(DRAFT) 선적재
-        draft_work_id = None
-        if generated_doc and generated_doc.get("approval_status") == "DRAFT":
-            params_draft = generated_doc.get("parameters") or {}
-            erp_commit_draft = generated_doc.get("erp_commit") or {}
-            block_id_draft = params_draft.get("block_id") or "BLK-E102"
-            base_wo_no = (
-                generated_doc.get("work_order_number")
-                or erp_commit_draft.get("work_order_number")
-                or f"WO-DRAFT-{block_id_draft}"
-            )
-            draft_wo_no = f"{base_wo_no}-{uuid.uuid4().hex[:4].upper()}"
-
-            raw_thick = str(params_draft.get("thickness", "20")).upper().replace("T", "").replace("MM", "").strip()
-            thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else 20.0
-
-            draft_wo = WorkOrder(
-                work_no=draft_wo_no,
-                work_title=generated_doc.get("title") or f"[DRAFT] {block_id_draft} 자동용접 작업지시",
-                work_description=f"AI 어시스턴트 기안 ({user.full_name} 요청 · 관리자 결재 대기)",
-                ship_code=params_draft.get("ship_code") or "HN-2026-301",
-                block_code=block_id_draft,
-                work_region=params_draft.get("branch_code") or user.erp_branch_code or "BR-ULSAN-01",
-                work_zone=params_draft.get("work_zone") or user.default_workspace or "ZONE-A-BAY1",
-                process_code=params_draft.get("process") or "FCAW",
-                material_grade=params_draft.get("material") or "AH36",
-                thickness_mm=thickness_val,
-                weld_position=params_draft.get("weld_position") or "1G",
-                status_code="READY",
-                requested_by=user.user_id,
-            )
-            db.session.add(draft_wo)
-            db.session.flush()
-            draft_work_id = draft_wo.work_id
-
-            # 전체 generated_doc 페이로드를 그대로 보존해 승인 시 빈칸 없이 100% 복원
-            draft_inst = WorkInstruction(
-                work_id=draft_wo.work_id,
-                revision_no="Rev.1",
-                instruction_text=generated_doc.get("instruction_text") or generated_doc.get("content") or "작업지침 본문",
-                welding_params_json=json.dumps(generated_doc.get("welding_params_json") or params_draft, ensure_ascii=False, default=str),
-                source_refs_json=json.dumps(generated_doc.get("source_refs_json") or [], ensure_ascii=False, default=str),
-                external_env_json=json.dumps({
-                    "weather": generated_doc.get("external_env_json") or {},
-                    "files": generated_doc.get("files") or {},
-                    "_draft_payload": generated_doc,
-                    "_source_session_id": thread_id,
-                }, ensure_ascii=False, default=str),
-                approval_status="DRAFT",
-                approved_by=None,
-            )
-            db.session.add(draft_inst)
-            db.session.flush()
-            generated_doc["work_id"] = draft_wo.work_id
-            generated_doc["instruction_id"] = draft_inst.instruction_id
-
-        # 5) AGENT_EXECUTIONS 로그 저장
-        intent_map = {
-            "doc_generation": "DOC_GENERATION",
-            "knowledge_qa": "WPS_LOOKUP",
-            "erp_resource_qa": "MCP_TOOL",
-            "hr_worker_qa": "MCP_TOOL",
-            "hr_safety_qa": "MCP_TOOL",
-            "scm_partner_qa": "MCP_TOOL",
-        }
-        mapped_intent = intent_map.get(task_type, "QA")
-
-        exec_log = AgentExecution(
-            session_id=thread_id,
-            user_id=user.user_id,
-            work_id=draft_work_id,
-            intent_type=mapped_intent,
-            current_state=f"COMPLETED_{task_type.upper()}",
-            selected_tools_json=json.dumps({"task_type": task_type, "rag_count": len(sources)}, ensure_ascii=False),
-            execution_time_ms=elapsed_ms,
-            status_code="SUCCESS",
-            error_message=None,
-        )
-        db.session.add(exec_log)
-        db.session.commit()
+        worker.start()
 
         return jsonify({
-            "status": "SUCCESS",
-            "answer": answer_text,
-            "task_type": task_type,
-            "execution_time_ms": elapsed_ms,
-            "sources": sources,
-            "generated_document": generated_doc,
-        })
+            "status": "RUNNING",
+            "session_id": thread_id,
+            "execution_id": exec_log.execution_id,
+        }), 202
 
     except Exception as e:
         db.session.rollback()
         traceback.print_exc()
         return jsonify({
             "status": "ERROR",
-            "message": f"에이전트 처리 중 오류 발생: {type(e).__name__} - {str(e)}"
+            "message": f"요청 접수 중 오류 발생: {type(e).__name__} - {str(e)}"
         }), 500
+
+
+@service_bp.route("/api/assistant/status/<session_id>", methods=["GET"])
+@login_required
+def get_assistant_execution_status(session_id):
+    """백그라운드 에이전트 실행 상태 및 완료 결과를 조회하는 경량 폴링 API"""
+    user = User.query.get_or_404(session["user_id"])
+
+    if _check_session_running(user.user_id, session_id):
+        return jsonify({
+            "status": "RUNNING",
+            "session_id": session_id,
+        })
+
+    latest_exec = (
+        AgentExecution.query
+        .filter_by(user_id=user.user_id, session_id=session_id)
+        .order_by(AgentExecution.execution_id.desc())
+        .first()
+    )
+    if not latest_exec:
+        return jsonify({"status": "IDLE", "session_id": session_id})
+
+    last_ai = (
+        AgentChatHistory.query
+        .filter_by(user_id=user.user_id, session_id=session_id, role_code="ASSISTANT")
+        .order_by(AgentChatHistory.message_id.desc())
+        .first()
+    )
+
+    sources = []
+    saved_files = None
+    saved_status = "DRAFT"
+    saved_doc = None
+    if last_ai and last_ai.retrieval_chunks_json:
+        raw_list = _parse_json_or_literal(last_ai.retrieval_chunks_json)
+        for item in raw_list:
+            if isinstance(item, dict) and item.get("_type") == "WORK_ORDER_FILES":
+                saved_files = item.get("files")
+                saved_status = item.get("approval_status", "DRAFT")
+                saved_doc = item.get("doc")
+            else:
+                sources.append(item)
+
+    if saved_doc and saved_files and not saved_doc.get("files"):
+        saved_doc["files"] = saved_files
+
+    task_type = "knowledge_qa"
+    if latest_exec.selected_tools_json:
+        try:
+            meta = json.loads(_read_clob(latest_exec.selected_tools_json))
+            task_type = meta.get("task_type") or task_type
+        except Exception:
+            pass
+
+    return jsonify({
+        "status": latest_exec.status_code,
+        "session_id": session_id,
+        "answer": _read_clob(last_ai.content) if last_ai else (latest_exec.error_message or "응답이 없습니다."),
+        "task_type": task_type,
+        "execution_time_ms": latest_exec.execution_time_ms or 0.0,
+        "sources": sources,
+        "files": saved_files,
+        "approval_status": saved_status,
+        "generated_document": saved_doc,
+    })
 
 
 @service_bp.route("/api/assistant/approve", methods=["POST"])
@@ -472,7 +639,6 @@ def approve_work_instruction():
     work_id = payload.get("work_id") or doc.get("work_id")
     instruction_id = payload.get("instruction_id") or doc.get("instruction_id")
 
-    # 대시보드 결재함에서 work_id / instruction_id만 넘어온 경우 DB에서 전체 초안 페이로드 복원
     target_wo = WorkOrder.query.get(work_id) if work_id else None
     target_inst = WorkInstruction.query.get(instruction_id) if instruction_id else (
         WorkInstruction.query.filter_by(work_id=target_wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()

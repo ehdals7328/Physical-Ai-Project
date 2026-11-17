@@ -18,12 +18,14 @@ from modules.agent.tools.erp_tools import (
     list_registered_partners_from_db,
 )
 
-llm = ChatOpenAI(model="gpt-5-mini")
+# 의도 분류 및 슬롯 추출 속도 최적화를 위해 즉시 응답 모델 사용
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 class UniversalQueryAnalysis(BaseModel):
     task_type: Literal[
         "chat",
+        "vision_inspection_qa",
         "erp_resource_qa",
         "hr_safety_qa",
         "hr_worker_qa",
@@ -33,6 +35,7 @@ class UniversalQueryAnalysis(BaseModel):
     ] = Field(
         description=(
             "질의의 핵심 목적 분류:\n"
+            "- 'vision_inspection_qa': 현장 비전(YOLOv11) 탐지 현황, 용접해야 할 대기 구역/블록 유무, 용접선 포착 상태, 간섭 위험물, 용접 품질/결함(DEFECT) 및 로봇 관제 상태 문의\n"
             "- 'scm_partner_qa': 외부 협력사/하청업체의 가용 자재·단가·외주인력·자격보유자·일당·중장비 배차 조회 및 발주 문의\n"
             "- 'erp_resource_qa': 본사(HQ) 내부 창고의 자재 재고 또는 본사 소유 장비 단순 조회\n"
             "- 'hr_worker_qa': 본사 내부 인사 원장(ERP_WORKER_CERT) 전체 명단 조회\n"
@@ -52,10 +55,10 @@ class UniversalQueryAnalysis(BaseModel):
         description="외부 협력사/외주/하청 자원을 조회하거나 활용하려는 의도면 'OUTSOURCED_B2B', 본사 자체 처리를 지정하면 'IN_HOUSE', 별도 구분이 없으면 'AUTO'",
     )
     outsourcing_domain: Literal[
-    "OUTSOURCED_WORKER",
-    "WELDING_MATERIAL",
-    "HEAVY_TRANSPORT",
-    "NOT_APPLICABLE",
+        "OUTSOURCED_WORKER",
+        "WELDING_MATERIAL",
+        "HEAVY_TRANSPORT",
+        "NOT_APPLICABLE",
     ] = Field(
         default="NOT_APPLICABLE",
         description=(
@@ -63,14 +66,14 @@ class UniversalQueryAnalysis(BaseModel):
             "- 'OUTSOURCED_WORKER': 외주 용접사, 작업자, 인력 명단, 용접 공정 자격 보유 여부, 인건비/일당 문의\n"
             "- 'WELDING_MATERIAL': 와이어, 강판, 가스 등 물리적 자재 재고·단가·납품 문의\n"
             "- 'HEAVY_TRANSPORT': 중량물 운송, 트랜스포터, 크레인 배차 문의\n"
-            "- 'NOT_APPLICABLE': 외주나 협력사 자원과 무관한 일반 대화·사내 단순 질의"
-        )
+            "- 'NOT_APPLICABLE': 외주나 협력사 자원과 무관한 일반 대화·사내 단순 질의·비전 관제 질의"
+        ),
     )
     context_action: Literal["KEEP_MERGE", "RESET_NEW"] = Field(
         default="KEEP_MERGE",
         description=(
             "대화 맥락 처리 방식:\n"
-            "- 'RESET_NEW': 작업지시서 발행(doc_generation)이 아닌 별도의 단순 자원·협력사·규격 조회(scm_partner_qa, erp_resource_qa, hr_worker_qa, knowledge_qa)이거나 새로운 대상 질문일 때\n"
+            "- 'RESET_NEW': 작업지시서 발행(doc_generation)이 아닌 별도의 단순 자원·비전·협력사·규격 조회(vision_inspection_qa, scm_partner_qa, erp_resource_qa, hr_worker_qa, knowledge_qa)이거나 새로운 대상 질문일 때\n"
             "- 'KEEP_MERGE': 직전 작업지시서 작성(doc_generation)의 누락 제원을 보충하거나 동일 작업 조건을 이어갈 때"
         ),
     )
@@ -83,14 +86,15 @@ class UniversalQueryAnalysis(BaseModel):
         description="실시간 기상 조회 필요 여부 (날씨 질의나 'doc_generation'인 경우 True)",
     )
     block_id: Optional[str] = Field(None, description="선박 블록 식별 코드")
+    camera_code: Optional[str] = Field(None, description="현장 비전 카메라 식별 코드 (예: CAM-BAY1-01)")
     material: Optional[str] = Field(None, description="모재 강종 등급")
     thickness: Optional[str] = Field(None, description="판재 두께 규격")
     location: Optional[str] = Field(None, description="작업 지역/도시명 (구역 코드 제외)")
     process: Optional[str] = Field(None, description="용접 공정 코드")
     weld_position: Optional[str] = Field(None, description="용접 자세 코드")
     worker_name: Optional[str] = Field(
-    None,
-    description="질의에 명시된 특정 인력의 순수 성명. 한국인 이름이 직책처럼 보이더라도(예: '최선임 반장' -> '최선임', '김철수 작업자' -> '김철수') 사람 이름은 반드시 추출하고 뒤에 붙은 직책/호칭(반장, 작업자, 용접사, 님)만 제외할 것",
+        None,
+        description="질의에 명시된 특정 인력의 순수 성명. 한국인 이름이 직책처럼 보이더라도(예: '최선임 반장' -> '최선임', '김철수 작업자' -> '김철수') 사람 이름은 반드시 추출하고 뒤에 붙은 직책/호칭(반장, 작업자, 용접사, 님)만 제외할 것",
     )
     equipment: Optional[str] = Field(None, description="투입 설비 또는 차량명")
     additional_specs: Dict[str, Any] = Field(
@@ -114,12 +118,12 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "당신은 스마트 조선소 엔지니어링 & ERP 총괄 분석 에이전트(Team 1)입니다.\n"
         "제공된 [DB 등록 외부 협력사 메타데이터]와 대화 맥락을 참고하여 사용자의 질의를 구조화하세요.\n\n"
         "[판단 기준]\n"
-        "- 질의 대상이 본사(Internal HQ) 자원인지, 외부 협력사(External Partner/B2B) 자원인지 구분하십시오.\n"
+        "- 비전 AI(YOLOv11) 탐지 결과, 용접해야 할 대기 구역/블록 여부, 용접선 포착 상태, 간섭 장애물, 비전 검사 불량(DEFECT) 현황 문의는 'vision_inspection_qa'로 분류하고 context_action='RESET_NEW', outsourcing_domain='NOT_APPLICABLE'로 설정하십시오.\n"
         "- 외부 협력사(또는 등록된 협력사명)의 자재·단가·외주인력·자격보유자·일당·장비 가용성에 대한 질의는 'scm_partner_qa'로 분류하고, "
         "preferred_execution_mode='OUTSOURCED_B2B' 및 질의 대상 자원에 맞는 outsourcing_domain('OUTSOURCED_WORKER', 'WELDING_MATERIAL', 'HEAVY_TRANSPORT' 중 택1)을 반드시 지정하십시오.\n"
         "- 단순 자원/협력사 가용성 질의(scm_partner_qa)일 때는 context_action='RESET_NEW'로 설정하여 직전 작업지시서의 인력/자재 슬롯과 섞이지 않게 하십시오.\n"
         "- 공식 작업지시서/계획서 작성 요청은 외주 연계 여부에 관계없이 'doc_generation'으로 분류하되, "
-        "외주 발주 연계가 포함된 경우 preferred_execution_mode='OUTSOURCED_B2B'로 설정하십시오.",
+        "사용자가 명시적으로 '외주', '협력사', '사외'를 언급한 경우에만 preferred_execution_mode='OUTSOURCED_B2B'로 설정하고, 별도 언급이 없으면 'AUTO'로 두십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
@@ -173,7 +177,6 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     default_workspace = state.get("default_workspace")
     branch_code = state.get("branch_code")
 
-    # DB에서 현재 등록된 협력사 메타데이터를 동적으로 인출하여 프롬프트에 주입
     partners_meta = list_registered_partners_from_db()
 
     res: UniversalQueryAnalysis = (ANALYSIS_PROMPT | structured_analyzer).invoke({
@@ -206,6 +209,7 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
 
     new_fields = {
         "block_id": res.block_id,
+        "camera_code": res.camera_code,
         "material": res.material,
         "thickness": res.thickness,
         "location": res.location,
@@ -220,8 +224,7 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     if res.additional_specs:
         merged_params.update(res.additional_specs)
 
-    # 일반 자원/협력사 가용성 조회 시 이전 턴의 사내 작업자 슬롯 간섭 차단 (상태 전이 원칙)
-    if res.task_type in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa") and not res.worker_name:
+    if res.task_type in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa", "vision_inspection_qa") and not res.worker_name:
         merged_params.pop("worker_name", None)
 
     if can_access_erp == "N" and res.task_type in ("erp_resource_qa", "hr_worker_qa", "scm_partner_qa"):
@@ -252,7 +255,6 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     is_outsourcing_init = (
         res.task_type == "scm_partner_qa"
         or res.preferred_execution_mode == "OUTSOURCED_B2B"
-        or res.outsourcing_domain is not None
     )
 
     return {
@@ -317,12 +319,12 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
             merged_params["location"] = branch_info["region_name"]
 
     pref_mode = state.get("preferred_execution_mode", "AUTO")
-    is_outsourcing = (
-        bool(state.get("is_outsourcing_required", False))
-        or bool(erp_status.get("require_outsourcing", False))
-        or state.get("task_type") == "scm_partner_qa"
-        or pref_mode == "OUTSOURCED_B2B"
-    )
+    if state.get("task_type") == "scm_partner_qa" or pref_mode == "OUTSOURCED_B2B":
+        is_outsourcing = True
+    elif pref_mode == "IN_HOUSE":
+        is_outsourcing = False
+    else:
+        is_outsourcing = bool(erp_status.get("require_outsourcing", False))
 
     return {
         "extracted_params": merged_params,

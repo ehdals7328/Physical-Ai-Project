@@ -14,8 +14,22 @@ from modules.agent.subgraphs.search import team2_subgraph
 
 
 def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
-    """새로운 턴 시작 시 하위 서브그래프의 동적 플랜 큐를 초기화합니다."""
-    return {"team2_plan": None, "next": None}
+    """
+    새로운 턴 시작 시 직전 턴의 출처(retrieved_docs), 센서/비전 결과, 생성 문서 및
+    하위 서브그래프의 동적 플랜 큐를 초기화하여 멀티턴 상태 오염(출처 잔류)을 차단합니다.
+    """
+    return {
+        "team2_plan": None,
+        "next": None,
+        "retrieved_docs": [],
+        "vision_data": None,
+        "weather_data": None,
+        "generated_document": None,
+        "erp_commit_result": None,
+        "partner_erp_plan": None,
+        "final_answer": None,
+        "audit_saved": False,
+    }
 
 
 def route_after_team1(
@@ -35,8 +49,7 @@ def route_after_team1(
     if task_type == "chat" or (task_type == "doc_generation" and is_complete == "no"):
         return "__end__"
 
-    # 순수 사내(IN_HOUSE) 조회일 때만 Team 2를 건너뛰고 Team 3으로 직행!
-    # 외주 연계(is_outsourcing=True)가 필요한 경우에는 반드시 Team 2(B2B Collector)를 경유함
+    # 순수 사내(IN_HOUSE) 조회일 때만 Team 2를 건너뛰고 Team 3으로 직행
     if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa") and not is_outsourcing:
         return "team3_docgen"
 

@@ -1,6 +1,6 @@
 """
 modules/agent/tools/document_tools.py
-에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환 및 Markdown/Audit 파일로 저장하는 표준 도구 모음
+에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환 및 Audit 로그로 저장하는 표준 도구 모음
 """
 import json
 import os
@@ -9,7 +9,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
-from docxtpl import DocxTemplate, Listing
+from docxtpl import DocxTemplate
 from langchain_core.tools import tool
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -26,28 +26,23 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
         from reportlab.pdfbase.ttfonts import TTFont  # type: ignore
         from reportlab.lib.fonts import addMapping  # type: ignore
     except ImportError:
-        print(
-            "⚠️ [PDF 3순위 폴백 실패]: xhtml2pdf 미설치 (pip install xhtml2pdf 필요)"
-        )
+        print("⚠️ [PDF 3순위 폴백 실패]: xhtml2pdf 미설치 (pip install xhtml2pdf 필요)")
         return False
 
     local_font_dir = OUTPUT_DIR / "fonts"
     local_font_dir.mkdir(parents=True, exist_ok=True)
 
     font_pairs = [
-        # 👇 [1순위 추가] 프로젝트 내 동봉된 폰트 (Docker / Windows / Mac 공통 100% 작동)
         (
             "KorFont",
             str(local_font_dir / "malgun.ttf"),
             str(local_font_dir / "malgunbd.ttf"),
         ),
-        # [2순위] Windows 시스템 기본 폰트
         (
             "KorFont",
             r"C:\Windows\Fonts\malgun.ttf",
             r"C:\Windows\Fonts\malgunbd.ttf",
         ),
-        # [3순위] Linux(Docker) 나눔고딕 패키지 폰트
         (
             "KorFont",
             "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
@@ -278,8 +273,9 @@ def export_work_order_file(
     document_data: Dict[str, Any], file_prefix: str = "work_doc"
 ) -> str:
     """
-    공식 작업지시서를 표준 DOCX 템플릿({{변수}})에 채워 날짜별 폴더(generated_docs/outputs/YYYY-MM-DD/)에
-    .docx, .pdf, .md 파일로 저장하고 생성된 파일 경로 및 다운로드 URL 정보를 JSON 문자열로 반환합니다.
+    공식 작업지시서를 표준 DOCX 템플릿({{변수}})에 채워 날짜별 폴더(generated_docs/outputs/YYYY-MM-DD/)에 저장합니다.
+    - 초안(DRAFT): 웹 검토용 .pdf 1개만 유지 (임시 .docx 정리, .md 미생성)
+    - 승인(APPROVED): 공식 보관용 .docx + .pdf 2개 생성
     """
     today_str = datetime.now().strftime("%Y-%m-%d")
     daily_dir = DAILY_OUTPUT_ROOT / today_str
@@ -289,10 +285,8 @@ def export_work_order_file(
     wo_num = document_data.get("work_order_number") or timestamp
     base_name = f"{file_prefix}_{wo_num}"
 
-    md_path = daily_dir / f"{base_name}.md"
     docx_path = daily_dir / f"{base_name}.docx"
 
-    title = document_data.get("title") or "-"
     approval_status = document_data.get("approval_status") or "DRAFT"
     params = document_data.get("parameters") or {}
     weld_params = document_data.get("welding_params_json") or {}
@@ -303,31 +297,12 @@ def export_work_order_file(
     erp_status = document_data.get("erp_resource_status") or {}
     partner_plan = document_data.get("partner_erp_plan") or {}
     selected_partner = partner_plan.get("selected_partner") or {}
-    content = (
-        document_data.get("instruction_text")
-        or document_data.get("content")
-        or ""
-    )
 
-    # 기상 데이터 추출
     env = weather.get("environment") or weather
-    temp_val = (
-        env.get("temp")
-        if env.get("temp") is not None
-        else weather.get("temperature")
-    )
-    wind_val = (
-        env.get("wind")
-        if env.get("wind") is not None
-        else weather.get("wind_speed")
-    )
-    rain_val = (
-        env.get("rain")
-        if env.get("rain") is not None
-        else weather.get("precipitation")
-    )
+    temp_val = env.get("temp") if env.get("temp") is not None else weather.get("temperature")
+    wind_val = env.get("wind") if env.get("wind") is not None else weather.get("wind_speed")
+    rain_val = env.get("rain") if env.get("rain") is not None else weather.get("precipitation")
 
-    # ERP 자원 진단 데이터 추출
     worker_qual = erp_status.get("worker_qualification") or {}
     branch_info = erp_status.get("branch_info") or {}
     block_master = erp_status.get("block_master") or {}
@@ -370,29 +345,27 @@ def export_work_order_file(
     exec_type_raw = (
         erp_commit.get("execution_type")
         or document_data.get("execution_type")
-        or ("OUTSOURCED_B2B" if selected_partner.get("partner_id") else "IN_HOUSE")
-    )
-    resolved_partner_name = (
-        selected_partner.get("partner_name")
-        or erp_commit.get("partner_id")
-        or branch_info.get("company_code")
-        or erp_status.get("hq_company_code")
-        or "-"
-    )
-
-    po_no = (
-        erp_commit.get("po_number")
-        or erp_commit.get("b2b_order_number")
-        or erp_commit.get("b2b_sales_order_no")
-        or erp_commit.get("b2b_po_ack")
-        or document_data.get("po_number")
+        or "IN_HOUSE"
     )
     if exec_type_raw == "OUTSOURCED_B2B":
+        resolved_partner_name = (
+            selected_partner.get("partner_name")
+            or erp_commit.get("partner_id")
+            or "-"
+        )
+        po_no = (
+            erp_commit.get("po_number")
+            or erp_commit.get("b2b_order_number")
+            or erp_commit.get("b2b_sales_order_no")
+            or erp_commit.get("b2b_po_ack")
+            or document_data.get("po_number")
+        )
         b2b_po_display = po_no or f"PO-{str(wo_num).replace('WO-DRAFT-', '').replace('WO-', '')}"
     else:
+        hq_comp = branch_info.get("company_code") or erp_status.get("hq_company_code") or "COMP-HQ"
+        resolved_partner_name = f"본사 직영 ({hq_comp})"
         b2b_po_display = "해당없음 (사내직영)"
 
-    # 배차 장비 / 차량 동적 바인딩 (야드별 STANDBY 차량 폴백 포함)
     resolved_vehicle_code = (
         document_data.get("assigned_vehicle_code")
         or erp_commit.get("assigned_vehicle_code")
@@ -408,7 +381,6 @@ def export_work_order_file(
                 break
     resolved_vehicle_code = resolved_vehicle_code or "-"
 
-    # 용가재 코드 및 ERP_BOM_INVENTORY.ITEM_NAME 동적 조회
     resolved_wire_code = (
         document_data.get("wire_item_code")
         or selected_partner.get("hq_item_code")
@@ -416,16 +388,13 @@ def export_work_order_file(
         or "-"
     )
     wire_item_info = inventory_dict.get(resolved_wire_code) or {}
-    wire_item_name = wire_item_info.get("item_name") or selected_partner.get(
-        "item_name"
-    )
+    wire_item_name = wire_item_info.get("item_name") or selected_partner.get("item_name")
     wire_spec_text = (
         f"{resolved_wire_code} ({wire_item_name})"
         if wire_item_name and resolved_wire_code != "-"
         else resolved_wire_code
     )
 
-    # WPS 번호 동적 조회 (.pdf 파일명 유입 방어)
     raw_wps = (
         document_data.get("wps_code")
         or weld_params.get("wps_code")
@@ -440,7 +409,6 @@ def export_work_order_file(
     else:
         resolved_wps_code = str(raw_wps)
 
-    # 용접 자세 동적 추출
     resolved_position = (
         params.get("weld_position")
         or weld_params.get("weld_position")
@@ -452,7 +420,6 @@ def export_work_order_file(
         )
     )
 
-    # SAW 공정 보호가스 물리 정합성 최종 방어
     resolved_proc = params.get("process") or block_master.get("process") or "-"
     resolved_gas = weld_params.get("shielding_gas") or "-"
     if str(resolved_proc).upper() == "SAW" and (
@@ -460,10 +427,7 @@ def export_work_order_file(
     ):
         resolved_gas = "입상 플럭스 차폐 (보호가스 미사용)"
 
-    # 1. 예열 및 층간온도 동적 조합 ('100~250' 같은 범위 숫자에도 '℃' 자동 부착)
-    raw_preheat = weld_params.get("preheat_temp_c") or weld_params.get(
-        "preheat_temp"
-    )
+    raw_preheat = weld_params.get("preheat_temp_c") or weld_params.get("preheat_temp")
     if raw_preheat is not None and str(raw_preheat).strip() != "":
         p_text = str(raw_preheat).strip().replace("°C", "℃").replace("C", "℃")
         if "℃" not in p_text and any(ch.isdigit() for ch in p_text):
@@ -473,7 +437,6 @@ def export_work_order_file(
     else:
         preheat_display = "-"
 
-    # 2. 비전 탐지 상태 및 안전 클리어런스 직관적 표기
     clearance_yn = vision.get("safety_clearance_yn")
     insp_status = vision.get("inspection_status") or vision.get("status")
     vision_status_text = (
@@ -486,7 +449,6 @@ def export_work_order_file(
     else:
         safety_clearance_text = str(clearance_yn or "-")
 
-    # 3. 안전 체크리스트 (PASS 시에도 기본 용접 전 안전 점검 항목 표기)
     safety_eval = weather.get("safety_evaluation") or {}
     rules = safety_eval.get("mandatory_rules") or []
     prereqs = safety_eval.get("prerequisites") or []
@@ -502,7 +464,6 @@ def export_work_order_file(
     checklist_str = "\n".join(checklist_items)
     docx_checklist = "   /   ".join(checklist_items)
 
-    # 인용 규격 출처
     source_refs_str = (
         ", ".join(
             f"{ref.get('document_code') or ref.get('document_title', '-')}"
@@ -513,7 +474,6 @@ def export_work_order_file(
         else "-"
     )
 
-    # 검토자 및 승인자 동적 바인딩
     resolved_reviewer = (
         document_data.get("reviewed_by")
         or erp_commit.get("reviewer_name")
@@ -526,53 +486,6 @@ def export_work_order_file(
         or ("공정관리자(HITL)" if approval_status == "APPROVED" else "-")
     )
 
-    # 1. Markdown 백업 파일 저장
-    lines = [
-        f"# {title}",
-        f"\n- **작업지시 번호:** `{wo_num}`",
-        f"- **승인 상태:** `{approval_status}`",
-        f"- **문서 발행 일시:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        "\n---",
-        "## 1. 확정 작업 제원 및 ERP 배정 내역",
-    ]
-    for k, v in params.items():
-        lines.append(f"- **{k}:** {v}")
-
-    if weld_params:
-        lines.append("\n## 2. 공정 파라미터 및 비전 안전 판정")
-        for pk, pv in weld_params.items():
-            if pk in ("start_point", "end_point", "estimated_length_mm"):
-                continue
-            lines.append(f"- **{pk}:** {pv}")
-        lines.append(f"- **vision_status:** {vision_status_text}")
-        lines.append(f"- **safety_clearance:** {safety_clearance_text}")
-
-    if weather:
-        lines.extend([
-            "\n## 3. 현장 환경 기상 조건",
-            f"- **위치:** {params.get('location') or weather.get('location', '-')}",
-            f"- **기온:** {temp_val if temp_val is not None else '-'} ℃",
-            f"- **풍속:** {wind_val if wind_val is not None else '-'} m/s",
-            f"- **강수량:** {rain_val if rain_val is not None else '-'} mm",
-        ])
-
-    lines.extend([
-        "\n## 4. 작업 지침 및 안전 규격 상세",
-        content if content else "-",
-    ])
-
-    if source_refs:
-        lines.append("\n## 5. 인용 사내/선급 규격 출처")
-        for ref in source_refs:
-            lines.append(
-                f"- [{ref.get('document_code', '-')}]"
-                f" {ref.get('document_title', '-')} (p.{ref.get('page', 1)})"
-            )
-
-    with md_path.open("w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-
-    # 2. 표준 DOCX 템플릿 치환 및 PDF 변환용 Context
     context = {
         "work_order_number": wo_num,
         "revision_no": document_data.get("revision_no") or "Rev.1",
@@ -582,7 +495,6 @@ def export_work_order_file(
         "approved_by": resolved_approver,
         "execution_type": exec_type_raw,
         "partner_name": resolved_partner_name,
-        # 섹션 1: 대상 블록 및 공정 위치
         "ship_code": params.get("ship_code") or block_master.get("ship_code") or "-",
         "block_id": params.get("block_id") or block_master.get("block_id") or "-",
         "block_name": params.get("block_name") or block_master.get("block_name") or "-",
@@ -593,7 +505,6 @@ def export_work_order_file(
         ),
         "branch_name": resolved_branch,
         "work_zone": resolved_work_zone,
-        # 섹션 2: 투입 인력·자재·장비
         "worker_name": resolved_worker_name,
         "worker_id": resolved_worker_id,
         "cert_code": resolved_cert_code,
@@ -618,7 +529,6 @@ def export_work_order_file(
         ),
         "assigned_vehicle_code": resolved_vehicle_code,
         "b2b_po_number": b2b_po_display,
-        # 섹션 3: WPS 시공 조건 및 비전 안전 상태
         "wps_code": resolved_wps_code,
         "material": params.get("material") or block_master.get("material") or "-",
         "thickness": str(
@@ -645,7 +555,6 @@ def export_work_order_file(
         "vision_status_text": vision_status_text,
         "safety_clearance_text": safety_clearance_text,
         "safety_clearance_yn": clearance_yn or "-",
-        # 섹션 4 & 5: 기상/안전 체크리스트 및 서명
         "location": params.get("location") or weather.get("location") or "-",
         "temp": temp_val if temp_val is not None else "-",
         "wind": wind_val if wind_val is not None else "-",
@@ -664,6 +573,11 @@ def export_work_order_file(
         doc.save(str(docx_path))
         docx_created = True
         pdf_path_str = _convert_docx_to_pdf(docx_path, daily_dir, context=context)
+
+        # 초안(DRAFT) 상태에서는 PDF만 유지하고 임시 .docx 파일은 삭제하여 불필요한 파일 누적 방지
+        if approval_status == "DRAFT" and pdf_path_str and Path(pdf_path_str).exists():
+            docx_path.unlink(missing_ok=True)
+            docx_created = False
     else:
         print(
             f"⚠️ [템플릿 미발견]: {TEMPLATE_PATH.resolve()} 경로에"
@@ -676,7 +590,6 @@ def export_work_order_file(
     result_payload = {
         "status": "SUCCESS",
         "date_folder": today_str,
-        "md_path": str(md_path.resolve()),
         "docx_path": str(docx_path.resolve()) if docx_created else None,
         "pdf_path": pdf_path_str or None,
         "download_pdf_url": (

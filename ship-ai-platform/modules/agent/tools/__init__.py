@@ -10,6 +10,8 @@ from .erp_tools import (
     commit_erp_work_order,
     list_erp_workers,
     query_partner_erp_b2b,
+    get_branch_context_from_db,
+    list_registered_partners_from_db,
 )
 from .partner_mcp_client import (
     dispatch_partner_b2b_order_via_mcp,
@@ -22,7 +24,10 @@ from .retriever_tools import (
     search_knowledge_by_category,
     wps_retriever_tool,
 )
-from .vision_tools import get_vision_inspection_status
+from .vision_tools import (
+    get_vision_inspection_status,
+    get_vision_overview_for_qa,
+)
 from .weather_mcp_client import get_realtime_weather_from_mcp
 
 __all__ = [
@@ -43,4 +48,7 @@ __all__ = [
     "wps_retriever_tool",
     "safety_retriever_tool",
     "get_realtime_weather_from_mcp",
+    "get_branch_context_from_db",
+    "list_registered_partners_from_db",
+    "get_vision_overview_for_qa",
 ]

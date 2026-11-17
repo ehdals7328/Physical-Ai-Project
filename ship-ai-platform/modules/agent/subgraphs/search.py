@@ -12,16 +12,15 @@ from pydantic import BaseModel, Field
 
 from modules.agent.state import ShipAgentState
 from modules.agent.tools.domain_tools import evaluate_environmental_safety
-from modules.agent.tools.erp_tools import (
-    calculate_required_wire_kg,
-    get_branch_context_from_db,
-    query_partner_erp_b2b,
-)
+from modules.agent.tools.erp_tools import get_branch_context_from_db, query_partner_erp_b2b
+
 from modules.agent.tools.retriever_tools import search_knowledge_by_categories
-from modules.agent.tools.vision_tools import get_vision_inspection_status
+from modules.agent.tools.vision_tools import get_vision_inspection_status, get_vision_overview_for_qa
+
 from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
 
-llm = ChatOpenAI(model="gpt-5-mini")
+# Grader 및 분류 속도 최적화를 위해 즉시 응답 모델 사용
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
 
 # ==============================================================================
@@ -30,37 +29,43 @@ llm = ChatOpenAI(model="gpt-5-mini")
 def team2_supervisor_node(state: ShipAgentState) -> Dict[str, Any]:
     """
     현재 State와 아직 실행되지 않은 수집 과업을 점검하여
-    다음에 호출할 Team 2 내 전문 워커(rag_retriever / b2b_scm_collector / weather_and_safety)를 결정합니다.
+    다음에 호출할 Team 2 내 전문 워커를 결정합니다.
     """
     plan = state.get("team2_plan")
 
     if plan is None:
         task_type = state.get("task_type", "knowledge_qa")
         erp_status = state.get("erp_resource_status") or {}
-        user_q = state.get("user_query", "")
+        pref_mode = state.get("preferred_execution_mode", "AUTO")
 
-        explicit_outsource = (
-            state.get("preferred_execution_mode") == "OUTSOURCED_B2B"
-            or any(k in user_q for k in ["외주", "협력사", "사외", "대한특수", "동해블록", "한국중량"])
-        )
-        erp_needs_outsource = bool(erp_status.get("require_outsourcing", False))
-        is_outsourcing = explicit_outsource or erp_needs_outsource
+        # 비전 관제 질의는 RAG·MCP를 전부 생략하고 비전 DB만 즉시 조회
+        if task_type == "vision_inspection_qa":
+            plan = ["vision_qa_collector"]
+        else:
+            erp_needs_outsource = bool(erp_status.get("require_outsourcing", False))
+            is_outsourcing = (
+                pref_mode == "OUTSOURCED_B2B"
+                or bool(state.get("is_outsourcing_required", False))
+                or erp_needs_outsource
+            )
+            if pref_mode == "IN_HOUSE" and task_type != "scm_partner_qa":
+                is_outsourcing = False
 
-        need_weather = state.get("need_weather", False)
+            need_weather = state.get("need_weather", False)
 
-        new_plan: List[str] = []
-        if task_type in ("knowledge_qa", "doc_generation"):
-            new_plan.append("rag_retriever")
-        if task_type == "scm_partner_qa" or (
-            task_type == "doc_generation" and is_outsourcing
-        ):
-            new_plan.append("b2b_scm_collector")
-        if task_type == "doc_generation" or (
-            need_weather and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
-        ):
-            new_plan.append("weather_and_safety")
+            new_plan: List[str] = []
+            if task_type in ("knowledge_qa", "doc_generation"):
+                new_plan.append("rag_retriever")
+            if task_type == "scm_partner_qa" or (
+                task_type == "doc_generation" and is_outsourcing
+            ):
+                new_plan.append("b2b_scm_collector")
+            if task_type == "doc_generation" or (
+                need_weather and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
+            ):
+                new_plan.append("weather_and_safety")
 
-        plan = new_plan
+            plan = new_plan
 
     if not plan:
         return {"next": "__end__", "team2_plan": []}
@@ -72,11 +77,28 @@ def team2_supervisor_node(state: ShipAgentState) -> Dict[str, Any]:
 
 def route_from_team2_supervisor(
     state: ShipAgentState,
-) -> Literal["rag_retriever", "b2b_scm_collector", "weather_and_safety", "__end__"]:
+) -> Literal["rag_retriever", "b2b_scm_collector", "weather_and_safety", "vision_qa_collector", "__end__"]:
     nxt = state.get("next")
-    if nxt in ("rag_retriever", "b2b_scm_collector", "weather_and_safety"):
+    if nxt in ("rag_retriever", "b2b_scm_collector", "weather_and_safety", "vision_qa_collector"):
         return nxt
     return "__end__"
+
+
+# ==============================================================================
+# 0-1. 비전 관제 자연어 질의 전용 경량 워커 (vision_qa_collector)
+# ==============================================================================
+def vision_qa_collector_node(state: ShipAgentState) -> Dict[str, Any]:
+    params = state.get("extracted_params") or {}
+    overview = get_vision_overview_for_qa.invoke({
+        "block_id": params.get("block_id"),
+        "camera_code": params.get("camera_code"),
+    })
+    print(
+        f"   👁️ [Vision QA Collector] 조회 상태={overview.get('status')}, "
+        f"전체={overview.get('total_records', 0)}건, "
+        f"미용접대기={overview.get('summary_counts', {}).get('pending_weld_count', 0)}건"
+    )
+    return {"vision_data": overview}
 
 
 # ==============================================================================
@@ -102,15 +124,11 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
         spec_tokens = " ".join(str(x) for x in [proc, mat, thk, jnt] if x).strip()
 
         if proc == "SAW":
-            # SAW 전용 엔지니어링 쿼리 (FCAW 플럭스코어드 와이어 카탈로그 혼입 방지)
             effective_queries.append(
                 f"SAW 서브머지드 아크 용접 {mat} {thk} {jnt} WPS 전류 전압 속도 입상 플럭스 예열 층간온도".strip()
             )
             effective_queries.append(
                 "SAW 서브머지드 아크 용접 플럭스 건조 온도 300℃ 보온 호퍼 흡습 방지 비파괴검사 RT UT"
-            )
-            effective_queries.append(
-                f"{mat} {thk} SAW 맞대기 용접 시공 조건 선급 검사 기준".strip()
             )
         elif spec_tokens:
             effective_queries.append(
@@ -127,10 +145,12 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
     if user_query and user_query not in effective_queries:
         effective_queries.append(user_query)
 
+    # 응답 속도 최적화를 위해 knowledge_qa는 상위 2개, doc_generation은 상위 3개 쿼리만 실행
+    max_queries = 3 if task_type == "doc_generation" else 2
     collected_docs = []
     seen_ids = set()
 
-    for q in effective_queries[:4]:
+    for q in effective_queries[:max_queries]:
         try:
             search_cats = None if task_type == "doc_generation" else categories
             raw_items = search_knowledge_by_categories(
@@ -221,7 +241,7 @@ def semantic_doc_grader_node(state: ShipAgentState) -> Dict[str, Any]:
 
     preview_lines = [
         f"[{idx}] ({d.get('metadata', {}).get('document_code') or d.get('metadata', {}).get('document_name', '문서')}): "
-        f"{str(d.get('content', ''))[:600].replace(chr(10), ' ')}"
+        f"{str(d.get('content', ''))[:500].replace(chr(10), ' ')}"
         for idx, d in enumerate(docs)
     ]
 
@@ -319,7 +339,6 @@ def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
 
     shortage_domain = state.get("outsourcing_domain")
 
-    # 본사 원장에 없는 작업자(NOT_FOUND)가 지정된 경우 외주 인력(OUTSOURCED_WORKER) 조회를 최우선 적용
     if params.get("worker_name") and worker_qual.get("status") == "NOT_FOUND":
         shortage_domain = "OUTSOURCED_WORKER"
     elif shortage_domain in (None, "NOT_APPLICABLE"):
@@ -434,7 +453,6 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
         print(f"   ⛅ [Weather MCP] 상태={status}, 기온={temp}℃, 풍속={wind}m/s")
         print(
             f"   👁️ [Vision YOLOv11] 상태={vision_info.get('welding_state') if vision_info else 'N/A'}, "
-            f"예상용접길이={vision_info.get('estimated_length_mm') if vision_info else 'N/A'}mm, "
             f"안전거리={vision_info.get('safety_clearance_yn') if vision_info else 'Y'}"
         )
         print(f"   🛡️ [Safety Critic] 최종 판정: {safety_res.get('status')}")
@@ -459,6 +477,7 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
 builder = StateGraph(ShipAgentState)
 
 builder.add_node("team2_supervisor", team2_supervisor_node)
+builder.add_node("vision_qa_collector", vision_qa_collector_node)
 builder.add_node("rag_retriever", dynamic_rag_retriever_node)
 builder.add_node("semantic_doc_grader", semantic_doc_grader_node)
 builder.add_node("rewrite_query", rewrite_query_node)
@@ -470,6 +489,7 @@ builder.add_conditional_edges(
     "team2_supervisor",
     route_from_team2_supervisor,
     {
+        "vision_qa_collector": "vision_qa_collector",
         "rag_retriever": "rag_retriever",
         "b2b_scm_collector": "b2b_scm_collector",
         "weather_and_safety": "weather_and_safety",
@@ -477,6 +497,7 @@ builder.add_conditional_edges(
     },
 )
 
+builder.add_edge("vision_qa_collector", "team2_supervisor")
 builder.add_edge("rag_retriever", "semantic_doc_grader")
 builder.add_conditional_edges(
     "semantic_doc_grader",
