@@ -132,9 +132,10 @@ class DocumentMetadata(db.Model):
     storage_uri = db.Column("STORAGE_URI", db.String(500), nullable=False)
     file_hash_sha256 = db.Column("FILE_HASH_SHA256", db.String(64))
     vector_collection = db.Column("VECTOR_COLLECTION", db.String(100), nullable=False)
-    ingest_status = db.Column("INGEST_STATUS", db.String(20), default="COMPLETED", nullable=False)
+    ingest_status = db.Column("INGEST_STATUS", db.String(20), nullable=False, default="COMPLETED")
+    is_active = db.Column("IS_ACTIVE", db.String(1), nullable=False, default="Y")  # 추가
     uploaded_by = db.Column("UPLOADED_BY", db.Integer, db.ForeignKey("USERS.USER_ID"), nullable=False)
-    created_at = db.Column("CREATED_AT", db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column("CREATED_AT", db.DateTime, server_default=db.func.current_timestamp(), nullable=False)
 
 
 # 7. VISION_ANALYSES (현장 비전 캡처 및 분석 세션)
