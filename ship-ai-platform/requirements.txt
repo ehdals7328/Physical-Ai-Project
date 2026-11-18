@@ -40,3 +40,4 @@ httpx>=0.27.0
 # Environment & Data Validation
 python-dotenv>=1.0.0
 pydantic>=2.7.0
+psycopg2-binary
