@@ -60,6 +60,23 @@
     .customizing-mode .widget-card {
         border: 2px dashed #60a5fa;
     }
+
+    .widget-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    @media (max-width: 767.98px) {
+        .widget-header {
+            padding: 12px 14px;
+        }
+        .widget-body {
+            padding: 12px 12px;
+        }
+        #modalPdfViewer {
+            height: 58vh !important;
+        }
+    }
+
 </style>
 {% endblock %}
 
