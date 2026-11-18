@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     tesseract-ocr \
     tesseract-ocr-kor \
+    fonts-nanum \
     git \
     curl \
     nodejs \
