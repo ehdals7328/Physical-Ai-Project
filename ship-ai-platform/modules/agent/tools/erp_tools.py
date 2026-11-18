@@ -549,6 +549,17 @@ def commit_erp_work_order(
             {"wid": resolved_worker_id},
         ).scalar()
 
+        # 👇 [추가] FK_DISPATCH_BLOCK 무결성 보장: 단독 발주('DIRECT-PO' 등) 시 유효 블록 코드 매핑
+        fk_block_id = conn.execute(
+            text("SELECT block_id FROM ERP_BLOCK_MASTER WHERE block_id = :bid"),
+            {"bid": block_id},
+        ).scalar()
+
+        if not fk_block_id:
+            fk_block_id = conn.execute(
+                text("SELECT block_id FROM ERP_BLOCK_MASTER ORDER BY block_id ASC FETCH FIRST 1 ROWS ONLY")
+            ).scalar() or "B-104"
+
         # 외부 협력사(PostgreSQL) 전용 작업자(EXT-WELD-905 등)인 경우 본사 현장 담당자(EMP-*)를 FK 대리 매핑
         if not fk_worker_id:
             fk_worker_id = conn.execute(
@@ -602,7 +613,7 @@ def commit_erp_work_order(
             """),
             {
                 "wo_no": wo_no,
-                "b_id": block_id,
+                "b_id": fk_block_id,
                 "exec_type": exec_type,
                 "p_id": partner_id,
                 "lot_no": allocated_lot_no,

@@ -193,14 +193,26 @@
                                     <td>{{ wo.work_title }}</td>
                                     <td>{{ wo.process_code }} · {{ wo.material_grade }} ({{ wo.thickness_mm }}T)</td>
                                     <td>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-view-inst"
-                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) 초안 검토"
-                                                data-status="{{ inst.approval_status }}"
-                                                data-pdf="{{ item.pdf_url }}"
-                                                data-params="{{ inst.welding_params_json }}"
-                                                data-text="{{ inst.instruction_text }}">
-                                            📄 초안 열람
-                                        </button>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% if item.pdf_url %}
+                                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-view-inst"
+                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 작업지시서 초안 검토"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.pdf_url }}"
+                                                    data-params="{{ inst.welding_params_json }}"
+                                                    data-text="{{ inst.instruction_text }}">
+                                                📄 지시서 초안
+                                            </button>
+                                            {% endif %}
+                                            {% if item.po_pdf_url %}
+                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
+                                                    data-title="{{ wo.work_no }} 외주 발주 주문서(PO) 초안 검토"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.po_pdf_url }}">
+                                                📋 발주서(PO) 초안
+                                            </button>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="d-flex gap-1">
@@ -289,14 +301,26 @@
                                     </td>
                                     <td>
                                         {% if inst %}
-                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
-                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
-                                                data-status="{{ inst.approval_status }}"
-                                                data-pdf="{{ item.pdf_url }}"
-                                                data-params="{{ inst.welding_params_json }}"
-                                                data-text="{{ inst.instruction_text }}">
-                                            📄 지침서 보기
-                                        </button>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% if item.pdf_url %}
+                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
+                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.pdf_url }}"
+                                                    data-params="{{ inst.welding_params_json }}"
+                                                    data-text="{{ inst.instruction_text }}">
+                                                📄 지침서 보기
+                                            </button>
+                                            {% endif %}
+                                            {% if item.po_pdf_url %}
+                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
+                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 외주 발주 주문서(PO)"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.po_pdf_url }}">
+                                                📋 발주서(PO)
+                                            </button>
+                                            {% endif %}
+                                        </div>
                                         {% else %}
                                         <span class="text-muted small">미생성</span>
                                         {% endif %}
@@ -361,14 +385,26 @@
                                     </td>
                                     <td>
                                         {% if inst %}
-                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
-                                                data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
-                                                data-status="{{ inst.approval_status }}"
-                                                data-pdf="{{ item.pdf_url }}"
-                                                data-params="{{ inst.welding_params_json }}"
-                                                data-text="{{ inst.instruction_text }}">
-                                            📄 열람
-                                        </button>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            {% if item.pdf_url %}
+                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
+                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.pdf_url }}"
+                                                    data-params="{{ inst.welding_params_json }}"
+                                                    data-text="{{ inst.instruction_text }}">
+                                                📄 열람
+                                            </button>
+                                            {% endif %}
+                                            {% if item.po_pdf_url %}
+                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
+                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 외주 발주 주문서(PO)"
+                                                    data-status="{{ inst.approval_status }}"
+                                                    data-pdf="{{ item.po_pdf_url }}">
+                                                📋 발주서
+                                            </button>
+                                            {% endif %}
+                                        </div>
                                         {% else %}
                                         <span class="text-muted small">-</span>
                                         {% endif %}

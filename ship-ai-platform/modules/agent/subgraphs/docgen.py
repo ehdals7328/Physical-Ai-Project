@@ -4,6 +4,7 @@ Team 3: 거버넌스 게이트키퍼(Supervisor) 기반 작업지시서(WORK_INS
 자율 트러블슈팅, 인사/ERP/비전 실시간 브리핑 & [Logical Bridge: Work Authorization] 트랜잭션 마감 서브그래프
 """
 
+import re
 import json
 import uuid
 from decimal import Decimal
@@ -354,9 +355,100 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "weather": weather_context_str,
     })
 
+    # 👇 [추가] 단독 외주 발주/배차 실행 요청(scm_partner_qa)인 경우 HITL 결재안(DRAFT) 및 PO 초안 PDF 생성
+    generated_doc = None
+    if task_type == "scm_partner_qa":
+        user_q = state.get("user_query", "")
+        partner_plan = state.get("partner_erp_plan") or {}
+        selected_partner = partner_plan.get("selected_partner") or {}
+        is_action_req = bool(
+            state.get("is_action_requested")
+            or any(k in user_q for k in ("발주", "주문", "배차", "확정", "요청", "신청", "파견", "투입"))
+        )
+        if is_action_req and selected_partner.get("partner_id"):
+            from modules.agent.tools.document_tools import export_outsourcing_po_pdf
+
+            params = dict(state.get("extracted_params") or {})
+            erp_status = dict(state.get("erp_resource_status") or {})
+            branch_info = erp_status.get("branch_info") or {}
+            block_master = erp_status.get("block_master") or {}
+
+            block_id = params.get("block_id") or block_master.get("block_id") or "BLK-DIRECT"
+            po_draft_no = f"PO-DRAFT-{block_id}-{uuid.uuid4().hex[:4].upper()}"
+            partner_id = selected_partner.get("partner_id")
+            partner_name = selected_partner.get("partner_name") or partner_id
+            biz_type = selected_partner.get("business_type") or "OUTSOURCED_B2B"
+
+            delivery_zone = (
+                params.get("work_zone")
+                or branch_info.get("default_zone")
+                or state.get("default_workspace")
+                or "ZONE-A-BAY1"
+            )
+            params["work_zone"] = delivery_zone
+            if not params.get("branch_code"):
+                params["branch_code"] = branch_info.get("branch_code") or state.get("branch_code") or "BR-ULSAN-01"
+
+            wire_code = selected_partner.get("hq_item_code") or erp_status.get("selected_wire_code") or "WIRE-CSF71T"
+            qty_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:kg|KG|킬로|키로|ea|EA|개|롤|roll)", user_q)
+            extracted_qty = float(qty_match.group(1)) if qty_match else None
+            req_wire_kg = params.get("quantity") or params.get("wire_kg") or extracted_qty or 100.0
+            vehicle_code = selected_partner.get("assigned_vehicle_code") or erp_status.get("assigned_vehicle_code") or "EXT-TRUCK-01"
+            worker_id = selected_partner.get("assigned_worker_id") or selected_partner.get("ext_worker_id") or "-"
+            worker_name = selected_partner.get("worker_name") or params.get("worker_name") or "협력사 파견기사"
+
+            erp_commit_draft = {
+                "work_order_number": po_draft_no,
+                "po_number": po_draft_no,
+                "execution_type": "OUTSOURCED_B2B",
+                "is_outsourced": True,
+                "is_standalone_po": True,
+                "partner_id": partner_id,
+                "worker_id": worker_id,
+                "worker_name": worker_name,
+                "assigned_vehicle_code": vehicle_code,
+                "reserved_wire_kg": req_wire_kg,
+                "erp_transaction_status": "DRAFT",
+            }
+
+            generated_doc = {
+                "work_order_number": po_draft_no,
+                "po_number": po_draft_no,
+                "revision_no": "Rev.1",
+                "title": f"[DRAFT] {partner_name} 단독 외주 발주·배차 요청 ({biz_type})",
+                "status": "DRAFT",
+                "approval_status": "DRAFT",
+                "reviewed_by": state.get("user_name") or "현장기안자",
+                "execution_type": "OUTSOURCED_B2B",
+                "is_standalone_po": True,
+                "assigned_vehicle_code": vehicle_code,
+                "wire_item_code": wire_code,
+                "reserve_wire_kg": req_wire_kg,
+                "erp_commit": erp_commit_draft,
+                "partner_erp_plan": partner_plan,
+                "parameters": params,
+                "welding_params_json": {"standalone_po": True, "business_type": biz_type},
+                "source_refs_json": [],
+                "external_env_json": {},
+                "content": res.content,
+                "instruction_text": res.content,
+                "erp_resource_status": erp_status,
+            }
+
+            try:
+                po_raw = export_outsourcing_po_pdf.invoke({"document_data": generated_doc})
+                po_res = json.loads(po_raw) if isinstance(po_raw, str) else {}
+                if po_res.get("status") == "SUCCESS":
+                    generated_doc["files"] = {
+                        "po_pdf_path": po_res.get("po_pdf_path"),
+                        "download_po_pdf_url": po_res.get("download_po_pdf_url"),
+                    }
+            except Exception as e:
+                print(f"⚠️ [단독 PO 초안 PDF 생성 오류]: {e}")
+
     return {
         "final_answer": res.content,
-        "generated_document": None,
+        "generated_document": generated_doc,
     }
 
 

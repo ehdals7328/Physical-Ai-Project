@@ -307,12 +307,18 @@
                                         {% endfor %}
                                     </div>
                                     {% endif %}
-                                    {% if log.files and (log.files.download_pdf_url or log.files.download_docx_url) %}
+                                    {% if log.files and (log.files.download_pdf_url or log.files.download_docx_url or log.files.download_po_pdf_url) %}
                                     <div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">
                                         {% if log.files.download_pdf_url %}
                                         {% set pdf_href = log.files.download_pdf_url if log.files.download_pdf_url.startswith('/service/') else '/service' ~ log.files.download_pdf_url %}
                                         <a href="{{ pdf_href }}" class="btn btn-outline-danger btn-sm fw-bold" target="_blank" rel="noopener">
-                                            {{ '👁️ 최종 승인본 PDF 미리보기' if log.approval_status == 'APPROVED' else '👁️ 작업지시서 초안 PDF 미리보기' }}
+                                            {{ '👁️ 최종 승인본 작업지시서 PDF' if log.approval_status == 'APPROVED' else '👁️ 작업지시서 초안 PDF 미리보기' }}
+                                        </a>
+                                        {% endif %}
+                                        {% if log.files.download_po_pdf_url %}
+                                        {% set po_href = log.files.download_po_pdf_url if log.files.download_po_pdf_url.startswith('/service/') else '/service' ~ log.files.download_po_pdf_url %}
+                                        <a href="{{ po_href }}" class="btn btn-outline-warning text-dark btn-sm fw-bold" target="_blank" rel="noopener">
+                                            {{ '📋 확정 외주 발주서(PO) PDF' if log.approval_status == 'APPROVED' else '📋 외주 발주서(PO) 초안 미리보기' }}
                                         </a>
                                         {% endif %}
                                         {% if log.files.download_docx_url %}
@@ -494,13 +500,17 @@ function resolveDownloadUrl(url) {
 }
 
 function buildFileDownloadHtml(files, isApproved = false) {
-    if (!files || (!files.download_pdf_url && !files.download_docx_url)) return '';
-    const pdfLabel = isApproved ? '👁️ 최종 승인본 PDF 미리보기' : '👁️ 작업지시서 초안 PDF 미리보기';
+    if (!files || (!files.download_pdf_url && !files.download_docx_url && !files.download_po_pdf_url)) return '';
+    const pdfLabel = isApproved ? '👁️ 최종 승인본 작업지시서 PDF' : '👁️ 작업지시서 초안 PDF 미리보기';
+    const poLabel = isApproved ? '📋 확정 외주 발주서(PO) PDF' : '📋 외주 발주서(PO) 초안 미리보기';
     const docxLabel = isApproved ? '📝 최종 승인본 Word(.docx)' : '📝 Word(.docx) 다운로드';
 
     let html = '<div class="mt-2 pt-2 border-top d-flex flex-wrap gap-2">';
     if (files.download_pdf_url) {
         html += `<a href="${resolveDownloadUrl(files.download_pdf_url)}" class="btn btn-outline-danger btn-sm fw-bold" target="_blank" rel="noopener">${pdfLabel}</a>`;
+    }
+    if (files.download_po_pdf_url) {
+        html += `<a href="${resolveDownloadUrl(files.download_po_pdf_url)}" class="btn btn-outline-warning text-dark btn-sm fw-bold" target="_blank" rel="noopener">${poLabel}</a>`;
     }
     if (files.download_docx_url) {
         html += `<a href="${resolveDownloadUrl(files.download_docx_url)}" class="btn btn-outline-primary btn-sm fw-bold" download>${docxLabel}</a>`;

@@ -1,6 +1,6 @@
 """
 modules/agent/tools/document_tools.py
-에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환 및 Audit 로그로 저장하는 표준 도구 모음
+에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환, 외주 발주 주문서(PO) PDF 생성 및 Audit 로그로 저장하는 표준 도구 모음
 """
 import json
 import os
@@ -18,16 +18,14 @@ TEMPLATE_PATH = OUTPUT_DIR / "templates" / "work_order_template.docx"
 DAILY_OUTPUT_ROOT = OUTPUT_DIR / "outputs"
 
 
-def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
-    """3순위 폴백: 프로젝트 내부 폴더로 폰트를 복사해 xhtml2pdf 보안 정책(Resource Policy) 완벽 우회"""
+def _prepare_korean_font_css() -> tuple[str, str]:
+    """xhtml2pdf용 한글 폰트 로컬 복사 및 @font-face CSS 반환"""
     try:
-        from xhtml2pdf import pisa  # type: ignore
         from reportlab.pdfbase import pdfmetrics  # type: ignore
         from reportlab.pdfbase.ttfonts import TTFont  # type: ignore
         from reportlab.lib.fonts import addMapping  # type: ignore
     except ImportError:
-        print("⚠️ [PDF 3순위 폴백 실패]: xhtml2pdf 미설치 (pip install xhtml2pdf 필요)")
-        return False
+        return "sans-serif", ""
 
     local_font_dir = OUTPUT_DIR / "fonts"
     local_font_dir.mkdir(parents=True, exist_ok=True)
@@ -50,8 +48,6 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
         ),
     ]
 
-    font_family = "sans-serif"
-    font_face_css = ""
     for f_name, sys_reg, sys_bold in font_pairs:
         if os.path.exists(sys_reg):
             try:
@@ -87,10 +83,22 @@ def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
                     font-weight: bold;
                 }}
                 """
-                font_family = f"'{f_name}'"
-                break
+                return f"'{f_name}'", font_face_css
             except Exception as e:
                 print(f"⚠️ [한글 폰트 로컬 복사/등록 경고]: {e}")
+
+    return "sans-serif", ""
+
+
+def _render_html_to_pdf_fallback(context: dict, pdf_path: Path) -> bool:
+    """3순위 폴백: 프로젝트 내부 폴더로 폰트를 복사해 xhtml2pdf 보안 정책(Resource Policy) 완벽 우회"""
+    try:
+        from xhtml2pdf import pisa  # type: ignore
+    except ImportError:
+        print("⚠️ [PDF 3순위 폴백 실패]: xhtml2pdf 미설치 (pip install xhtml2pdf 필요)")
+        return False
+
+    font_family, font_face_css = _prepare_korean_font_css()
 
     weather_snapshot = (
         f"관측 야드: {context.get('location', '-')} | "
@@ -604,6 +612,230 @@ def export_work_order_file(
         ),
     }
     return json.dumps(result_payload, ensure_ascii=False)
+
+
+@tool
+def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
+    """
+    외주(OUTSOURCED_B2B) 작업 최종 승인 시 수주 협력사에 송부할 1페이지 공식 발주 주문서(Purchase Order) PDF를 생성합니다.
+    """
+    try:
+        from xhtml2pdf import pisa  # type: ignore
+    except ImportError:
+        return json.dumps({"status": "ERROR", "reason": "xhtml2pdf 미설치"}, ensure_ascii=False)
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    daily_dir = DAILY_OUTPUT_ROOT / today_str
+    daily_dir.mkdir(parents=True, exist_ok=True)
+
+    params = document_data.get("parameters") or {}
+    erp_commit = document_data.get("erp_commit") or {}
+    erp_status = document_data.get("erp_resource_status") or {}
+    partner_plan = document_data.get("partner_erp_plan") or {}
+    selected_partner = partner_plan.get("selected_partner") or {}
+    branch_info = erp_status.get("branch_info") or {}
+    block_master = erp_status.get("block_master") or {}
+
+    wo_num = document_data.get("work_order_number") or f"WO-{datetime.now().strftime('%Y%m%d%H%M')}"
+    po_num = (
+        erp_commit.get("po_number")
+        or erp_commit.get("b2b_order_number")
+        or erp_commit.get("b2b_sales_order_no")
+        or erp_commit.get("b2b_po_ack")
+        or f"PO-{str(wo_num).replace('WO-DRAFT-', '').replace('WO-', '')}"
+    )
+    block_id = params.get("block_id") or block_master.get("block_id") or "DIRECT"
+    safe_po_token = "".join(c if (c.isalnum() or c in "-_") else "_" for c in str(po_num))
+    pdf_filename = f"po_order_{block_id}_{safe_po_token}.pdf"
+    pdf_path = daily_dir / pdf_filename
+
+    partner_id = selected_partner.get("partner_id") or erp_commit.get("partner_id") or "-"
+    partner_name = selected_partner.get("partner_name") or partner_id
+    biz_type = selected_partner.get("business_type") or "OUTSOURCED_B2B"
+
+    branch_code = params.get("branch_code") or branch_info.get("branch_code") or "BR-ULSAN-01"
+    branch_name = branch_info.get("branch_name") or branch_code
+    work_zone = params.get("work_zone") or branch_info.get("default_zone") or "ZONE-A-BAY1"
+
+    ship_code = params.get("ship_code") or block_master.get("ship_code") or "-"
+    block_name = params.get("block_name") or block_master.get("block_name") or "-"
+    material = params.get("material") or block_master.get("material") or "-"
+    thickness = str(params.get("thickness") or block_master.get("thickness") or "-").replace("T", "")
+    process_code = params.get("process") or block_master.get("process") or "-"
+
+    worker_name = (
+        erp_commit.get("worker_name")
+        or selected_partner.get("worker_name")
+        or params.get("worker_name")
+        or "-"
+    )
+    worker_id = (
+        erp_commit.get("worker_id")
+        or selected_partner.get("assigned_worker_id")
+        or selected_partner.get("ext_worker_id")
+        or "-"
+    )
+    cert_code = selected_partner.get("cert_code") or "-"
+    daily_rate = selected_partner.get("daily_rate_krw")
+    unit_price = (
+        selected_partner.get("unit_price_krw")
+        or selected_partner.get("trip_rate_krw")
+        or selected_partner.get("rate_krw")
+        or daily_rate
+    )
+    wire_code = document_data.get("wire_item_code") or selected_partner.get("hq_item_code") or "-"
+    wire_qty = document_data.get("reserve_wire_kg") or erp_commit.get("reserved_wire_kg") or "-"
+    vehicle_code = document_data.get("assigned_vehicle_code") or erp_commit.get("assigned_vehicle_code") or "-"
+
+    if biz_type == "OUTSOURCED_WORKER":
+        scope_label = "외주 용접 전문 인력 파견 (OUTSOURCED_WORKER)"
+        order_item_desc = f"선급 유자격 용접사 파견: {worker_name} ({worker_id} / 자격: {cert_code} / 공정: {process_code})"
+        qty_spec_text = "1 명 (블록 공정 완료 시까지)"
+        rate_text = f"{int(float(daily_rate)):,} 원 / 일" if daily_rate else "협력사 단가표 기준"
+    elif biz_type == "HEAVY_TRANSPORT":
+        scope_label = "중량물 블록 운송 및 배차 (HEAVY_TRANSPORT)"
+        block_desc = f"대상 블록({block_id}, {block_master.get('weight_ton', '-')}톤)" if block_id not in ("DIRECT", "BLK", "-") else "야드 내 중량물 블록"
+        order_item_desc = f"{block_desc} 이송 배차 ({vehicle_code})"
+        qty_spec_text = "1 대 / 왕복 배차"
+        rate_text = f"{int(float(unit_price)):,} 원 / 회" if unit_price else "협력사 단가표 기준"
+    else:
+        scope_label = "용접 자재 긴급 조달 (WELDING_MATERIAL)"
+        item_nm = selected_partner.get("item_name") or wire_code
+        order_item_desc = f"{item_nm} ({wire_code})"
+        qty_spec_text = f"{wire_qty} KG"
+        rate_text = f"{int(float(unit_price)):,} 원 / KG" if unit_price else "협력사 단가표 기준"
+
+    approval_status = (
+        document_data.get("approval_status")
+        or document_data.get("status")
+        or "DRAFT"
+    )
+    reviewer_label = document_data.get("reviewed_by") or "담당기안자"
+
+    if approval_status == "APPROVED":
+        approver_label = document_data.get("approved_by") or "공정관리자(HITL)"
+        status_cell_html = f"<b>APPROVED</b> ({approver_label})"
+        sign_line_html = f"기안: {reviewer_label} / 승인: {approver_label}"
+    else:
+        status_cell_html = f"<b>{approval_status}</b> (관리자 결재 대기)"
+        sign_line_html = f"기안: {reviewer_label} / 승인: 결재대기"
+
+    font_family, font_face_css = _prepare_korean_font_css()
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    {font_face_css}
+    @page {{ size: A4 portrait; margin: 12mm 14mm; }}
+    * {{ font-family: {font_family}; }}
+    body {{ font-family: {font_family}; font-size: 9.0pt; color: #111111; line-height: 1.4; }}
+    .header-box {{ border-bottom: 2pt solid #1F4E79; padding-bottom: 8px; margin-bottom: 12px; }}
+    .title {{ text-align: center; font-size: 16.0pt; font-weight: bold; color: #1F4E79; letter-spacing: 2px; }}
+    .subtitle {{ text-align: center; font-size: 8.5pt; color: #555555; margin-top: 3px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; }}
+    th, td {{ border: 0.6pt solid #333333; padding: 6px 7px; vertical-align: middle; font-family: {font_family}; }}
+    th {{ background-color: #E8EEF5; font-weight: bold; text-align: left; width: 20%; }}
+    td {{ width: 30%; }}
+    .sec-hdr {{ background-color: #1F4E79; color: #FFFFFF; font-weight: bold; font-size: 9.5pt; padding: 5px 8px; }}
+    .center {{ text-align: center; }}
+    .right {{ text-align: right; }}
+    .notice-box {{ border: 0.6pt solid #888888; background-color: #F8FAFC; padding: 8px 10px; font-size: 8.3pt; margin-top: 6px; }}
+</style>
+</head>
+<body>
+    <div class="header-box">
+        <div class="title">외 주 발 주 주 문 서 (PURCHASE ORDER)</div>
+        <div class="subtitle">K-SMART SHIPYARD INTEGRATED SCM &amp; B2B EXECUTION SYSTEM</div>
+    </div>
+
+    <table>
+        <tr>
+            <th>발주번호 (PO NO)</th><td><b>{po_num}</b></td>
+            <th>발주일자</th><td>{today_str}</td>
+        </tr>
+        <tr>
+            <th>연계 작업지시번호</th><td><b>{wo_num}</b></td>
+            <th>승인상태 / 결재자</th><td>{status_cell_html}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr><td colspan="4" class="sec-hdr">■ 1. 발주처 및 수주 협력사 정보</td></tr>
+        <tr>
+            <th>발주처 (Buyer)</th><td><b>K-스마트조선소 본사 (COMP-HQ)</b></td>
+            <th>수주 협력사 (Vendor)</th><td><b>{partner_name} ({partner_id})</b></td>
+        </tr>
+        <tr>
+            <th>발주 구분</th><td>{scope_label}</td>
+            <th>기안 / 최종 승인</th><td>{sign_line_html}</td>
+        </tr>
+        <tr>
+            <th>납품·투입 야드</th><td><b>{branch_name} ({branch_code})</b></td>
+            <th>현장 작업 구역</th><td><b>{work_zone}</b></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr><td colspan="4" class="sec-hdr">■ 2. 대상 선박 블록 및 시공 제원</td></tr>
+        <tr>
+            <th>대상 호선</th><td>{ship_code}</td>
+            <th>대상 블록 코드</th><td><b>{block_id}</b> ({block_name})</td>
+        </tr>
+        <tr>
+            <th>모재 강종 / 두께</th><td>{material} / {thickness} mm</td>
+            <th>적용 용접 공정</th><td><b>{process_code}</b></td>
+        </tr>
+    </table>
+
+    <table>
+        <tr><td colspan="4" class="sec-hdr">■ 3. 외주 발주 상세 내역</td></tr>
+        <tr>
+            <th class="center" style="width:8%;">No</th>
+            <th class="center" style="width:46%;">발주 품목 / 외주 역무 내역</th>
+            <th class="center" style="width:23%;">수량 / 투입 규격</th>
+            <th class="center" style="width:23%;">계약 단가 기준</th>
+        </tr>
+        <tr>
+            <td class="center">1</td>
+            <td><b>{order_item_desc}</b></td>
+            <td class="center">{qty_spec_text}</td>
+            <td class="right">{rate_text}</td>
+        </tr>
+    </table>
+
+    <div class="notice-box">
+        <b>[필수 이행 및 안전 준수 조건]</b><br/>
+        1. 본 발주 주문서는 K-스마트조선소 관리자 최종 결재(HITL) 및 B2B SCM 원장 커밋과 동시에 공식 효력이 발생합니다.<br/>
+        2. 파견 인력 및 납품 자재는 첨부된 공식 작업지시서(<b>{wo_num}</b>)의 WPS 시공 조건 및 야드 안전 인터록 기준을 반드시 준수해야 합니다.<br/>
+        3. 현장 반입 시 본 발주번호(<b>{po_num}</b>)를 야드 게이트 및 자재·노무 검수 담당자에게 제시해 주시기 바랍니다.
+    </div>
+
+    <table style="margin-top: 12px;">
+        <tr>
+            <th>발주처 확인 (본사)</th><td>K-스마트조선소 통합생산관리본부 (직인생략)</td>
+            <th>수주사 접수 확인</th><td>{partner_name} 담당자: _______________ (인)</td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+    with open(pdf_path, "wb") as pdf_file:
+        status = pisa.CreatePDF(html_content, dest=pdf_file, encoding="utf-8")
+
+    if status.err or not pdf_path.exists():
+        return json.dumps({"status": "ERROR", "reason": "PO PDF 렌더링 실패"}, ensure_ascii=False)
+
+    return json.dumps(
+        {
+            "status": "SUCCESS",
+            "po_number": po_num,
+            "po_pdf_path": str(pdf_path.resolve()),
+            "download_po_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
+        },
+        ensure_ascii=False,
+    )
 
 
 @tool
