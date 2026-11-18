@@ -25,6 +25,20 @@
     .post-link { color: #0f172a; text-decoration: none; }
     .post-link:hover { color: var(--shi-blue); text-decoration: underline; }
     .reply-cnt { color: #dc2626; font-weight: 700; font-size: 0.8rem; margin-left: 4px; }
+
+    .comm-table {
+        min-width: 580px;
+    }
+    @media (max-width: 767.98px) {
+        .comm-table th, .comm-table td {
+            white-space: nowrap;
+        }
+        .comm-table td:nth-child(3) {
+            white-space: normal !important;
+            min-width: 180px;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -44,7 +58,7 @@
                     </span>
                 </div>
                 <h4 class="fw-bold text-dark mb-2">{{ post.title }}</h4>
-                <div class="d-flex justify-content-between align-items-center small text-secondary">
+                <div class="d-flex flex-wrap justify-content-between align-items-center small text-secondary gap-2">
                     <div>
                         <strong class="text-dark">{{ post.writer_display }}</strong>
                         <span class="mx-2">|</span>

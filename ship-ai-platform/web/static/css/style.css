@@ -375,3 +375,138 @@ body {
 @media (max-width: 991px) {
     .section-dots { display: none; }
 }
+
+
+/* =====================================================================
+   6. ⭐ 모바일·태블릿 반응형 최적화 (글자 잘림·뭉개짐·가로 삐져나감 원천 방지)
+====================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* 한글 단어 단위 줄바꿈 유지 + 긴 영문/코드(LOT번호, 문서코드, URL) 영역 이탈 방지 */
+body, h1, h2, h3, h4, h5, h6, p, span, div, td, th, a, button, label {
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+.font-monospace, code, pre {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+@media (max-width: 991.98px) {
+    html {
+        scroll-snap-type: none !important;
+    }
+    .shi-header {
+        padding: 12px 0;
+    }
+    .shi-section {
+        min-height: auto;
+        padding: 96px 0 60px;
+    }
+}
+
+@media (max-width: 767.98px) {
+    html, body {
+        overflow-x: hidden !important;
+        width: 100%;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    .container {
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+
+    /* 타이틀 및 본문 폰트 크기 유동 조절 (모바일에서 글자 뭉개짐/겹침 방지) */
+    .shi-title, h1 {
+        font-size: clamp(1.45rem, 6vw, 2rem) !important;
+        line-height: 1.35 !important;
+        letter-spacing: -0.4px;
+    }
+    h2, .h2 {
+        font-size: clamp(1.25rem, 5vw, 1.6rem) !important;
+        line-height: 1.35 !important;
+    }
+    h3, .h3, h4, .h4 {
+        font-size: clamp(1.08rem, 4.3vw, 1.3rem) !important;
+        line-height: 1.38 !important;
+    }
+    h5, .h5 {
+        font-size: 1rem !important;
+        line-height: 1.4 !important;
+    }
+    .shi-desc, p {
+        font-size: 0.95rem !important;
+        line-height: 1.65 !important;
+    }
+
+    /* 카드 및 이벤트 박스 패딩 축소로 텍스트 가용 폭 확보 */
+    .shi-card, .shi-event-wrap {
+        padding: 20px 16px !important;
+    }
+
+    /* 버튼 및 배지가 좁은 폭에서 잘리지 않고 자연스럽게 줄바꿈되도록 처리 */
+    .btn, .badge {
+        white-space: normal !important;
+        text-align: center;
+        line-height: 1.35;
+    }
+
+    /* 테이블 가로 스크롤 보장 및 셀 텍스트 뭉개짐 방지 */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .table th, .table td {
+        font-size: 0.8rem !important;
+        padding: 8px 6px !important;
+        white-space: nowrap;
+    }
+    .table td.text-break {
+        white-space: normal !important;
+        min-width: 140px;
+    }
+}
+
+
+/* =====================================================================
+   7. ⭐ 모바일 GNB 드롭다운 메뉴 · 채팅 테이블 · 입력 폼 완벽 보정 (GitHub 배포용)
+====================================================================== */
+@media (max-width: 991.98px) {
+    .shi-header .navbar-collapse {
+        background: #ffffff;
+        margin-top: 12px;
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+    }
+    .shi-nav-link {
+        padding: 10px 12px !important;
+        border-radius: 8px;
+    }
+    .shi-nav-link::after {
+        display: none;
+    }
+    .shi-nav-link.active {
+        background-color: #eef5ff;
+    }
+}
+
+@media (max-width: 767.98px) {
+    /* 모바일에서 인라인 상단 패딩(100~130px)이 과도하게 넓어지는 현상 방지 */
+    section[style*="padding-top"] {
+        padding-top: 84px !important;
+    }
+    /* 모바일에서 스크롤 마우스 아이콘이 버튼과 겹치지 않도록 숨김 */
+    .scroll-mouse {
+        display: none !important;
+    }
+    /* 모달 창 여백 최적화 */
+    .modal-dialog {
+        margin: 10px !important;
+    }
+}

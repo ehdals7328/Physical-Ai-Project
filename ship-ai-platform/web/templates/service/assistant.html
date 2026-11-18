@@ -109,6 +109,48 @@
         margin-top: 10px;
         color: #78350f;
     }
+
+    .ast-sidebar-box { height: 82vh; }
+    .ast-chat-box { height: 82vh; }
+    .chat-bubble-ai {
+        max-width: 92%;
+        overflow-x: auto;
+    }
+    .chat-bubble-ai table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    @media (max-width: 991.98px) {
+        .ast-sidebar-box {
+            height: auto !important;
+            max-height: none !important;
+        }
+        .session-list-scroll {
+            max-height: 180px;
+        }
+        .ast-chat-box {
+            height: 78vh !important;
+            min-height: 520px;
+        }
+    }
+    @media (max-width: 767.98px) {
+        .chat-bubble-ai {
+            max-width: 100% !important;
+        }
+        #chatWindow {
+            padding: 14px !important;
+        }
+        .sample-q {
+            white-space: normal !important;
+            text-align: left !important;
+            line-height: 1.35;
+        }
+    }
+
 </style>
 {% endblock %}
 
@@ -119,7 +161,7 @@
 
             <!-- 좌측 사이드바: 권한 요약 + 대화방 목록 + 빠른 예시 -->
             <div class="col-lg-3">
-                <div class="bg-white border rounded-4 p-3 shadow-sm d-flex flex-column" style="height: 82vh;">
+                <div class="bg-white border rounded-4 p-3 shadow-sm d-flex flex-column ast-sidebar-box">
 
                     <div class="p-2 px-3 rounded-3 bg-light border small mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -163,7 +205,7 @@
                         <div class="session-item {{ 'active' if s.session_id == thread_id }}"
                              id="session-row-{{ s.session_id }}"
                              data-sid="{{ s.session_id }}">
-                            <div class="text-truncate me-2 flex-grow-1" style="max-width: 170px;"
+                            <div class="text-truncate me-2 flex-grow-1" style="min-width: 0;"
                                  onclick="location.href='/service/assistant?sid={{ s.session_id }}'">
                                 <div class="small text-truncate">{{ s.title }}</div>
                                 <div class="text-muted utc-time" data-short="true" style="font-size: 0.68rem;">{{ s.updated_at }}</div>
@@ -204,7 +246,7 @@
 
             <!-- 우측 메인: 단일 헤더 + DB 연동 지부별 실시간 카메라 패널 + 채팅창 -->
             <div class="col-lg-9">
-                <div class="bg-white border rounded-4 shadow-sm d-flex flex-column" style="height: 82vh;">
+                <div class="bg-white border rounded-4 shadow-sm d-flex flex-column ast-chat-box">
 
                     <!-- 단일 상단 헤더 -->
                     <div class="p-3 px-4 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -228,7 +270,7 @@
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="badge bg-danger" id="miniLiveBadge">● LIVE CAM</span>
 
-                                <select id="astBranchSelect" class="form-select form-select-sm bg-dark text-white border-secondary fw-bold" style="width: 245px;">
+                                <select id="astBranchSelect" class="form-select form-select-sm bg-dark text-white border-secondary fw-bold" style="width: auto; max-width: 100%;">
                                     {% for br in branches %}
                                     <option value="{{ br.branch_code }}"
                                             data-cam="{{ br.camera_code or ('CAM-' ~ br.branch_code) }}"
@@ -239,7 +281,7 @@
                                     {% endfor %}
                                 </select>
 
-                                <span class="badge bg-black border border-secondary text-info font-monospace px-2 py-2" id="astStorageUriBadge">
+                                <span class="badge bg-black border border-secondary text-info font-monospace px-2 py-2" id="astStorageUriBadge" style="max-width: 100%; overflow: hidden; text-overflow: ellipsis;">
                                     📁 s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live_stream
                                 </span>
                             </div>

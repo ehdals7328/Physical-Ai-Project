@@ -1,12 +1,11 @@
-<!-- web/templates/mypage.html -->
+<!-- web/templates/auth/mypage.html -->
 {% extends "layout/base.html" %}
-{% block title %}마이페이지 및 계정 관리 | K-SHIPYARD AI{% endblock %}
+{% block title %}마이페이지 · 계정 관리 | K-SHIPYARD AI{% endblock %}
 
 {% block content %}
-<section class="py-5" style="min-height: 92vh; padding-top: 110px !important; background-color: #f4f7fb;">
+<section class="py-5" style="min-height: 92vh; padding-top: 100px !important; background-color: #f4f7fb;">
     <div class="container">
 
-        <!-- 알림 메시지 출력 -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, msg in messages %}
@@ -15,28 +14,46 @@
             {% endif %}
         {% endwith %}
 
-        <!-- AJAX 실시간 알림 토스트 배너 -->
-        <div id="ajaxAlert" class="alert alert-success d-none shadow-sm fw-bold"></div>
+        <!-- AJAX 실시간 알림 배너 -->
+        <div id="ajaxAlert" class="alert alert-success d-none shadow-sm fw-bold sticky-top" style="top: 82px; z-index: 1025;"></div>
+
+        <!-- ⭐ 상단 페이지 전환 네비게이션 바: [계정 관리] <-> [파일 관리] 분리로 로딩 과부하 원천 제거 -->
+        <div class="bg-white border rounded-4 p-3 mb-4 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary px-3 py-2">MY PAGE</span>
+                <h5 class="fw-bold mb-0" style="color: var(--shi-navy);">개인 설정 및 관리자 콘솔</h5>
+            </div>
+
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/mypage" class="btn btn-shi-primary btn-sm px-4 py-2 rounded-pill fw-bold">
+                    👤 계정 · 권한 관리
+                </a>
+                {% if me.role in ('ADMIN', 'MANAGER') %}
+                <a href="/mypage/files" class="btn btn-outline-primary btn-sm px-4 py-2 rounded-pill fw-bold">
+                    📁 비전 · RAG 파일 관리 →
+                </a>
+                {% endif %}
+            </div>
+        </div>
 
         <!-- =================================================================
              [PART 1] 내 프로필 정보 & 비밀번호 재설정 (모든 로그인 회원 공통)
         ================================================================== -->
-        <div class="row g-4 mb-5">
-            <!-- 좌측: 내 계정 요약 카드 -->
+        <div class="row g-4 mb-4">
             <div class="col-lg-4">
                 <div class="bg-white border rounded-4 p-4 shadow-sm h-100">
                     <div class="d-flex align-items-center gap-3 border-bottom pb-3 mb-3">
-                        <div class="avatar-circle" style="width: 56px; height: 56px; font-size: 1.4rem;">
+                        <div class="avatar-circle flex-shrink-0" style="width: 56px; height: 56px; font-size: 1.4rem;">
                             {{ me.full_name[0] }}
                         </div>
-                        <div>
-                            <h5 class="fw-bold mb-1">{{ me.full_name }} <small class="text-muted">({{ me.username }})</small></h5>
+                        <div class="overflow-hidden">
+                            <h5 class="fw-bold mb-1 text-break">{{ me.full_name }} <small class="text-muted">({{ me.username }})</small></h5>
                             <span class="badge bg-primary">{{ me.role }}</span>
                             <span class="badge bg-secondary">{{ me.user_type }}</span>
                         </div>
                     </div>
 
-                    <div class="small text-secondary lh-lg">
+                    <div class="small text-secondary lh-lg text-break">
                         <div><strong>소속 회사:</strong> {{ me.erp_company_code or '-' }}</div>
                         <div><strong>소속 야드:</strong> {{ me.erp_branch_code or '-' }}</div>
                         <div><strong>부서/팀명:</strong> {{ me.department_name or '-' }}</div>
@@ -62,7 +79,6 @@
                 </div>
             </div>
 
-            <!-- 우측: 내 기본정보 및 비밀번호 재설정 폼 -->
             <div class="col-lg-8">
                 <div class="bg-white border rounded-4 p-4 shadow-sm h-100">
                     <h5 class="fw-bold mb-3" style="color: var(--shi-navy);">내 정보 및 비밀번호 재설정</h5>
@@ -104,24 +120,23 @@
 
 
         <!-- =================================================================
-             [PART 2] 관리자 전용 (ADMIN / MANAGER만 표시):
-             회원가입 승인 대기 처리 및 계정 활성/비활성·권한 원클릭 제어판
+             [PART 2] 관리자 전용 (ADMIN / MANAGER): 계정 승인 및 권한 관리
         ================================================================== -->
         {% if me.role in ('ADMIN', 'MANAGER') %}
         <div class="bg-white border rounded-4 p-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4 gap-2">
                 <div>
                     <span class="badge bg-danger mb-1">{{ me.role }} 전용 관리 콘솔</span>
                     <h4 class="fw-bold mb-0" style="color: var(--shi-navy);">
-                        임직원·협력사 계정 승인 및 권한 원클릭 관리
+                        임직원·협력사 계정 승인 및 권한 관리
                         {% if pending_count > 0 %}
                             <span class="badge bg-warning text-dark ms-2 fs-6">승인 대기 {{ pending_count }}건</span>
                         {% endif %}
                     </h4>
                 </div>
-                <div class="small text-secondary mt-2 mt-md-0">
-                    * <strong>ADMIN</strong>: 전 직원 모든 권한 제어 가능 |
-                    <strong>MANAGER</strong>: 작업자(WORKER) 승인, 담당 구역 및 로봇 제어권만 변경 가능
+                <div class="small text-secondary">
+                    * <strong>ADMIN</strong>: 전 직원 모든 권한 제어 |
+                    <strong>MANAGER</strong>: 작업자(WORKER) 승인, 작업 구역 및 로봇 제어권 변경
                 </div>
             </div>
 
@@ -142,11 +157,10 @@
                     </thead>
                     <tbody>
                         {% for u in all_users %}
-                        {# MANAGER가 로그인한 경우 ADMIN이나 동급 MANAGER 행은 수정 잠금 표시 #}
                         {% set is_locked = (me.role == 'MANAGER' and u.role in ('ADMIN', 'MANAGER')) %}
                         <tr>
                             <td class="fw-bold">{{ u.username }}</td>
-                            <td>
+                            <td class="text-break">
                                 <div class="fw-bold text-dark">{{ u.full_name }}</div>
                                 <div class="text-muted" style="font-size: 0.75rem;">{{ u.department_name or '-' }} ({{ u.erp_company_code or '-' }})</div>
                             </td>
@@ -156,10 +170,9 @@
                                 </span>
                             </td>
 
-                            <!-- 직책(ROLE) 변경 드롭다운 (ADMIN만 수정 가능) -->
                             <td>
                                 {% if me.role == 'ADMIN' %}
-                                <select class="form-select form-select-sm perm-select" data-uid="{{ u.user_id }}" data-field="role" style="width: 115px;">
+                                <select class="form-select form-select-sm perm-select" data-uid="{{ u.user_id }}" data-field="role" style="min-width: 110px;">
                                     <option value="ADMIN" {{ 'selected' if u.role == 'ADMIN' }}>ADMIN</option>
                                     <option value="MANAGER" {{ 'selected' if u.role == 'MANAGER' }}>MANAGER</option>
                                     <option value="WORKER" {{ 'selected' if u.role == 'WORKER' }}>WORKER</option>
@@ -169,10 +182,9 @@
                                 {% endif %}
                             </td>
 
-                            <!-- 주 작업구역(DEFAULT_WORKSPACE) 변경 (ADMIN 및 MANAGER 모두 가능) -->
                             <td>
                                 <select class="form-select form-select-sm perm-select" data-uid="{{ u.user_id }}" data-field="default_workspace"
-                                        style="width: 135px;" {{ 'disabled' if is_locked }}>
+                                        style="min-width: 130px;" {{ 'disabled' if is_locked }}>
                                     <option value="ZONE-A-BAY1" {{ 'selected' if u.default_workspace == 'ZONE-A-BAY1' }}>ZONE-A-BAY1</option>
                                     <option value="ZONE-A-BAY2" {{ 'selected' if u.default_workspace == 'ZONE-A-BAY2' }}>ZONE-A-BAY2</option>
                                     <option value="SUB-ZONE-1" {{ 'selected' if u.default_workspace == 'SUB-ZONE-1' }}>SUB-ZONE-1</option>
@@ -180,7 +192,6 @@
                                 </select>
                             </td>
 
-                            <!-- ERP 접근 권한 (ADMIN만 변경 가능) -->
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm perm-toggle-btn {{ 'btn-success' if u.can_access_erp == 'Y' else 'btn-outline-secondary' }}"
                                         data-uid="{{ u.user_id }}" data-field="can_access_erp" data-val="{{ u.can_access_erp }}"
@@ -189,16 +200,14 @@
                                 </button>
                             </td>
 
-                            <!-- 사내 대외비 RAG 권한 (ADMIN만 변경 가능) -->
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm perm-toggle-btn {{ 'bg-success text-white' if u.can_access_internal_rag == 'Y' else 'btn-outline-secondary' }}"
+                                <button type="button" class="btn btn-sm perm-toggle-btn {{ 'btn-success' if u.can_access_internal_rag == 'Y' else 'btn-outline-secondary' }}"
                                         data-uid="{{ u.user_id }}" data-field="can_access_internal_rag" data-val="{{ u.can_access_internal_rag }}"
                                         {{ 'disabled' if me.role != 'ADMIN' }}>
                                     {{ u.can_access_internal_rag }}
                                 </button>
                             </td>
 
-                            <!-- 로봇 물리 제어 권한 (ADMIN 및 MANAGER 모두 작업자 제어 가능) -->
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm perm-toggle-btn {{ 'btn-primary' if u.can_control_robot == 'Y' else 'btn-outline-secondary' }}"
                                         data-uid="{{ u.user_id }}" data-field="can_control_robot" data-val="{{ u.can_control_robot }}"
@@ -207,7 +216,6 @@
                                 </button>
                             </td>
 
-                            <!-- 계정 상태: 가입 대기 중이면 [승인] 버튼, 기존 계정이면 [활성/비활성] 원클릭 전환 -->
                             <td class="text-center">
                                 {% if u.is_active == 'N' and u.created_by is none %}
                                     <button type="button" class="btn btn-warning btn-sm fw-bold approve-btn px-3"
@@ -216,12 +224,12 @@
                                     </button>
                                 {% elif u.is_active == 'Y' %}
                                     <button type="button" class="btn btn-outline-success btn-sm fw-bold active-toggle-btn px-3"
-                                            data-uid="{{ u.user_id }}" {{ 'disabled' if is_locked or u.user_id == me.user_id }}>
+                                            data-uid="{{ u.user_id }}" data-active="Y" {{ 'disabled' if is_locked or u.user_id == me.user_id }}>
                                         ● 활성 (클릭시 중지)
                                     </button>
                                 {% else %}
                                     <button type="button" class="btn btn-outline-danger btn-sm fw-bold active-toggle-btn px-3"
-                                            data-uid="{{ u.user_id }}" {{ 'disabled' if is_locked }}>
+                                            data-uid="{{ u.user_id }}" data-active="N" {{ 'disabled' if is_locked }}>
                                         ○ 비활성 (클릭시 활성)
                                     </button>
                                 {% endif %}
@@ -242,55 +250,108 @@
 <script>
 /* global $ */
 $(document).ready(function() {
+    function showToast(msg, isError = false) {
+        const box = $('#ajaxAlert');
+        box.removeClass('d-none alert-success alert-danger')
+           .addClass(isError ? 'alert-danger' : 'alert-success')
+           .text((isError ? '❌ ' : '✅ ') + msg);
+    }
 
-    function sendUserControl(payload, reloadPage = false) {
+    $('.approve-btn').on('click', function() {
+        const btn = $(this);
+        const uid = btn.data('uid');
         $.ajax({
             url: '/api/admin/user-control',
             method: 'POST',
             contentType: 'application/json',
-            data: JSON.stringify(payload),
+            data: JSON.stringify({ target_user_id: uid, action: 'APPROVE' }),
             success: function(res) {
-                $('#ajaxAlert').removeClass('d-none alert-danger').addClass('alert-success').text('✅ ' + res.message);
-                if (reloadPage) {
-                    setTimeout(() => location.reload(), 700);
+                showToast(res.message, false);
+                btn.replaceWith(`
+                    <button type="button" class="btn btn-outline-success btn-sm fw-bold active-toggle-btn px-3"
+                            data-uid="${uid}" data-active="Y">
+                        ● 활성 (클릭시 중지)
+                    </button>
+                `);
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.message : '오류 발생', true);
+            }
+        });
+    });
+
+    $(document).on('click', '.active-toggle-btn', function() {
+        const btn = $(this);
+        const uid = btn.data('uid');
+        $.ajax({
+            url: '/api/admin/user-control',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ target_user_id: uid, action: 'TOGGLE_ACTIVE' }),
+            success: function(res) {
+                showToast(res.message, false);
+                if (res.is_active === 'Y') {
+                    btn.removeClass('btn-outline-danger').addClass('btn-outline-success')
+                       .data('active', 'Y').text('● 활성 (클릭시 중지)');
+                } else {
+                    btn.removeClass('btn-outline-success').addClass('btn-outline-danger')
+                       .data('active', 'N').text('○ 비활성 (클릭시 활성)');
                 }
             },
             error: function(xhr) {
-                const msg = xhr.responseJSON ? xhr.responseJSON.message : '처리 중 오류가 발생했습니다.';
-                $('#ajaxAlert').removeClass('d-none alert-success').addClass('alert-danger').text('❌ ' + msg);
+                showToast(xhr.responseJSON ? xhr.responseJSON.message : '오류 발생', true);
             }
         });
-    }
-
-    // 1. 신규 가입 대기 계정 [승인하기] 클릭
-    $('.approve-btn').on('click', function() {
-        const uid = $(this).data('uid');
-        sendUserControl({ target_user_id: uid, action: 'APPROVE' }, true);
     });
 
-    // 2. 계정 [활성 <-> 비활성] 원클릭 전환
-    $('.active-toggle-btn').on('click', function() {
-        const uid = $(this).data('uid');
-        sendUserControl({ target_user_id: uid, action: 'TOGGLE_ACTIVE' }, true);
-    });
-
-    // 3. Y/N 권한 버튼(ERP, RAG, ROBOT) 클릭 시 즉시 토글
     $('.perm-toggle-btn').on('click', function() {
-        const uid = $(this).data('uid');
-        const field = $(this).data('field');
-        const currentVal = $(this).data('val');
+        const btn = $(this);
+        const uid = btn.data('uid');
+        const field = btn.data('field');
+        const currentVal = btn.attr('data-val');
         const nextVal = (currentVal === 'Y') ? 'N' : 'Y';
-        sendUserControl({ target_user_id: uid, action: 'UPDATE_PERM', field: field, value: nextVal }, true);
+
+        $.ajax({
+            url: '/api/admin/user-control',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ target_user_id: uid, action: 'UPDATE_PERM', field: field, value: nextVal }),
+            success: function(res) {
+                showToast(res.message, false);
+                btn.attr('data-val', nextVal).text(nextVal);
+                const activeClass = (field === 'can_control_robot') ? 'btn-primary' : 'btn-success';
+                if (nextVal === 'Y') {
+                    btn.removeClass('btn-outline-secondary').addClass(activeClass);
+                } else {
+                    btn.removeClass('btn-success btn-primary bg-success text-white').addClass('btn-outline-secondary');
+                }
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.message : '오류 발생', true);
+            }
+        });
     });
 
-    // 4. ROLE 또는 DEFAULT_WORKSPACE 드롭다운 변경 시 즉시 반영
     $('.perm-select').on('change', function() {
-        const uid = $(this).data('uid');
-        const field = $(this).data('field');
-        const nextVal = $(this).val();
-        sendUserControl({ target_user_id: uid, action: 'UPDATE_PERM', field: field, value: nextVal }, false);
+        const sel = $(this);
+        $.ajax({
+            url: '/api/admin/user-control',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                target_user_id: sel.data('uid'),
+                action: 'UPDATE_PERM',
+                field: sel.data('field'),
+                value: sel.val()
+            }),
+            success: function(res) {
+                showToast(res.message, false);
+            },
+            error: function(xhr) {
+                showToast(xhr.responseJSON ? xhr.responseJSON.message : '오류 발생', true);
+            }
+        });
     });
-
 });
 </script>
 {% endblock %}
