@@ -7,10 +7,10 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-    /* 1. 상단 GIS 지도 (대륙 복제 방지) */
+    /* 1. 상단 GIS 지도 */
     #yardMap {
         width: 100%;
-        height: 390px;
+        height: 380px;
         border-radius: 16px;
         border: 2px solid #cbd5e1;
         background: #cad2d3;
@@ -18,7 +18,7 @@
         transition: height 0.3s ease;
     }
     #yardMap.minimized {
-        height: 185px;
+        height: 180px;
     }
 
     .pin-hq {
@@ -55,30 +55,53 @@
     }
     .pin-partner:hover { transform: scale(1.3); }
 
-    /* 2. 실시간 비전 비디오 박스 */
+    /* 2. 실시간 비전 & 업로드 YOLO 뷰어 박스 */
     .vision-player-wrapper {
         background: #0f172a;
         border-radius: 16px;
         overflow: hidden;
         position: relative;
-        min-height: 460px;
+        min-height: 420px;
         display: flex;
         align-items: center;
         justify-content: center;
         border: 2px solid #cbd5e1;
     }
-    .vision-player-wrapper img {
+    .vision-player-wrapper img,
+    .vision-player-wrapper video {
         width: 100%;
         max-height: 540px;
         object-fit: contain;
+        display: block;
     }
     .live-badge-bar {
         position: absolute;
-        top: 16px;
-        left: 16px;
+        top: 12px;
+        left: 12px;
+        right: 12px;
         display: flex;
-        gap: 8px;
-        z-index: 10;
+        flex-wrap: wrap;
+        gap: 6px;
+        z-index: 15;
+        pointer-events: none;
+    }
+
+    /* 업로드 미디어 위 YOLOv11 바운딩박스 & 용접선(Waypoints) 오버레이 캔버스 */
+    .yolo-stage-box {
+        position: relative;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #yoloOverlayCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 12;
     }
 
     /* 3. 우측 비전 상태 요약 카드 */
@@ -86,8 +109,8 @@
         background: #ffffff;
         border: 1.5px solid #e2e8f0;
         border-radius: 14px;
-        padding: 24px 22px;
-        margin-bottom: 16px;
+        padding: 20px 18px;
+        margin-bottom: 14px;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
     }
     .status-summary-card .card-label {
@@ -97,9 +120,16 @@
         margin-bottom: 6px;
     }
     .status-summary-card .card-value {
-        font-size: 1.35rem;
+        font-size: clamp(1.1rem, 2.5vw, 1.35rem);
         font-weight: 800;
         color: var(--shi-navy);
+        word-break: keep-all;
+    }
+
+    @media (max-width: 768px) {
+        #yardMap { height: 260px; }
+        .vision-player-wrapper { min-height: 260px; }
+        .status-summary-card { padding: 14px 14px; }
     }
 </style>
 {% endblock %}
@@ -109,9 +139,9 @@
     <div class="container">
 
         <!-- =================================================================
-             1. 상단: 스마트 야드 & 외주 협력사 GIS 관제 지도 (단일 지도 고정)
+             1. 상단: 스마트 야드 & 외주 협력사 GIS 관제 지도
         ================================================================== -->
-        <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm">
+        <div class="bg-white border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
                 <div>
                     <span class="badge bg-primary mb-1">GIS LOCATION MAP</span>
@@ -147,26 +177,25 @@
 
 
         <!-- =================================================================
-             2. 중단: 실시간 비전 화면 (좌측 8칸) + 비전 인식 현황 (우측 4칸)
-             (1차 웹 단계에 맞춰 로봇 제어 박스 완전 제거!)
+             2. 중단: 실시간 카메라 스트림 + ⭐ 사진/영상 직접 업로드 YOLOv11 테스트
         ================================================================== -->
-        <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm" id="liveConsoleSection">
+        <div class="bg-white border rounded-4 p-3 p-md-4 mb-4 shadow-sm" id="liveConsoleSection">
             <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-3 gap-2">
-                <div>
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                <div class="overflow-hidden">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                         <span class="badge bg-primary" id="branchCodeBadge">BR-ULSAN-01</span>
-                        <span class="badge bg-dark font-monospace" id="storagePathBadge">
-                            📁 NVR 저장경로: s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live
+                        <span class="badge bg-dark font-monospace text-truncate" style="max-width: 100%;" id="storagePathBadge">
+                            📁 NVR: s3://k-shipyard-nvr/BR-ULSAN-01/CAM-ULS-BAY1/live
                         </span>
                     </div>
-                    <h4 class="fw-bold mb-0" style="color: var(--shi-navy);" id="branchTitleText">
-                        👁️ 울산 제1야드 (중조립 A동) 실시간 비전 모니터링
+                    <h4 class="fw-bold mb-0 text-break" style="color: var(--shi-navy);" id="branchTitleText">
+                        👁️ 울산 제1야드 (중조립 A동) 실시간 비전 모니터링 & YOLO 추론
                     </h4>
                 </div>
 
                 <!-- 우측: DB 연동 야드/카메라 채널 선택 & 스트림 제어 -->
                 <div class="d-flex flex-wrap align-items-center gap-2">
-                    <select id="visionCameraSelect" class="form-select form-select-sm fw-bold" style="width: 245px;">
+                    <select id="visionCameraSelect" class="form-select form-select-sm fw-bold" style="width: auto; max-width: 100%;">
                         {% for br in branches %}
                         <option value="{{ br.branch_code }}"
                                 data-bname="{{ br.branch_name }}"
@@ -182,52 +211,110 @@
                     </button>
 
                     <button type="button" class="btn btn-outline-dark btn-sm fw-bold px-3" id="btnReconnectStream">
-                        🔄 카메라 재연결
+                        🔄 실시간 카메라 복귀
                     </button>
                 </div>
             </div>
 
+            <!-- ⭐ 사진 / 영상 업로드 & YOLOv11 실시간 단계 표시 + 중복 업로드 잠금 툴바 -->
+            <form id="yoloUploadForm" enctype="multipart/form-data" class="bg-light border rounded-4 p-3 mb-3 position-relative">
+                <!-- 추론 진행 중 실시간 단계 표시창 (RAG와 동일하게 진행 중 추가 업로드 자동 잠금) -->
+                <div id="visionLiveStageBanner" class="d-none mb-3 p-3 rounded-3 border border-primary bg-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                            <strong class="text-primary" id="visionStageBadgeText">📹 [1/2단계: 미디어 분석 중]</strong>
+                            <span class="small fw-bold text-dark" id="visionStageDetailText">영상·사진 프레임을 추출하고 있습니다...</span>
+                        </div>
+                        <span class="badge bg-warning text-dark">🔒 추론 완료 시까지 추가 업로드 제한중</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div id="visionStageProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                             role="progressbar" style="width: 35%;"></div>
+                    </div>
+                </div>
+
+                <fieldset id="visionUploadFieldset">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-lg-3 col-md-12">
+                            <span class="badge bg-danger me-1">YOLOv11 TEST</span>
+                            <strong class="small text-dark">사진·영상 업로드 추론기</strong>
+                            <div class="text-muted" style="font-size: 0.74rem;">
+                                용접 사진(JPG, PNG) 또는 영상(MP4, MOV) 업로드 시 용접선 궤적을 검출합니다.
+                            </div>
+                        </div>
+                        <div class="col-lg-5 col-md-7 col-sm-12">
+                            <input type="file" name="media_file" id="yoloMediaInput" class="form-control form-control-sm"
+                                   accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" required>
+                        </div>
+                        <div class="col-lg-2 col-md-2 col-6">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" id="chkAutoSaveUpload" name="auto_save" value="Y" checked>
+                                <label class="form-check-label small fw-bold" for="chkAutoSaveUpload">DB 자동저장</label>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-6 d-grid">
+                            <button type="submit" class="btn btn-shi-primary btn-sm fw-bold py-2" id="btnRunYoloUpload">
+                                🔍 YOLO 돌려보기
+                            </button>
+                        </div>
+                    </div>
+                </fieldset>
+            </form>
+
             <div class="row g-4 align-items-stretch">
-                <!-- 좌측 8칸: 실시간 카메라 스트림 -->
+                <!-- 좌측 8칸: 실시간 카메라 스트림 & 업로드 YOLO 캔버스 뷰어 -->
                 <div class="col-lg-8">
-                    <div class="vision-player-wrapper h-100">
+                    <div class="vision-player-wrapper h-100" id="visionStageWrapper">
                         <div class="live-badge-bar">
                             <span class="badge bg-danger px-3 py-2" id="liveStatusPill">● LIVE CAMERA</span>
                             <span class="badge bg-dark px-3 py-2" id="camNameBadge">CAM-ULS-BAY1</span>
+                            <span class="badge bg-primary px-3 py-2 d-none" id="yoloInferenceBadge">YOLOv11 추론 완료</span>
                         </div>
+
+                        <!-- 1) 기본 실시간 스트리밍 이미지 -->
                         <img src="/vision/video_feed" id="liveStreamImg" alt="실시간 비전 스트림"
                              onerror="this.style.display='none'; document.getElementById('streamOfflineBox').classList.remove('d-none');">
+
+                        <!-- 2) 사용자 사진/영상 업로드 시 활성화되는 YOLOv11 오버레이 스테이지 -->
+                        <div id="uploadedMediaStage" class="yolo-stage-box d-none">
+                            <img id="uploadedPreviewImg" class="d-none" alt="업로드 이미지 분석 결과">
+                            <video id="uploadedPreviewVideo" class="d-none" controls playsinline muted loop></video>
+                            <canvas id="yoloOverlayCanvas"></canvas>
+                        </div>
+
+                        <!-- 3) 오프라인/일시정지 안내 박스 -->
                         <div id="streamOfflineBox" class="text-center text-white-50 p-4 d-none">
                             <div class="fs-1 mb-2">⏸️</div>
                             <h5 class="text-white fw-bold">카메라 스트림 일시정지 / 대기 중</h5>
-                            <p class="small mb-0">상단의 [▶️ 다시 재생] 또는 [🔄 카메라 재연결]을 누르면 즉시 연결됩니다.</p>
+                            <p class="small mb-0">상단의 [▶️ 다시 재생], [🔄 실시간 카메라 복귀] 또는 [🔍 YOLO 돌려보기]를 이용해 주세요.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- 우측 4칸: 비전 용접선 & 객체 인식 요약 카드 2개 -->
+                <!-- 우측 4칸: 비전 용접선 & 객체 인식 요약 카드 -->
                 <div class="col-lg-4 d-flex flex-column justify-content-between">
                     <div>
                         <div class="status-summary-card">
                             <div class="card-label">용접선(Weld Joint) 추적 현황</div>
                             <div class="card-value text-primary" id="jointStatusText">탐색 대기 중...</div>
-                            <div class="small text-secondary mt-2" id="jointSubText">
+                            <div class="small text-secondary mt-2 text-break" id="jointSubText">
                                 화면 내 용접 이음새가 포착되면 시작·종료 궤적이 자동 추출됩니다.
                             </div>
                         </div>
 
                         <div class="status-summary-card mb-0">
-                            <div class="card-label">실시간 프레임 객체 인식 현황</div>
+                            <div class="card-label">프레임 객체 인식 현황 (YOLOv11)</div>
                             <div class="card-value text-dark" id="objCountText">0개 객체 인식</div>
-                            <div class="small text-secondary mt-2" id="detectedObjectsText">
+                            <div class="small text-secondary mt-2 text-break" id="detectedObjectsText">
                                 인식된 클래스: 대기 중
                             </div>
                         </div>
                     </div>
 
-                    <div class="d-grid mt-3">
+                    <div class="d-grid gap-2 mt-3">
                         <button type="button" class="btn btn-shi-primary fw-bold py-2" id="btnManualSaveDb">
-                            📸 현재 카메라 스냅샷 즉시 기록하기
+                            📸 현재 분석 스냅샷 DB에 기록하기
                         </button>
                     </div>
                 </div>
@@ -238,8 +325,8 @@
         <!-- =================================================================
              3. 하단: 비전 탐지 이력 (촬영 날짜 및 시간 표시)
         ================================================================== -->
-        <div class="bg-white border rounded-4 p-4 shadow-sm">
-            <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="bg-white border rounded-4 p-3 p-md-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div>
                     <span class="badge bg-dark me-1">VISION LOGS</span>
                     <strong class="fs-5" style="color: var(--shi-navy);">📋 비전 용접선 탐지 기록</strong>
@@ -254,7 +341,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>기록 번호</th>
-                            <th>촬영 카메라</th>
+                            <th>촬영/분석 채널</th>
                             <th>탐지된 객체 요약</th>
                             <th>자동 추출된 용접 시작점 ➔ 끝점</th>
                             <th>예상 용접 길이</th>
@@ -296,6 +383,7 @@ $(document).ready(function() {
     let currentCameraCode = 'CAM-ULS-BAY1';
     let currentStreamKey = 'video1.mp4';
     let isStreamPaused = false;
+    let isUploadMode = false;
     let pollTimer = null;
 
     $(window).on('beforeunload pagehide', function() {
@@ -303,7 +391,7 @@ $(document).ready(function() {
         $('#liveStreamImg').attr('src', '');
     });
 
-    // 단일 대륙/한반도 지도 초기화
+    // 1. 단일 한반도 지도 초기화
     const koreaBounds = L.latLngBounds(L.latLng(32.5, 124.0), L.latLng(39.0, 132.5));
     const map = L.map('yardMap', {
         center: [35.38, 129.10],
@@ -323,8 +411,13 @@ $(document).ready(function() {
 
     function reconnectVideoStream() {
         isStreamPaused = false;
+        isUploadMode = false;
+        $('#uploadedMediaStage').addClass('d-none');
+        $('#uploadedPreviewVideo')[0].pause();
+        $('#yoloInferenceBadge').addClass('d-none');
+
         $('#btnPauseStream').text('⏸️ 일시정지').removeClass('btn-success').addClass('btn-warning');
-        $('#liveStatusPill').removeClass('bg-secondary').addClass('bg-danger').text('● LIVE CAMERA');
+        $('#liveStatusPill').removeClass('bg-secondary bg-primary').addClass('bg-danger').text('● LIVE CAMERA');
         $('#streamOfflineBox').addClass('d-none');
         $('#liveStreamImg').attr('src', '');
         setTimeout(function() {
@@ -337,9 +430,9 @@ $(document).ready(function() {
         currentStreamKey = b.default_video || 'video1.mp4';
 
         $('#branchCodeBadge').text(b.branch_code);
-        $('#branchTitleText').text(`👁️ ${b.branch_name} 실시간 비전 모니터링`);
+        $('#branchTitleText').text(`👁️ ${b.branch_name} 실시간 비전 모니터링 & YOLO 추론`);
         $('#camNameBadge').text(b.camera_code);
-        $('#storagePathBadge').text(`📁 NVR 저장경로: s3://k-shipyard-nvr/${b.branch_code}/${b.camera_code}/live`);
+        $('#storagePathBadge').text(`📁 NVR: s3://k-shipyard-nvr/${b.branch_code}/${b.camera_code}/live`);
         $('#visionCameraSelect').val(b.branch_code);
 
         $.getJSON('/vision/change_video/' + encodeURIComponent(currentStreamKey), function() {
@@ -396,7 +489,7 @@ $(document).ready(function() {
 
                 const pm = L.marker([p.lat, p.lng], { icon: partnerIcon, zIndexOffset: 500 }).addTo(map);
                 const tooltipHtml = `
-                    <div class="p-1" style="min-width: 220px;">
+                    <div class="p-1" style="min-width: 210px;">
                         <span class="badge bg-danger mb-1">계약중 협력사 (${p.company_code})</span>
                         <div class="fw-bold text-dark">${p.company_name}</div>
                         <div class="small text-secondary">${p.company_type} · 대표: ${p.representative}</div>
@@ -442,7 +535,8 @@ $(document).ready(function() {
         setTimeout(() => map.invalidateSize(), 320);
     });
 
-    function updateReadableStatus(data) {
+    // 2. 우측 상태 카드 업데이트
+    function updateReadableStatus(data, fromUpload = false) {
         latestDetectionPayload = data;
         const preds = data.predictions || [];
         $('#objCountText').text(`${preds.length}개 객체 인식`);
@@ -454,28 +548,219 @@ $(document).ready(function() {
         }
 
         const joints = preds.filter(p => p.class === 'weld_joint');
-        const summaryNames = preds.map(p => `${p.class}(${Math.round((p.confidence||0)*100)}%)`).slice(0, 5).join(', ');
+        const summaryNames = preds.map(p => `${p.class}(${Math.round((p.confidence||0)*100)}%)`).slice(0, 6).join(', ');
         $('#detectedObjectsText').text(`인식됨: ${summaryNames}`);
 
         if (joints.length > 0) {
-            $('#jointStatusText').removeClass('text-secondary').addClass('text-primary').text(`✅ 용접선 ${joints.length}건 포착됨 (ID #${joints[0].tracker_id})`);
-            if (joints[0].tracker_id && !savedTrackerIds.has(joints[0].tracker_id)) {
-                savedTrackerIds.add(joints[0].tracker_id);
+            const j0 = joints[0];
+            const wp = j0.centerline_waypoints || [];
+            $('#jointStatusText').removeClass('text-secondary').addClass('text-primary')
+                .text(`✅ 용접선 ${joints.length}건 포착됨 (ID #${j0.tracker_id || 1})`);
+            if (wp.length >= 2) {
+                $('#jointSubText').text(`시작점 [${wp[0]}] ➔ 끝점 [${wp[wp.length - 1]}] (총 ${wp.length}개 웨이포인트 추출)`);
+            }
+            if (!fromUpload && j0.tracker_id && !savedTrackerIds.has(j0.tracker_id)) {
+                savedTrackerIds.add(j0.tracker_id);
                 saveSnapshotToDb(true);
             }
         } else {
-            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('용접선 탐색 중...');
+            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('용접선 외 일반 객체 포착');
         }
     }
 
+    // 3. ⭐ 업로드된 사진/영상 위에 YOLOv11 BBox 및 centerline_waypoints 궤적 그리기
+    function drawYoloOverlay(detectionData) {
+        const canvas = document.getElementById('yoloOverlayCanvas');
+        const stage = document.getElementById('uploadedMediaStage');
+        if (!canvas || !stage || !detectionData) return;
+
+        const rect = stage.getBoundingClientRect();
+        if (rect.width < 10 || rect.height < 10) return;
+
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const imgMeta = detectionData.image || { width: 960, height: 540 };
+        const srcW = imgMeta.width || 960;
+        const srcH = imgMeta.height || 540;
+        const scaleX = canvas.width / srcW;
+        const scaleY = canvas.height / srcH;
+
+        const preds = detectionData.predictions || [];
+        preds.forEach(p => {
+            const cls = String(p.class || 'object');
+            const conf = Math.round((p.confidence || 0) * 100);
+            const box = p.box || {};
+            // YOLO center (x, y, width, height) -> top-left 변환 (만약 화면 밖이면 자동 보정)
+            let bx = (box.x - box.width / 2) * scaleX;
+            let by = (box.y - box.height / 2) * scaleY;
+            let bw = box.width * scaleX;
+            let bh = box.height * scaleY;
+
+            bx = Math.max(4, Math.min(bx, canvas.width - 60));
+            by = Math.max(22, Math.min(by, canvas.height - 40));
+            bw = Math.min(bw, canvas.width - bx - 4);
+            bh = Math.min(bh, canvas.height - by - 4);
+
+            const color = (cls === 'weld_joint') ? '#00ff88' : (cls === 'block' ? '#38bdf8' : '#facc15');
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(bx, by, bw, bh);
+
+            const label = `${cls} #${p.tracker_id || 1} (${conf}%)`;
+            ctx.font = 'bold 12px Pretendard, sans-serif';
+            const textW = ctx.measureText(label).width + 10;
+            ctx.fillStyle = color;
+            ctx.fillRect(bx, Math.max(0, by - 20), textW, 20);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText(label, bx + 5, Math.max(14, by - 6));
+
+            // weld_joint인 경우 centerline_waypoints 궤적 라인과 시작/종료 포인트 시각화
+            if (cls === 'weld_joint' && Array.isArray(p.centerline_waypoints) && p.centerline_waypoints.length >= 2) {
+                const pts = p.centerline_waypoints;
+                ctx.beginPath();
+                pts.forEach((pt, idx) => {
+                    const px = Math.min(canvas.width - 6, Math.max(6, pt[0] * scaleX));
+                    const py = Math.min(canvas.height - 6, Math.max(6, pt[1] * scaleY));
+                    if (idx === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                });
+                ctx.strokeStyle = '#ff2a85';
+                ctx.lineWidth = 3.5;
+                ctx.stroke();
+
+                // 시작점(초록 원) & 끝점(빨간 원) 표시
+                const sPt = pts[0];
+                const ePt = pts[pts.length - 1];
+                [
+                    { pt: sPt, c: '#22c55e', tag: 'START' },
+                    { pt: ePt, c: '#ef4444', tag: 'END' }
+                ].forEach(node => {
+                    const nx = Math.min(canvas.width - 10, Math.max(10, node.pt[0] * scaleX));
+                    const ny = Math.min(canvas.height - 10, Math.max(10, node.pt[1] * scaleY));
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = node.c;
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            }
+        });
+    }
+
+    $(window).on('resize', function() {
+        if (isUploadMode && latestDetectionPayload) {
+            drawYoloOverlay(latestDetectionPayload);
+        }
+    });
+
+    // 4. 사진/영상 업로드 후 YOLOv11 추론 실행 핸들러
+    $('#yoloUploadForm').on('submit', function(e) {
+        e.preventDefault();
+        const fileInput = $('#yoloMediaInput')[0];
+        if (!fileInput.files || !fileInput.files.length) {
+            alert('분석할 사진 또는 영상 파일을 선택해 주세요.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('media_file', fileInput.files[0]);
+        formData.append('camera_code', currentCameraCode || 'CAM-UPLOAD-TEST');
+        formData.append('work_id', 1);
+        formData.append('auto_save', $('#chkAutoSaveUpload').is(':checked') ? 'Y' : 'N');
+
+        const btn = $('#btnRunYoloUpload');
+        const origTxt = btn.text();
+        const stageBanner = $('#visionLiveStageBanner');
+        $('#visionUploadFieldset').prop('disabled', true);
+        btn.prop('disabled', true).text('⏳ 추론 중 (잠금)');
+
+        stageBanner.removeClass('d-none');
+        $('#visionStageBadgeText').text('📹 [1/2단계: 미디어 업로드 및 프레임 디코딩]');
+        $('#visionStageDetailText').text('서버로 영상/사진을 전송하고 해상도 및 프레임을 분석하고 있습니다...');
+        $('#visionStageProgressBar').css('width', '40%');
+
+        const stageTimer = setTimeout(function() {
+            $('#visionStageBadgeText').text('🧠 [2/2단계: YOLOv11 용접선 궤적 추론 및 DB 적재]');
+            $('#visionStageDetailText').text('YOLOv11 모델로 객체(block, hook, weld_joint)와 중심 궤적(Waypoints)을 추출하고 있습니다...');
+            $('#visionStageProgressBar').css('width', '85%');
+        }, 450);
+
+        $.ajax({
+            url: '/vision/api/upload-yolo',
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(res) {
+                clearTimeout(stageTimer);
+                $('#visionUploadFieldset').prop('disabled', false);
+                btn.prop('disabled', false).text(origTxt);
+                stageBanner.addClass('d-none');
+                if (res.status !== 'SUCCESS') {
+                    alert(res.message || '추론 중 오류가 발생했습니다.');
+                    return;
+                }
+
+                // 실시간 스트림 일시 중지 후 업로드 뷰어 활성화
+                isUploadMode = true;
+                isStreamPaused = true;
+                $('#liveStreamImg').attr('src', '').hide();
+                $('#streamOfflineBox').addClass('d-none');
+                $('#uploadedMediaStage').removeClass('d-none');
+
+                $('#liveStatusPill').removeClass('bg-danger bg-secondary').addClass('bg-primary')
+                    .text(`📁 UPLOAD (${res.media_type})`);
+                $('#yoloInferenceBadge').removeClass('d-none')
+                    .text(`⚡ YOLOv11 (${res.inference_time_ms}ms)`);
+
+                const imgEl = $('#uploadedPreviewImg');
+                const vidEl = $('#uploadedPreviewVideo');
+
+                if (res.media_type === 'IMAGE') {
+                    vidEl.addClass('d-none')[0].pause();
+                    imgEl.removeClass('d-none').off('load').on('load', function() {
+                        drawYoloOverlay(res.detection_data);
+                    }).attr('src', res.media_url + '?t=' + Date.now());
+                } else {
+                    imgEl.addClass('d-none');
+                    vidEl.removeClass('d-none').off('loadeddata').on('loadeddata', function() {
+                        drawYoloOverlay(res.detection_data);
+                    }).attr('src', res.media_url + '?t=' + Date.now());
+                    vidEl[0].play().catch(() => {});
+                }
+
+                updateReadableStatus(res.detection_data, true);
+                setTimeout(() => drawYoloOverlay(res.detection_data), 200);
+                refreshDbTable();
+            },
+            error: function(xhr) {
+                clearTimeout(stageTimer);
+                $('#visionUploadFieldset').prop('disabled', false);
+                btn.prop('disabled', false).text(origTxt);
+                stageBanner.addClass('d-none');
+                const msg = xhr.responseJSON ? xhr.responseJSON.message : '파일 업로드 및 YOLO 추론 실패';
+                alert('❌ ' + msg);
+            }
+        });
+    });
+
     function pollVision() {
-        if (isStreamPaused) return;
-        $.getJSON('/vision/detections', function(data) { updateReadableStatus(data); });
+        if (isStreamPaused || isUploadMode) return;
+        $.getJSON('/vision/detections', function(data) { updateReadableStatus(data, false); });
     }
     pollTimer = setInterval(pollVision, 1500);
     pollVision();
 
     $('#btnPauseStream').on('click', function() {
+        if (isUploadMode) {
+            reconnectVideoStream();
+            return;
+        }
         $.getJSON('/vision/pause');
         isStreamPaused = !isStreamPaused;
         if (isStreamPaused) {
@@ -492,7 +777,7 @@ $(document).ready(function() {
 
     function saveSnapshotToDb(isAuto = true) {
         if (!latestDetectionPayload || !latestDetectionPayload.predictions || latestDetectionPayload.predictions.length === 0) {
-            if (!isAuto) alert('현재 프레임에 탐지된 객체가 없습니다.');
+            if (!isAuto) alert('현재 화면에 탐지된 객체가 없습니다.');
             return;
         }
         $.ajax({
@@ -507,7 +792,10 @@ $(document).ready(function() {
                 detection_data: latestDetectionPayload
             }),
             success: function(res) {
-                if (res.status === 'SUCCESS') refreshDbTable();
+                if (res.status === 'SUCCESS') {
+                    if (!isAuto) alert('✅ 현재 비전 탐지 결과가 DB(7·8·9번 테이블)에 기록되었습니다.');
+                    refreshDbTable();
+                }
             }
         });
     }
@@ -519,7 +807,7 @@ $(document).ready(function() {
                 <tr>
                     <td class="fw-bold text-primary">기록 #${i.inspection_id}</td>
                     <td>${i.camera_code}</td>
-                    <td>${i.detected_objects_str}</td>
+                    <td class="text-break">${i.detected_objects_str}</td>
                     <td class="font-monospace">${i.start_point} ➔ ${i.end_point}</td>
                     <td class="fw-bold">${i.length_mm} mm</td>
                     <td class="text-secondary fw-semibold">${window.formatToLocalTime(i.created_at)}</td>
