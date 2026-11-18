@@ -7,10 +7,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 bp = Blueprint('vision', __name__, url_prefix='/vision')
 
 # 🔥 본인의 정확한 RunPod Proxy URL
-RUNPOD_STREAM_URL = "https://amu7e870l49mun-5000.proxy.runpod.net/video_feed"
-RUNPOD_JSON_URL = "https://amu7e870l49mun-5000.proxy.runpod.net/detections"
-RUNPOD_PAUSE_URL = "https://amu7e870l49mun-5000.proxy.runpod.net/pause"
-RUNPOD_CHANGE_VIDEO_URL = "https://amu7e870l49mun-5000.proxy.runpod.net/change_video/"  # 🔥 추가
+RUNPOD_STREAM_URL = "https://8pd9zwcg739jwv-5000.proxy.runpod.net/video_feed"
+RUNPOD_JSON_URL = "https://8pd9zwcg739jwv-5000.proxy.runpod.net/detections"
+RUNPOD_PAUSE_URL = "https://8pd9zwcg739jwv-5000.proxy.runpod.net/pause"
+RUNPOD_CHANGE_VIDEO_URL = "https://8pd9zwcg739jwv-5000.proxy.runpod.net/change_video/"  # 🔥 추가
 
 @bp.route('/')
 def index():
