@@ -50,3 +50,6 @@ generated_docs/*
 !generated_docs/templates/
 !generated_docs/templates/**
 !generated_docs/.gitkeep
+
+gcp-oauth.keys.json
+.gmail-mcp-credentials.json
