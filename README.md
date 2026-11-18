@@ -4,6 +4,9 @@
 > "보고(Vision), 생각하고(LLM), 행동하는 로봇(ROS2, VLA)"
 
 ---
+## 사전 요구사항 (Prerequisites)
+- Python 3.11+ (`pip install -r requirements.txt`)
+- **Node.js LTS (v20 이상)** — Gmail MCP (`@gongrzhe/server-gmail-autoauth-mcp`) 구동용
 
 ##  1차 개발 목표 (11.2 ~ 12.4)
 현재 페이즈에서는 로봇을 제어하기 위한 **소프트웨어 완결형 서비스 플랫폼** 구축에 집중합니다.

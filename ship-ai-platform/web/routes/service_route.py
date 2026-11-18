@@ -371,7 +371,8 @@ def _run_assistant_background(
             if generated_doc and generated_doc.get("approval_status") == "DRAFT":
                 params_draft = generated_doc.get("parameters") or {}
                 erp_commit_draft = generated_doc.get("erp_commit") or {}
-                block_id_draft = params_draft.get("block_id") or "BLK-E102"
+                is_standalone_draft = bool(generated_doc.get("is_standalone_po"))
+                block_id_draft = params_draft.get("block_id") or ("DIRECT-PO" if is_standalone_draft else "BLK-E102")
                 base_wo_no = (
                     generated_doc.get("work_order_number")
                     or erp_commit_draft.get("work_order_number")
@@ -379,27 +380,54 @@ def _run_assistant_background(
                 )
                 draft_wo_no = f"{base_wo_no}-{uuid.uuid4().hex[:4].upper()}"
 
-                raw_thick = str(params_draft.get("thickness", "20")).upper().replace("T", "").replace("MM", "").strip()
-                thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else 20.0
+                raw_thick = str(params_draft.get("thickness", "0" if is_standalone_draft else "20")).upper().replace("T", "").replace("MM", "").strip()
+                thickness_val = float(raw_thick) if raw_thick.replace(".", "", 1).isdigit() else (0.0 if is_standalone_draft else 20.0)
 
                 draft_wo = WorkOrder(
                     work_no=draft_wo_no,
                     work_title=generated_doc.get("title") or f"[DRAFT] {block_id_draft} 자동용접 작업지시",
                     work_description=f"AI 어시스턴트 기안 ({user.full_name if user else '담당자'} 요청 · 관리자 결재 대기)",
-                    ship_code=params_draft.get("ship_code") or "HN-2026-301",
+                    ship_code=params_draft.get("ship_code") or ("N/A" if is_standalone_draft else "HN-2026-301"),
                     block_code=block_id_draft,
                     work_region=params_draft.get("branch_code") or (user.erp_branch_code if user else None) or "BR-ULSAN-01",
                     work_zone=params_draft.get("work_zone") or (user.default_workspace if user else None) or "ZONE-A-BAY1",
-                    process_code=params_draft.get("process") or "FCAW",
-                    material_grade=params_draft.get("material") or "AH36",
+                    process_code=params_draft.get("process") or ("N/A" if is_standalone_draft else "FCAW"),
+                    material_grade=params_draft.get("material") or ("N/A" if is_standalone_draft else "AH36"),
                     thickness_mm=thickness_val,
-                    weld_position=params_draft.get("weld_position") or "1G",
+                    weld_position=params_draft.get("weld_position") or ("N/A" if is_standalone_draft else "1G"),
                     status_code="READY",
                     requested_by=user_id,
                 )
                 db.session.add(draft_wo)
                 db.session.flush()
                 draft_work_id = draft_wo.work_id
+
+                # 외주(OUTSOURCED_B2B) 초안인 경우: 관리자 사전 검토용 발주 주문서(PO) 초안 PDF 함께 생성
+                is_draft_outsourced = (
+                    generated_doc.get("execution_type") == "OUTSOURCED_B2B"
+                    or bool(((generated_doc.get("partner_erp_plan") or {}).get("selected_partner") or {}).get("partner_id"))
+                )
+                already_has_po_pdf = bool((generated_doc.get("files") or {}).get("download_po_pdf_url"))
+                if is_draft_outsourced and not already_has_po_pdf:
+                    try:
+                        from modules.agent.tools.document_tools import export_outsourcing_po_pdf
+                        draft_po_payload = dict(generated_doc)
+                        draft_po_payload["work_order_number"] = draft_wo_no
+                        draft_po_payload["approval_status"] = "DRAFT"
+                        po_draft_raw = export_outsourcing_po_pdf.invoke({"document_data": draft_po_payload})
+                        po_draft_res = json.loads(po_draft_raw) if isinstance(po_draft_raw, str) else {}
+                        if po_draft_res.get("status") == "SUCCESS":
+                            files_dict = generated_doc.setdefault("files", {})
+                            files_dict["po_pdf_path"] = po_draft_res.get("po_pdf_path")
+                            files_dict["download_po_pdf_url"] = po_draft_res.get("download_po_pdf_url")
+                            for c in chunks_to_save:
+                                if isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES":
+                                    c["files"] = files_dict
+                                    if isinstance(c.get("doc"), dict):
+                                        c["doc"]["files"] = files_dict
+                            ai_msg.retrieval_chunks_json = json.dumps(chunks_to_save, ensure_ascii=False, default=str)
+                    except Exception as po_draft_err:
+                        print(f"⚠️ [PO 초안 PDF 생성 참고]: {po_draft_err}")
 
                 draft_inst = WorkInstruction(
                     work_id=draft_wo.work_id,
@@ -420,6 +448,20 @@ def _run_assistant_background(
                 db.session.flush()
                 generated_doc["work_id"] = draft_wo.work_id
                 generated_doc["instruction_id"] = draft_inst.instruction_id
+
+                # 채팅창 결재 버튼(pending_doc)과 DB 스냅샷에도 work_id / instruction_id 동기화
+                for c in chunks_to_save:
+                    if isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES" and isinstance(c.get("doc"), dict):
+                        c["doc"]["work_id"] = draft_wo.work_id
+                        c["doc"]["instruction_id"] = draft_inst.instruction_id
+                ai_msg.retrieval_chunks_json = json.dumps(chunks_to_save, ensure_ascii=False, default=str)
+
+                draft_inst.external_env_json = json.dumps({
+                    "weather": generated_doc.get("external_env_json") or {},
+                    "files": generated_doc.get("files") or {},
+                    "_draft_payload": generated_doc,
+                    "_source_session_id": thread_id,
+                }, ensure_ascii=False, default=str)
 
             # 4) AGENT_EXECUTIONS 상태를 RUNNING -> SUCCESS로 갱신
             intent_map = {
@@ -647,22 +689,48 @@ def approve_work_instruction():
 
     source_session_id = None
     if target_inst and target_inst.external_env_json:
-        try:
-            env_meta = json.loads(_read_clob(target_inst.external_env_json))
-            if isinstance(env_meta, dict):
-                saved_payload = env_meta.get("_draft_payload")
-                if isinstance(saved_payload, dict) and not doc.get("welding_params_json"):
-                    doc = saved_payload
-                source_session_id = env_meta.get("_source_session_id")
-        except Exception as e:
-            print(f"⚠️ [_draft_payload 복원 경고]: {e}")
+        raw_env = _read_clob(target_inst.external_env_json).strip()
+        env_meta = None
+        if raw_env:
+            try:
+                env_meta = json.loads(raw_env)
+            except Exception:
+                try:
+                    env_meta = ast.literal_eval(raw_env)
+                except Exception as e:
+                    print(f"⚠️ [_draft_payload 복원 경고]: {e}")
+        if isinstance(env_meta, dict):
+            saved_payload = env_meta.get("_draft_payload")
+            if isinstance(saved_payload, dict) and not doc.get("welding_params_json"):
+                doc = saved_payload
+            source_session_id = env_meta.get("_source_session_id")
+
+    # 2차 안전장치: external_env_json에서 복원 못 했을 경우 해당 세션의 AI 메시지 청크에서 복원
+    if not doc.get("welding_params_json") and source_session_id:
+        last_draft_ai = (
+            AgentChatHistory.query
+            .filter_by(session_id=source_session_id, role_code="ASSISTANT")
+            .order_by(AgentChatHistory.message_id.desc())
+            .first()
+        )
+        if last_draft_ai:
+            for item in _parse_json_or_literal(last_draft_ai.retrieval_chunks_json):
+                if isinstance(item, dict) and item.get("_type") == "WORK_ORDER_FILES" and isinstance(item.get("doc"), dict):
+                    doc = item["doc"]
+                    break
 
     params = doc.get("parameters") or {}
     partner_plan = doc.get("partner_erp_plan") or {}
     is_outsourced = (
         doc.get("execution_type") == "OUTSOURCED_B2B"
         or bool((partner_plan.get("selected_partner") or {}).get("partner_id"))
+        or bool((doc.get("erp_commit") or {}).get("is_outsourced"))
     )
+
+    if not target_wo and doc.get("work_order_number"):
+        target_wo = WorkOrder.query.filter(WorkOrder.work_no.like(f"{doc.get('work_order_number')}%")).first()
+    if target_wo and not target_inst:
+        target_inst = WorkInstruction.query.filter_by(work_id=target_wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
 
     if action == "REJECT":
         if target_inst:
@@ -671,6 +739,28 @@ def approve_work_instruction():
         if target_wo:
             target_wo.status_code = "SUSPENDED"
             target_wo.work_title = str(target_wo.work_title or "").replace("[DRAFT]", "[REJECTED]")
+
+        # 채팅방 말풍선 상태도 REJECTED로 갱신하여 새로고침 시 결재 박스 재노출 차단
+        reject_sid = source_session_id or session.get("assistant_thread_id")
+        if reject_sid:
+            last_ai_msg = (
+                AgentChatHistory.query
+                .filter_by(session_id=reject_sid, role_code="ASSISTANT")
+                .order_by(AgentChatHistory.message_id.desc())
+                .first()
+            )
+            if last_ai_msg:
+                existing_chunks = _parse_json_or_literal(last_ai_msg.retrieval_chunks_json)
+                for c in existing_chunks:
+                    if isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES":
+                        c["approval_status"] = "REJECTED"
+                        c["doc"] = None
+                last_ai_msg.retrieval_chunks_json = json.dumps(existing_chunks, ensure_ascii=False, default=str)
+                last_ai_msg.content = (
+                    _read_clob(last_ai_msg.content)
+                    + f"\n\n> ❌ **[요청 반려 완료 (`STATUS: REJECTED`)]** {user.full_name} 관리자에 의해 요청이 반려(Rollback)되었습니다."
+                )
+
         db.session.commit()
         return jsonify({
             "status": "REJECTED",
@@ -679,7 +769,8 @@ def approve_work_instruction():
 
     try:
         from modules.agent.tools.erp_tools import commit_erp_work_order
-        from modules.agent.tools.document_tools import export_work_order_file, log_inspection_history
+        from modules.agent.tools.document_tools import export_work_order_file, export_outsourcing_po_pdf, log_inspection_history
+        from modules.agent.tools.gmail_mcp_client import send_work_order_dispatch_email
 
         selected_partner = (partner_plan.get("selected_partner") or {}) if partner_plan else {}
         erp_commit_draft = doc.get("erp_commit") or {}
@@ -740,11 +831,60 @@ def approve_work_instruction():
         if not final_doc_data.get("weather") and final_doc_data.get("external_env_json"):
             final_doc_data["weather"] = final_doc_data["external_env_json"]
 
-        export_raw = export_work_order_file.invoke({
-            "document_data": final_doc_data,
-            "file_prefix": f"weld_order_{block_id}",
-        })
-        file_links = json.loads(export_raw) if isinstance(export_raw, str) else {}
+        is_standalone_po = bool(
+            doc.get("is_standalone_po")
+            or erp_commit_draft.get("is_standalone_po")
+            or (doc.get("welding_params_json") or {}).get("standalone_po")
+        )
+
+        if is_standalone_po:
+            file_links = {"status": "SUCCESS"}
+        else:
+            export_raw = export_work_order_file.invoke({
+                "document_data": final_doc_data,
+                "file_prefix": f"weld_order_{block_id}",
+            })
+            file_links = json.loads(export_raw) if isinstance(export_raw, str) else {}
+
+        # 외주(OUTSOURCED_B2B) 작업 또는 단독 발주인 경우: 1페이지 공식 발주 주문서(PO) PDF 생성
+        po_pdf_path = None
+        resolved_po_no = None
+        if is_outsourced or is_standalone_po:
+            po_raw = export_outsourcing_po_pdf.invoke({
+                "document_data": final_doc_data,
+            })
+            po_res = json.loads(po_raw) if isinstance(po_raw, str) else {}
+            if po_res.get("status") == "SUCCESS":
+                resolved_po_no = po_res.get("po_number")
+                po_pdf_path = po_res.get("po_pdf_path")
+                file_links["po_pdf_path"] = po_pdf_path
+                file_links["download_po_pdf_url"] = po_res.get("download_po_pdf_url")
+
+        # 해외 공개 Gmail MCP (@gongrzhe/server-gmail-autoauth-mcp) 자동 메일 발송
+        gmail_result = None
+        if is_outsourced or is_standalone_po:
+            attachments_to_send = [
+                p for p in [file_links.get("pdf_path"), po_pdf_path] if p
+            ]
+            partner_display_name = (
+                selected_partner.get("partner_name")
+                or resolved_partner_id
+                or "외주협력사"
+            )
+            gmail_result = send_work_order_dispatch_email(
+                work_order_number=wo_no,
+                po_number=resolved_po_no,
+                partner_name=partner_display_name,
+                block_id=block_id,
+                branch_name=params.get("branch_code") or user.erp_branch_code or "BR-ULSAN-01",
+                work_zone=delivery_zone,
+                process_code=params.get("process") or "-",
+                material_grade=params.get("material") or "-",
+                thickness_mm=params.get("thickness") or "-",
+                worker_name=worker_name,
+                approver_label=approver_label,
+                pdf_paths=attachments_to_send,
+            )
 
         log_inspection_history.invoke({
             "session_id": wo_no,
@@ -846,10 +986,15 @@ def approve_work_instruction():
                 draft_wo_no = erp_commit_draft.get("work_order_number") or f"WO-DRAFT-{block_id}"
                 updated_content = prev_content.replace(draft_wo_no, wo_no)
 
+                mail_note = ""
+                if gmail_result and gmail_result.get("status") == "SUCCESS":
+                    to_addr = ", ".join(gmail_result.get("to") or [])
+                    mail_note = f" (📧 Gmail MCP 발송 완료: `{to_addr}`, 발주서 `{resolved_po_no}` 첨부)"
+
                 draft_notice_prefix = "> ⚠️ **[관리자 결재 대기 (`APPROVAL_STATUS: DRAFT`)]**"
                 committed_notice = (
                     f"> ✅ **[원장 커밋 완료 (`STATUS: COMMITTED`)]** {approver_label} 결재로 "
-                    f"공식 작업지시 번호 `{wo_no}`의 `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 확정되었습니다."
+                    f"공식 작업지시 번호 `{wo_no}`의 `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 확정되었습니다.{mail_note}"
                 )
 
                 if draft_notice_prefix in updated_content:
@@ -860,10 +1005,15 @@ def approve_work_instruction():
                 last_ai_msg.content = updated_content
         db.session.commit()
 
+        res_msg = f"✅ [최종 승인 완료] {approver_label} 결재로 작업번호 [{wo_no}] ERP 자원 배정 및 지침서 등록이 확정되었습니다!"
+        if gmail_result and gmail_result.get("status") == "SUCCESS":
+            res_msg += f" (📧 협력사 메일 및 발주서 [{resolved_po_no}] 자동 발송 완료)"
+
         return jsonify({
             "status": "APPROVED",
-            "message": f"✅ [최종 승인 완료] {approver_label} 결재로 작업번호 [{wo_no}] ERP 자원 배정 및 지침서 등록이 확정되었습니다!",
+            "message": res_msg,
             "files": file_links,
+            "gmail_dispatch": gmail_result,
         })
     except Exception as e:
         db.session.rollback()
@@ -1066,6 +1216,32 @@ def _extract_inst_pdf_url(inst) -> str:
     except Exception:
         return ""
 
+def _extract_inst_po_pdf_url(inst) -> str:
+    """WorkInstruction의 external_env_json에서 외주 발주 주문서(PO) PDF URL 추출"""
+    if not inst or not inst.external_env_json:
+        return ""
+    try:
+        raw_str = _read_clob(inst.external_env_json).strip()
+        try:
+            meta = json.loads(raw_str)
+        except Exception:
+            meta = ast.literal_eval(raw_str)
+        if not isinstance(meta, dict):
+            return ""
+        files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
+        raw_url = files.get("download_po_pdf_url") or ""
+        if not raw_url:
+            return ""
+
+        parts = raw_url.strip("/").split("/")
+        if len(parts) >= 2:
+            date_str, filename = parts[-2], parts[-1]
+            if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
+                return ""
+
+        return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
+    except Exception:
+        return ""
 
 @service_bp.route("/history", methods=["GET"])
 @login_required
@@ -1091,6 +1267,7 @@ def history_page():
             "wo": wo,
             "inst": inst,
             "pdf_url": _extract_inst_pdf_url(inst),
+            "po_pdf_url": _extract_inst_po_pdf_url(inst),
         })
 
     all_orders_raw = WorkOrder.query.order_by(WorkOrder.work_id.desc()).all()
@@ -1108,6 +1285,7 @@ def history_page():
             "requester_name": user_map.get(wo.requested_by, "시스템"),
             "inst": inst,
             "pdf_url": _extract_inst_pdf_url(inst),
+            "po_pdf_url": _extract_inst_po_pdf_url(inst),  # 👈 이 1줄 추가
         })
 
     erp_bom, erp_workers, erp_equipments, erp_dispatches = [], [], [], []
