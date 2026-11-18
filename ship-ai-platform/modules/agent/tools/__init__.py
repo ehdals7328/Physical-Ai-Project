@@ -13,10 +13,6 @@ from .erp_tools import (
     get_branch_context_from_db,
     list_registered_partners_from_db,
 )
-from .partner_mcp_client import (
-    dispatch_partner_b2b_order_via_mcp,
-    query_partner_b2b_via_mcp,
-)
 from .retriever_tools import (
     safety_retriever_tool,
     search_knowledge,
@@ -39,8 +35,6 @@ __all__ = [
     "check_hq_erp_resources",
     "query_partner_erp_b2b",
     "commit_erp_work_order",
-    "query_partner_b2b_via_mcp",
-    "dispatch_partner_b2b_order_via_mcp",
     "get_vision_inspection_status",
     "search_knowledge_by_categories",
     "search_knowledge_by_category",

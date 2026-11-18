@@ -92,7 +92,7 @@
         <!-- 실시간 알림 배너 -->
         <div id="dashToast" class="alert alert-success d-none py-2 small fw-bold shadow-sm"></div>
 
-        <!-- [커스터마이징 패널] -->
+        <!-- [커스터마이징 패널] 로봇 위젯 제거 완료 -->
         <div class="customizer-drawer d-none" id="customizerDrawer">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
                 <div>
@@ -609,30 +609,22 @@
     </div>
 </section>
 
-<!-- AI 작업지침서 상세 열람 모달 (PDF 우선 뷰어 + 텍스트 폴백) -->
+<!-- AI 작업지침서 상세 열람 모달 -->
 <div class="modal fade" id="instDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
+                <div class="mb-3">
                     <span class="badge bg-primary" id="modalInstStatus">APPROVED</span>
-                    <a href="#" id="modalOpenNewTab" class="btn btn-outline-danger btn-sm fw-bold d-none" target="_blank" rel="noopener">
-                        🔗 새 탭에서 PDF 크게 열기
-                    </a>
                 </div>
-                <div id="modalPdfBox" class="d-none border rounded-3 overflow-hidden mb-2">
-                    <iframe id="modalPdfViewer" src="" style="width: 100%; height: 72vh; border: none; display: block;"></iframe>
-                </div>
-                <div id="modalFallbackBox">
-                    <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
-                    <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
-                    <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
-                    <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
-                </div>
+                <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
+                <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
+                <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
+                <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
             </div>
         </div>
     </div>
@@ -740,63 +732,13 @@ $(document).ready(function() {
         });
     });
 
-    $(document).on('click', '.btn-view-inst', function() {
-        const pdfUrl = $(this).data('pdf');
+    $('.btn-view-inst').on('click', function() {
         $('#modalInstTitle').text($(this).data('title'));
         $('#modalInstStatus').text($(this).data('status'));
-
-        if (pdfUrl) {
-            $('#modalPdfViewer').attr('src', pdfUrl);
-            $('#modalOpenNewTab').attr('href', pdfUrl).removeClass('d-none');
-            $('#modalPdfBox').removeClass('d-none');
-            $('#modalFallbackBox').addClass('d-none');
-        } else {
-            $('#modalPdfViewer').attr('src', '');
-            $('#modalOpenNewTab').addClass('d-none');
-            $('#modalPdfBox').addClass('d-none');
-            $('#modalFallbackBox').removeClass('d-none');
-            $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
-            $('#modalInstText').text($(this).data('text'));
-        }
-
+        $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
+        $('#modalInstText').text($(this).data('text'));
         const modal = new bootstrap.Modal(document.getElementById('instDetailModal'));
         modal.show();
-    });
-
-    document.getElementById('instDetailModal').addEventListener('hidden.bs.modal', function () {
-        $('#modalPdfViewer').attr('src', '');
-    });
-
-    $(document).on('click', '.btn-dash-approve', function() {
-        const btn = $(this);
-        const action = btn.data('action');
-        const woid = btn.data('woid');
-        const instid = btn.data('instid');
-        const row = $(`#approval-row-${woid}`);
-
-        row.find('button').prop('disabled', true);
-
-        $.ajax({
-            url: '/service/api/assistant/approve',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                action: action,
-                work_id: woid,
-                instruction_id: instid,
-                doc: {}
-            }),
-            success: function(res) {
-                const alertClass = (action === 'APPROVE') ? 'alert-success' : 'alert-warning';
-                $('#dashToast').removeClass('d-none alert-danger alert-success alert-warning').addClass(alertClass).text(res.message);
-                setTimeout(() => location.reload(), 1200);
-            },
-            error: function(xhr) {
-                row.find('button').prop('disabled', false);
-                const errMsg = xhr.responseJSON ? xhr.responseJSON.message : '결재 처리 중 오류가 발생했습니다.';
-                $('#dashToast').removeClass('d-none alert-success').addClass('alert-danger').text('❌ ' + errMsg);
-            }
-        });
     });
 });
 </script>
