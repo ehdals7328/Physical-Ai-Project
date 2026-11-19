@@ -17,7 +17,7 @@
         <!-- AJAX 실시간 알림 배너 -->
         <div id="ajaxAlert" class="alert alert-success d-none shadow-sm fw-bold sticky-top" style="top: 82px; z-index: 1025;"></div>
 
-        <!-- ⭐ 상단 페이지 전환 네비게이션 바: [계정 관리] <-> [파일 관리] 분리로 로딩 과부하 원천 제거 -->
+        <!-- 상단 페이지 전환 네비게이션 바 -->
         <div class="bg-white border rounded-4 p-3 mb-4 shadow-sm d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="d-flex align-items-center gap-2">
                 <span class="badge bg-primary px-3 py-2">MY PAGE</span>
@@ -36,9 +36,7 @@
             </div>
         </div>
 
-        <!-- =================================================================
-             [PART 1] 내 프로필 정보 & 비밀번호 재설정 (모든 로그인 회원 공통)
-        ================================================================== -->
+        <!-- [PART 1] 내 프로필 정보 & 비밀번호 재설정 -->
         <div class="row g-4 mb-4">
             <div class="col-lg-4">
                 <div class="bg-white border rounded-4 p-4 shadow-sm h-100">
@@ -118,17 +116,14 @@
             </div>
         </div>
 
-
-        <!-- =================================================================
-             [PART 2] 관리자 전용 (ADMIN / MANAGER): 계정 승인 및 권한 관리
-        ================================================================== -->
+        <!-- [PART 2] 관리자 전용: 계정 승인 및 권한 관리 (5명 페이징 + 검색) -->
         {% if me.role in ('ADMIN', 'MANAGER') %}
         <div class="bg-white border rounded-4 p-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4 gap-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-3 gap-2">
                 <div>
                     <span class="badge bg-danger mb-1">{{ me.role }} 전용 관리 콘솔</span>
                     <h4 class="fw-bold mb-0" style="color: var(--shi-navy);">
-                        임직원·협력사 계정 승인 및 권한 관리
+                        임직원·협력사 계정 승인 및 권한 관리 (<span id="usersCount">{{ all_users|length }}</span>명)
                         {% if pending_count > 0 %}
                             <span class="badge bg-warning text-dark ms-2 fs-6">승인 대기 {{ pending_count }}건</span>
                         {% endif %}
@@ -140,8 +135,16 @@
                 </div>
             </div>
 
+            <!-- 검색 바 & 안내 -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div class="small text-muted">페이지당 5명씩 표시됩니다</div>
+                <input type="text" id="usersSearch" class="form-control form-control-sm rounded-pill px-3"
+                       style="width: 260px; max-width: 100%; font-size: 0.82rem;"
+                       placeholder="🔍 사번·성명·부서·직책·작업구역 검색">
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-hover align-middle small">
+                <table class="table table-hover align-middle small mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>ID (사번)</th>
@@ -155,10 +158,10 @@
                             <th class="text-center">계정 상태 (승인/활성화)</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="usersTbody">
                         {% for u in all_users %}
                         {% set is_locked = (me.role == 'MANAGER' and u.role in ('ADMIN', 'MANAGER')) %}
-                        <tr>
+                        <tr class="user-pager-row">
                             <td class="fw-bold">{{ u.username }}</td>
                             <td class="text-break">
                                 <div class="fw-bold text-dark">{{ u.full_name }}</div>
@@ -235,10 +238,22 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        {% else %}
+                        <tr class="empty-init-row">
+                            <td colspan="9" class="text-center py-4 text-muted small">등록된 임직원·협력사 계정이 없습니다.</td>
+                        </tr>
                         {% endfor %}
+                        <tr class="no-search-result d-none">
+                            <td colspan="9" class="text-center py-4 text-muted small">검색 조건에 일치하는 계정이 없습니다.</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
+
+            <!-- 5명 단위 페이지네이션 -->
+            <nav class="mt-3 d-flex justify-content-center">
+                <ul class="pagination pagination-sm mb-0" id="usersPagination"></ul>
+            </nav>
         </div>
         {% endif %}
 
@@ -256,6 +271,94 @@ $(document).ready(function() {
            .addClass(isError ? 'alert-danger' : 'alert-success')
            .text((isError ? '❌ ' : '✅ ') + msg);
     }
+
+    function initUsersTablePager(perPage = 5) {
+        const $tbody = $('#usersTbody');
+        if (!$tbody.length) return;
+
+        const $search = $('#usersSearch');
+        const $pagination = $('#usersPagination');
+        const $count = $('#usersCount');
+        const $allRows = $tbody.find('tr.user-pager-row');
+        const $noResultRow = $tbody.find('tr.no-search-result');
+
+        let currentPage = 1;
+
+        function getFilteredRows() {
+            const keyword = ($search.val() || '').trim().toLowerCase();
+            if (!keyword) return $allRows;
+
+            return $allRows.filter(function() {
+                const text = $(this).text().toLowerCase();
+                const selectVals = $(this).find('select').map(function() {
+                    return ($(this).val() || '').toLowerCase();
+                }).get().join(' ');
+                return text.includes(keyword) || selectVals.includes(keyword);
+            });
+        }
+
+        function render(page = 1) {
+            const $filtered = getFilteredRows();
+            const total = $filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / perPage));
+            currentPage = Math.min(Math.max(1, page), totalPages);
+
+            $count.text(total);
+            $allRows.hide();
+
+            if (total === 0) {
+                if ($allRows.length > 0) $noResultRow.removeClass('d-none');
+                $pagination.empty();
+                return;
+            }
+
+            $noResultRow.addClass('d-none');
+
+            const start = (currentPage - 1) * perPage;
+            const end = start + perPage;
+            $filtered.slice(start, end).show();
+
+            if (totalPages <= 1) {
+                $pagination.empty();
+                return;
+            }
+
+            let html = `
+                <li class="page-item ${currentPage <= 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" data-page="${currentPage - 1}">이전</a>
+                </li>
+            `;
+            for (let p = 1; p <= totalPages; p++) {
+                html += `
+                    <li class="page-item ${p === currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" data-page="${p}">${p}</a>
+                    </li>
+                `;
+            }
+            html += `
+                <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" data-page="${currentPage + 1}">다음</a>
+                </li>
+            `;
+            $pagination.html(html);
+        }
+
+        $search.on('input', function() {
+            render(1);
+        });
+
+        $pagination.on('click', 'a.page-link', function(e) {
+            e.preventDefault();
+            const targetPage = Number($(this).data('page'));
+            if (targetPage && targetPage !== currentPage) {
+                render(targetPage);
+            }
+        });
+
+        render(1);
+    }
+
+    initUsersTablePager(5);
 
     $('.approve-btn').on('click', function() {
         const btn = $(this);
