@@ -60,6 +60,27 @@ def query_partner_b2b_catalog(
 
     try:
         with pg_engine.connect() as conn:
+            # 전체 등록 협력사 공개 뷰(v_b2b_company_locations) 공통 조회
+            all_companies = []
+            try:
+                comp_rows = conn.execute(
+                    text("SELECT * FROM v_b2b_company_locations")
+                ).mappings().all()
+                all_companies = [dict(r) for r in comp_rows]
+            except Exception as comp_err:
+                print(f"⚠️ [v_b2b_company_locations 조회 참고]: {comp_err}")
+
+            # 0. 등록 협력사 전체 현황 조회
+            if domain == "ALL_PARTNERS":
+                res = {
+                    "status": "SUCCESS",
+                    "b2b_inquiry_timestamp": timestamp_iso,
+                    "source": "FastMCP Partner Gateway -> PostgreSQL (v_b2b_company_locations)",
+                    "registered_companies": all_companies,
+                    "selected_partner": None,
+                }
+                return json.dumps(res, ensure_ascii=False, default=str)
+            
             # 1. 용접 자재 / 철판 협력사 (대한특수철강)
             if domain == "WELDING_MATERIAL":
                 rows = conn.execute(text("SELECT * FROM v_b2b_daehan_materials")).mappings().all()

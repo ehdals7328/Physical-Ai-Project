@@ -21,7 +21,7 @@ from modules.agent.tools.erp_tools import (
 )
 
 # 의도 분류 및 슬롯 추출 속도 최적화를 위해 즉시 응답 모델 사용
-llm = ChatOpenAI(model="gpt-5-mini")
+llm = ChatOpenAI(model="gpt-5-mini", reasoning_effort="low")
 
 VALID_WELD_PROCESSES = {"FCAW", "SAW", "GMAW", "SMAW", "GTAW", "TIG", "MIG"}
 STEEL_GRADES = {"SS400", "AH36", "DH36", "EH36", "AH32", "DH32", "EH32", "AH40", "DH40", "EH40"}
@@ -41,12 +41,12 @@ class UniversalQueryAnalysis(BaseModel):
             "질의의 핵심 목적 분류:\n"
             "- 'vision_inspection_qa': 현장 비전 탐지 현황, 용접 대기 구역, 용접선 포착 상태, 간섭 위험물, 용접 품질/결함 및 로봇 관제 상태 조회\n"
             "- 'scm_partner_qa': 사외 협력사 소속의 자재·단가·외주인력·일당·장비 가용성 조회 및 외주 발주·배차 실행\n"
-            "- 'erp_resource_qa': 본사 내부 창고의 자재 재고 또는 본사 보유 장비 조회\n"
-            "- 'hr_worker_qa': 사내외 인사 원장(ERP_WORKER_CERT) 기반 작업자 명단 및 공정별 투입 가능 인력 조회 (사외 협력사 전용 자원을 명시하지 않은 일반 인력 조회 포함)\n"
+            "- 'erp_resource_qa': 본사 야드(사업장) 현황 및 공정, 본사 창고의 자재 재고 또는 본사 보유 장비 조회\n"
+            "- 'hr_worker_qa': 사내외 인사 원장(ERP_WORKER_CERT) 기반 전체 작업자 명단 및 공정별 투입 가능 인력 조회 (야드·구역·설비·본인 위치만 묻는 질문 제외)\n"
             "- 'hr_safety_qa': 특정 작업자 1인의 선급 자격증 유효성 단건 검증\n"
-            "- 'knowledge_qa': WPS 기술 규격, 안전 지침, 기상 등 도메인 지식 조회\n"
-            "- 'doc_generation': 공식 작업지시서 또는 작업계획서 작성 및 발행 (직전 대화에서 작업지시서 작성을 위해 누락 제원·작업자를 안내받은 뒤 대상 블록·제원·작업자를 지정·선택하는 응답 포함)\n"
-            "- 'chat': 일상 인사 및 일반 대화"
+            "- 'knowledge_qa': 사내 조선·해양 WPS 기술 규격, 안전 지침, 실시간 기상/날씨 조회 등 도메인 정보 질의\n"
+            "- 'doc_generation': 사용자가 명시적으로 작업지시서·작업계획서의 작성, 생성, 발행을 요청한 경우에만 선택 (단순 날씨·규격·자원 문의는 절대 선택 금지)\n"
+            "- 'chat': 일상 인사, 플랫폼 사용법, 로그인 사용자의 현재 위치·담당 야드·작업구역 확인, 또는 조선·해양 도메인 외 분야의 지원 가능 여부 확인\n"
         )
     )
 
@@ -59,6 +59,7 @@ class UniversalQueryAnalysis(BaseModel):
         description="외부 협력사/외주/하청 자원을 조회하거나 활용하려는 의도면 'OUTSOURCED_B2B', 본사 자체 처리를 지정하면 'IN_HOUSE', 별도 구분이 없으면 'AUTO'",
     )
     outsourcing_domain: Literal[
+        "ALL_PARTNERS",
         "OUTSOURCED_WORKER",
         "WELDING_MATERIAL",
         "HEAVY_TRANSPORT",
@@ -66,7 +67,8 @@ class UniversalQueryAnalysis(BaseModel):
     ] = Field(
         default="NOT_APPLICABLE",
         description=(
-            "외주 연계 또는 협력사 조회(scm_partner_qa) 시 대상 자원 유형 (scm_partner_qa일 때는 반드시 앞의 3개 중 하나를 선택):\n"
+            "외주 연계 또는 협력사 조회(scm_partner_qa) 시 대상 자원 유형:\n"
+            "- 'ALL_PARTNERS': 특정 품목·인력·장비 지정 없이 등록된 전체 협력사 목록, 업체 수, 업종 현황을 묻는 일반 조회\n"
             "- 'OUTSOURCED_WORKER': 외주 용접사, 작업자, 인력 명단, 용접 공정 자격 보유 여부, 인건비/일당 문의\n"
             "- 'WELDING_MATERIAL': 와이어, 강판, 가스 등 물리적 자재 재고·단가·납품 문의\n"
             "- 'HEAVY_TRANSPORT': 중량물 운송, 트랜스포터, 크레인 배차 문의\n"
@@ -83,7 +85,11 @@ class UniversalQueryAnalysis(BaseModel):
     )
     target_categories: List[DocCategory] = Field(
         default_factory=list,
-        description="필요한 RAG 7대 지식 카테고리 목록",
+        description=(
+            "문서 기반 지식 검색(RAG)이 필요한 질의(`knowledge_qa`, `doc_generation`)에 한해 "
+            "해당하는 기술·안전·규정 문서 분류 목록을 선택하고, "
+            "단순 데이터 원장 조회나 일반 대화일 경우에는 빈 리스트(`[]`)를 반환할 것"
+        ),
     )
     need_weather: bool = Field(
         default=False,
@@ -119,6 +125,15 @@ class UniversalQueryAnalysis(BaseModel):
     search_queries: List[str] = Field(
         default_factory=list,
         description="벡터 검색용 공학 표준 키워드 쿼리",
+    )
+    direct_chat_reply: Optional[str] = Field(
+        default=None,
+        description=(
+            "task_type이 'chat'인 경우에만 작성하는 2~3줄 이내의 간결한 응답. "
+            "오직 [최신 사용자 질의]에만 답변하며 이전 대화 내용을 다시 요약하지 말 것. "
+            "조선·해양 도메인 외 분야의 지원 가능 여부를 물으면 해당 분야 미지원 안내와 현재 지원 가능한 조선소 업무를 간결히 답변할 것."
+            "조선소 업무 외 일상 잡담은 짧게 응대하되 조선소 공정·작업지시 지원 역할을 안내할 것"
+        ),
     )
 
 
@@ -265,12 +280,9 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
 
     old_block = existing_params.get("block_id")
     should_reset_context = (
-        (cleaned_block_id and old_block and cleaned_block_id != old_block)
-        or (
-            not is_waiting
-            and res.context_action == "RESET_NEW"
-            and res.task_type != "doc_generation"
-        )
+        not is_waiting  # 직전 턴이 역질문 대기 상태가 아니었다면 항상 깨끗한 상태에서 새 지시 시작
+        or (cleaned_block_id and old_block and cleaned_block_id != old_block)
+        or (res.context_action == "RESET_NEW" and res.task_type != "doc_generation")
     )
 
     # intent_slot_extractor_node 내부 슬롯 병합 부분 교체
@@ -283,6 +295,10 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         }
     else:
         merged_params = dict(existing_params)
+        
+    # 날씨 질의(knowledge_qa)에서도 사용자가 명시한 도시명(예: '대구')은 기상 MCP 조회를 위해 반영
+    if res.location and str(res.location).strip():
+        merged_params["location"] = str(res.location).strip()
 
     # knowledge_qa는 단순 기술 질문이므로 이후 작업지시서 슬롯에 누적하지 않음
     if res.task_type != "knowledge_qa":
@@ -328,13 +344,17 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         }
 
     if res.task_type == "chat":
+        reply_text = (res.direct_chat_reply or "").strip() or (
+            "안녕하세요! 스마트 조선소 공정 관제 및 작업지시 지원 AI입니다. 무엇을 도와드릴까요?"
+        )
         return {
             "task_type": "chat",
+            "need_erp_check": False,
             "extracted_params": merged_params,
             "is_param_complete": "yes",
             "missing_params": [],
             "search_status": "completed",
-            "final_answer": "안녕하세요! 스마트 조선소 공정 관제 및 작업지시 지원 에이전트입니다. 작업지시서 발행, WPS 규격 조회, ERP 자재/자격증/비전 상태 확인 등 무엇을 도와드릴까요?",
+            "final_answer": reply_text,
         }
 
     need_weather_flag = True if res.task_type == "doc_generation" else res.need_weather
@@ -360,9 +380,15 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
 
 def route_after_intent(state: ShipAgentState) -> Literal["hq_erp_diagnostician", "spec_completeness_judge", "__end__"]:
     task_type = state.get("task_type")
+    params = state.get("extracted_params") or {}
     if task_type == "chat":
         return "__end__"
     if task_type == "vision_inspection_qa":
+        return "spec_completeness_judge"
+    # 단순 기상 질의 등 블록·작업자·자재 진단이 불필요한 knowledge_qa는 ERP 진단 생략
+    if task_type == "knowledge_qa" and not any(
+        params.get(k) for k in ("block_id", "material", "worker_name", "equipment")
+    ):
         return "spec_completeness_judge"
     return "hq_erp_diagnostician"
 
@@ -404,11 +430,17 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
             merged_params["work_zone"] = bm["work_zone"]
 
     branch_info = erp_status.get("branch_info") or {}
-    loc_upper = str(merged_params.get("location") or "").upper()
-    if branch_info.get("region_name"):
+    user_query_text = state.get("user_query", "")
+    current_loc = str(merged_params.get("location") or "").strip()
+    loc_upper = current_loc.upper()
+
+    # 사용자가 현재 질문에 직접 언급한 지역명(예: '대구')이 있으면 로그인 야드 지역명('울산')으로 덮어쓰지 않음
+    is_user_explicit_loc = bool(current_loc and current_loc in user_query_text)
+
+    if branch_info.get("region_name") and not is_user_explicit_loc:
         if (
             bm is not None
-            or not merged_params.get("location")
+            or not current_loc
             or any(tok in loc_upper for tok in ("ZONE", "DOCK", "BAY"))
         ):
             merged_params["location"] = branch_info["region_name"]

@@ -26,7 +26,7 @@ from modules.agent.tools.erp_tools import (
 )
 
 # 일반 QA 응답은 빠른 모델로, 공식 작업지시서 구조화 설계는 정밀 모델로 분리
-qa_llm = ChatOpenAI(model="gpt-5-mini")
+qa_llm = ChatOpenAI(model="gpt-5-mini", reasoning_effort="low")
 llm = ChatOpenAI(model="gpt-5.1")
 
 
@@ -75,6 +75,17 @@ class WorkOrderGenerationOutput(BaseModel):
         description="인출된 RAG 문서(Hull Weld Inspection 등)에 명시된 비파괴검사(VT/RT/UT/MT) 요건"
     )
 
+class DomainQAResponse(BaseModel):
+    answer: str = Field(
+        description="사용자 질의에 대한 핵심 답변 (불필요한 장문 서론·반복 요약·전체 표 재작성 제외)"
+    )
+    is_supported_by_internal_docs: bool = Field(
+        default=True,
+        description=(
+            "인출된 사내 규격 문서(RAG)에 사용자 질문의 대상 분야·공법에 해당하는 근거가 실제로 존재하면 True, "
+            "사내 규격에 해당 분야 규정이 없어 지원 한계만 고지하는 경우 False"
+        ),
+    )
 
 # ==============================================================================
 # 0. Team 3 거버넌스 게이트키퍼 노드 (Supervisor / Safety & Process Interlock)
@@ -268,16 +279,23 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "제공된 [현재 누적 작업 제원], [본사 SHIP_ERP 자원 및 인사 현황], [인출된 사내 규격 문서(RAG)] 및 이전 대화 맥락만을 근거로 명확하고 체계적인 마크다운으로 답변하세요.\n\n"
         "[안내 원칙]\n"
         "1. **인사 원장 및 작업자 추천 (`hr_worker_qa`, `hr_safety_qa`)**:\n"
-        "   - 전체 작업자 조회 시에는 [사내외 인사 원장 마크다운 표]를 포함하여 안내하세요.\n"
-        "   - 특정 블록이나 공정이 [현재 누적 작업 제원]에 설정되어 있거나 질문에 언급된 경우, 해당 야드(`branch_code`) 및 요구 용접 공정(`process`)과 일치하고 상태가 `VALID`인 적격 작업자를 별도로 콕 집어 추천하세요.\n"
+        "   - 전체 인사 원장 마크다운 표는 시스템이 응답 상단에 자동으로 부착하므로, 답변 본문에 전체 표를 절대 다시 작성하지 마세요.\n"
+        "   - 대신 제공된 [사내외 인사 원장 마크다운 표]와 [본사 SHIP_ERP 자원 현황]을 근거로 질문 조건(야드, 공정, 대기 여부, 자격 유효성)에 맞는 핵심 인원 요약 및 추천만 4~5줄 이내로 간결하게 작성하세요.\n"
         "2. **강종·두께·자격 요건 질의 (`knowledge_qa`)**:\n"
         "   - 강종이나 판 두께 문의 시 [본사 SHIP_ERP 자원 현황]의 `available_blocks` 및 `inventory`에 실제 등록된 가용 규격을 최우선으로 안내하고 RAG 규격을 보충 설명하세요.\n"
-        "   - 작업자 자격 요건 문의 시 대상 용접 공정(`FCAW`, `SAW`, `GMAW`)과 일치하는 인증 공정(`weld_process`) 및 유효기간 내의 선급 자격 규격(`KR-FCAW-6G`, `AWS-D1.1-6G`, `DNV-SAW-1G` 등)을 설명하고 적격 작업자를 안내하세요.\n"
+        "   - 작업자 자격 요건 문의 시 대상 용접 공정과 일치하는 인증 공정(`weld_process`) 및 유효기간 내의 선급 자격 규격(`cert_code`)을 설명하고 적격 작업자를 안내하세요.\n"
         "3. **비전 관제 질의 (`vision_inspection_qa`)**:\n"
         "   - 제공된 [비전(YOLOv11) 실시간 관제 및 검사 현황]만을 근거로 용접 대기 구역(`BEFORE_WELD`) 및 탐지 상태를 표와 함께 브리핑하세요.\n"
-        "4. **사내 ERP 재고/장비 및 외주 실행 (`erp_resource_qa`, `scm_partner_qa`)**:\n"
-        "   - 특정 야드 문의 시 해당 `branch_code` 자원만 필터링하고, 장비 `operation_status`의 `'STANDBY'`(대기 중)와 `'IN_USE'`(운행 중)를 구분하세요.\n"
-        "5. **규정 범위 한계 명시**: 사용자 질문의 대상 분야나 공법(예: 우주항공, 진공 플라즈마 등)이 [인출된 사내 규격 문서(RAG)]에 직접 존재하지 않는 경우, 사내 조선소 표준에는 해당 규정이 없음을 먼저 명확히 밝힌 뒤 유사·참고 가능한 일반 선급 기준만 구분하여 안내하세요.",
+        "4. **사내 ERP 자원 및 협력사 B2B 조회 (`erp_resource_qa`, `scm_partner_qa`)**:\n"
+        "   - 전사 야드(사업장) 목록이나 개수를 물으면 [본사 SHIP_ERP 자원 현황]의 `all_branches` 목록을 기준으로 정확히 안내하고, 특정 야드 자원 문의 시 해당 `branch_code` 자원만 필터링하며 장비 `operation_status`의 `'STANDBY'`(대기 중)와 `'IN_USE'`(운행 중)를 구분하세요.\n"
+        "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 `registered_companies` 및 상세 가용 목록을 빠짐없이 반영하세요.\n"
+        "   - 2건 이상의 항목(야드, 자재 재고, 장비, 협력사 목록 및 위치·단가 등)을 안내할 때는 절대 한 문단 줄글로 쓰지 말고, 항목별 소제목(`###`)과 **마크다운 표**로 정리한 뒤 아래에 1~2줄 요약만 덧붙이세요.\n"
+        "5. **규정 범위 한계 명시 및 불필요한 자원 나열 금지**:\n"
+        "   - 사용자가 사내 자재, 블록, 장비, 작업자 현황을 명시적으로 묻지 않은 일반 기술·규정 질문에서는 [본사 SHIP_ERP 자원 현황]의 상세 표나 전체 목록을 나열하지 마세요.\n"
+        "   - 질문 대상 분야나 공법이 [인출된 사내 규격 문서(RAG)]에 존재하지 않는 경우, 장황한 일반론이나 단계별 가이드를 생성하지 말고 아래 3가지만 4~5줄 이내로 간결하게 답변하세요:\n"
+        "       (1) 사내 표준 규격(RAG)에는 해당 분야 규정이 없음을 명확히 고지\n"
+        "       (2) [본사 SHIP_ERP 자원 현황]에 실제 등록된 지원 가능 공정 및 강종 범위를 동적으로 요약 안내\n"
+        "       (3) 현재 사내 규격 내에서 확인이 필요한 항목 역질문\n"
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
@@ -294,192 +312,161 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
     ),
 ])
 
-
 def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
-    task_type = state.get("task_type")
+    """
+    일반 기술 규격(knowledge_qa), ERP 자원(erp_resource_qa), 인사 원장(hr_worker_qa/hr_safety_qa),
+    비전 관제(vision_inspection_qa), 외주 협력사 조회 및 단독 PO 초안(scm_partner_qa) 응답 생성 노드
+    """
+    task_type = state.get("task_type", "knowledge_qa")
     params = state.get("extracted_params") or {}
-    messages = state.get("messages", [])
+    erp_status = state.get("erp_resource_status") or {}
+    partner_plan = state.get("partner_erp_plan") or {}
+    docs = state.get("retrieved_docs") or []
+    weather = state.get("weather_data") or {}
+    vision_data = state.get("vision_data") or {}
+    messages = state.get("messages") or []
     user_query = state.get("user_query", "")
-    erp_status_data = state.get("erp_resource_status") or {}
 
-    need_worker_table = task_type in ("hr_worker_qa", "hr_safety_qa") or (
-        task_type == "knowledge_qa"
-        and any(kw in user_query for kw in ("작업자", "인력", "용접사", "자격", "반장", "투입", "명단"))
-    )
-
+    # 1. 사내외 인사 원장 마크다운 표 생성 (인사 질의 시에만 Oracle 조회하여 불필요한 DB 왕복 절감)
     worker_table_md = "해당 없음"
-    if need_worker_table:
-        workers = erp_status_data.get("available_workers") or []
-        if not workers:
-            db_res = list_erp_workers.invoke({"branch_code": None})
-            workers = db_res.get("workers", [])
-        if workers:
-            worker_table_md = "### 👷 사내외 인사 원장 (`ERP_WORKER_CERT`) 실시간 작업자 현황\n\n"
-            worker_table_md += "| 작업자명 | 사번 (`WORKER_ID`) | 고용형태 | 소속업체 | 상주야드 | 직책 (`ROLE`) | 선급 자격 규격 | 인증공정 | 자격 만료일 | 상태 |\n"
-            worker_table_md += "|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|\n"
-            for w in workers:
-                is_val = w.get("is_valid") if "is_valid" in w else (str(w.get("status", "")).upper() == "VALID")
-                status_badge = "✅ 투입 가능" if is_val else "❌ 투입 불가"
-                worker_table_md += (
-                    f"| {w.get('worker_name', '-')} | {w.get('worker_id', '-')} | {w.get('employment_type', '-')} "
-                    f"| {w.get('company_code', '-')} | {w.get('branch_code', '-')} | {w.get('role', '-')} "
-                    f"| {w.get('cert_code', '-')} | {w.get('weld_process', '-')} | {w.get('cert_expiry_date', '-')} | {status_badge} |\n"
-                )
-            worker_table_md += f"\n> 💡 *현재 Oracle `ERP_WORKER_CERT`에 등록된 작업자는 총 {len(workers)}명입니다.*"
-
-    docs = state.get("retrieved_docs", [])
-    docs_text = (
-        "\n\n".join(
-            f"- [{d.get('metadata', {}).get('document_name', '-')} p.{d.get('metadata', {}).get('page', 1)}]: {d.get('content', '')}"
-            for d in docs
-        )
-        or "해당 없음"
-    )
-    include_weather = (
-        state.get("need_weather", False)
-        and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa", "hr_safety_qa", "vision_inspection_qa")
-    )
-    weather_context_str = (
-        json.dumps(
-            state.get("weather_data") or {},
-            ensure_ascii=False,
-            indent=2,
-            cls=DecimalEncoder,
-        )
-        if include_weather and state.get("weather_data")
-        else "해당 없음 (기상 무관 질의)"
-    )
-
-    vision_context_str = (
-        json.dumps(
-            state.get("vision_data") or {},
-            ensure_ascii=False,
-            indent=2,
-            cls=DecimalEncoder,
-        )
-        if task_type == "vision_inspection_qa" and state.get("vision_data")
-        else "해당 없음"
-    )
-
-    try:
-        res = (QA_PROMPT | qa_llm).invoke({
-            "messages": messages[-6:] if messages else [],
-            "task_type": task_type,
-            "params": json.dumps(params, ensure_ascii=False, cls=DecimalEncoder),
-            "query": user_query,
-            "worker_table": worker_table_md,
-            "vision_status": vision_context_str,
-            "erp_status": json.dumps(
-                erp_status_data,
-                ensure_ascii=False,
-                indent=2,
-                cls=DecimalEncoder,
-            ) if task_type != "vision_inspection_qa" else "해당 없음",
-            "partner_plan": json.dumps(
-                state.get("partner_erp_plan") or {},
-                ensure_ascii=False,
-                indent=2,
-                cls=DecimalEncoder,
-            ) if task_type == "scm_partner_qa" else "해당 없음",
-            "docs": docs_text if task_type == "knowledge_qa" else "해당 없음",
-            "weather": weather_context_str,
-        })
-        answer_content = res.content
-    except Exception as e:
-        print(f"⚠️ [Team 3 QA Writer LLM 호출 오류]: {e}")
-        answer_content = (
-            "요청하신 데이터를 조회했으나 응답 요약 중 일시적인 통신 지연이 발생했습니다. "
-            "잠시 후 다시 시도해 주세요."
-        )
-
-    # 단독 외주 발주/배차 실행 요청(scm_partner_qa + is_action_requested=True)인 경우에만 HITL 결재안(DRAFT) 생성
-    generated_doc = None
-    if task_type == "scm_partner_qa":
-        partner_plan = state.get("partner_erp_plan") or {}
-        selected_partner = partner_plan.get("selected_partner") or {}
-        is_action_req = bool(state.get("is_action_requested"))
-        if is_action_req and selected_partner.get("partner_id"):
-            from modules.agent.tools.document_tools import export_outsourcing_po_pdf
-
-            params_copy = dict(params)
-            erp_status = dict(erp_status_data)
-            branch_info = erp_status.get("branch_info") or {}
-            block_master = erp_status.get("block_master") or {}
-
-            block_id = params_copy.get("block_id") or block_master.get("block_id") or "BLK-DIRECT"
-            po_draft_no = f"PO-DRAFT-{block_id}-{uuid.uuid4().hex[:4].upper()}"
-            partner_id = selected_partner.get("partner_id")
-            partner_name = selected_partner.get("partner_name") or partner_id
-            biz_type = selected_partner.get("business_type") or "OUTSOURCED_B2B"
-
-            delivery_zone = (
-                params_copy.get("work_zone")
-                or branch_info.get("default_zone")
-                or state.get("default_workspace")
-                or "ZONE-A-BAY1"
+    if task_type in ("hr_worker_qa", "hr_safety_qa"):
+        try:
+            workers_res = list_erp_workers.invoke({
+                "branch_code": None,
+                "process": None,
+            })
+            workers = (
+                workers_res.get("workers", [])
+                if isinstance(workers_res, dict)
+                else (workers_res or [])
             )
-            params_copy["work_zone"] = delivery_zone
-            if not params_copy.get("branch_code"):
-                params_copy["branch_code"] = branch_info.get("branch_code") or state.get("branch_code") or "BR-ULSAN-01"
+            if workers:
+                lines = [
+                    "| 작업자명 | 사번 (WORKER_ID) | 고용형태 | 소속업체 | 상주야드 | 직책 (ROLE) | 선급 자격 규격 | 인증공정 | 자격 만료일 | 상태 |",
+                    "|---|---|---|---|---|---|---|---|---|---|",
+                ]
+                for w in workers:
+                    status_val = str(
+                        w.get("status") or w.get("cert_status") or ""
+                    ).upper()
+                    is_ok = (status_val == "VALID") or (w.get("is_valid") is True)
+                    status_badge = "✅ 투입 가능" if is_ok else "❌ 투입 불가"
+                    expiry_val = w.get("expiry_date") or w.get("cert_expiry_date") or "-"
+                    lines.append(
+                        f"| {w.get('worker_name', '-')} | {w.get('worker_id', '-')} | {w.get('employment_type', '-')} | "
+                        f"{w.get('company_code', '-')} | {w.get('branch_code', '-')} | {w.get('role', '-')} | "
+                        f"{w.get('cert_code', '-')} | {w.get('weld_process', '-')} | {expiry_val} | {status_badge} |"
+                    )
+                worker_table_md = "\n".join(lines)
+            else:
+                worker_table_md = "조회된 작업자가 없습니다."
+        except Exception as e:
+            worker_table_md = f"인사 원장 조회 오류: {e}"
 
-            wire_code = selected_partner.get("hq_item_code") or erp_status.get("selected_wire_code") or "WIRE-CSF71T"
-            req_wire_kg = float(params_copy.get("quantity") or params_copy.get("wire_kg") or 100.0)
-            vehicle_code = selected_partner.get("assigned_vehicle_code") or erp_status.get("assigned_vehicle_code") or "EXT-TRUCK-01"
-            worker_id = selected_partner.get("assigned_worker_id") or selected_partner.get("ext_worker_id") or "-"
-            worker_name = selected_partner.get("worker_name") or params_copy.get("worker_name") or "협력사 파견기사"
+    # 2. 비전 관제 데이터 및 RAG 문서 포맷팅
+    vision_text = (
+        json.dumps(vision_data, ensure_ascii=False, cls=DecimalEncoder)
+        if vision_data
+        else "조회된 비전 관제 데이터 없음"
+    )
 
-            erp_commit_draft = {
-                "work_order_number": po_draft_no,
-                "po_number": po_draft_no,
-                "execution_type": "OUTSOURCED_B2B",
-                "is_outsourced": True,
-                "is_standalone_po": True,
-                "partner_id": partner_id,
-                "worker_id": worker_id,
-                "worker_name": worker_name,
-                "assigned_vehicle_code": vehicle_code,
-                "reserved_wire_kg": req_wire_kg,
-                "erp_transaction_status": "DRAFT",
-            }
+    if docs:
+        doc_chunks = []
+        for idx, d in enumerate(docs, 1):
+            meta = d.get("metadata") or {}
+            src = meta.get("document_name") or meta.get("source") or "사내문서"
+            page = meta.get("page", "-")
+            doc_chunks.append(f"[{idx}] ({src}, p.{page})\n{d.get('content', '')}")
+        docs_text = "\n\n".join(doc_chunks)
+    else:
+        docs_text = "인출된 사내 규격 문서 없음"
 
-            generated_doc = {
-                "work_order_number": po_draft_no,
-                "po_number": po_draft_no,
-                "revision_no": "Rev.1",
-                "title": f"[DRAFT] {partner_name} 단독 외주 발주·배차 요청 ({biz_type})",
-                "status": "DRAFT",
-                "approval_status": "DRAFT",
-                "reviewed_by": state.get("user_name") or "현장기안자",
-                "execution_type": "OUTSOURCED_B2B",
-                "is_standalone_po": True,
-                "assigned_vehicle_code": vehicle_code,
-                "wire_item_code": wire_code,
-                "reserve_wire_kg": req_wire_kg,
-                "erp_commit": erp_commit_draft,
-                "partner_erp_plan": partner_plan,
-                "parameters": params_copy,
-                "welding_params_json": {"standalone_po": True, "business_type": biz_type},
-                "source_refs_json": [],
-                "external_env_json": {},
-                "content": answer_content,
-                "instruction_text": answer_content,
-                "erp_resource_status": erp_status,
-            }
+    # 3. 구조화 출력(DomainQAResponse)으로 핵심 요약 및 사내 규격 적합성 판별
+    structured_qa = llm.with_structured_output(
+        DomainQAResponse,
+        method="function_calling",
+    )
+    qa_out: DomainQAResponse = (QA_PROMPT | structured_qa).invoke({
+        "messages": messages[-6:] if messages else [],
+        "task_type": task_type,
+        "params": json.dumps(params, ensure_ascii=False, cls=DecimalEncoder),
+        "query": user_query,
+        "worker_table": worker_table_md,
+        "vision_status": vision_text,
+        "erp_status": json.dumps(erp_status, ensure_ascii=False, cls=DecimalEncoder),
+        "partner_plan": json.dumps(partner_plan, ensure_ascii=False, cls=DecimalEncoder),
+        "docs": docs_text,
+        "weather": json.dumps(weather, ensure_ascii=False, cls=DecimalEncoder),
+    })
 
-            try:
-                po_raw = export_outsourcing_po_pdf.invoke({"document_data": generated_doc})
-                po_res = json.loads(po_raw) if isinstance(po_raw, str) else {}
-                if po_res.get("status") == "SUCCESS":
-                    generated_doc["files"] = {
-                        "po_pdf_path": po_res.get("po_pdf_path"),
-                        "download_po_pdf_url": po_res.get("download_po_pdf_url"),
-                    }
-            except Exception as e:
-                print(f"⚠️ [단독 PO 초안 PDF 생성 오류]: {e}")
+    answer = (qa_out.answer or "").strip()
+
+    # 4. hr_worker_qa 시 파이썬이 생성한 전체 인사 원장 표를 LLM 요약 상단에 즉시 결합 (출력 토큰 절감)
+    if (
+        task_type == "hr_worker_qa"
+        and worker_table_md
+        and worker_table_md != "해당 없음"
+        and "조회된 작업자가 없습니다" not in worker_table_md
+    ):
+        answer = (
+            f"### 👷 사내외 인사 원장 (ERP_WORKER_CERT) 실시간 현황\n\n"
+            f"{worker_table_md}\n\n---\n\n{answer}"
+        )
+
+    # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 (실제 발주/배차 실행 요청일 때만 생성)
+    generated_doc: Optional[Dict[str, Any]] = None
+    selected_partner = (partner_plan or {}).get("selected_partner") or {}
+    if (
+        task_type == "scm_partner_qa"
+        and bool(state.get("is_action_requested"))
+        and selected_partner.get("partner_id")
+        and state.get("is_outsourcing_required")
+    ):
+        fallback_list = (
+            (partner_plan or {}).get("available_vehicles")
+            or (partner_plan or {}).get("available_items")
+            or (partner_plan or {}).get("available_workers")
+            or []
+        )
+        if fallback_list and isinstance(fallback_list[0], dict):
+            selected_partner = fallback_list[0]
+    if (
+        task_type == "scm_partner_qa"
+        and selected_partner.get("partner_id")
+        and state.get("is_outsourcing_required")
+    ):
+        branch_code = (
+            params.get("branch_code")
+            or (erp_status.get("branch_info") or {}).get("branch_code")
+            or "BR-ULSAN-01"
+        )
+        partner_name = selected_partner.get("partner_name") or selected_partner.get("partner_id")
+        generated_doc = {
+            "is_standalone_po": True,
+            "work_id": state.get("work_id"),
+            "title": f"[DRAFT] {branch_code} 외주 발주/배차 요청 ({partner_name})",
+            "status": "DRAFT",
+            "approval_status": "DRAFT",
+            "execution_type": "OUTSOURCED_B2B",
+            "reviewed_by": state.get("user_name") or "현장검토대기",
+            "parameters": params,
+            "erp_resource_status": erp_status,
+            "partner_erp_plan": partner_plan,
+            "instruction_text": answer,
+            "content": answer,
+        }
+
+    # 6. 사내 규격 미보유/부적합 시 하단 PDF 출처 배지 제거 (하드코딩 0%)
+    is_doc_irrelevant = (
+        str(state.get("doc_grade", "")).lower() == "no"
+        or not qa_out.is_supported_by_internal_docs
+    )
 
     return {
-        "final_answer": answer_content,
+        "final_answer": answer,
         "generated_document": generated_doc,
+        "erp_commit_result": generated_doc,
+        "retrieved_docs": [] if is_doc_irrelevant else docs,
     }
 
 

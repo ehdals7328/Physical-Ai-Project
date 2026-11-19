@@ -217,6 +217,7 @@ def check_hq_erp_resources(
         "assigned_lot_no": None,
         "vehicles_equipment": [],
         "assigned_vehicle_code": None,
+        "all_branches": [],
     }
 
     if not erp_engine:
@@ -226,6 +227,11 @@ def check_hq_erp_resources(
 
     try:
         with erp_engine.connect() as conn:
+            # 0. 전사 야드(ERP_BRANCHES) 전체 마스터 조회 (야드 개수·위치·시설유형·기본작업구역 질의 대응)
+            branch_rows = conn.execute(
+                text("SELECT * FROM ERP_BRANCHES ORDER BY branch_code")
+            ).mappings().all()
+            result["all_branches"] = [dict(r) for r in branch_rows]
             # 1. 등록된 전체 블록 마스터 요약 조회 (제원 안내 및 추천용)
             all_blocks = conn.execute(
                 text("""

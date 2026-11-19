@@ -18,7 +18,7 @@ from modules.agent.tools.vision_tools import get_vision_inspection_status, get_v
 from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
 
 # Grader 및 분류 속도 최적화를 위해 즉시 응답 모델 사용
-llm = ChatOpenAI(model="gpt-5-mini")
+llm = ChatOpenAI(model="gpt-5-mini", reasoning_effort="low")
 
 
 # ==============================================================================

@@ -110,13 +110,13 @@ def _check_session_running(user_id: int, thread_id: str) -> bool:
         try:
             elapsed_sec = (datetime.utcnow() - latest_exec.created_at).total_seconds()
             if elapsed_sec > 300:
-                latest_exec.status_code = "FAILED"
+                latest_exec.status_code = "ERROR"
                 latest_exec.current_state = "TIMEOUT"
                 latest_exec.error_message = "백그라운드 작업 시간 초과(300초)"
                 db.session.commit()
                 return False
         except Exception:
-            pass
+            db.session.rollback()
     return True
 
 
