@@ -50,6 +50,42 @@ def _run_async(coro):
     return result_box.get("value")
 
 
+
+def _ensure_fresh_gmail_token(oauth_path: str, cred_path: str) -> None:
+    """Node.js(node-fetch)의 Premature close 버그 우회를 위해 만료 5분 전 파이썬으로 토큰 사전 갱신"""
+    import json, time, urllib.request, urllib.parse
+    try:
+        with open(cred_path, "r", encoding="utf-8") as f:
+            creds = json.load(f)
+        expiry_ms = int(creds.get("expiry_date") or 0)
+        # 만료까지 5분(300초) 이상 남아있으면 갱신 생략
+        if expiry_ms > (time.time() + 300) * 1000:
+            return
+        refresh_token = creds.get("refresh_token")
+        if not refresh_token:
+            return
+        with open(oauth_path, "r", encoding="utf-8") as f:
+            raw_keys = json.load(f)
+        keys = raw_keys.get("installed") or raw_keys.get("web") or {}
+        data = urllib.parse.urlencode({
+            "client_id": keys["client_id"],
+            "client_secret": keys["client_secret"],
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }).encode("utf-8")
+        req = urllib.request.Request("https://oauth2.googleapis.com/token", data=data)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            new_tok = json.loads(resp.read().decode("utf-8"))
+        if new_tok.get("access_token"):
+            creds["access_token"] = new_tok["access_token"]
+            creds["expiry_date"] = int((time.time() + int(new_tok.get("expires_in", 3600)) - 60) * 1000)
+            with open(cred_path, "w", encoding="utf-8") as f:
+                json.dump(creds, f, indent=2)
+            print("🔄 [Gmail OAuth] Python 사전 토큰 갱신 완료")
+    except Exception as e:
+        print(f"⚠️ [Gmail OAuth 사전 갱신 참고]: {e}")
+
+
 async def _call_gmail_mcp_send_email(
     to_list: List[str],
     subject: str,
@@ -94,6 +130,7 @@ async def _call_gmail_mcp_send_email(
         if p and Path(p).exists()
     ]
 
+    _ensure_fresh_gmail_token(oauth_path, cred_path)
     mcp_env = os.environ.copy()
     mcp_env["GMAIL_OAUTH_PATH"] = oauth_path
     mcp_env["GMAIL_CREDENTIALS_PATH"] = cred_path

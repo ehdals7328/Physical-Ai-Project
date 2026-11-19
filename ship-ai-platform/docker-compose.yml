@@ -68,10 +68,14 @@ services:
     environment:
       TZ: Asia/Seoul
       PYTHONUNBUFFERED: "1"
+      NODE_OPTIONS: "--dns-result-order=ipv4first"
       WEATHER_MCP_SERVER_URL: http://127.0.0.1:8000/mcp
       PARTNER_MCP_SERVER_URL: http://127.0.0.1:8001/mcp
     command: >
       sh -c "pip install -q psycopg2-binary &&
+             mkdir -p /root/.gmail-mcp &&
+             cp -f /app/gcp-oauth.keys.json /root/.gmail-mcp/gcp-oauth.keys.json 2>/dev/null || true;
+             cp -f /app/.gmail-mcp-credentials.json /root/.gmail-mcp/credentials.json 2>/dev/null || true;
              python -u mcp_servers/weather_server.py &
              python -u mcp_servers/partner_mcp_server.py &
              sleep 2 &&
