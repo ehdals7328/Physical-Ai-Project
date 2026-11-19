@@ -155,7 +155,8 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "2. **인사 조회 vs 협력사 외주 조회 구분**: 사용자가 사외 협력사, 하청, 외주 또는 등록된 협력사명을 명시적으로 언급하지 않고 투입 가능한 작업자를 묻는 경우에는 `hr_worker_qa`로 분류하십시오.\n"
         "3. **비전 관제 질의**: 현장 비전 탐지 현황, 용접 대기 구역, 용접선 포착 상태, 간섭 장애물, 결함 현황 조회는 `vision_inspection_qa`로 분류하십시오.\n"
         "4. **실행 모드**: 사용자가 명시적으로 외주·협력사·사외 연계를 지정한 경우에만 `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하고, 별도 언급이 없으면 `'AUTO'`로 두십시오.\n"
-        "5. **독립 주제 전환(`RESET_NEW`)**: 이전 작업지시서와 무관하게 전체 비전 카메라 현황, 단독 외주 배차/발주, 일반 기술 규격 등을 새로 질문한 경우에는 `context_action='RESET_NEW'`로 분류하십시오.",
+        "5. **독립 주제 전환(`RESET_NEW`)**: 이전 작업지시서와 무관하게 전체 비전 카메라 현황, 단독 외주 배차/발주, 일반 기술 규격 등을 새로 질문한 경우에는 `context_action='RESET_NEW'`로 분류하십시오.\n"
+        "6. **기상·환경 조건 질의(`knowledge_qa`)**: 지역명과 함께 현장 기상·기온·풍속·강수 상태를 묻는 질문은 일상 잡담(`chat`)이 아니라 반드시 `task_type='knowledge_qa'` 및 `need_weather=True`로 분류하십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
