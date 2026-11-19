@@ -29,7 +29,7 @@
 
         <!-- =================================================================
              [SECTION 1] 📹 Vision 관제 저장 미디어 보관함 관리
-             - 파일 삭제 시 DB 기록(7·8·9번 테이블)은 영구 보존하고 폴더의 미디어 파일만 삭제
+             - 카메라 채널 / 저장 일시(단일 날짜) / 키워드 검색 + 5건 단위 페이지네이션
         ================================================================== -->
         <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm">
             <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-3 gap-2">
@@ -57,7 +57,40 @@
                     <button type="button" class="btn btn-outline-dark vision-filter-btn" data-filter="UPLOAD">📁 업로드 분석본</button>
                 </div>
                 <div class="small fw-bold text-secondary">
-                    DB 비전 기록 총 <span class="text-primary" id="visionTotalCount">{{ vision_files_data.total_count }}</span>건
+                    조회된 비전 기록 총 <span class="text-primary" id="visionTotalCount">{{ vision_files_data.total_count }}</span>건
+                    <span class="text-muted fw-normal ms-1">(페이지당 5건)</span>
+                </div>
+            </div>
+
+            <!-- 카메라 · 저장 일시 · 키워드 검색 바 -->
+            <div class="bg-light border rounded-3 p-3 mb-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-3 col-md-4 col-sm-6">
+                        <label class="form-label small fw-bold mb-1 text-secondary">📹 카메라 채널</label>
+                        <select id="visionCameraSelect" class="form-select form-select-sm">
+                            <option value="ALL">전체 카메라</option>
+                            {% for cam in vision_files_data.camera_options or [] %}
+                            <option value="{{ cam }}">{{ cam }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-lg-3 col-md-4 col-sm-6">
+                        <label class="form-label small fw-bold mb-1 text-secondary">📅 저장 일시</label>
+                        <input type="date" id="visionSavedDate" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12">
+                        <label class="form-label small fw-bold mb-1 text-secondary">🔍 키워드 검색</label>
+                        <input type="text" id="visionKeywordInput" class="form-control form-control-sm"
+                               placeholder="기록번호 · 캠코드 · 파일명 · 날짜">
+                    </div>
+                    <div class="col-lg-2 col-md-12 col-sm-12 d-flex gap-1">
+                        <button type="button" id="btnVisionSearch" class="btn btn-shi-primary btn-sm fw-bold flex-grow-1">
+                            검색
+                        </button>
+                        <button type="button" id="btnVisionReset" class="btn btn-outline-secondary btn-sm">
+                            초기화
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -87,8 +120,6 @@
 
         <!-- =================================================================
              [SECTION 2] 📄 사내 규범 PDF (RAG) 파일 관리 (ADMIN 전용)
-             - 동일 해시(내용 100% 동일) 파일은 중복 INSERT 없이 기존 행만 갱신
-             - 내용이 바뀐 개정본(해시 다름) 교체 시 구버전은 STORAGE_URI 분리('ARCHIVED_HISTORY')로 과거 이력 추적 보장
         ================================================================== -->
         {% if me.role == 'ADMIN' %}
         <div class="bg-white border rounded-4 p-4 shadow-sm">
@@ -213,6 +244,9 @@
 $(document).ready(function() {
     let currentVisionPage = 1;
     let currentVisionFilter = 'ALL';
+    let currentVisionCamera = 'ALL';
+    let currentVisionSavedDate = '';
+    let currentVisionKeyword = '';
     let currentDocPage = 1;
     let pendingPollTimer = null;
 
@@ -227,18 +261,35 @@ $(document).ready(function() {
     }
 
     // =====================================================================
-    // PART 1: 비전(Vision) 미디어 목록 조회 & 폴더 파일만 삭제 (DB 기록 보존)
+    // PART 1: 비전(Vision) 미디어 검색 · 5건 페이지네이션 · 폴더 파일 삭제
     // =====================================================================
     function renderVisionFilesSection(data) {
         if (!data) return;
         currentVisionPage = data.page || 1;
         currentVisionFilter = data.filter_type || currentVisionFilter;
+        if (data.camera_code !== undefined) currentVisionCamera = data.camera_code;
         $('#visionTotalCount').text(data.total_count || 0);
+
+        // 카메라 드롭다운 옵션 동기화
+        if (Array.isArray(data.camera_options)) {
+            const $camSel = $('#visionCameraSelect');
+            const prevCam = currentVisionCamera || 'ALL';
+            let camHtml = '<option value="ALL">전체 카메라</option>';
+            data.camera_options.forEach(c => {
+                camHtml += `<option value="${c}">${c}</option>`;
+            });
+            $camSel.html(camHtml);
+            if ($camSel.find(`option[value="${prevCam}"]`).length) {
+                $camSel.val(prevCam);
+            } else {
+                $camSel.val('ALL');
+            }
+        }
 
         const items = data.items || [];
         const tbody = $('#visionFilesTbody');
         if (!items.length) {
-            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">보관된 비전 미디어 내역이 없습니다.</td></tr>');
+            tbody.html('<tr><td colspan="7" class="text-center py-4 text-muted">조건에 일치하는 비전 미디어 내역이 없습니다.</td></tr>');
         } else {
             const rowsHtml = items.map(v => {
                 const isUpload = (v.source_type === 'UPLOAD');
@@ -321,12 +372,25 @@ $(document).ready(function() {
         }
     }
 
-    function loadVisionFilesPage(pageNo, filterType = currentVisionFilter) {
-        $.getJSON('/api/admin/vision-files/list', { page: pageNo, filter_type: filterType }, function(res) {
+    function loadVisionFilesPage(pageNo) {
+        $.getJSON('/api/admin/vision-files/list', {
+            page: pageNo,
+            filter_type: currentVisionFilter,
+            camera_code: currentVisionCamera,
+            saved_date: currentVisionSavedDate,
+            keyword: currentVisionKeyword
+        }, function(res) {
             if (res.status === 'SUCCESS') {
                 renderVisionFilesSection(res);
             }
         });
+    }
+
+    function applyVisionSearch() {
+        currentVisionCamera = $('#visionCameraSelect').val() || 'ALL';
+        currentVisionSavedDate = $('#visionSavedDate').val() || '';
+        currentVisionKeyword = ($('#visionKeywordInput').val() || '').trim();
+        loadVisionFilesPage(1);
     }
 
     renderVisionFilesSection(initialVisionPayload);
@@ -335,14 +399,33 @@ $(document).ready(function() {
         $('.vision-filter-btn').removeClass('btn-dark active').addClass('btn-outline-dark');
         $(this).removeClass('btn-outline-dark').addClass('btn-dark active');
         currentVisionFilter = $(this).data('filter');
-        loadVisionFilesPage(1, currentVisionFilter);
+        loadVisionFilesPage(1);
+    });
+
+    $('#visionCameraSelect, #visionSavedDate').on('change', applyVisionSearch);
+    $('#btnVisionSearch').on('click', applyVisionSearch);
+    $('#visionKeywordInput').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            applyVisionSearch();
+        }
+    });
+
+    $('#btnVisionReset').on('click', function() {
+        $('#visionCameraSelect').val('ALL');
+        $('#visionSavedDate').val('');
+        $('#visionKeywordInput').val('');
+        currentVisionCamera = 'ALL';
+        currentVisionSavedDate = '';
+        currentVisionKeyword = '';
+        loadVisionFilesPage(1);
     });
 
     $(document).on('click', '.vision-page-link', function(e) {
         e.preventDefault();
         const targetPage = Number($(this).data('page'));
         if (!targetPage || targetPage === currentVisionPage) return;
-        loadVisionFilesPage(targetPage, currentVisionFilter);
+        loadVisionFilesPage(targetPage);
     });
 
     $(document).on('click', '.btn-delete-vision', function() {
@@ -356,7 +439,10 @@ $(document).ready(function() {
             data: JSON.stringify({
                 analysis_id: aid,
                 page: currentVisionPage,
-                filter_type: currentVisionFilter
+                filter_type: currentVisionFilter,
+                camera_code: currentVisionCamera,
+                saved_date: currentVisionSavedDate,
+                keyword: currentVisionKeyword
             }),
             success: function(res) {
                 showToast(res.message, false);
@@ -367,8 +453,6 @@ $(document).ready(function() {
             }
         });
     });
-
-
 
     $(document).on('click', '.btn-purge-vision-row', function() {
         const aid = $(this).data('aid');
@@ -381,7 +465,10 @@ $(document).ready(function() {
             data: JSON.stringify({
                 analysis_id: aid,
                 page: currentVisionPage,
-                filter_type: currentVisionFilter
+                filter_type: currentVisionFilter,
+                camera_code: currentVisionCamera,
+                saved_date: currentVisionSavedDate,
+                keyword: currentVisionKeyword
             }),
             success: function(res) {
                 showToast(res.message, false);
@@ -475,7 +562,6 @@ $(document).ready(function() {
             tbody.html('<tr><td colspan="6" class="text-center py-4 text-muted">표시할 사내 규범 PDF가 없습니다. 우측 상단의 [🔄 폴더 PDF ↔ DB 동기화]를 눌러주세요.</td></tr>');
         } else {
             const rowsHtml = items.map(doc => {
-                // 표준 규칙: ARCHIVED_HISTORY 로 분리된 구버전 이력은 파일 존재 여부와 무관하게 순수 과거 이력으로 표시
                 const isArchivedHistory = (doc.is_archived === true);
                 const isActive = (doc.is_active === 'Y' && doc.file_exists && !isArchivedHistory);
                 const isPending = (doc.ingest_status === 'PENDING');
@@ -507,7 +593,6 @@ $(document).ready(function() {
                 let manageButtons = '';
 
                 if (doc.file_exists && !isArchivedHistory) {
-                    // 현재 폴더에 살아있는 최신 규범 파일
                     fileBadge = `<span class="text-dark fw-semibold">📎 ${doc.original_file_name}</span>`;
                     manageButtons = `
                         <div class="d-flex justify-content-center gap-1 flex-wrap">
@@ -533,7 +618,6 @@ $(document).ready(function() {
                         </div>
                     `;
                 } else {
-                    // 개정 교체되었거나 폴더·RAG에서 삭제되어 STORAGE_URI가 'ARCHIVED_HISTORY'로 분리된 과거 이력 행
                     fileBadge = `<span class="text-muted">🗂️ ${doc.original_file_name} <span class="badge bg-light text-secondary border ms-1">구버전/폴더제거됨</span></span>`;
                     manageButtons = `
                         <div class="d-flex justify-content-center align-items-center gap-2">
@@ -713,7 +797,6 @@ $(document).ready(function() {
         });
     });
 
-    // 비활성 과거 이력 중 불필요한 테스트 이력 행을 DB에서 정리하는 버튼
     $(document).on('click', '.btn-purge-db-row', function() {
         const docId = $(this).data('docid');
         const title = $(this).data('title');
