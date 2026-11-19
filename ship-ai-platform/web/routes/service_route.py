@@ -449,6 +449,31 @@ def _run_assistant_background(
                 generated_doc["work_id"] = draft_wo.work_id
                 generated_doc["instruction_id"] = draft_inst.instruction_id
 
+                # [수정] 실제로 초안(draft_wo)이 생성되어 승인 대기(DRAFT) 상태일 때만 결재 요청 메일 발송
+                if draft_wo and draft_wo_no and generated_doc.get("approval_status") == "DRAFT":
+                    try:
+                        from modules.agent.tools.gmail_mcp_client import send_approval_request_email
+
+                        draft_files = generated_doc.get("files") or {}
+                        draft_attachments = [
+                            p for p in [draft_files.get("pdf_path"), draft_files.get("po_pdf_path")] if p
+                        ]
+                        requester_str = f"{user.full_name} ({user.erp_employee_code or user.username})"
+
+                        send_approval_request_email(
+                            work_order_number=draft_wo_no,
+                            title=draft_wo.work_title,
+                            requester_label=requester_str,
+                            block_id=block_id_draft,
+                            branch_name=draft_wo.work_region,
+                            work_zone=draft_wo.work_zone,
+                            execution_type=generated_doc.get("execution_type") or "IN_HOUSE",
+                            summary_text=generated_doc.get("instruction_text") or generated_doc.get("content") or "",
+                            pdf_paths=draft_attachments,
+                        )
+                    except Exception as notify_err:
+                        print(f"⚠️ [결재 상신 알림 메일(비차단)]: {notify_err}")   
+
                 # 채팅창 결재 버튼(pending_doc)과 DB 스냅샷에도 work_id / instruction_id 동기화
                 for c in chunks_to_save:
                     if isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES" and isinstance(c.get("doc"), dict):

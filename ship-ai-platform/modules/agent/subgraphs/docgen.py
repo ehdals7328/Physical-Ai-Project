@@ -528,6 +528,39 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
             f"- 위 안전·자격·환경 인터록 차단 사유를 해소한 후 다시 요청해 주십시오."
         )
 
+    # [개선] 현장 물리적 위험(비전/로봇 안전 위험 또는 기상 악화 STOP) 차단일 때만 긴급 경보 메일 발송
+    # (단순 제원 누락이나 작업자 자격/공정 입력 실수는 채팅창 안내만 수행하여 관리자 알람 피로도 방지)
+    weather_data = state.get("weather_data") or {}
+    safety_status = (weather_data.get("safety_evaluation") or {}).get("status", "PASS")
+    vision_data = state.get("vision_data") or {}
+    robot_exec = vision_data.get("robot_execution") or {}
+
+    is_physical_safety_hazard = (
+        safety_status == "STOP"
+        or str(vision_data.get("safety_clearance_yn", "Y")).upper() == "N"
+        or str(vision_data.get("inspection_status", "")).upper() == "DEFECT"
+        or str(robot_exec.get("emergency_stop_yn", "N")).upper() == "Y"
+        or any("비전" in r or "기상STOP" in r or "로봇" in r for r in fail_reasons)
+    )
+
+    if is_physical_safety_hazard:
+        try:
+            from modules.agent.tools.gmail_mcp_client import send_safety_interlock_alert_email
+
+            params_hold = state.get("extracted_params") or {}
+            send_safety_interlock_alert_email(
+                block_id=params_hold.get("block_id") or "미지정",
+                branch_name=state.get("branch_code") or params_hold.get("branch_code") or "BR-ULSAN-01",
+                work_zone=params_hold.get("work_zone") or state.get("default_workspace") or "ZONE-A-BAY1",
+                worker_name=params_hold.get("worker_name") or "미지정",
+                block_reasons=fail_reasons,
+                sop_guidance_text=content_text,
+            )
+        except Exception as alert_err:
+            print(f"⚠️ [안전 인터록 경보 메일 알림(비차단)]: {alert_err}")
+    else:
+        print(f"ℹ️ [안전 경보 메일 생략]: 물리적 현장 위험이 아닌 행정/자격 사유({fail_reasons})이므로 채팅창 안내만 수행")
+
     return {
         "final_answer": content_text,
         "generated_document": {
@@ -541,7 +574,6 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
             "instruction_text": content_text,
         },
     }
-
 
 # ==============================================================================
 # 3. 공식 작업지시서 작성 및 멀티-ERP 트랜잭션 마감 워커 (work_order_writer)

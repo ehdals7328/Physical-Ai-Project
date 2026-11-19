@@ -238,3 +238,126 @@ def send_work_order_dispatch_email(
             "status": "ERROR",
             "reason": f"{type(exc).__name__}: {str(exc)}",
         }
+
+def send_approval_request_email(
+    work_order_number: str,
+    title: str,
+    requester_label: str,
+    block_id: str,
+    branch_name: str,
+    work_zone: str,
+    execution_type: str,
+    summary_text: str,
+    pdf_paths: Optional[List[str]] = None,
+    admin_email: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    [비동기 HITL 푸시 알림]
+    작업지시서 또는 외주 발주서 초안(DRAFT)이 기안되는 즉시 공정 관리자(MANAGER/ADMIN)에게
+    결재 상신 알림 메일과 초안 PDF 미리보기를 발송합니다.
+    """
+    target_email = (
+        admin_email
+        or os.getenv("ADMIN_NOTIFY_EMAIL", "")
+        or os.getenv("PARTNER_NOTIFY_EMAIL", "")
+    ).strip()
+    if not target_email:
+        return {
+            "status": "SKIPPED",
+            "reason": "ADMIN_NOTIFY_EMAIL / PARTNER_NOTIFY_EMAIL 미설정",
+        }
+
+    history_url = os.getenv("APP_BASE_URL", "http://localhost:5000").rstrip("/") + "/service/history"
+    exec_badge = "외주 협력사 연계 (OUTSOURCED_B2B)" if execution_type == "OUTSOURCED_B2B" else "사내 직영 (IN_HOUSE)"
+
+    subject = f"[결재요청/HITL] {title} ({work_order_number}) - 기안자: {requester_label}"
+    body = (
+        f"수신: K-스마트조선소 공정 관리자(MANAGER/ADMIN) 귀하\n"
+        f"발신: K-스마트조선소 자율 관제 AI 에이전트\n"
+        f"====================================================================\n"
+        f"새로운 작업지시/발주 초안(DRAFT)이 상신되어 관리자 결재를 대기 중입니다.\n\n"
+        f"■ 초안 문서번호 : {work_order_number}\n"
+        f"■ 결재 안건명   : {title}\n"
+        f"■ 수행 구분     : {exec_badge}\n"
+        f"■ 기안자        : {requester_label}\n"
+        f"■ 대상 블록/구역: {block_id} / {branch_name} ({work_zone})\n"
+        f"■ 결재 처리 경로: {history_url}\n"
+        f"====================================================================\n\n"
+        f"[AI 에이전트 기안 요약]\n"
+        f"{summary_text[:1200]}\n\n"
+        f"※ 위 결재 처리 경로([작업이력] > 관리자 결재 대기함)에서 최종 승인 또는 반려를 진행해 주세요.\n"
+    )
+
+    try:
+        res = _run_async(
+            _call_gmail_mcp_send_email(
+                to_list=[target_email],
+                subject=subject,
+                body=body,
+                attachments=pdf_paths or [],
+            )
+        )
+        print(f"📩 [Gmail MCP 결재 상신 알림 결과]: {res}")
+        return res or {"status": "ERROR", "reason": "빈 응답 반환"}
+    except Exception as exc:
+        print(f"⚠️ [Gmail MCP 결재 상신 알림 예외]: {type(exc).__name__} - {exc}")
+        return {"status": "ERROR", "reason": f"{type(exc).__name__}: {str(exc)}"}
+
+
+def send_safety_interlock_alert_email(
+    block_id: str,
+    branch_name: str,
+    work_zone: str,
+    worker_name: str,
+    block_reasons: List[str],
+    sop_guidance_text: str,
+    safety_email: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    [안전 인터록 차단(HOLD) 긴급 경보 푸시]
+    Team 3 거버넌스 게이트키퍼가 강풍, 선급 자격 만료, 공정 불일치, 비전/로봇 위험 등으로
+    작업을 강제 차단(HOLD)했을 때 현장 안전관리자에게 즉시 경보 메일과 복구 SOP를 발송합니다.
+    """
+    target_email = (
+        safety_email
+        or os.getenv("SAFETY_ALERT_EMAIL", "")
+        or os.getenv("ADMIN_NOTIFY_EMAIL", "")
+        or os.getenv("PARTNER_NOTIFY_EMAIL", "")
+    ).strip()
+    if not target_email:
+        return {
+            "status": "SKIPPED",
+            "reason": "SAFETY_ALERT_EMAIL / PARTNER_NOTIFY_EMAIL 미설정",
+        }
+
+    reasons_formatted = "\n".join(f"  - {r}" for r in (block_reasons or ["안전/자격 기준 미달"]))
+    subject = f"🚨 [긴급 안전인터록 차단/HOLD] {branch_name} {work_zone} - 블록 {block_id}"
+    body = (
+        f"수신: K-스마트조선소 안전관리자 및 공정 책임자 귀하\n"
+        f"발신: K-스마트조선소 거버넌스 인터록 게이트키퍼 (Team 3)\n"
+        f"====================================================================\n"
+        f"⚠️ 현장 위험 및 규정 미달 감지로 인해 작업지시서 발행이 강제 보류(HOLD)되었습니다.\n\n"
+        f"■ 대상 야드/구역: {branch_name} ({work_zone})\n"
+        f"■ 대상 블록     : {block_id}\n"
+        f"■ 투입 요청 인력: {worker_name or '미지정'}\n"
+        f"■ 인터록 차단 사유:\n{reasons_formatted}\n"
+        f"====================================================================\n\n"
+        f"[AI 트러블슈터 복구 및 안전 조치 가이드(SOP)]\n"
+        f"{sop_guidance_text}\n\n"
+        f"※ 현장 안전 조건 충족 및 자격 재확인 후 작업지시를 재요청하시기 바랍니다.\n"
+    )
+
+    try:
+        res = _run_async(
+            _call_gmail_mcp_send_email(
+                to_list=[target_email],
+                subject=subject,
+                body=body,
+                attachments=None,
+            )
+        )
+        print(f"🚨 [Gmail MCP 안전 인터록 경보 발송 결과]: {res}")
+        return res or {"status": "ERROR", "reason": "빈 응답 반환"}
+    except Exception as exc:
+        print(f"⚠️ [Gmail MCP 안전 인터록 경보 예외]: {type(exc).__name__} - {exc}")
+        return {"status": "ERROR", "reason": f"{type(exc).__name__}: {str(exc)}"}
