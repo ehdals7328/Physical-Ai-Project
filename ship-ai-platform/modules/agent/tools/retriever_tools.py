@@ -33,15 +33,19 @@ def _format_search_results(items: List[dict[str, Any]]) -> str:
 def search_knowledge(
     query: str,
     category: Optional[str] = None,
-    top_k: int = 4
+    top_k: int = 4,
 ) -> List[dict[str, Any]]:
     """ChromaDB 지식베이스에서 카테고리 필터(선택)를 반영하여 유사도 상위 문서를 인출합니다."""
-    cache_key = (query.strip(), category, top_k)
+    clean_query = query.strip()
+    if not clean_query:
+        return []
+
+    cache_key = (clean_query, category, top_k)
     if cache_key in _SEARCH_CACHE:
         return [dict(item) for item in _SEARCH_CACHE[cache_key]]
 
     search_kwargs: dict[str, Any] = {
-        "query": query,
+        "query": clean_query,
         "top_k": top_k,
     }
     if category:
@@ -61,15 +65,20 @@ def search_knowledge(
         results = []
 
     if not results and category:
-        search_kwargs.pop("category", None)
-        try:
-            results = store.search(**search_kwargs)
-        except Exception:
-            results = []
+        # 카테고리 지정 검색 결과가 없으면 전체 카테고리 캐시/검색으로 1회 폴백
+        fallback_key = (clean_query, None, top_k)
+        if fallback_key in _SEARCH_CACHE:
+            results = [dict(item) for item in _SEARCH_CACHE[fallback_key]]
+        else:
+            search_kwargs.pop("category", None)
+            try:
+                results = store.search(**search_kwargs)
+            except Exception:
+                results = []
 
     if not results:
         try:
-            search_kwargs["allowed_access_levels"] = ["INTERNAL", "PUBLIC", "CONFIDENTIAL", "ALL"]
+            search_kwargs["allowed_access_levels"] = ["INTERNAL", "PUBLIC", "ALL"]
             results = store.search(**search_kwargs)
         except Exception:
             pass
@@ -80,13 +89,13 @@ def search_knowledge(
             _SEARCH_CACHE.pop(next(iter(_SEARCH_CACHE)))
         _SEARCH_CACHE[cache_key] = [dict(item) for item in final_results]
 
-    return final_results
+    return [dict(item) for item in final_results]
 
 
 def search_knowledge_by_category(
     query: str,
     category: Optional[str] = None,
-    top_k: int = 4
+    top_k: int = 4,
 ) -> List[dict[str, Any]]:
     return search_knowledge(query=query, category=category, top_k=top_k)
 
@@ -94,7 +103,7 @@ def search_knowledge_by_category(
 def search_knowledge_by_categories(
     query: str,
     categories: Optional[List[str]] = None,
-    top_k: int = 4
+    top_k: int = 4,
 ) -> List[dict[str, Any]]:
     """복수 카테고리가 지정된 경우 각 카테고리 결과를 병합 및 중복 제거하여 상위 top_k개를 반환합니다."""
     if not categories:

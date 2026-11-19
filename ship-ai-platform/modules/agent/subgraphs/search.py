@@ -13,14 +13,12 @@ from pydantic import BaseModel, Field
 from modules.agent.state import ShipAgentState
 from modules.agent.tools.domain_tools import evaluate_environmental_safety
 from modules.agent.tools.erp_tools import get_branch_context_from_db, query_partner_erp_b2b
-
 from modules.agent.tools.retriever_tools import search_knowledge_by_categories
 from modules.agent.tools.vision_tools import get_vision_inspection_status, get_vision_overview_for_qa
-
 from modules.agent.tools.weather_mcp_client import get_realtime_weather_from_mcp
 
 # Grader 및 분류 속도 최적화를 위해 즉시 응답 모델 사용
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatOpenAI(model="gpt-5-mini")
 
 
 # ==============================================================================
@@ -61,7 +59,8 @@ def team2_supervisor_node(state: ShipAgentState) -> Dict[str, Any]:
             ):
                 new_plan.append("b2b_scm_collector")
             if task_type == "doc_generation" or (
-                need_weather and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa")
+                need_weather
+                and task_type not in ("scm_partner_qa", "erp_resource_qa", "hr_worker_qa", "hr_safety_qa")
             ):
                 new_plan.append("weather_and_safety")
 
@@ -89,10 +88,15 @@ def route_from_team2_supervisor(
 # ==============================================================================
 def vision_qa_collector_node(state: ShipAgentState) -> Dict[str, Any]:
     params = state.get("extracted_params") or {}
-    overview = get_vision_overview_for_qa.invoke({
-        "block_id": params.get("block_id"),
-        "camera_code": params.get("camera_code"),
-    })
+    try:
+        overview = get_vision_overview_for_qa.invoke({
+            "block_id": params.get("block_id"),
+            "camera_code": params.get("camera_code"),
+        })
+    except Exception as e:
+        print(f"⚠️ [Vision QA Collector 오류]: {e}")
+        overview = {"status": "ERROR", "error_message": str(e), "total_records": 0, "summary_counts": {}}
+
     print(
         f"   👁️ [Vision QA Collector] 조회 상태={overview.get('status')}, "
         f"전체={overview.get('total_records', 0)}건, "
@@ -145,7 +149,6 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
     if user_query and user_query not in effective_queries:
         effective_queries.append(user_query)
 
-    # 응답 속도 최적화를 위해 knowledge_qa는 상위 2개, doc_generation은 상위 3개 쿼리만 실행
     max_queries = 3 if task_type == "doc_generation" else 2
     collected_docs = []
     seen_ids = set()
@@ -156,10 +159,6 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
             raw_items = search_knowledge_by_categories(
                 query=q, categories=search_cats, top_k=4
             )
-            if not raw_items and search_cats:
-                raw_items = search_knowledge_by_categories(
-                    query=q, categories=None, top_k=4
-                )
             print(f"   🔎 [ChromaDB 조회] 쿼리='{q}' ➔ {len(raw_items)}건 인출됨")
             for item in raw_items:
                 col_type = str(
@@ -167,7 +166,7 @@ def dynamic_rag_retriever_node(state: ShipAgentState) -> Dict[str, Any]:
                     or item.get("access_level")
                     or "PUBLIC"
                 ).upper()
-                if not can_access_internal and col_type == "INTERNAL":
+                if not can_access_internal and col_type in ("INTERNAL", "CONFIDENTIAL"):
                     continue
 
                 cid = item.get("chunk_id") or str(hash(item.get("chunk_text", "")))
@@ -332,16 +331,29 @@ class OutsourcingRequirement(BaseModel):
 
 
 def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
+    task_type = state.get("task_type", "scm_partner_qa")
     erp_status = state.get("erp_resource_status") or {}
     params = state.get("extracted_params") or {}
     query = state.get("user_query", "")
     worker_qual = erp_status.get("worker_qualification") or {}
+    pref_mode = state.get("preferred_execution_mode", "AUTO")
 
     shortage_domain = state.get("outsourcing_domain")
 
-    if params.get("worker_name") and worker_qual.get("status") == "NOT_FOUND":
-        shortage_domain = "OUTSOURCED_WORKER"
-    elif shortage_domain in (None, "NOT_APPLICABLE"):
+    # 작업지시서(doc_generation) 발행 흐름이거나 도메인이 미지정된 경우에만 사내 부족 자원을 기준으로 도메인 판정
+    if task_type == "doc_generation" or shortage_domain in (None, "NOT_APPLICABLE"):
+        if params.get("worker_name") and (
+            worker_qual.get("status") == "NOT_FOUND" or not worker_qual.get("is_valid", True)
+        ):
+            shortage_domain = "OUTSOURCED_WORKER"
+        elif (
+            pref_mode != "OUTSOURCED_B2B"
+            and worker_qual.get("is_valid", False)
+            and not erp_status.get("stock_available", True)
+        ):
+            shortage_domain = "WELDING_MATERIAL"
+
+    if shortage_domain in (None, "NOT_APPLICABLE"):
         classifier = llm.with_structured_output(
             OutsourcingRequirement, method="function_calling"
         )
@@ -367,48 +379,97 @@ def b2b_scm_collector_node(state: ShipAgentState) -> Dict[str, Any]:
                 else "WELDING_MATERIAL"
             )
 
-    partner_plan = query_partner_erp_b2b.invoke({
-        "outsourcing_domain": shortage_domain,
-        "material": params.get("material") or "",
-        "process": params.get("process") or "",
-        "worker_name": params.get("worker_name") or "",
-    })
+    try:
+        partner_plan = query_partner_erp_b2b.invoke({
+            "outsourcing_domain": shortage_domain,
+            "material": params.get("material") or "",
+            "process": params.get("process") or "",
+            "worker_name": params.get("worker_name") or "",
+        })
+    except Exception as e:
+        print(f"⚠️ [B2B SCM Collector 오류]: {e}")
+        partner_plan = {
+            "status": "ERROR",
+            "outsourcing_domain": shortage_domain,
+            "error_message": str(e),
+        }
+
     return {"partner_erp_plan": partner_plan}
 
 
 # ==============================================================================
 # 5. 실시간 기상 수집, YOLOv11 비전 검사 연동 및 안전 룰 판정 워커
 # ==============================================================================
+def _append_vision_clearance_warning(
+    safety_res: Dict[str, Any], vision_info: Dict[str, Any] | None
+) -> Dict[str, Any]:
+    """비전 안전 클리어런스 미확보(N) 시 필수 안전 수칙 및 조건부 상태를 안전 평가 결과에 병합"""
+    if vision_info and vision_info.get("safety_clearance_yn") == "N":
+        rules = list(safety_res.get("mandatory_rules") or [])
+        interfering = ", ".join(
+            vision_info.get("interfering_objects") or ["간섭 장애물"]
+        )
+        rules.append(
+            f"비전 안전 인터록(VISION_INSPECTIONS): 용접선 인근 간섭({interfering}) 해소 후 착수 필수"
+        )
+        safety_res["mandatory_rules"] = rules
+        if safety_res.get("status") == "PASS":
+            safety_res["status"] = "CONDITIONAL_PASS"
+    return safety_res
+
+
 def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type", "knowledge_qa")
     params = state.get("extracted_params") or {}
 
     vision_info = state.get("vision_data")
     if task_type == "doc_generation" and not vision_info:
-        vision_info = get_vision_inspection_status.invoke({
-            "work_id": state.get("work_id") or params.get("block_id"),
-            "camera_code": params.get("camera_code"),
-        })
+        try:
+            vision_info = get_vision_inspection_status.invoke({
+                "work_id": state.get("work_id") or params.get("block_id"),
+                "camera_code": params.get("camera_code"),
+            })
+        except Exception as e:
+            print(f"⚠️ [Vision Inspection 조회 경고]: {e}")
+            vision_info = {"status": "ERROR", "error_message": str(e)}
 
     location = params.get("location")
-    if not location or "ZONE" in str(location).upper():
+    loc_upper = str(location or "").upper()
+    if not location or any(tok in loc_upper for tok in ("ZONE", "DOCK", "BAY")):
         branch_code = params.get("branch_code") or state.get("branch_code")
         b_ctx = get_branch_context_from_db(branch_code)
         location = b_ctx.get("region_name") or "Ulsan"
 
-    weather_info = dict(get_realtime_weather_from_mcp(location) or {})
+    try:
+        weather_info = dict(get_realtime_weather_from_mcp(location) or {})
+    except Exception as e:
+        weather_info = {"status": "ERROR", "error": str(e)}
+
     status = weather_info.get("status")
 
     if status != "SUCCESS":
-        print(
-            f"⚠️ [FastMCP 기상 조회 비정상]: {weather_info.get('error') or weather_info}"
+        err_msg = weather_info.get("error") or "기상 데이터 결측"
+        print(f"⚠️ [FastMCP 기상 조회 비정상]: {err_msg}")
+        fail_closed_eval = _append_vision_clearance_warning(
+            {
+                "status": "STOP",
+                "safety_level": "FORBIDDEN",
+                "is_safe": False,
+                "mandatory_rules": [
+                    f"기상 센서/MCP 데이터 수집 실패({status or 'ERROR'}: {err_msg})로 인해 안전성 검증 불가 (Fail-Closed 작업 중지)"
+                ],
+                "prerequisites": [],
+                "action_message": "기상 데이터 확인 불가로 인한 작업 즉시 보류",
+            },
+            vision_info,
         )
         return {
             "weather_data": {
                 "location": location,
                 "status": status or "ERROR",
-                "error": weather_info.get("error") or "기상 데이터 결측",
+                "error": err_msg,
                 "raw_text": weather_info.get("raw_text"),
+                "safety_evaluation": fail_closed_eval,
             },
             "vision_data": vision_info,
         }
@@ -419,7 +480,7 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
 
     temp = float(raw_temp) if raw_temp is not None else None
     wind = float(raw_wind) if raw_wind is not None else None
-    rain = float(raw_rain) if raw_rain is not None else 0.0
+    rain = float(raw_rain) if raw_rain is not None else None
 
     try:
         process_ctx = (
@@ -435,19 +496,7 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
             "is_outdoor": True,
         })
 
-        if vision_info:
-            if vision_info.get("safety_clearance_yn") == "N":
-                rules = list(safety_res.get("mandatory_rules") or [])
-                interfering = ", ".join(
-                    vision_info.get("interfering_objects") or ["간섭 장애물"]
-                )
-                rules.append(
-                    f"비전 안전 인터록(VISION_INSPECTIONS): 용접선 인근 간섭({interfering}) 해소 후 착수 필수"
-                )
-                safety_res["mandatory_rules"] = rules
-                if safety_res.get("status") == "PASS":
-                    safety_res["status"] = "CONDITIONAL_PASS"
-
+        safety_res = _append_vision_clearance_warning(safety_res, vision_info)
         weather_info["safety_evaluation"] = safety_res
 
         print(f"   ⛅ [Weather MCP] 상태={status}, 기온={temp}℃, 풍속={wind}m/s")
@@ -461,11 +510,25 @@ def weather_and_safety_node(state: ShipAgentState) -> Dict[str, Any]:
 
     except Exception as e:
         print(f"⚠️ [도메인 안전 룰 엔진 오류]: {e}")
+        fail_closed_eval = _append_vision_clearance_warning(
+            {
+                "status": "STOP",
+                "safety_level": "FORBIDDEN",
+                "is_safe": False,
+                "mandatory_rules": [
+                    f"환경 안전 기준 평가 중 시스템 오류 발생({str(e)})으로 인한 안전 보류"
+                ],
+                "prerequisites": [],
+                "action_message": "안전 평가 오류로 인한 작업 즉시 보류",
+            },
+            vision_info,
+        )
         return {
             "weather_data": {
                 "location": location,
                 "status": "EVALUATION_ERROR",
                 "error": f"환경 안전 기준 평가 실패: {str(e)}",
+                "safety_evaluation": fail_closed_eval,
             },
             "vision_data": vision_info,
         }

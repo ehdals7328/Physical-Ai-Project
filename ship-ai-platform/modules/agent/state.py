@@ -8,13 +8,14 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 TaskType = Literal[
-    "chat",             # 일상 대화 및 인사
-    "erp_resource_qa",  # 사내 자재(ERP_BOM_INVENTORY), 강판 Lot, 와이어 잔량, 대기 차량 확인
-    "hr_safety_qa",     # 특정 작업자 선급(KR/AWS) 자격증 단건 유효기간 확인
-    "hr_worker_qa",     # 사내/하청/프리랜서 작업자 전체 명단 실시간 DB 조회 (ERP_WORKER_CERT)
-    "scm_partner_qa",   # 사외 협력사(ERP_COMPANIES) 가용성 및 외주 실행 문의
-    "knowledge_qa",     # 사내 규정(WPS), 시방서, KOSHA 안전 지침, 기상 단순 문의
-    "doc_generation",   # 공식 작업지시서(WORK_INSTRUCTIONS) / 중량물 작업계획서 발행 요청
+    "chat",                  # 일상 대화 및 인사
+    "vision_inspection_qa",  # 현장 비전 탐지 현황, 용접 대기 구역, 결함 및 로봇 관제 상태 조회
+    "erp_resource_qa",       # 사내 자재(ERP_BOM_INVENTORY), 강판 Lot, 와이어 잔량, 대기 차량 확인
+    "hr_safety_qa",          # 특정 작업자 선급(KR/AWS) 자격증 단건 유효기간 확인
+    "hr_worker_qa",          # 사내/하청/프리랜서 작업자 전체 명단 실시간 DB 조회 (ERP_WORKER_CERT)
+    "scm_partner_qa",        # 사외 협력사(ERP_COMPANIES) 가용성 및 외주 실행 문의
+    "knowledge_qa",          # 사내 규정(WPS), 시방서, KOSHA 안전 지침, 기상 단순 문의
+    "doc_generation",        # 공식 작업지시서(WORK_INSTRUCTIONS) / 중량물 작업계획서 발행 요청
 ]
 
 DocCategory = Literal[
@@ -40,7 +41,7 @@ class ShipAgentState(TypedDict, total=False):
 
     # 2. SHIP_USER.USERS 권한(RBAC) 및 작업 오더(WORK_ORDERS) 컨텍스트
     user_id: Optional[str]                        # USERS.USER_ID
-    user_name: Optional[str]                      
+    user_name: Optional[str]
     user_role: Optional[str]                      # WORKER | MANAGER | ADMIN
     user_type: Optional[str]                      # INTERNAL | EXTERNAL
     can_access_erp: Optional[str]                 # 'Y' | 'N'
@@ -55,7 +56,9 @@ class ShipAgentState(TypedDict, total=False):
     task_type: Optional[TaskType]
     is_action_requested: bool                     # 단순 조회(False) vs 원장 커밋/발주 실행(True)
     preferred_execution_mode: Optional[Literal["AUTO", "IN_HOUSE", "OUTSOURCED_B2B"]]
-    outsourcing_domain: Optional[Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER"]]
+    outsourcing_domain: Optional[
+        Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER", "NOT_APPLICABLE"]
+    ]
     target_categories: List[DocCategory]
     need_weather: bool
     extracted_params: Dict[str, Any]              # 누적 보존 제원
@@ -71,7 +74,7 @@ class ShipAgentState(TypedDict, total=False):
     hitl_approved: Optional[bool]                  # 관리자 최종 승인 여부
 
     # 5. Team 2 (Supervisor 기반 지식·환경·비전·공급망 자율 감리) 상태
-    team2_plan: List[str]                          # Team 2 Supervisor가 수립한 동적 실행 대기열
+    team2_plan: Optional[List[str]]                # Team 2 Supervisor가 수립한 동적 실행 대기열
     search_status: SearchStatus
     retrieved_docs: List[Dict[str, Any]]
     doc_grade: Optional[str]                       # "yes" | "no"

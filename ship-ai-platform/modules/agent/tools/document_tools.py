@@ -4,6 +4,7 @@ modules/agent/tools/document_tools.py
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 from datetime import datetime
@@ -344,8 +345,8 @@ def export_work_order_file(
     )
     resolved_work_zone = (
         params.get("work_zone")
+        or block_master.get("work_zone")
         or branch_info.get("default_zone")
-        or block_master.get("location")
         or ("DOCK-1" if "GEOJE" in str(resolved_branch).upper() else "ZONE-A-BAY1")
     )
 
@@ -437,13 +438,22 @@ def export_work_order_file(
 
     raw_preheat = weld_params.get("preheat_temp_c") or weld_params.get("preheat_temp")
     if raw_preheat is not None and str(raw_preheat).strip() != "":
-        p_text = str(raw_preheat).strip().replace("°C", "℃").replace("C", "℃")
+        p_text = re.sub(r"°\s*[cC]|(?<=\d)\s*[cC]\b", "℃", str(raw_preheat).strip())
         if "℃" not in p_text and any(ch.isdigit() for ch in p_text):
             preheat_display = f"{p_text}℃"
         else:
             preheat_display = p_text
     else:
         preheat_display = "-"
+
+    clean_amp = re.sub(r"\s*[Aa]\b", "", str(weld_params.get("current_amp") or "-")).strip()
+    clean_volt = re.sub(r"\s*[Vv]\b", "", str(weld_params.get("voltage_v") or "-")).strip()
+    clean_speed = re.sub(
+        r"\s*cm/min\b",
+        "",
+        str(weld_params.get("travel_speed_cm_min") or weld_params.get("travel_speed") or "-"),
+        flags=re.IGNORECASE,
+    ).strip()
 
     clearance_yn = vision.get("safety_clearance_yn")
     insp_status = vision.get("inspection_status") or vision.get("status")
@@ -539,15 +549,17 @@ def export_work_order_file(
         "b2b_po_number": b2b_po_display,
         "wps_code": resolved_wps_code,
         "material": params.get("material") or block_master.get("material") or "-",
-        "thickness": str(
-            params.get("thickness") or block_master.get("thickness") or "-"
-        ).replace("T", ""),
+        "thickness": re.sub(
+            r"(?<=\d)[Tt]\b",
+            "",
+            str(params.get("thickness") or block_master.get("thickness") or "-"),
+        ),
         "process": resolved_proc,
         "joint_type": params.get("joint_type") or block_master.get("joint_type") or "-",
         "weld_position": resolved_position,
-        "current_amp": str(weld_params.get("current_amp") or "-").replace("A", "").replace("a", "").strip(),
-        "voltage_v": str(weld_params.get("voltage_v") or "-").replace("V", "").replace("v", "").strip(),
-        "travel_speed": str(weld_params.get("travel_speed_cm_min") or weld_params.get("travel_speed") or "-").replace("cm/min", "").strip(),
+        "current_amp": clean_amp,
+        "voltage_v": clean_volt,
+        "travel_speed": clean_speed,
         "shielding_gas": resolved_gas,
         "preheat_temp": preheat_display,
         "ndt_requirement": (
@@ -660,7 +672,11 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     ship_code = params.get("ship_code") or block_master.get("ship_code") or "-"
     block_name = params.get("block_name") or block_master.get("block_name") or "-"
     material = params.get("material") or block_master.get("material") or "-"
-    thickness = str(params.get("thickness") or block_master.get("thickness") or "-").replace("T", "")
+    thickness = re.sub(
+        r"(?<=\d)[Tt]\b",
+        "",
+        str(params.get("thickness") or block_master.get("thickness") or "-"),
+    )
     process_code = params.get("process") or block_master.get("process") or "-"
 
     worker_name = (

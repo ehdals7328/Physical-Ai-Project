@@ -3,7 +3,7 @@ modules/agent/supervisor.py
 Top-Level Supervisor & Multi-Turn Memory Graph
 """
 
-from typing import Dict, Any, Literal
+from typing import Any, Dict, Literal
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
@@ -17,11 +17,16 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
     """
     새로운 턴 시작 시 직전 턴의 출처(retrieved_docs), 센서/비전 결과, 생성 문서 및
     하위 서브그래프의 동적 플랜 큐를 초기화하여 멀티턴 상태 오염(출처 잔류)을 차단합니다.
+    직전 턴에 이미 원장 커밋(COMMITTED)이 완료된 경우 hitl_approved 플래그도 함께 해제합니다.
     """
-    return {
+    prev_commit = state.get("erp_commit_result") or {}
+    was_already_committed = prev_commit.get("erp_transaction_status") == "COMMITTED"
+
+    init_updates: Dict[str, Any] = {
         "team2_plan": None,
         "next": None,
         "retrieved_docs": [],
+        "doc_grade": None,
         "vision_data": None,
         "weather_data": None,
         "generated_document": None,
@@ -30,6 +35,10 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
         "final_answer": None,
         "audit_saved": False,
     }
+    if was_already_committed:
+        init_updates["hitl_approved"] = False
+
+    return init_updates
 
 
 def route_after_team1(
