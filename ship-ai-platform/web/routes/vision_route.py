@@ -32,7 +32,7 @@ vision_bp = Blueprint("vision", __name__, url_prefix="/vision")
 RUNPOD_BASE = (
     os.getenv("RUNPOD_BASE")
     or os.getenv("VISION_API_URL")
-    or "https://amu7e870l49mun-5000.proxy.runpod.net"
+    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net/"
 ).rstrip("/")
 RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed"
 RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections"
