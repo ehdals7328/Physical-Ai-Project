@@ -648,14 +648,24 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     branch_info = erp_status.get("branch_info") or {}
     block_master = erp_status.get("block_master") or {}
 
-    wo_num = document_data.get("work_order_number") or f"WO-{datetime.now().strftime('%Y%m%d%H%M')}"
-    po_num = (
+    wo_num = str(
+        document_data.get("work_order_number")
+        or f"WO-{datetime.now().strftime('%Y%m%d%H%M')}"
+    ).strip()
+
+    raw_po = (
         erp_commit.get("po_number")
         or erp_commit.get("b2b_order_number")
         or erp_commit.get("b2b_sales_order_no")
         or erp_commit.get("b2b_po_ack")
-        or f"PO-{str(wo_num).replace('WO-DRAFT-', '').replace('WO-', '')}"
     )
+    if raw_po:
+        po_num = str(raw_po).strip()
+    elif wo_num.upper().startswith("PO-"):
+        po_num = wo_num
+    else:
+        po_num = f"PO-{wo_num.replace('WO-DRAFT-', '').replace('WO-', '')}"
+
     block_id = params.get("block_id") or block_master.get("block_id") or "DIRECT"
     safe_po_token = "".join(c if (c.isalnum() or c in "-_") else "_" for c in str(po_num))
     pdf_filename = f"po_order_{block_id}_{safe_po_token}.pdf"
@@ -671,11 +681,22 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
 
     ship_code = params.get("ship_code") or block_master.get("ship_code") or "-"
     block_name = params.get("block_name") or block_master.get("block_name") or "-"
+    block_display = (
+        "단독 긴급 조달 (블록 미지정)"
+        if str(block_id).upper() in ("DIRECT", "BLK-DIRECT", "-")
+        else f"<b>{block_id}</b> ({block_name})"
+    )
+
     material = params.get("material") or block_master.get("material") or "-"
     thickness = re.sub(
         r"(?<=\d)[Tt]\b",
         "",
         str(params.get("thickness") or block_master.get("thickness") or "-"),
+    )
+    mat_thick_display = (
+        "-"
+        if material == "-" and thickness == "-"
+        else f"{material} / {thickness} mm"
     )
     process_code = params.get("process") or block_master.get("process") or "-"
 
@@ -710,7 +731,7 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         rate_text = f"{int(float(daily_rate)):,} 원 / 일" if daily_rate else "협력사 단가표 기준"
     elif biz_type == "HEAVY_TRANSPORT":
         scope_label = "중량물 블록 운송 및 배차 (HEAVY_TRANSPORT)"
-        block_desc = f"대상 블록({block_id}, {block_master.get('weight_ton', '-')}톤)" if block_id not in ("DIRECT", "BLK", "-") else "야드 내 중량물 블록"
+        block_desc = f"대상 블록({block_id}, {block_master.get('weight_ton', '-')}톤)" if block_id not in ("DIRECT", "BLK-DIRECT", "BLK", "-") else "야드 내 중량물 블록"
         order_item_desc = f"{block_desc} 이송 배차 ({vehicle_code})"
         qty_spec_text = "1 대 / 왕복 배차"
         rate_text = f"{int(float(unit_price)):,} 원 / 회" if unit_price else "협력사 단가표 기준"
@@ -748,7 +769,7 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     * {{ font-family: {font_family}; }}
     body {{ font-family: {font_family}; font-size: 9.0pt; color: #111111; line-height: 1.4; }}
     .header-box {{ border-bottom: 2pt solid #1F4E79; padding-bottom: 8px; margin-bottom: 12px; }}
-    .title {{ text-align: center; font-size: 16.0pt; font-weight: bold; color: #1F4E79; letter-spacing: 2px; }}
+    .title {{ text-align: center; font-size: 16.0pt; font-weight: bold; color: #1F4E79; }}
     .subtitle {{ text-align: center; font-size: 8.5pt; color: #555555; margin-top: 3px; }}
     table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; }}
     th, td {{ border: 0.6pt solid #333333; padding: 6px 7px; vertical-align: middle; font-family: {font_family}; }}
@@ -762,7 +783,7 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
 </head>
 <body>
     <div class="header-box">
-        <div class="title">외 주 발 주 주 문 서 (PURCHASE ORDER)</div>
+        <div class="title">외주 발주 주문서 (PURCHASE ORDER)</div>
         <div class="subtitle">K-SMART SHIPYARD INTEGRATED SCM &amp; B2B EXECUTION SYSTEM</div>
     </div>
 
@@ -797,10 +818,10 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         <tr><td colspan="4" class="sec-hdr">■ 2. 대상 선박 블록 및 시공 제원</td></tr>
         <tr>
             <th>대상 호선</th><td>{ship_code}</td>
-            <th>대상 블록 코드</th><td><b>{block_id}</b> ({block_name})</td>
+            <th>대상 블록 코드</th><td>{block_display}</td>
         </tr>
         <tr>
-            <th>모재 강종 / 두께</th><td>{material} / {thickness} mm</td>
+            <th>모재 강종 / 두께</th><td>{mat_thick_display}</td>
             <th>적용 용접 공정</th><td><b>{process_code}</b></td>
         </tr>
     </table>
