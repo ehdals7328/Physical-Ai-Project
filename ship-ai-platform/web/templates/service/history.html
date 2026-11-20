@@ -725,18 +725,26 @@
     </div>
 </section>
 
-<!-- AI 작업지침서 상세 열람 모달 -->
+<!-- AI 작업지침서 / 발주서 상세 열람 모달 -->
 <div class="modal fade" id="instDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-3">
+            <div class="modal-header d-flex align-items-center">
+                <div class="d-flex align-items-center gap-2 text-truncate">
+                    <h5 class="modal-title fw-bold mb-0 text-truncate" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
                     <span class="badge bg-primary" id="modalInstStatus">APPROVED</span>
                 </div>
+                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
+                    <a href="#" id="modalPdfNewTabBtn" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm fw-bold d-none">
+                        ↗ 새 탭에서 열기
+                    </a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0" id="modalPdfContainer">
+                <iframe id="modalPdfViewer" src="" style="width: 100%; height: 78vh; border: none; display: block;"></iframe>
+            </div>
+            <div class="modal-body d-none" id="modalTextFallbackContainer">
                 <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
                 <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
                 <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
@@ -848,13 +856,82 @@ $(document).ready(function() {
         });
     });
 
-    $('.btn-view-inst').on('click', function() {
-        $('#modalInstTitle').text($(this).data('title'));
-        $('#modalInstStatus').text($(this).data('status'));
-        $('#modalInstParams').text(JSON.stringify($(this).data('params'), null, 2));
-        $('#modalInstText').text($(this).data('text'));
+    // 1) 지침서 / 발주서(PO) PDF 뷰어 모달 열기 (PDF 미존재 시에만 텍스트 폴백)
+    $(document).on('click', '.btn-view-inst', function() {
+        const title = $(this).data('title') || '문서 상세 보기';
+        const status = $(this).data('status') || 'DRAFT';
+        const pdfUrl = ($(this).data('pdf') || '').trim();
+
+        $('#modalInstTitle').text(title);
+        $('#modalInstStatus')
+            .text(status)
+            .removeClass('bg-primary bg-warning text-dark bg-danger')
+            .addClass(status === 'APPROVED' ? 'bg-primary' : (status === 'REJECTED' ? 'bg-danger' : 'bg-warning text-dark'));
+
+        if (pdfUrl) {
+            $('#modalPdfViewer').attr('src', pdfUrl);
+            $('#modalPdfNewTabBtn').attr('href', pdfUrl).removeClass('d-none');
+            $('#modalPdfContainer').removeClass('d-none');
+            $('#modalTextFallbackContainer').addClass('d-none');
+        } else {
+            $('#modalPdfViewer').attr('src', '');
+            $('#modalPdfNewTabBtn').addClass('d-none');
+            $('#modalPdfContainer').addClass('d-none');
+            $('#modalTextFallbackContainer').removeClass('d-none');
+
+            const rawParams = $(this).data('params');
+            const formattedParams = (typeof rawParams === 'object')
+                ? JSON.stringify(rawParams, null, 2)
+                : (rawParams || '{}');
+            $('#modalInstParams').text(formattedParams);
+            $('#modalInstText').text($(this).data('text') || '');
+        }
+
         const modal = new bootstrap.Modal(document.getElementById('instDetailModal'));
         modal.show();
+    });
+
+    // 2) 관리자 대시보드 결재 대기함 [👍 최종 승인] / [❌ 반려] 버튼 핸들러
+    $(document).on('click', '.btn-dash-approve', function() {
+        const btn = $(this);
+        const action = btn.data('action');
+        const woid = btn.data('woid');
+        const instid = btn.data('instid');
+        const row = $(`#approval-row-${woid}`);
+
+        row.find('button').prop('disabled', true);
+        btn.text(action === 'APPROVE' ? '⏳ 승인 처리 중...' : '⏳ 반려 처리 중...');
+
+        $.ajax({
+            url: '/service/api/assistant/approve',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: action,
+                work_id: woid,
+                instruction_id: instid,
+                doc: {}
+            }),
+            success: function(res) {
+                const alertClass = (action === 'APPROVE') ? 'alert-success' : 'alert-warning';
+                $('#dashToast')
+                    .removeClass('d-none alert-danger alert-success alert-warning')
+                    .addClass(alertClass)
+                    .text(res.message);
+                setTimeout(() => location.reload(), 1000);
+            },
+            error: function(xhr) {
+                row.find('button').prop('disabled', false);
+                btn.text(action === 'APPROVE' ? '👍 최종 승인' : '❌ 반려');
+                const errMsg = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : '결재 처리 중 오류가 발생했습니다.';
+                $('#dashToast')
+                    .removeClass('d-none alert-success alert-warning')
+                    .addClass('alert-danger')
+                    .text('❌ ' + errMsg);
+            }
+        });
     });
 
     // =====================================================================

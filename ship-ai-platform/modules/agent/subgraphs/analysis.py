@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
+from langchain_core.messages import AIMessage
 
 from modules.agent.state import DocCategory, ShipAgentState
 from modules.agent.tools.erp_tools import (
@@ -112,6 +113,7 @@ class UniversalQueryAnalysis(BaseModel):
         None,
         description=(
             "질의에 직접 언급된 특정 작업자의 순수 성명만 추출 (언급이 없으면 반드시 None). "
+            "사용자가 1인칭으로 본인을 작업자로 지칭한 경우에는 [현재 로그인 사용자]의 순수 성명을 추출할 것. "
             "한국인 성명(2~4음절)이 일반 명사나 직급처럼 보이더라도(예: '홍길동 반장' -> '홍길동') "
             "사람 이름은 반드시 추출하고 뒤에 붙은 직책·호칭만 제외할 것"
         ),
@@ -150,18 +152,24 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "[절대 원칙 - 임의 추론 금지]\n"
         "- 사용자의 현재 발화나 이전 대화에서 **실제로 언급되지 않은 `block_id`, `worker_name`, `material`, `thickness`, `process`는 절대 임의로 채우지 말고 반드시 `null`로 반환**하십시오.\n\n"
         "[판단 기준]\n"
-        "1. **작업지시서 작성 멀티턴 맥락 유지**: 최근 대화에서 사용자가 작업지시서 발행을 시작하여 블록·제원·작업자 선택을 진행 중이고, "
-        "이번 발화에서 작업자 성명, 블록 번호, 강종, 두께, 공정을 지정·선택했다면 별도의 발행 지시어가 없더라도 `task_type='doc_generation'`, `context_action='KEEP_MERGE'`로 분류하여 즉시 작업지시서 작성으로 진행하십시오.\n"
+        "1. **멀티턴 작업지시 보충 및 보류 후 후속 선택 통합 처리**: "
+        "직전 어시스턴트 응답이 필수 제원 역질문이거나 작업지시 보류 안내 및 후속 선택지를 제시한 경우, "
+        "사용자의 이번 응답이 선택지 지목(첫 번째/두 번째 선택, A/B 선택 등)이든 구체적 조건 변경이든 대화 맥락을 종합하여 판단하십시오.\n"
+        "   - 작업자 교체, 블록 변경, 제원 보충, 외주 전환 등 작업지시서 발행 진행을 선택한 경우: "
+        "`task_type='doc_generation'`, `context_action='KEEP_MERGE'`로 설정하고 직전 어시스턴트 응답과 사용자 발화에서 확정된 변경 값(`worker_name`, `block_id`, `material`, `thickness`, `process`, `preferred_execution_mode` 등)을 모두 반영하십시오.\n"
+        "   - 안전 체크리스트, 예열 기준, 기술 규정 확인을 선택한 경우: `task_type='knowledge_qa'`로 분류하여 해당 안내를 제공하십시오.\n"
         "2. **인사 조회 vs 협력사 외주 조회 구분**: 사용자가 사외 협력사, 하청, 외주 또는 등록된 협력사명을 명시적으로 언급하지 않고 투입 가능한 작업자를 묻는 경우에는 `hr_worker_qa`로 분류하십시오.\n"
         "3. **비전 관제 질의**: 현장 비전 탐지 현황, 용접 대기 구역, 용접선 포착 상태, 간섭 장애물, 결함 현황 조회는 `vision_inspection_qa`로 분류하십시오.\n"
-        "4. **실행 모드**: 사용자가 명시적으로 외주·협력사·사외 연계를 지정한 경우에만 `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하고, 별도 언급이 없으면 `'AUTO'`로 두십시오.\n"
+        "4. **실행 모드**: 사용자가 명시적으로 외주·협력사·사외 연계를 지정하거나 직전 안내의 외주 전환 대안을 선택한 경우 `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하고, 별도 언급이 없으면 `'AUTO'`로 두십시오.\n"
         "5. **독립 주제 전환(`RESET_NEW`)**: 이전 작업지시서와 무관하게 전체 비전 카메라 현황, 단독 외주 배차/발주, 일반 기술 규격 등을 새로 질문한 경우에는 `context_action='RESET_NEW'`로 분류하십시오.\n"
-        "6. **기상·환경 조건 질의(`knowledge_qa`)**: 지역명과 함께 현장 기상·기온·풍속·강수 상태를 묻는 질문은 일상 잡담(`chat`)이 아니라 반드시 `task_type='knowledge_qa'` 및 `need_weather=True`로 분류하십시오.",
+        "6. **기상·환경 조건 질의(`knowledge_qa`)**: 지역명과 함께 현장 기상·기온·풍속·강수 상태를 묻는 질문은 일상 잡담(`chat`)이 아니라 반드시 `task_type='knowledge_qa'` 및 `need_weather=True`로 분류하십시오.\n"
+        "7. **사내 ERP 자원·블록 마스터 조회(`erp_resource_qa`)**: 등록된 선박 블록 전체 목록이나 특정 공정(SAW/FCAW/GMAW 등)에 해당하는 블록을 묻는 질문은 비전 관제(`vision_inspection_qa`)가 아니라 반드시 `task_type='erp_resource_qa'`로 분류하십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
         "human",
         "[직전 턴 역질문 대기 여부]: {is_waiting}\n"
+        "[현재 로그인 사용자]: {login_user_name}\n"
         "[로그인 사용자 기본 작업구역]: {user_workspace} (야드코드: {branch_code})\n"
         "[DB 등록 외부 협력사 메타데이터]: {registered_partners}\n"
         "[이전 누적 작업 제원]: {accumulated_params}\n"
@@ -211,14 +219,18 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
 
     partners_meta = list_registered_partners_from_db()
 
+    raw_user_name = str(state.get("user_name") or "").strip()
+    login_full_name = raw_user_name.split("(")[0].strip() if raw_user_name else ""
+
     try:
         res: UniversalQueryAnalysis = (ANALYSIS_PROMPT | structured_analyzer).invoke({
             "messages": messages[-8:] if messages else [],
             "is_waiting": "예 (제원 보충 대기 중)" if is_waiting else "아니오",
+            "login_user_name": login_full_name or "미지정",
             "user_workspace": default_workspace or "미지정",
             "branch_code": branch_code or "미지정",
-            "registered_partners": json.dumps(partners_meta, ensure_ascii=False),
-            "accumulated_params": json.dumps(existing_params, ensure_ascii=False),
+            "registered_partners": json.dumps(partners_meta, ensure_ascii=False, default=str),
+            "accumulated_params": json.dumps(existing_params, ensure_ascii=False, default=str),
             "query": query,
         })
     except Exception as e:
@@ -228,14 +240,22 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
             search_queries=[query] if query else [],
         )
 
-    # 최근 사용자 발화 텍스트 모음 (환각 추출 차단용 근거 범위)
+    # 직전 어시스턴트 응답 텍스트 확보 (멀티턴 후속 선택 근거 검증용)
+    last_ai_text = ""
+    for m in reversed(messages or []):
+        if getattr(m, "type", "") == "ai":
+            last_ai_text = str(getattr(m, "content", ""))
+            break
+
+    # 대화 전체 맥락(최근 사용자 발화 + 직전 AI 선택지 안내)
     recent_user_texts = [query]
     for m in (messages[-6:] if messages else []):
         if getattr(m, "type", "") == "human":
             recent_user_texts.append(str(getattr(m, "content", "")))
-    combined_user_corpus = " ".join(recent_user_texts).upper()
+    conversation_corpus = (" ".join(recent_user_texts) + " " + last_ai_text).upper()
+    conversation_raw = " ".join(recent_user_texts) + " " + last_ai_text
 
-    # 1. block_id 정제 + 실제 사용자 발화 근거 검증 (LLM 임의 생성 차단)
+    # 1. block_id 정제 + 대화/선택지 근거 검증
     raw_block_id = str(res.block_id or "").strip().upper()
     cleaned_block_id: Optional[str] = None
     if (
@@ -244,34 +264,27 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         and res.task_type != "knowledge_qa"
     ):
         block_num_token = raw_block_id.replace("BLK-", "").replace("B-", "")
-        if raw_block_id in combined_user_corpus or (
-            len(block_num_token) >= 3 and block_num_token in combined_user_corpus
+        if raw_block_id in conversation_corpus or (
+            len(block_num_token) >= 3 and block_num_token in conversation_corpus
         ):
-            cleaned_block_id = str(res.block_id).strip()
+            cleaned_block_id = raw_block_id
 
-    # 2. process 정제 + 실제 발화 근거 검증
+    # 2. process 정제 + 대화/선택지 근거 검증
     raw_proc = str(res.process or "").strip().upper()
     cleaned_process = (
         raw_proc
-        if (raw_proc in VALID_WELD_PROCESSES and raw_proc in combined_user_corpus)
+        if (raw_proc in VALID_WELD_PROCESSES and raw_proc in conversation_corpus)
         else None
     )
 
-    # 3. worker_name 직책 제거 + DB 등록 성명 매칭 + 실제 발화 근거 검증 (LLM 임의 이름 차단)
+    # 3. worker_name 정제 (대화 내역, 직전 AI 선택지, 또는 로그인 본인 성명 허용)
     cleaned_worker = str(res.worker_name or "").strip()
-    if cleaned_worker and cleaned_worker not in " ".join(recent_user_texts):
+    if (
+        cleaned_worker
+        and cleaned_worker not in conversation_raw
+        and cleaned_worker != login_full_name
+    ):
         cleaned_worker = ""
-
-    if not cleaned_worker and query:
-        try:
-            workers_res = list_erp_workers.invoke({"branch_code": None})
-            for w in workers_res.get("workers", []):
-                w_nm = str(w.get("worker_name") or "").strip()
-                if w_nm and w_nm in query:
-                    cleaned_worker = w_nm
-                    break
-        except Exception as e:
-            print(f"⚠️ [작업자 성명 DB 매칭 참고]: {e}")
 
     # 4. 이전 누적 슬롯의 비정상 값 정리 및 맥락 병합/초기화 판정
     if str(existing_params.get("block_id") or "").upper() in STEEL_GRADES:
@@ -279,9 +292,13 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     if str(existing_params.get("process") or "").upper() not in VALID_WELD_PROCESSES:
         existing_params.pop("process", None)
 
-    old_block = existing_params.get("block_id")
+    old_block = str(existing_params.get("block_id") or "").strip().upper() or None
+    if old_block:
+        existing_params["block_id"] = old_block
+
+    is_followup_turn = is_waiting or (bool(last_ai_text) and res.context_action == "KEEP_MERGE")
     should_reset_context = (
-        not is_waiting  # 직전 턴이 역질문 대기 상태가 아니었다면 항상 깨끗한 상태에서 새 지시 시작
+        not is_followup_turn
         or (cleaned_block_id and old_block and cleaned_block_id != old_block)
         or (res.context_action == "RESET_NEW" and res.task_type != "doc_generation")
     )
@@ -332,8 +349,8 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         "scm_partner_qa",
     ):
         blocked_msg = (
-            "🔒 **[접근 권한 제한]** 현재 로그인하신 계정은 전사 ERP 자원 및 인사/공급망 원장 조회 권한(`CAN_ACCESS_ERP=N`)이 없습니다. "
-            "시스템 관리자(ADMIN) 또는 공정 관리자(MANAGER)에게 권한 승인을 요청해 주세요."
+            "🔒 **[접근 권한 제한]** 현재 로그인하신 계정은 전사 ERP 자원 및 인사·공급망 원장 조회 권한이 부여되어 있지 않습니다. "
+            "시스템 관리자 또는 공정 관리자에게 권한 승인을 요청해 주세요."
         )
         return {
             "task_type": "chat",
@@ -472,11 +489,12 @@ CLARIFICATION_PROMPT = ChatPromptTemplate.from_messages([
         "system",
         "당신은 스마트 조선소 공정 관리 AI 어시스턴트입니다.\n"
         "사용자가 작업지시서 발행을 요청했으나 아직 일부 필수 제원이 입력되지 않았습니다.\n"
-        "딱딱한 JSON 덤프나 '강제 차단(HOLD)' 같은 경고성 표현을 쓰지 말고, "
-        "현재까지 확인된 조건을 자연스럽게 짚어준 뒤 누락된 항목을 친절하게 안내하세요.\n\n"
-        "[안내 지침]\n"
-        "1. [ERP 등록 블록 목록]에 있는 블록들은 강종으로 필터링하지 말고 전체 등록 블록(`B-104`, `B-305`, `BLK-E102` 등)을 모두 안내하면서, 블록 번호(`BLOCK_ID`)를 지정하면 강종·두께·공정이 자동 매핑된다고 설명하세요.\n"
-        "2. [ERP 가용 작업자 목록]에서 `status='VALID'`이고 용접 공정이 있는 적격 작업자(`최선임`, `김철수`, `오수석`, `장반장` 등)를 함께 추천하여 투입할 작업자 성명을 선택하도록 안내하세요.",
+        "딱딱한 경고성 표현이나 영문 DB 컬럼명·상태 코드(`BLOCK_ID`, `VALID`, `is_busy`, `weld_process` 등)를 절대 쓰지 말고, "
+        "현장 실무자가 한눈에 보고 바로 답할 수 있도록 아래 구조로 간결하게 안내하세요.\n\n"
+        "[출력 구조]\n"
+        "1. 상단 `>` 인용구(1줄): 작업지시서 작성을 위해 **추가 확인이 필요한 필수 항목**을 굵게 요약\n"
+        "2. `### 📋 선택 가능한 등록 블록 및 가용 작업자`: [ERP 등록 블록 목록] 전체(블록 지정 시 강종·두께·공정 자동 매핑 안내)와 [ERP 가용 작업자 목록] 중 자격이 유효하고 대기 중인 적격 작업자를 간결한 불릿으로 추천\n"
+        "3. `💡 입력 예시`: 사용자가 바로 따라 입력할 수 있는 한 줄 문장 예시 제시",
     ),
     (
         "human",
@@ -521,10 +539,10 @@ def spec_completeness_judge_node(state: ShipAgentState) -> Dict[str, Any]:
             try:
                 clarification_res = (CLARIFICATION_PROMPT | llm).invoke({
                     "query": query,
-                    "params": json.dumps(merged_params, ensure_ascii=False),
+                    "params": json.dumps(merged_params, ensure_ascii=False, default=str),
                     "missing_kor": missing_kor,
-                    "blocks": json.dumps(erp_status.get("available_blocks") or [], ensure_ascii=False),
-                    "workers": json.dumps(valid_workers, ensure_ascii=False),
+                    "blocks": json.dumps(erp_status.get("available_blocks") or [], ensure_ascii=False, default=str),
+                    "workers": json.dumps(valid_workers, ensure_ascii=False, default=str),
                 })
                 clarification_answer = clarification_res.content
             except Exception as e:
@@ -543,12 +561,15 @@ def spec_completeness_judge_node(state: ShipAgentState) -> Dict[str, Any]:
         else:
             queries = [query]
 
-    return {
+    result_dict: Dict[str, Any] = {
         "missing_params": missing,
         "is_param_complete": is_complete,
         "search_queries": queries,
         "final_answer": clarification_answer,
     }
+    if clarification_answer:
+        result_dict["messages"] = [AIMessage(content=clarification_answer)]
+    return result_dict
 
 
 # ==============================================================================

@@ -12,6 +12,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
+from langchain_core.messages import AIMessage
 
 from modules.agent.state import ShipAgentState
 from modules.agent.tools.document_tools import (
@@ -160,14 +161,19 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
                 f"공정 불일치: 블록 요구 공정({req_process}) != 작업자 인증 공정({worker_process})"
             )
 
+    is_yard_matched = worker_qual.get("is_yard_matched", True)
+
     if worker_qual:
         erp_status["worker_qualification"] = worker_qual
-        erp_status["worker_qualified"] = bool(worker_qual.get("is_valid", False) and is_proc_matched)
+        erp_status["worker_qualified"] = bool(
+            worker_qual.get("is_valid", False) and is_proc_matched and is_yard_matched
+        )
 
     is_worker_valid = (
         erp_status.get("worker_qualified", True)
         and worker_qual.get("is_valid", False)
         and is_proc_matched
+        and is_yard_matched
     )
     if not worker_qual or not worker_qual.get("worker_id"):
         is_worker_valid = False
@@ -196,6 +202,7 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         bool(missing)
         or is_weather_failed
         or not is_worker_valid
+        or not is_yard_matched
         or has_vision_hazard
     )
 
@@ -213,7 +220,12 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         f"(블록요구:{req_process} vs 작업자인증:{worker_process})"
     )
     print(
-        f"   6. 비전/로봇 위험 감지 여부 : {has_vision_hazard} "
+        f"   6. 야드(권역) 일치 여부     : {is_yard_matched} "
+        f"(블록권역:{worker_qual.get('target_region') or '-'}({worker_qual.get('target_branch_code') or '-'}) "
+        f"vs 작업자권역:{worker_qual.get('worker_region') or '-'}({worker_qual.get('branch_code') or '-'}))"
+    )
+    print(
+        f"   7. 비전/로봇 위험 감지 여부 : {has_vision_hazard} "
         f"(안전거리={vision.get('safety_clearance_yn', 'Y')})"
     )
 
@@ -228,6 +240,11 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         if not is_proc_matched:
             fail_reasons.append(
                 f"용접공정불일치(블록요구:{req_process} != 작업자인증:{worker_process})"
+            )
+        elif not is_yard_matched:
+            fail_reasons.append(
+                f"야드지역불일치(블록:{worker_qual.get('target_region')}({worker_qual.get('target_branch_code')}) "
+                f"!= 작업자:{worker_qual.get('worker_region')}({worker_qual.get('branch_code')}))"
             )
         elif not is_worker_valid:
             if not worker_qual or not worker_qual.get("worker_id"):
@@ -276,25 +293,34 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "당신은 스마트 조선소 엔지니어링 & ERP·비전 관제 기술 자문 AI입니다.\n"
-        "제공된 [현재 누적 작업 제원], [본사 SHIP_ERP 자원 및 인사 현황], [인출된 사내 규격 문서(RAG)] 및 이전 대화 맥락만을 근거로 명확하고 체계적인 마크다운으로 답변하세요.\n\n"
-        "[안내 원칙]\n"
+        "제공된 [현재 누적 작업 제원], [본사 SHIP_ERP 자원 및 인사 현황], [인출된 사내 규격 문서(RAG)] 및 이전 대화 맥락만을 근거로 "
+        "현장 실무자가 화면을 보자마자 한눈에 파악할 수 있도록 시각적으로 정돈된 마크다운으로 답변하세요.\n\n"
+        "[공통 가독성 및 표현 원칙]\n"
+        "1. **DB 컬럼명·영문 상태 코드 노출 절대 금지**:\n"
+        "   - JSON 데이터에 포함된 영문 컬럼명·테이블명·상태 코드(`STANDBY`, `IN_USE`, `VALID`, `EXPIRED`, `BEFORE_WELD`, `IN_WELDING`, `PASS`, `CONDITIONAL_PASS`, `STOP`, `IN_HOUSE`, `OUTSOURCED_B2B`, `branch_code`, `operation_status` 등)는 **절대 원문 그대로 쓰지 마세요.**\n"
+        "   - 반드시 자연스러운 현장 한국어(`대기 중`, `운행 중`, `유효`, `만료`, `용접 전 대기`, `용접 진행 중`, `정상`, `조건부 승인`, `작업 중지`, `사내 직영`, `외주 연계`)로 변환하여 표기하세요.\n"
+        "2. **한눈에 들어오는 스캔형 레이아웃 (긴 줄글 금지)**:\n"
+        "   - 인사 전체 명단 조회(`hr_worker_qa`)를 제외한 모든 답변은 맨 위에 **`>` 인용구(1~2줄)**로 질문에 대한 핵심 결론을 먼저 제시하세요.\n"
+        "   - 세부 내용은 긴 문단 줄글 대신 **`###` 소제목 + 마크다운 표 또는 굵은 키워드 불릿**으로 정리하고, 같은 내용을 중복 설명하지 마세요.\n\n"
+        "[질의 유형별 작성 기준]\n"
         "1. **인사 원장 및 작업자 추천 (`hr_worker_qa`, `hr_safety_qa`)**:\n"
         "   - 전체 인사 원장 마크다운 표는 시스템이 응답 상단에 자동으로 부착하므로, 답변 본문에 전체 표를 절대 다시 작성하지 마세요.\n"
-        "   - 대신 제공된 [사내외 인사 원장 마크다운 표]와 [본사 SHIP_ERP 자원 현황]을 근거로 질문 조건(야드, 공정, 대기 여부, 자격 유효성)에 맞는 핵심 인원 요약 및 추천만 4~5줄 이내로 간결하게 작성하세요.\n"
-        "2. **강종·두께·자격 요건 질의 (`knowledge_qa`)**:\n"
-        "   - 강종이나 판 두께 문의 시 [본사 SHIP_ERP 자원 현황]의 `available_blocks` 및 `inventory`에 실제 등록된 가용 규격을 최우선으로 안내하고 RAG 규격을 보충 설명하세요.\n"
-        "   - 작업자 자격 요건 문의 시 대상 용접 공정과 일치하는 인증 공정(`weld_process`) 및 유효기간 내의 선급 자격 규격(`cert_code`)을 설명하고 적격 작업자를 안내하세요.\n"
+        "   - 대신 제공된 [사내외 인사 원장 마크다운 표]와 [본사 SHIP_ERP 자원 현황]을 근거로 질문 조건(야드, 공정, 대기 여부, 자격 유효성)에 맞는 핵심 추천 인원만 `### 👷 조건 부합 추천 인원` 아래 3~5줄 불릿으로 간결하게 정리하세요.\n"
+        "2. **기술 규격·기상·자격 요건 질의 (`knowledge_qa`)**:\n"
+        "   - 상단 `>` 인용구에 핵심 기준(예열 온도, 전류·전압 범위, 기상 안전 판정 등)을 먼저 요약하고, 세부 조건을 마크다운 표 또는 불릿으로 정리하세요.\n"
+        "   - 강종·두께 문의 시 [본사 SHIP_ERP 자원 현황]의 등록 블록 및 자재 재고 규격을 최우선으로 안내하고 RAG 규격을 보충하세요.\n"
+        "   - 작업자 자격 요건 문의 시 대상 용접 공정과 일치하는 인증 공정 및 유효기간 내의 선급 자격 규격을 설명하고 적격 작업자를 안내하세요.\n"
         "3. **비전 관제 질의 (`vision_inspection_qa`)**:\n"
-        "   - 제공된 [비전(YOLOv11) 실시간 관제 및 검사 현황]만을 근거로 용접 대기 구역(`BEFORE_WELD`) 및 탐지 상태를 표와 함께 브리핑하세요.\n"
+        "   - 상단 `>` 인용구에 용접 가능/대기 구역 수를 요약한 뒤, [비전(YOLOv11) 실시간 관제 및 검사 현황]을 근거로 카메라별 탐지 상태·용접선 포착·안전 클리어런스·로봇 상태를 마크다운 표로 브리핑하세요.\n"
         "4. **사내 ERP 자원 및 협력사 B2B 조회 (`erp_resource_qa`, `scm_partner_qa`)**:\n"
-        "   - 전사 야드(사업장) 목록이나 개수를 물으면 [본사 SHIP_ERP 자원 현황]의 `all_branches` 목록을 기준으로 정확히 안내하고, 특정 야드 자원 문의 시 해당 `branch_code` 자원만 필터링하며 장비 `operation_status`의 `'STANDBY'`(대기 중)와 `'IN_USE'`(운행 중)를 구분하세요.\n"
-        "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 `registered_companies` 및 상세 가용 목록을 빠짐없이 반영하세요.\n"
-        "   - 2건 이상의 항목(야드, 자재 재고, 장비, 협력사 목록 및 위치·단가 등)을 안내할 때는 절대 한 문단 줄글로 쓰지 말고, 항목별 소제목(`###`)과 **마크다운 표**로 정리한 뒤 아래에 1~2줄 요약만 덧붙이세요.\n"
+        "   - 상단 `>` 인용구에 조회 결과 핵심 요약을 1줄로 제시하세요.\n"
+        "   - 전사 야드 목록 문의 시 전체 야드 마스터를 기준으로, 특정 야드 자원 문의 시 해당 야드 자원만 필터링하여 `###` 소제목과 **마크다운 표**로 정리하세요(장비의 대기 중 / 운행 중 상태 명확 구분).\n"
+        "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 등록 협력사 및 상세 가용 목록을 빠짐없이 표로 정리하세요.\n"
         "5. **규정 범위 한계 명시 및 불필요한 자원 나열 금지**:\n"
-        "   - 사용자가 사내 자재, 블록, 장비, 작업자 현황을 명시적으로 묻지 않은 일반 기술·규정 질문에서는 [본사 SHIP_ERP 자원 현황]의 상세 표나 전체 목록을 나열하지 마세요.\n"
-        "   - 질문 대상 분야나 공법이 [인출된 사내 규격 문서(RAG)]에 존재하지 않는 경우, 장황한 일반론이나 단계별 가이드를 생성하지 말고 아래 3가지만 4~5줄 이내로 간결하게 답변하세요:\n"
-        "       (1) 사내 표준 규격(RAG)에는 해당 분야 규정이 없음을 명확히 고지\n"
-        "       (2) [본사 SHIP_ERP 자원 현황]에 실제 등록된 지원 가능 공정 및 강종 범위를 동적으로 요약 안내\n"
+        "   - 사용자가 사내 자재, 블록, 장비, 작업자 현황을 명시적으로 묻지 않은 일반 기술·규정 질문에서는 사내 자원 상세 표나 전체 목록을 나열하지 마세요.\n"
+        "   - 질문 대상 분야나 공법이 [인출된 사내 규격 문서(RAG)]에 존재하지 않는 경우, 장황한 일반론을 생성하지 말고 아래 3가지만 4~5줄 이내로 간결하게 답변하세요:\n"
+        "       (1) 사내 표준 규격에는 해당 분야 규정이 없음을 명확히 고지\n"
+        "       (2) 사내 ERP에 실제 등록된 지원 가능 공정 및 강종 범위를 동적으로 요약 안내\n"
         "       (3) 현재 사내 규격 내에서 확인이 필요한 항목 역질문\n"
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
@@ -318,31 +344,33 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     비전 관제(vision_inspection_qa), 외주 협력사 조회 및 단독 PO 초안(scm_partner_qa) 응답 생성 노드
     """
     task_type = state.get("task_type", "knowledge_qa")
-    params = state.get("extracted_params") or {}
-    erp_status = state.get("erp_resource_status") or {}
-    partner_plan = state.get("partner_erp_plan") or {}
+    params = dict(state.get("extracted_params") or {})
+    erp_status = dict(state.get("erp_resource_status") or {})
+    partner_plan = dict(state.get("partner_erp_plan") or {})
     docs = state.get("retrieved_docs") or []
     weather = state.get("weather_data") or {}
     vision_data = state.get("vision_data") or {}
     messages = state.get("messages") or []
     user_query = state.get("user_query", "")
 
-    # 1. 사내외 인사 원장 마크다운 표 생성 (인사 질의 시에만 Oracle 조회하여 불필요한 DB 왕복 절감)
+    # 1. 사내외 인사 원장 마크다운 표 생성 (실시간 투입 상태 '🔄 작업 중' 반영)
     worker_table_md = "해당 없음"
     if task_type in ("hr_worker_qa", "hr_safety_qa"):
         try:
-            workers_res = list_erp_workers.invoke({
-                "branch_code": None,
-                "process": None,
-            })
-            workers = (
-                workers_res.get("workers", [])
-                if isinstance(workers_res, dict)
-                else (workers_res or [])
-            )
+            workers = erp_status.get("available_workers") or []
+            if not workers:
+                workers_res = list_erp_workers.invoke({
+                    "branch_code": None,
+                })
+                workers = (
+                    workers_res.get("workers", [])
+                    if isinstance(workers_res, dict)
+                    else (workers_res or [])
+                )
+
             if workers:
                 lines = [
-                    "| 작업자명 | 사번 (WORKER_ID) | 고용형태 | 소속업체 | 상주야드 | 직책 (ROLE) | 선급 자격 규격 | 인증공정 | 자격 만료일 | 상태 |",
+                    "| 작업자명 | 사번 | 고용형태 | 소속업체 | 상주야드 | 직책 | 선급 자격 규격 | 인증공정 | 자격 만료일 | 상태 |",
                     "|---|---|---|---|---|---|---|---|---|---|",
                 ]
                 for w in workers:
@@ -350,7 +378,14 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
                         w.get("status") or w.get("cert_status") or ""
                     ).upper()
                     is_ok = (status_val == "VALID") or (w.get("is_valid") is True)
-                    status_badge = "✅ 투입 가능" if is_ok else "❌ 투입 불가"
+                    if w.get("is_busy"):
+                        busy_blk = w.get("assigned_block_id") or "타 블록"
+                        status_badge = f"🔄 작업 중 ({busy_blk})"
+                    elif is_ok:
+                        status_badge = "✅ 투입 가능"
+                    else:
+                        status_badge = "❌ 투입 불가"
+
                     expiry_val = w.get("expiry_date") or w.get("cert_expiry_date") or "-"
                     lines.append(
                         f"| {w.get('worker_name', '-')} | {w.get('worker_id', '-')} | {w.get('employment_type', '-')} | "
@@ -401,7 +436,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     answer = (qa_out.answer or "").strip()
 
-    # 4. hr_worker_qa 시 파이썬이 생성한 전체 인사 원장 표를 LLM 요약 상단에 즉시 결합 (출력 토큰 절감)
+    # 4. hr_worker_qa 시 파이썬이 생성한 전체 인사 원장 표를 LLM 요약 상단에 즉시 결합
     if (
         task_type == "hr_worker_qa"
         and worker_table_md
@@ -409,45 +444,63 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         and "조회된 작업자가 없습니다" not in worker_table_md
     ):
         answer = (
-            f"### 👷 사내외 인사 원장 (ERP_WORKER_CERT) 실시간 현황\n\n"
+            f"### 👷 사내외 인사 원장 실시간 현황\n\n"
             f"{worker_table_md}\n\n---\n\n{answer}"
         )
 
-    # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 (실제 발주/배차 실행 요청일 때만 생성)
+    # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 (관리자 결재 대기함 연동)
     generated_doc: Optional[Dict[str, Any]] = None
-    selected_partner = (partner_plan or {}).get("selected_partner") or {}
+    selected_partner = partner_plan.get("selected_partner") or {}
+    is_action_req = bool(state.get("is_action_requested"))
+
     if (
         task_type == "scm_partner_qa"
-        and bool(state.get("is_action_requested"))
+        and is_action_req
         and selected_partner.get("partner_id")
-        and state.get("is_outsourcing_required")
     ):
-        fallback_list = (
-            (partner_plan or {}).get("available_vehicles")
-            or (partner_plan or {}).get("available_items")
-            or (partner_plan or {}).get("available_workers")
-            or []
+        from modules.agent.tools.document_tools import export_outsourcing_po_pdf
+
+        branch_info = erp_status.get("branch_info") or {}
+        block_master = erp_status.get("block_master") or {}
+
+        block_id = params.get("block_id") or block_master.get("block_id") or "BLK-DIRECT"
+        po_draft_no = f"PO-DRAFT-{block_id}-{uuid.uuid4().hex[:4].upper()}"
+        partner_id = selected_partner.get("partner_id")
+        partner_name = selected_partner.get("partner_name") or partner_id
+        biz_type = selected_partner.get("business_type") or "OUTSOURCED_B2B"
+
+        delivery_zone = (
+            params.get("work_zone")
+            or branch_info.get("default_zone")
+            or state.get("default_workspace")
+            or "ZONE-A-BAY1"
         )
-        if fallback_list and isinstance(fallback_list[0], dict):
-            selected_partner = fallback_list[0]
-    if (
-        task_type == "scm_partner_qa"
-        and selected_partner.get("partner_id")
-        and state.get("is_outsourcing_required")
-    ):
-        branch_code = (
-            params.get("branch_code")
-            or (erp_status.get("branch_info") or {}).get("branch_code")
-            or "BR-ULSAN-01"
+        params["work_zone"] = delivery_zone
+        if not params.get("branch_code"):
+            params["branch_code"] = (
+                branch_info.get("branch_code")
+                or state.get("branch_code")
+                or "BR-ULSAN-01"
+            )
+
+        wire_code = (
+            selected_partner.get("hq_item_code")
+            or erp_status.get("selected_wire_code")
+            or "WIRE-CSF71T"
         )
-        partner_name = selected_partner.get("partner_name") or selected_partner.get("partner_id")
+        req_wire_kg = float(params.get("quantity") or params.get("wire_kg") or 100.0)
+
         generated_doc = {
             "is_standalone_po": True,
             "work_id": state.get("work_id"),
-            "title": f"[DRAFT] {branch_code} 외주 발주/배차 요청 ({partner_name})",
+            "work_order_number": po_draft_no,
+            "title": f"[DRAFT] {params['branch_code']} 외주 발주/배차 요청 ({partner_name})",
             "status": "DRAFT",
             "approval_status": "DRAFT",
             "execution_type": "OUTSOURCED_B2B",
+            "business_type": biz_type,
+            "wire_item_code": wire_code,
+            "reserve_wire_kg": req_wire_kg,
             "reviewed_by": state.get("user_name") or "현장검토대기",
             "parameters": params,
             "erp_resource_status": erp_status,
@@ -456,13 +509,28 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "content": answer,
         }
 
-    # 6. 사내 규격 미보유/부적합 시 하단 PDF 출처 배지 제거 (하드코딩 0%)
+        try:
+            po_export_raw = export_outsourcing_po_pdf.invoke({
+                "document_data": generated_doc,
+                "file_prefix": f"outsourcing_po_{block_id}",
+            })
+            po_meta = (
+                json.loads(po_export_raw)
+                if isinstance(po_export_raw, str)
+                else (po_export_raw or {})
+            )
+            generated_doc["files"] = po_meta
+        except Exception as po_err:
+            print(f"⚠️ [단독 외주 PO PDF 생성 경고]: {po_err}")
+
+    # 6. 사내 규격 미보유/부적합 시 하단 PDF 출처 배지 제거
     is_doc_irrelevant = (
         str(state.get("doc_grade", "")).lower() == "no"
         or not qa_out.is_supported_by_internal_docs
     )
 
     return {
+        "messages": [AIMessage(content=answer)],
         "final_answer": answer,
         "generated_document": generated_doc,
         "erp_commit_result": generated_doc,
@@ -476,22 +544,27 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 TROUBLESHOOT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "당신은 조선소 안전 거버넌스 및 공정 트러블슈팅 에이전트입니다.\n"
-        "거버넌스 게이트키퍼에 의해 작업지시서 발행이 **강제 차단(HOLD)**되었습니다.\n"
-        "제공된 [게이트키퍼 인터록 차단 사유]를 최우선으로 명확히 설명하고 현장 복구 대안(Self-Healing SOP)을 제시하세요.\n"
-        "⚠️ 절대 '보류해야 하는 사유가 없다'거나 '작업지시서를 발행할 수 있다'고 답변하지 마십시오.\n\n"
-        "[처방 원칙]\n"
-        "1. [누락된 필수 제원]이 있는 경우: 해당 항목만 친절하게 요청하세요.\n"
-        "2. 투입 작업자가 미배정되었거나 인사 원장에서 확인되지 않은 경우: 투입할 적격 작업자 성명(예: 최선임, 김철수 등)을 명시하여 재요청하도록 안내하세요.\n"
-        "3. 작업자 자격증이 만료(`EXPIRED`), 휴직(`ON_LEAVE`), 또는 블록 요구 공정과 작업자 인증 공정이 불일치(`PROCESS_MISMATCH`)하는 경우: 선급 규정에 따라 작업지시서 발행 차단(인터록)을 선언하고 해당 공정 자격을 보유한 적격 작업자로 교체 배정하거나 전문 외주 인력을 투입하도록 권고하세요.\n"
-        "4. [기상 안전 판정]이 'STOP'이거나 기상 데이터 조회 실패인 경우: 작업 중지 명령과 함께 사내 SOP에 따른 크레인 붐대 고정, 방풍/보양 조치 및 기상 센서 복구 후 재시도를 안내하세요.\n"
-        "5. [비전 검사 결과]에서 불량(`DEFECT`), 용접 중(`IN_WELDING`), 또는 로봇 비상정지(`EMERGENCY_STOP_YN='Y'`)가 감지된 경우: 즉시 원인 해소 및 재검사를 안내하세요.",
+        "당신은 스마트 조선소 현장 공정 및 안전 안내 어시스턴트입니다.\n"
+        "현재 요청하신 작업지시서는 안전·자격·야드 운영 기준에 따라 **발행이 보류**되었습니다.\n"
+        "현장 작업자와 관리자가 화면을 보자마자 **무엇이 문제이고, 어떻게 해결하면 되는지 한눈에 파악**할 수 있도록 시각적으로 정돈된 마크다운으로 안내하세요.\n\n"
+        "[절대 준수 — 표현 및 가독성 규칙]\n"
+        "1. **코드·DB 필드명·영문 상태값 노출 절대 금지**:\n"
+        "   - `region_name`, `status`, `VALID`, `is_busy`, `false`, `weld_process`, `available_workers`, `YARD_MISMATCH`, `PROCESS_MISMATCH`, `ALREADY_ASSIGNED`, `CONDITIONAL_PASS`, `BEFORE_WELD`, `IDLE`, `Gatekeeper` 등 영문 변수명·DB 컬럼명·내부 시스템 용어를 **절대 그대로 쓰지 마세요.**\n"
+        "   - 반드시 자연스러운 현장 한국어로 풀어서 표기하세요 (예: `상주 야드`, `자격 유효`, `투입 가능`, `인증 공정`, `야드 지역 불일치`, `조건부 승인`, `용접 전 대기 상태`).\n"
+        "2. **한눈에 들어오는 4단 스캔 구조 (같은 말 반복 금지)**:\n"
+        "   - **상단 핵심 요약 (`>` 인용구 2줄)**: 보류된 핵심 이유와 즉시 해결 방법을 굵은 글씨로 요약 (절대 발행 가능하다고 오인하게 쓰지 말 것)\n"
+        "   - **### 🛑 발행 보류 사유 상세**: 대상 블록 기준과 요청 작업자 조건의 차이점만 불릿 2~3줄로 명확히 대비\n"
+        "   - **### 👷 대체 투입 가능 작업자 추천**: [본사 ERP 자격/자원 검증]의 작업자 목록 중 **대상 블록과 동일 야드 권역 상주 + 자격 유효 + 현재 대기 중(미투입) + 인증 공정 일치** 조건을 모두 충족하는 작업자를 **마크다운 표**(`추천 순위 | 성명 (사번) | 소속 / 직책 | 보유 자격 (인증공정)`)로 깔끔하게 정리 (해당 인원이 없으면 현지 협력사 외주 인력 또는 용접 로봇 대안 안내)\n"
+        "   - **### ⚠️ 병행해야 할 현장 안전 조치**: 기상/비전 조건에 따른 필수 현장 조치(예: 저온 시 모재 사전 예열, 강풍 시 이동식 방풍막 설치 등) 1~2줄 요약\n"
+        "3. **없는 절차 지어내기 금지 & 명확한 후속 선택지 제공**:\n"
+        "   - 시스템에 없는 가상 서류 절차(스크린샷 제출, 사진 업로드 등)는 절대 지어내지 마세요.\n"
+        "   - 답변 마지막에는 사용자가 후속 선택만으로 바로 이어갈 수 있도록 선택지를 제시하되, 대체 작업자 교체 선택지에는 추천 표 1순위 작업자의 성명과 사번이 명확히 드러나도록 작성하세요.",
     ),
     (
         "human",
         "[사용자 요청]: {query}\n"
-        "[게이트키퍼 인터록 차단 사유]: {fail_reasons}\n"
-        "[확정 작업 제원(블록 스펙)]: {params}\n"
+        "[차단 사유]: {fail_reasons}\n"
+        "[확인된 작업 제원]: {params}\n"
         "[누락된 필수 제원]: {missing}\n"
         "[본사 ERP 자격/자원 검증]: {erp_status}\n"
         "[기상 및 안전 판정]: {weather}\n"
@@ -562,6 +635,7 @@ def troubleshooter_node(state: ShipAgentState) -> Dict[str, Any]:
         print(f"ℹ️ [안전 경보 메일 생략]: 물리적 현장 위험이 아닌 행정/자격 사유({fail_reasons})이므로 채팅창 안내만 수행")
 
     return {
+        "messages": [AIMessage(content=content_text)],
         "final_answer": content_text,
         "generated_document": {
             "title": "작업 보류 및 현장 안전/자원 조치 지시서 (HOLD)",
@@ -848,26 +922,29 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     safety_eval = weather.get("safety_evaluation") or {}
     safety_status_str = safety_eval.get("status", "PASS")
+    safety_kor_map = {
+        "PASS": "정상 (작업 가능)",
+        "CONDITIONAL_PASS": "조건부 승인 (안전 조치 필수)",
+        "STOP": "작업 중지",
+    }
+    safety_display = safety_kor_map.get(str(safety_status_str).upper(), str(safety_status_str))
 
     answer = (
         f"### 📋 공식 작업지시서 발행 브리핑 (`{erp_commit.get('work_order_number')}`)\n"
         f"- **대상 블록 / 제원**: `{block_code}` ({params.get('material', '-')} {params.get('thickness', '-')}, {params.get('process', '-')})\n"
         f"- **투입 인력 / 자재**: {worker_name} (`{worker_id}`) / `{wire_item_code or '-'}` ({req_wire_kg} kg 선점)\n"
-        f"- **현장 안전 및 시공 요약**: `{safety_status_str}` — {wo_out.brief_summary}"
+        f"- **현장 안전 및 시공 요약**: **{safety_display}** — {wo_out.brief_summary}"
     )
 
     if approval_status == "DRAFT":
         admin_notice = (
-            "\n\n> ⚠️ **[관리자 결재 대기 (`APPROVAL_STATUS: DRAFT`)]** 본"
-            " 작업지침서는 초안 상태입니다. 관리자(MANAGER/ADMIN) 승인 시"
-            " `MES_WORK_ORDER_DISPATCH` 원장 커밋 및 로봇 파라미터 인가가"
-            " 확정됩니다."
+            "\n\n> ⚠️ **[관리자 결재 대기]** 본 작업지침서는 초안 상태입니다. "
+            "관리자 승인 시 ERP 자원 배정 및 로봇 파라미터 인가가 최종 확정됩니다."
         )
     else:
         admin_notice = (
-            "\n\n> ✅ **[원장 커밋 완료 (`STATUS: COMMITTED`)]** 공식 작업지시"
-            f" 번호 `{erp_commit.get('work_order_number')}`로"
-            " `MES_WORK_ORDER_DISPATCH` 배정 및 자재 선점이 완료되었습니다."
+            "\n\n> ✅ **[원장 커밋 완료]** 공식 작업지시 번호 "
+            f"`{erp_commit.get('work_order_number')}`로 ERP 자원 배정 및 자재 선점이 확정되었습니다."
         )
 
     full_answer = answer + admin_notice
@@ -957,6 +1034,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         print(f"⚠️ [Document Tools 오류]: {e}")
 
     return {
+        "messages": [AIMessage(content=full_answer)],
         "final_answer": full_answer,
         "generated_document": generated_doc,
         "erp_commit_result": erp_commit,

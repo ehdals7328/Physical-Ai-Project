@@ -753,9 +753,15 @@ def approve_work_instruction():
     )
 
     if not target_wo and doc.get("work_order_number"):
-        target_wo = WorkOrder.query.filter(WorkOrder.work_no.like(f"{doc.get('work_order_number')}%")).first()
+        target_wo = WorkOrder.query.filter(
+            WorkOrder.work_no.like(f"{doc.get('work_order_number')}%")
+        ).first()
     if target_wo and not target_inst:
-        target_inst = WorkInstruction.query.filter_by(work_id=target_wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+        target_inst = (
+            WorkInstruction.query.filter_by(work_id=target_wo.work_id)
+            .order_by(WorkInstruction.instruction_id.desc())
+            .first()
+        )
 
     if action == "REJECT":
         if target_inst:
@@ -765,7 +771,7 @@ def approve_work_instruction():
             target_wo.status_code = "SUSPENDED"
             target_wo.work_title = str(target_wo.work_title or "").replace("[DRAFT]", "[REJECTED]")
 
-        # 채팅방 말풍선 상태도 REJECTED로 갱신하여 새로고침 시 결재 박스 재노출 차단
+        # 👇 이 블록은 그대로 유지하세요! (채팅창 새로고침 시 결재 박스 재노출 차단)
         reject_sid = source_session_id or session.get("assistant_thread_id")
         if reject_sid:
             last_ai_msg = (
@@ -789,7 +795,7 @@ def approve_work_instruction():
         db.session.commit()
         return jsonify({
             "status": "REJECTED",
-            "message": f"❌ [요청 반려] {user.full_name} 관리자에 의해 작업지시서 및 자원 배정이 반려(Rollback)되었습니다."
+            "message": f"❌ [요청 반려] {user.full_name} 관리자에 의해 요청이 반려 처리되었습니다."
         })
 
     try:
@@ -1223,7 +1229,11 @@ def _extract_inst_pdf_url(inst) -> str:
     if not inst or not inst.external_env_json:
         return ""
     try:
-        meta = json.loads(_read_clob(inst.external_env_json))
+        raw_str = _read_clob(inst.external_env_json).strip()
+        try:
+            meta = json.loads(raw_str)
+        except Exception:
+            meta = ast.literal_eval(raw_str)
         if not isinstance(meta, dict):
             return ""
         files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
@@ -1240,6 +1250,7 @@ def _extract_inst_pdf_url(inst) -> str:
         return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
     except Exception:
         return ""
+
 
 def _extract_inst_po_pdf_url(inst) -> str:
     """WorkInstruction의 external_env_json에서 외주 발주 주문서(PO) PDF URL 추출"""
@@ -1323,8 +1334,14 @@ def history_page():
     pending_approvals = []
     if user.role in ("ADMIN", "MANAGER"):
         for item in all_orders:
+            wo = item.get("wo")
             inst = item.get("inst")
-            if inst and inst.approval_status == "DRAFT":
+            if (
+                inst
+                and inst.approval_status == "DRAFT"
+                and wo
+                and wo.status_code not in ("SUSPENDED", "COMPLETED", "CANCELLED")
+            ):
                 pending_approvals.append(item)
 
     return render_template(
@@ -1385,14 +1402,77 @@ def control_robot_status():
 @service_bp.route("/api/history/order-status", methods=["POST"])
 @login_required
 def update_work_order_status():
-    """작업오더 진행 상태(READY -> IN_PROGRESS -> COMPLETED) 변경"""
+    """작업오더 진행 상태(READY -> IN_PROGRESS -> COMPLETED) 변경 및 ERP 배정 원장(MES_WORK_ORDER_DISPATCH) 동기화"""
+    from sqlalchemy import text
+    from modules.agent.tools.erp_tools import erp_engine
+
     data = request.get_json(silent=True) or {}
     work_id = data.get("work_id")
-    next_status = data.get("status_code")
+    next_status = str(data.get("status_code") or "").strip().upper()
 
     wo = WorkOrder.query.get_or_404(work_id)
     wo.status_code = next_status
     wo.updated_at = datetime.utcnow()
     db.session.commit()
+
+    # ERP 배정 원장(MES_WORK_ORDER_DISPATCH) 상태 동기화
+    if erp_engine and wo.work_no:
+        try:
+            with erp_engine.begin() as conn:
+                if next_status == "COMPLETED":
+                    # 1) 해당 작업지시 번호의 배정 상태를 COMPLETED로 변경 (작업자 투입 해제)
+                    conn.execute(
+                        text("""
+                            UPDATE MES_WORK_ORDER_DISPATCH
+                            SET status = 'COMPLETED'
+                            WHERE wo_number = :wo_no
+                              AND UPPER(status) = 'COMMITTED'
+                        """),
+                        {"wo_no": wo.work_no},
+                    )
+                    # 2) 동일 블록(예: B-305)에 대해 웹 WORK_ORDERS 상 활성(READY/IN_PROGRESS) 오더가 0건이면
+                    #    과거 시드 데이터 등 잔여 COMMITTED 건도 함께 COMPLETED로 마감
+                    active_block_wo_cnt = (
+                        WorkOrder.query
+                        .filter(
+                            WorkOrder.block_code == wo.block_code,
+                            WorkOrder.status_code.in_(["READY", "IN_PROGRESS"]),
+                        )
+                        .count()
+                    )
+                    if wo.block_code and active_block_wo_cnt == 0:
+                        conn.execute(
+                            text("""
+                                UPDATE MES_WORK_ORDER_DISPATCH
+                                SET status = 'COMPLETED'
+                                WHERE block_id = :b_id
+                                  AND UPPER(status) = 'COMMITTED'
+                            """),
+                            {"b_id": wo.block_code},
+                        )
+
+                elif next_status in ("SUSPENDED", "CANCELLED"):
+                    conn.execute(
+                        text("""
+                            UPDATE MES_WORK_ORDER_DISPATCH
+                            SET status = 'ROLLED_BACK'
+                            WHERE wo_number = :wo_no
+                              AND UPPER(status) = 'COMMITTED'
+                        """),
+                        {"wo_no": wo.work_no},
+                    )
+
+                elif next_status == "IN_PROGRESS":
+                    conn.execute(
+                        text("""
+                            UPDATE MES_WORK_ORDER_DISPATCH
+                            SET status = 'COMMITTED'
+                            WHERE wo_number = :wo_no
+                              AND UPPER(status) IN ('COMPLETED', 'ROLLED_BACK')
+                        """),
+                        {"wo_no": wo.work_no},
+                    )
+        except Exception as e:
+            print(f"⚠️ [MES_WORK_ORDER_DISPATCH 상태 동기화 경고]: {e}")
 
     return jsonify({"status": "SUCCESS", "message": f"작업 [{wo.work_no}] 상태가 {next_status}로 변경되었습니다."})
