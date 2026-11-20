@@ -171,6 +171,7 @@ class VisionDetection(db.Model):
     bbox_width = db.Column("BBOX_WIDTH", db.Numeric(10, 2), nullable=False)
     bbox_height = db.Column("BBOX_HEIGHT", db.Numeric(10, 2), nullable=False)
     centerline_waypoints_json = db.Column("CENTERLINE_WAYPOINTS_JSON", db.Text)
+    ocr_text = db.Column("OCR_TEXT", db.String(100))
 
 
 # 9. VISION_INSPECTIONS (목표 용접선 확정 및 품질 판정)
@@ -184,7 +185,7 @@ class VisionInspection(db.Model):
     work_id = db.Column("WORK_ID", db.Integer, db.ForeignKey("WORK_ORDERS.WORK_ID"), nullable=False)
     start_point_json = db.Column("START_POINT_JSON", db.String(200), nullable=False)
     end_point_json = db.Column("END_POINT_JSON", db.String(200), nullable=False)
-    estimated_length_mm = db.Column("ESTIMATED_LENGTH_MM", db.Numeric(10, 2))
+    ocr_text = db.Column("OCR_TEXT", db.String(100))
     safety_clearance_yn = db.Column("SAFETY_CLEARANCE_YN", db.String(1), default="Y", nullable=False)
     inspection_status = db.Column("INSPECTION_STATUS", db.String(20), default="BEFORE_WELD", nullable=False)
     defect_detail_json = db.Column("DEFECT_DETAIL_JSON", db.Text)

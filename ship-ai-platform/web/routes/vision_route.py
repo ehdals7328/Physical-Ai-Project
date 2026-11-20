@@ -1,12 +1,11 @@
 # web/routes/vision_route.py
 import json
-import math
 import os
 import threading
 import time
 import requests
 import urllib3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from flask import Blueprint, render_template, Response, jsonify, request, session, redirect, url_for, flash
 from werkzeug.utils import secure_filename
@@ -33,7 +32,7 @@ vision_bp = Blueprint("vision", __name__, url_prefix="/vision")
 RUNPOD_BASE = (
     os.getenv("RUNPOD_BASE")
     or os.getenv("VISION_API_URL")
-    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net/"
+    or "https://amu7e870l49mun-5000.proxy.runpod.net"
 ).rstrip("/")
 RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed"
 RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections"
@@ -47,27 +46,45 @@ VIDEO_FILENAME_ALIASES = {
     "video3.mp4": "seg_Test.mp4",
 }
 
-_SEEN_JOINT_TRACKER_IDS = set()
+# ⭐ 동일 tracker_id 중복 무한 저장 방지 캐시 (카메라/영상별 tracker_id 추적)
+_TRACKER_LOCK = threading.Lock()
+_SEEN_JOINT_TRACKER_KEYS: set[tuple[str, int]] = set()
+_SEEN_OCR_KEYS: set[tuple[str, str]] = set()
 
-# ⭐ [다중 접속 클라우드 과부하 방지]
-# 1) 동시 YOLO 미디어 업로드 추론 세마포어 (최대 2개 동시 처리, 초과 시 대기/보호)
+# ⭐ 다중 접속 클라우드 과부하 방지
 _VISION_UPLOAD_SEMAPHORE = threading.BoundedSemaphore(2)
-# 2) 카메라별 자동 DB/디스크 저장 쿨다운 (여러 명이 동시 접속해도 카메라당 최소 10초 간격 보장)
 _CAMERA_AUTOSAVE_LOCK = threading.Lock()
 _LAST_CAMERA_AUTOSAVE_TS: dict[str, float] = {}
 AUTOSAVE_COOLDOWN_SEC = 10.0
-# 3) 서버 디스크 용량 자동 보호 (폴더당 최대 보관 파일 수 - 초과 시 오래된 물리 파일만 자동 정리, DB 기록은 100% 영구 보존)
+
 MAX_DISK_FILES_PER_FOLDER = 40
 MAX_VISION_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB 제한
+RECORDS_PER_PAGE = 5
 
 VISION_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "static" / "uploads" / "vision"
 VISION_CAPTURE_DIR = Path(__file__).resolve().parents[1] / "static" / "captures"
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
+# 현장 친화적 클래스 한글명 매핑 (화면 표시용)
+CLASS_LABEL_KO = {
+    "weld_joint": "용접선",
+    "weld_bead": "용접비드",
+    "ship_block": "선박블록",
+    "block": "선박블록",
+    "crane_hook": "크레인후크",
+    "hook": "크레인후크",
+    "heavy_equipment": "중장비",
+    "robot": "용접로봇",
+    "worker": "작업자",
+    "torch": "용접토치",
+    "hand": "작업자손",
+    "spark": "용접불꽃",
+}
+
 
 def _prune_old_disk_files(folder: Path, max_keep: int = MAX_DISK_FILES_PER_FOLDER):
-    """디스크 용량 과부하 방지를 위해 오래된 물리 파일만 정리 (DB 레코드는 절대 건드리지 않음)"""
+    """디스크 용량 과부하 방지를 위해 오래된 물리 파일만 정리 (기록은 영구 보존)"""
     try:
         if not folder.exists():
             return
@@ -174,6 +191,135 @@ def _build_realistic_yolo_fallback(width: int, height: int) -> list[dict]:
     ]
 
 
+def _extract_valid_ocr_text(predictions: list[dict]) -> str | None:
+    """탐지 결과 중 유효한 블록 식별 문자(OCR) 추출"""
+    for pred in predictions:
+        raw_ocr = str(pred.get("block_id") or pred.get("ocr_text") or "").strip()
+        if raw_ocr and raw_ocr.lower() not in ("scanning...", "none", "null", "-"):
+            return raw_ocr[:100]
+    return None
+
+
+def _format_detected_objects_ko(dets: list) -> str:
+    """탐지된 객체 목록을 현장 작업자가 이해하기 쉬운 한글 요약으로 변환"""
+    if not dets:
+        return "탐지 객체 없음"
+    parts = []
+    for d in dets[:5]:
+        ko = CLASS_LABEL_KO.get(str(d.class_name).lower(), d.class_name)
+        pct = int(float(d.confidence or 0) * 100)
+        parts.append(f"{ko}({pct}%)")
+    return ", ".join(parts)
+
+
+def _query_inspections_paginated(
+    *,
+    page: int = 1,
+    per_page: int = RECORDS_PER_PAGE,
+    camera_code: str = "ALL",
+    saved_date: str = "",
+    keyword: str = "",
+) -> dict:
+    """현장 탐지 기록 검색(카메라 · 촬영일 · 키워드/OCR문자) + 페이지네이션"""
+    page = max(1, int(page or 1))
+    camera_code = (camera_code or "ALL").strip()
+    saved_date = (saved_date or "").strip()
+    keyword = (keyword or "").strip().lower()
+
+    # 사용 가능한 카메라 채널 목록 수집
+    cam_rows = (
+        db.session.query(VisionAnalysis.camera_code)
+        .distinct()
+        .order_by(VisionAnalysis.camera_code.asc())
+        .all()
+    )
+    camera_options = [r[0] for r in cam_rows if r[0]]
+
+    query = (
+        db.session.query(VisionInspection, VisionAnalysis)
+        .join(VisionAnalysis, VisionInspection.analysis_id == VisionAnalysis.analysis_id)
+    )
+
+    if camera_code and camera_code != "ALL":
+        query = query.filter(VisionAnalysis.camera_code == camera_code)
+
+    if saved_date:
+        try:
+            dt_start = datetime.strptime(saved_date, "%Y-%m-%d")
+            dt_end = dt_start + timedelta(days=1)
+            query = query.filter(
+                VisionInspection.created_at >= dt_start,
+                VisionInspection.created_at < dt_end,
+            )
+        except ValueError:
+            pass
+
+    rows = query.order_by(VisionInspection.inspection_id.desc()).all()
+
+    filtered_items = []
+    for insp, ana in rows:
+        dets = VisionDetection.query.filter_by(analysis_id=insp.analysis_id).all()
+        obj_summary_ko = _format_detected_objects_ko(dets)
+        obj_raw = ", ".join(str(d.class_name) for d in dets)
+
+        ocr_val = getattr(insp, "ocr_text", None) or ""
+        if not ocr_val:
+            for d in dets:
+                d_ocr = getattr(d, "ocr_text", None)
+                if d_ocr:
+                    ocr_val = d_ocr
+                    break
+
+        recorded_time = (
+            insp.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            if insp.created_at
+            else (ana.created_at.strftime("%Y-%m-%d %H:%M:%S") if ana and ana.created_at else "-")
+        )
+
+        if keyword:
+            haystack = " ".join([
+                f"#{insp.inspection_id}",
+                str(insp.inspection_id),
+                str(ana.camera_code or ""),
+                obj_summary_ko,
+                obj_raw,
+                str(ocr_val),
+                str(insp.start_point_json or ""),
+                str(insp.end_point_json or ""),
+                recorded_time,
+            ]).lower()
+            if keyword not in haystack:
+                continue
+
+        filtered_items.append({
+            "inspection_id": insp.inspection_id,
+            "analysis_id": insp.analysis_id,
+            "camera_code": ana.camera_code if ana else "CAM-ULS-BAY1",
+            "start_point": insp.start_point_json,
+            "end_point": insp.end_point_json,
+            "ocr_text": ocr_val or "-",
+            "detected_objects_str": obj_summary_ko,
+            "created_at": recorded_time,
+        })
+
+    total_count = len(filtered_items)
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    if page > total_pages:
+        page = total_pages
+
+    start_idx = (page - 1) * per_page
+    paged_items = filtered_items[start_idx:start_idx + per_page]
+
+    return {
+        "inspections": paged_items,
+        "camera_options": camera_options,
+        "page": page,
+        "per_page": per_page,
+        "total_count": total_count,
+        "total_pages": total_pages,
+    }
+
+
 # ---------------------------------------------------------------------
 # 1. 비전 관제 메인 화면 (/vision/)
 # ---------------------------------------------------------------------
@@ -184,14 +330,14 @@ def index():
         return redirect(url_for("auth.login"))
 
     user = User.query.get_or_404(session["user_id"])
-    recent_inspections = VisionInspection.query.order_by(VisionInspection.inspection_id.desc()).limit(10).all()
     robots = RobotExecution.query.order_by(RobotExecution.robot_exec_id.asc()).all()
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    initial_records = _query_inspections_paginated(page=1, per_page=RECORDS_PER_PAGE)
 
     return render_template(
         "service/vision.html",
         me=user,
-        recent_inspections=recent_inspections,
+        initial_records=initial_records,
         robots=robots,
         branches=branches,
         runpod_base=RUNPOD_BASE,
@@ -199,7 +345,7 @@ def index():
 
 
 # ---------------------------------------------------------------------
-# 2. Oracle SHIP_ERP + PostgreSQL B2B View 교차 조회 지도 API
+# 2. 야드 및 협력사 위치 지도 API
 # ---------------------------------------------------------------------
 @vision_bp.route("/api/map-markers", methods=["GET"])
 def get_map_markers():
@@ -299,7 +445,7 @@ def get_map_markers():
 
 
 # ---------------------------------------------------------------------
-# 3. RunPod(final.py) 스트리밍 & 제어 프록시
+# 3. 실시간 카메라 스트리밍 & 제어 프록시
 # ---------------------------------------------------------------------
 @vision_bp.route("/video_feed")
 def video_feed():
@@ -314,7 +460,7 @@ def video_feed():
         except GeneratorExit:
             pass
         except Exception as e:
-            print("RunPod 영상 스트림 연동 종료/에러:", e)
+            print("실시간 카메라 스트림 연결 종료/에러:", e)
         finally:
             if req is not None:
                 try:
@@ -333,9 +479,9 @@ def get_detections():
         res = requests.get(RUNPOD_JSON_URL, timeout=1.5, verify=False)
         if res.status_code == 200:
             data = res.json()
-            data["source"] = "RUNPOD_LIVE"
+            data["source"] = "LIVE"
             return jsonify(data)
-        return jsonify({"image": {"width": 960, "height": 540}, "source": "RUNPOD_ERR", "predictions": []})
+        return jsonify({"image": {"width": 960, "height": 540}, "source": "ERR", "predictions": []})
     except Exception:
         return jsonify({"image": {"width": 960, "height": 540}, "source": "OFFLINE", "predictions": []})
 
@@ -355,15 +501,17 @@ def change_video(filename):
         mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
         target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}"
         res = requests.get(target_url, timeout=3, verify=False)
-        _SEEN_JOINT_TRACKER_IDS.clear()
+        with _TRACKER_LOCK:
+            _SEEN_JOINT_TRACKER_KEYS.clear()
+            _SEEN_OCR_KEYS.clear()
         return jsonify(res.json())
     except Exception as e:
-        print("RunPod 영상 전환 에러:", e)
+        print("카메라 채널 전환 에러:", e)
         return jsonify({"status": "error", "video": filename})
 
 
 # ---------------------------------------------------------------------
-# 4. 사진 / 영상 업로드 및 YOLOv11 추론 & DB 연동 API (다중 접속 세마포어 보호)
+# 4. 사진 / 영상 직접 업로드 분석 & 자동 기록 API
 # ---------------------------------------------------------------------
 @vision_bp.route("/api/upload-yolo", methods=["POST"])
 def upload_and_run_yolo():
@@ -374,36 +522,36 @@ def upload_and_run_yolo():
     if not acquired:
         return jsonify({
             "status": "ERROR",
-            "message": "현재 다른 사용자의 비전 영상/사진 추론이 집중되고 있습니다. 몇 초 후 다시 시도해 주세요."
+            "message": "현재 다른 사용자의 현장 영상 분석이 집중되고 있습니다. 몇 초 후 다시 시도해 주세요."
         }), 429
 
     try:
         media_file = request.files.get("media_file")
-        camera_code = request.form.get("camera_code", "CAM-UPLOAD-TEST").strip() or "CAM-UPLOAD-TEST"
+        camera_code = request.form.get("camera_code", "CAM-UPLOAD").strip() or "CAM-UPLOAD"
         work_id = request.form.get("work_id", 1, type=int)
         auto_save = request.form.get("auto_save", "Y").strip().upper() == "Y"
 
         if not media_file or not media_file.filename:
-            return jsonify({"status": "ERROR", "message": "분석할 사진 또는 영상 파일을 선택해 주세요."}), 400
+            return jsonify({"status": "ERROR", "message": "분석할 현장 사진 또는 영상 파일을 선택해 주세요."}), 400
 
         orig_name = media_file.filename
         ext = Path(orig_name).suffix.lower()
         if ext not in ALLOWED_IMAGE_EXT and ext not in ALLOWED_VIDEO_EXT:
             return jsonify({
                 "status": "ERROR",
-                "message": "지원하지 않는 파일 형식입니다. 사진(JPG, PNG, WEBP) 또는 영상(MP4, MOV, AVI, WEBM)을 업로드해 주세요."
+                "message": "지원하지 않는 파일 형식입니다. 사진(JPG, PNG, WEBP) 또는 영상(MP4, MOV, AVI, WEBM)을 선택해 주세요."
             }), 400
 
         VISION_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         now_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_name = secure_filename(Path(orig_name).stem) or "media"
-        saved_filename = f"yolo_{now_tag}_{safe_name}{ext}"
+        saved_filename = f"vision_{now_tag}_{safe_name}{ext}"
         saved_path = VISION_UPLOAD_DIR / saved_filename
         media_file.save(str(saved_path))
 
         if saved_path.stat().st_size > MAX_VISION_UPLOAD_BYTES:
             saved_path.unlink(missing_ok=True)
-            return jsonify({"status": "ERROR", "message": "업로드 영상/사진 용량은 최대 50MB 이하여야 합니다."}), 400
+            return jsonify({"status": "ERROR", "message": "업로드 파일 용량은 최대 50MB 이하여야 합니다."}), 400
 
         _prune_old_disk_files(VISION_UPLOAD_DIR, max_keep=MAX_DISK_FILES_PER_FOLDER)
 
@@ -416,7 +564,7 @@ def upload_and_run_yolo():
             width, height = _get_image_dimensions(saved_path)
 
         predictions = []
-        infer_source = "RUNPOD_YOLO"
+        infer_source = "AI_SERVER"
 
         for endpoint in ("/predict", "/infer", "/upload"):
             try:
@@ -434,17 +582,12 @@ def upload_and_run_yolo():
                         img_info = payload.get("image") or {}
                         width = int(img_info.get("width") or width)
                         height = int(img_info.get("height") or height)
-                        infer_source = f"RUNPOD_{endpoint.strip('/').upper()}"
+                        infer_source = "AI_SERVER"
                         break
             except Exception:
                 continue
 
         if not predictions:
-            if media_type == "VIDEO":
-                try:
-                    requests.get(f"{RUNPOD_CHANGE_VIDEO_URL}{saved_filename}", timeout=2, verify=False)
-                except Exception:
-                    pass
             try:
                 det_resp = requests.get(RUNPOD_JSON_URL, timeout=2.0, verify=False)
                 if det_resp.status_code == 200:
@@ -453,13 +596,13 @@ def upload_and_run_yolo():
                     img_info = det_json.get("image") or {}
                     width = int(img_info.get("width") or width)
                     height = int(img_info.get("height") or height)
-                    infer_source = "RUNPOD_DETECTIONS_SYNC"
+                    infer_source = "LIVE_SYNC"
             except Exception:
                 pass
 
         if not predictions:
             predictions = _build_realistic_yolo_fallback(width, height)
-            infer_source = "YOLOV11_RES_ADAPTIVE"
+            infer_source = "LOCAL_FALLBACK"
 
         inference_ms = round((time.time() - start_ts) * 1000, 2)
         detection_payload = {
@@ -484,7 +627,7 @@ def upload_and_run_yolo():
                 )
             except Exception as e:
                 db.session.rollback()
-                print(f"[Vision Upload DB Save Warning]: {e}")
+                print(f"[현장 업로드 기록 저장 참고]: {e}")
 
         return jsonify({
             "status": "SUCCESS",
@@ -539,8 +682,12 @@ def _insert_vision_records(
     )
     safety_yn = "N" if interfering else "Y"
 
+    frame_ocr_text = _extract_valid_ocr_text(predictions)
     first_det_id = None
     first_waypoints = None
+
+    det_has_ocr_col = hasattr(VisionDetection, "ocr_text")
+    insp_has_ocr_col = hasattr(VisionInspection, "ocr_text")
 
     for pred in predictions:
         cls_name = str(pred.get("class", "unknown"))
@@ -549,6 +696,9 @@ def _insert_vision_records(
         trk_id = pred.get("tracker_id")
         box = pred.get("box") or {}
 
+        raw_ocr = str(pred.get("block_id") or pred.get("ocr_text") or "").strip()
+        pred_ocr = raw_ocr[:100] if raw_ocr and raw_ocr.lower() not in ("scanning...", "none", "null") else None
+
         waypoints = pred.get("centerline_waypoints")
         waypoints_json_str = (
             json.dumps(waypoints, ensure_ascii=False)
@@ -556,7 +706,7 @@ def _insert_vision_records(
             else None
         )
 
-        det_row = VisionDetection(
+        det_kwargs = dict(
             analysis_id=new_analysis.analysis_id,
             class_id=cls_id,
             class_name=cls_name,
@@ -568,6 +718,10 @@ def _insert_vision_records(
             bbox_height=round(float(box.get("height", 0.0)), 2),
             centerline_waypoints_json=waypoints_json_str,
         )
+        if det_has_ocr_col:
+            det_kwargs["ocr_text"] = pred_ocr
+
+        det_row = VisionDetection(**det_kwargs)
         db.session.add(det_row)
         db.session.flush()
 
@@ -576,47 +730,56 @@ def _insert_vision_records(
 
         if cls_name == "weld_joint" and waypoints and len(waypoints) >= 2:
             if trk_id is not None:
-                _SEEN_JOINT_TRACKER_IDS.add(trk_id)
+                with _TRACKER_LOCK:
+                    _SEEN_JOINT_TRACKER_KEYS.add((camera_code, int(trk_id)))
 
             start_pt = waypoints[0]
             end_pt = waypoints[-1]
-            px_dist = math.hypot(end_pt[0] - start_pt[0], end_pt[1] - start_pt[1])
-            est_len_mm = round(px_dist * 1.95, 2)
 
-            insp_row = VisionInspection(
+            insp_kwargs = dict(
                 analysis_id=new_analysis.analysis_id,
                 detection_id=det_row.detection_id,
                 work_id=int(work_id) if work_id else 1,
                 start_point_json=json.dumps(start_pt),
                 end_point_json=json.dumps(end_pt),
-                estimated_length_mm=est_len_mm,
                 safety_clearance_yn=safety_yn,
                 inspection_status="BEFORE_WELD",
                 defect_detail_json=None,
             )
+            if insp_has_ocr_col:
+                insp_kwargs["ocr_text"] = pred_ocr or frame_ocr_text
+
+            insp_row = VisionInspection(**insp_kwargs)
             db.session.add(insp_row)
             first_waypoints = waypoints
 
     if first_waypoints is None and first_det_id is not None:
-        insp_row = VisionInspection(
+        insp_kwargs = dict(
             analysis_id=new_analysis.analysis_id,
             detection_id=first_det_id,
             work_id=int(work_id) if work_id else 1,
             start_point_json="[0, 0]",
             end_point_json="[0, 0]",
-            estimated_length_mm=0.0,
             safety_clearance_yn=safety_yn,
             inspection_status="BEFORE_WELD",
             defect_detail_json=None,
         )
+        if insp_has_ocr_col:
+            insp_kwargs["ocr_text"] = frame_ocr_text
+
+        insp_row = VisionInspection(**insp_kwargs)
         db.session.add(insp_row)
+
+    if frame_ocr_text:
+        with _TRACKER_LOCK:
+            _SEEN_OCR_KEYS.add((camera_code, frame_ocr_text))
 
     db.session.commit()
     return new_analysis.analysis_id
 
 
 # ---------------------------------------------------------------------
-# 5. 실시간 스트림 캡처 및 백그라운드 DB 적재 API (카메라당 10초 쿨다운 스로틀링 적용)
+# 5. 실시간 스트림 자동/수동 기록 저장 API (동일 tracker_id 중복 무한 저장 차단)
 # ---------------------------------------------------------------------
 @vision_bp.route("/api/save-snapshot", methods=["POST"])
 def save_vision_snapshot():
@@ -626,14 +789,6 @@ def save_vision_snapshot():
     video_name = payload.get("video_name", "Test_1.mp4")
     auto_mode = payload.get("auto_mode", True)
     detection_data = payload.get("detection_data") or {}
-
-    if auto_mode:
-        now_ts = time.time()
-        with _CAMERA_AUTOSAVE_LOCK:
-            last_ts = _LAST_CAMERA_AUTOSAVE_TS.get(camera_code, 0.0)
-            if now_ts - last_ts < AUTOSAVE_COOLDOWN_SEC:
-                return jsonify({"status": "THROTTLED", "message": "10초 쿨다운 대기 중"})
-            _LAST_CAMERA_AUTOSAVE_TS[camera_code] = now_ts
 
     if not detection_data or not detection_data.get("predictions"):
         try:
@@ -650,7 +805,7 @@ def save_vision_snapshot():
         predictions = _build_realistic_yolo_fallback(960, 540)
 
     if not predictions:
-        return jsonify({"status": "SKIPPED", "message": "탐지된 객체가 없습니다."})
+        return jsonify({"status": "SKIPPED", "message": "현재 화면에 탐지된 대상이 없습니다."})
 
     has_arc_flame = any(
         str(p.get("class", "")).lower() in ("flame", "arc", "welding_arc", "spark")
@@ -661,11 +816,32 @@ def save_vision_snapshot():
     if auto_mode and welding_state == "IN_WELDING":
         return jsonify({"status": "LOCKED", "welding_state": "IN_WELDING"})
 
-    joint_preds = [p for p in predictions if str(p.get("class", "")).lower() == "weld_joint"]
+    # ⭐ 자동 저장 시: 동일 tracker_id(용접선) 또는 동일 OCR 블록 번호 중복 저장 원천 차단
     if auto_mode:
-        new_joints = [j for j in joint_preds if j.get("tracker_id") not in _SEEN_JOINT_TRACKER_IDS]
-        if not new_joints:
-            return jsonify({"status": "SKIPPED"})
+        joint_preds = [
+            p for p in predictions
+            if str(p.get("class", "")).lower() == "weld_joint"
+            and p.get("tracker_id") is not None
+        ]
+        ocr_text = _extract_valid_ocr_text(predictions)
+
+        with _TRACKER_LOCK:
+            new_joints = [
+                j for j in joint_preds
+                if (camera_code, int(j.get("tracker_id"))) not in _SEEN_JOINT_TRACKER_KEYS
+            ]
+            is_new_ocr = bool(ocr_text and (camera_code, ocr_text) not in _SEEN_OCR_KEYS)
+
+        if not new_joints and not is_new_ocr:
+            return jsonify({"status": "SKIPPED", "message": "이미 기록된 추적 ID입니다."})
+
+        # 카메라당 최소 10초 쿨다운 (다중 접속 보호)
+        now_ts = time.time()
+        with _CAMERA_AUTOSAVE_LOCK:
+            last_ts = _LAST_CAMERA_AUTOSAVE_TS.get(camera_code, 0.0)
+            if now_ts - last_ts < AUTOSAVE_COOLDOWN_SEC:
+                return jsonify({"status": "THROTTLED", "message": "저장 쿨다운 대기 중"})
+            _LAST_CAMERA_AUTOSAVE_TS[camera_code] = now_ts
 
     try:
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -695,7 +871,7 @@ def save_vision_snapshot():
             "status": "SUCCESS",
             "analysis_id": analysis_id,
             "capture_uri": public_capture_uri,
-            "message": f"[{camera_code}] 실시간 비전 스냅샷(기록 #{analysis_id}) 저장이 완료되었습니다.",
+            "message": f"[{camera_code}] 현장 화면 분석 기록(#{analysis_id})이 저장되었습니다.",
         })
     except Exception as e:
         db.session.rollback()
@@ -703,36 +879,15 @@ def save_vision_snapshot():
 
 
 # ---------------------------------------------------------------------
-# 6. 하단 기록 조회 API
+# 6. 하단 탐지 기록 검색 & 페이지네이션 조회 API
 # ---------------------------------------------------------------------
 @vision_bp.route("/api/db-records", methods=["GET"])
 def get_vision_db_records():
-    inspections = VisionInspection.query.order_by(VisionInspection.inspection_id.desc()).limit(10).all()
-
-    inspection_list = []
-    for i in inspections:
-        analysis = VisionAnalysis.query.get(i.analysis_id)
-        dets = VisionDetection.query.filter_by(analysis_id=i.analysis_id).all()
-        detected_classes = [f"{d.class_name}({int(float(d.confidence)*100)}%)" for d in dets]
-
-        recorded_time = (
-            i.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            if i.created_at
-            else (analysis.created_at.strftime("%Y-%m-%d %H:%M:%S") if analysis and analysis.created_at else "-")
-        )
-
-        inspection_list.append({
-            "inspection_id": i.inspection_id,
-            "analysis_id": i.analysis_id,
-            "camera_code": analysis.camera_code if analysis else "CAM-ULS-BAY1",
-            "start_point": i.start_point_json,
-            "end_point": i.end_point_json,
-            "length_mm": float(i.estimated_length_mm or 0),
-            "detected_objects_str": ", ".join(detected_classes[:5]) if detected_classes else "weld_joint",
-            "created_at": recorded_time,
-        })
-
-    return jsonify({
-        "status": "SUCCESS",
-        "inspections": inspection_list,
-    })
+    payload = _query_inspections_paginated(
+        page=request.args.get("page", 1, type=int),
+        per_page=RECORDS_PER_PAGE,
+        camera_code=request.args.get("camera_code", "ALL"),
+        saved_date=request.args.get("saved_date", ""),
+        keyword=request.args.get("keyword", ""),
+    )
+    return jsonify({"status": "SUCCESS", **payload})
