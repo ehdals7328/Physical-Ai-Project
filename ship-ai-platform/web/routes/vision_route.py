@@ -1,6 +1,7 @@
 # web/routes/vision_route.py
 import json
 import math
+import os
 import threading
 import time
 import requests
@@ -29,11 +30,22 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 vision_bp = Blueprint("vision", __name__, url_prefix="/vision")
 
-RUNPOD_BASE = "https://amu7e870l49mun-5000.proxy.runpod.net"
+RUNPOD_BASE = (
+    os.getenv("RUNPOD_BASE")
+    or os.getenv("VISION_API_URL")
+    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net/"
+).rstrip("/")
 RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed"
 RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections"
 RUNPOD_PAUSE_URL = f"{RUNPOD_BASE}/pause"
 RUNPOD_CHANGE_VIDEO_URL = f"{RUNPOD_BASE}/change_video/"
+
+# DB 기본값(video1.mp4 등)과 RunPod(final.py) 실제 파일명 매핑
+VIDEO_FILENAME_ALIASES = {
+    "video1.mp4": "Test_1.mp4",
+    "video2.mp4": "ocr_test.mp4",
+    "video3.mp4": "seg_Test.mp4",
+}
 
 _SEEN_JOINT_TRACKER_IDS = set()
 
@@ -136,7 +148,7 @@ def _build_realistic_yolo_fallback(width: int, height: int) -> list[dict]:
             "centerline_waypoints": scaled_waypoints,
         },
         {
-            "class": "block",
+            "class": "ship_block",
             "class_id": 1,
             "confidence": 0.93,
             "tracker_id": 27,
@@ -148,7 +160,7 @@ def _build_realistic_yolo_fallback(width: int, height: int) -> list[dict]:
             },
         },
         {
-            "class": "hook",
+            "class": "crane_hook",
             "class_id": 2,
             "confidence": 0.78,
             "tracker_id": 28,
@@ -206,6 +218,8 @@ def get_map_markers():
 
     hq_branches = []
     for br in active_branches:
+        raw_vid = br.default_video or "Test_1.mp4"
+        mapped_vid = VIDEO_FILENAME_ALIASES.get(raw_vid.lower(), raw_vid)
         hq_branches.append({
             "branch_code": br.branch_code,
             "branch_name": br.branch_name,
@@ -214,7 +228,7 @@ def get_map_markers():
             "lng": float(br.longitude),
             "address": br.address or "",
             "camera_code": br.camera_code or f"CAM-{br.branch_code}",
-            "default_video": br.default_video or "video1.mp4",
+            "default_video": mapped_vid,
         })
 
     partner_markers = []
@@ -285,15 +299,15 @@ def get_map_markers():
 
 
 # ---------------------------------------------------------------------
-# 3. 스트리밍 프록시
+# 3. RunPod(final.py) 스트리밍 & 제어 프록시
 # ---------------------------------------------------------------------
 @vision_bp.route("/video_feed")
 def video_feed():
     def proxy_stream():
         req = None
         try:
-            req = requests.get(RUNPOD_STREAM_URL, stream=True, timeout=(3, 5), verify=False)
-            for chunk in req.iter_content(chunk_size=2048):
+            req = requests.get(RUNPOD_STREAM_URL, stream=True, timeout=(3, 15), verify=False)
+            for chunk in req.iter_content(chunk_size=4096):
                 if not chunk:
                     break
                 yield chunk
@@ -329,7 +343,7 @@ def get_detections():
 @vision_bp.route("/pause")
 def toggle_pause():
     try:
-        res = requests.get(RUNPOD_PAUSE_URL, timeout=2, verify=False)
+        res = requests.get(RUNPOD_PAUSE_URL, timeout=3, verify=False)
         return jsonify(res.json())
     except Exception:
         return jsonify({"status": "error", "is_paused": False})
@@ -338,11 +352,13 @@ def toggle_pause():
 @vision_bp.route("/change_video/<filename>")
 def change_video(filename):
     try:
-        target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{filename}"
-        res = requests.get(target_url, timeout=2, verify=False)
+        mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
+        target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}"
+        res = requests.get(target_url, timeout=3, verify=False)
         _SEEN_JOINT_TRACKER_IDS.clear()
         return jsonify(res.json())
-    except Exception:
+    except Exception as e:
+        print("RunPod 영상 전환 에러:", e)
         return jsonify({"status": "error", "video": filename})
 
 
@@ -354,7 +370,6 @@ def upload_and_run_yolo():
     if "user_id" not in session:
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
-    # 동시 업로드 추론 과부하 방지 (최대 2명 동시 실행, 5초 대기 후에도 꽉 차 있으면 안내 반환)
     acquired = _VISION_UPLOAD_SEMAPHORE.acquire(timeout=5.0)
     if not acquired:
         return jsonify({
@@ -386,12 +401,10 @@ def upload_and_run_yolo():
         saved_path = VISION_UPLOAD_DIR / saved_filename
         media_file.save(str(saved_path))
 
-        # 용량 제한(50MB) 초과 시 즉시 정리
         if saved_path.stat().st_size > MAX_VISION_UPLOAD_BYTES:
             saved_path.unlink(missing_ok=True)
             return jsonify({"status": "ERROR", "message": "업로드 영상/사진 용량은 최대 50MB 이하여야 합니다."}), 400
 
-        # 디스크 용량 과부하 방지를 위해 오래된 물리 파일 자동 정리 (DB 이력은 보존)
         _prune_old_disk_files(VISION_UPLOAD_DIR, max_keep=MAX_DISK_FILES_PER_FOLDER)
 
         media_type = "IMAGE" if ext in ALLOWED_IMAGE_EXT else "VIDEO"
@@ -610,11 +623,10 @@ def save_vision_snapshot():
     payload = request.get_json(silent=True) or {}
     work_id = payload.get("work_id") or 1
     camera_code = payload.get("camera_code", "CAM-ULS-BAY1")
-    video_name = payload.get("video_name", "video1.mp4")
+    video_name = payload.get("video_name", "Test_1.mp4")
     auto_mode = payload.get("auto_mode", True)
     detection_data = payload.get("detection_data") or {}
 
-    # ⭐ 여러 명의 사용자가 동시에 비전 페이지를 열어두어도 자동 저장은 카메라당 10초에 최대 1회만 실행!
     if auto_mode:
         now_ts = time.time()
         with _CAMERA_AUTOSAVE_LOCK:
