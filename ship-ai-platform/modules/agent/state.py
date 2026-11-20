@@ -59,6 +59,8 @@ class ShipAgentState(TypedDict, total=False):
     outsourcing_domain: Optional[
         Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER", "NOT_APPLICABLE"]
     ]
+    worker_scope: Optional[Literal["ALL", "HQ_ONLY", "EXTERNAL_ONLY"]]
+
     target_categories: List[DocCategory]
     need_weather: bool
     extracted_params: Dict[str, Any]              # 누적 보존 제원

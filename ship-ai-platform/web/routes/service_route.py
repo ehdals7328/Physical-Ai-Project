@@ -312,7 +312,20 @@ def _run_assistant_background(
             from modules.agent.supervisor import ship_agent_app
 
             config = {"configurable": {"thread_id": thread_id}}
-            result = ship_agent_app.invoke(state_input, config=config)
+
+            # 👇 [수정] invoke 대신 stream(stream_mode="updates")으로 단계별 진행 상태 실시간 기록
+            for event in ship_agent_app.stream(state_input, config=config, stream_mode="updates"):
+                for node_name in event.keys():
+                    try:
+                        step_exec = AgentExecution.query.get(exec_id)
+                        if step_exec and step_exec.status_code == "RUNNING":
+                            step_exec.current_state = str(node_name)
+                            db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
+            final_snapshot = ship_agent_app.get_state(config)
+            result = dict(final_snapshot.values) if final_snapshot and final_snapshot.values else {}
             elapsed_ms = round((time.time() - start_ts) * 1000, 2)
 
             user = User.query.get(user_id)
@@ -624,6 +637,13 @@ def ask_assistant_agent():
             "message": f"요청 접수 중 오류 발생: {type(e).__name__} - {str(e)}"
         }), 500
 
+STEP_STATUS_LABELS = {
+    "RUNNING_AGENT": "🧭 질의 의도 및 작업 컨텍스트 분석 중...",
+    "team1_analysis": "🏭 본사 SHIP_ERP 재고·자격·설비 진단 및 제원 검증 중...",
+    "team2_knowledge": "📚 사내 WPS 규정·현장 기상·비전 관제·협력사 데이터 수집 중...",
+    "team3_docgen": "🛡️ 안전·자격 거버넌스 인터록 검사 및 결과서 작성 중...",
+}
+
 
 @service_bp.route("/api/assistant/status/<session_id>", methods=["GET"])
 @login_required
@@ -632,9 +652,19 @@ def get_assistant_execution_status(session_id):
     user = User.query.get_or_404(session["user_id"])
 
     if _check_session_running(user.user_id, session_id):
+        running_exec = (
+            AgentExecution.query
+            .filter_by(user_id=user.user_id, session_id=session_id, status_code="RUNNING")
+            .order_by(AgentExecution.execution_id.desc())
+            .first()
+        )
+        raw_state = (running_exec.current_state if running_exec else "") or "RUNNING_AGENT"
+        step_msg = STEP_STATUS_LABELS.get(raw_state, "🤖 AI 어시스턴트가 에이전트 협업 작업을 처리 중입니다...")
         return jsonify({
             "status": "RUNNING",
             "session_id": session_id,
+            "current_state": raw_state,
+            "step_message": step_msg,
         })
 
     latest_exec = (

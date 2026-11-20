@@ -315,7 +315,11 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "4. **사내 ERP 자원 및 협력사 B2B 조회 (`erp_resource_qa`, `scm_partner_qa`)**:\n"
         "   - 상단 `>` 인용구에 조회 결과 핵심 요약을 1줄로 제시하세요.\n"
         "   - 전사 야드 목록 문의 시 전체 야드 마스터를 기준으로, 특정 야드 자원 문의 시 해당 야드 자원만 필터링하여 `###` 소제목과 **마크다운 표**로 정리하세요(장비의 대기 중 / 운행 중 상태 명확 구분).\n"
-        "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 등록 협력사 및 상세 가용 목록을 빠짐없이 표로 정리하세요.\n"
+        "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 등록 협력사 및 상세 가용 목록을 반드시 표 위·아래 빈 줄을 띄워 깨지지 않는 **마크다운 표**로 정리하세요.\n"
+        "   - **[시스템 지원 한계 엄수 — 없는 기능 제안 금지]**:\n"
+        "     * 우리 시스템은 협력사로 단순 재고·견적 문의 메일/문자를 발송하거나 회신을 수신하는 기능이 **없습니다.**\n"
+        "     * 따라서 외부 발송용 이메일·문자 템플릿(복사용 요청문)을 작성하거나, '연락처/메일 방법을 알려주시면 대신 발송해 드리겠다'는 식의 실행 불가능한 선택지를 절대 제시하지 마세요.\n"
+        "     * 대신 DB에서 조회된 **사내 및 협력사 실시간 재고·LOT·단가·납기 정보만 정확히 브리핑**하고, 시스템에서 바로 처리 가능한 후속 단계인 **'발주할 품목과 수량(또는 배차 대수)을 지정해 주시면 공식 외주 발주 주문서(PO) 초안을 생성해 드립니다'**로만 안내하세요.\n"
         "5. **규정 범위 한계 명시 및 불필요한 자원 나열 금지**:\n"
         "   - 사용자가 사내 자재, 블록, 장비, 작업자 현황을 명시적으로 묻지 않은 일반 기술·규정 질문에서는 사내 자원 상세 표나 전체 목록을 나열하지 마세요.\n"
         "   - 질문 대상 분야나 공법이 [인출된 사내 규격 문서(RAG)]에 존재하지 않는 경우, 장황한 일반론을 생성하지 말고 아래 3가지만 4~5줄 이내로 간결하게 답변하세요:\n"
@@ -355,6 +359,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     # 1. 사내외 인사 원장 마크다운 표 생성 (실시간 투입 상태 '🔄 작업 중' 반영)
     worker_table_md = "해당 없음"
+    table_title = "👷 사내외 인사 원장 실시간 현황"  # 👈 [추가]
     if task_type in ("hr_worker_qa", "hr_safety_qa"):
         try:
             workers = erp_status.get("available_workers") or []
@@ -367,6 +372,26 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
                     if isinstance(workers_res, dict)
                     else (workers_res or [])
                 )
+
+            # 👇 [여기에 추가: LLM이 분류한 worker_scope 기준 DB 컬럼 동적 필터링]
+            worker_scope = state.get("worker_scope") or "ALL"
+            if worker_scope == "HQ_ONLY":
+                workers = [
+                    w for w in workers
+                    if str(w.get("company_code", "")).upper() == "COMP-HQ"
+                    or str(w.get("employment_type", "")).upper() == "REGULAR"
+                ]
+                table_title = "👷 본사(COMP-HQ) 정규직 인사 원장 실시간 현황"
+            elif worker_scope == "EXTERNAL_ONLY":
+                workers = [
+                    w for w in workers
+                    if str(w.get("company_code", "")).upper() != "COMP-HQ"
+                ]
+                table_title = "👷 협력사·프리랜서 인사 원장 실시간 현황"
+
+            # 👇 [여기에 추가: 필터링된 인력 목록을 LLM 요약용 erp_status에도 동기화]
+            if workers:
+                erp_status["available_workers"] = workers
 
             if workers:
                 lines = [
@@ -416,12 +441,9 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     else:
         docs_text = "인출된 사내 규격 문서 없음"
 
-    # 3. 구조화 출력(DomainQAResponse)으로 핵심 요약 및 사내 규격 적합성 판별
-    structured_qa = llm.with_structured_output(
-        DomainQAResponse,
-        method="function_calling",
-    )
-    qa_out: DomainQAResponse = (QA_PROMPT | structured_qa).invoke({
+    # 3. knowledge_qa만 사내 규격 적합성(is_supported_by_internal_docs) 구조화 판별 사용
+    #    그 외(비전/인사/ERP/협력사)는 답변 축약·표 잘림 방지를 위해 qa_llm 직접 호출
+    qa_inputs = {
         "messages": messages[-6:] if messages else [],
         "task_type": task_type,
         "params": json.dumps(params, ensure_ascii=False, cls=DecimalEncoder),
@@ -432,34 +454,120 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "partner_plan": json.dumps(partner_plan, ensure_ascii=False, cls=DecimalEncoder),
         "docs": docs_text,
         "weather": json.dumps(weather, ensure_ascii=False, cls=DecimalEncoder),
-    })
+    }
 
-    answer = (qa_out.answer or "").strip()
+    if task_type == "knowledge_qa":
+        structured_qa = qa_llm.with_structured_output(
+            DomainQAResponse,
+            method="function_calling",
+        )
+        qa_out: DomainQAResponse = (QA_PROMPT | structured_qa).invoke(qa_inputs)
+        answer = (qa_out.answer or "").strip()
+        is_supported_docs = qa_out.is_supported_by_internal_docs
+    else:
+        raw_res = (QA_PROMPT | qa_llm).invoke(qa_inputs)
+        answer = (raw_res.content or "").strip()
+        is_supported_docs = False
 
-    # 4. hr_worker_qa 시 파이썬이 생성한 전체 인사 원장 표를 LLM 요약 상단에 즉시 결합
+    # 4. hr_worker_qa 시 표 상단 결합 — 직전 AI 메시지에 이미 동일한 표가 있으면 중복 생략
+    last_ai_content = ""
+    for m in reversed(messages or []):
+        if getattr(m, "type", "") == "ai":
+            last_ai_content = str(getattr(m, "content", ""))
+            break
+
+    already_shown_same_table = f"### {table_title}" in last_ai_content
+
     if (
         task_type == "hr_worker_qa"
         and worker_table_md
         and worker_table_md != "해당 없음"
         and "조회된 작업자가 없습니다" not in worker_table_md
+        and not already_shown_same_table
     ):
         answer = (
-            f"### 👷 사내외 인사 원장 실시간 현황\n\n"
+            f"### {table_title}\n\n"
             f"{worker_table_md}\n\n---\n\n{answer}"
         )
+
+    generated_doc: Optional[Dict[str, Any]] = None
+    selected_partner = partner_plan.get("selected_partner") or {}
+    is_action_req = bool(state.get("is_action_requested"))
+    domain = state.get("outsourcing_domain") or "NOT_APPLICABLE"
+
+    # 도메인별 최소 실행 조건 검증 (단순 확인/조회 요청인데 임의 수량으로 PO가 생성되는 현상 차단)
+    has_qty = params.get("quantity") is not None and float(params.get("quantity") or 0) > 0
+    if task_type == "scm_partner_qa" and is_action_req:
+        if domain == "ALL_PARTNERS":
+            is_action_req = False
+        elif domain == "WELDING_MATERIAL" and not has_qty:
+            is_action_req = False
+        elif domain == "HEAVY_TRANSPORT" and not (has_qty or params.get("equipment")):
+            is_action_req = False
+        elif domain == "OUTSOURCED_WORKER" and not (
+            has_qty or params.get("worker_name") or params.get("block_id")
+        ):
+            is_action_req = False
 
     # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 (관리자 결재 대기함 연동)
     generated_doc: Optional[Dict[str, Any]] = None
     selected_partner = partner_plan.get("selected_partner") or {}
     is_action_req = bool(state.get("is_action_requested"))
 
+    # 👇 [여기에 추가: 요청 품목명과 실제 DB(사내 ERP + 협력사) 등록 품목 동적 대조]
+    req_item_name = str(params.get("requested_item_name") or "").strip()
+    is_unregistered_item = False
     if (
         task_type == "scm_partner_qa"
+        and is_action_req
+        and state.get("outsourcing_domain") == "WELDING_MATERIAL"
+        and req_item_name
+    ):
+        # 사내 ERP 원장(inventory)과 협력사 조회 품목(partner_plan)에서 등록 품목 수집
+        registered_items = []
+        for code, info in (erp_status.get("inventory") or {}).items():
+            registered_items.append({
+                "code": code,
+                "name": str(info.get("item_name") or ""),
+                "unit": str(info.get("unit") or ""),
+            })
+        for p_item in (partner_plan.get("available_items") or partner_plan.get("items") or []):
+            registered_items.append({
+                "code": str(p_item.get("hq_item_code") or p_item.get("item_code") or ""),
+                "name": str(p_item.get("item_name") or ""),
+                "unit": str(p_item.get("unit") or ""),
+            })
+
+        # 요청 품목명이 등록된 품목명/품번 중 어느 것에도 포함되지 않으면 미등록 품목으로 차단
+        if registered_items:
+            req_lower = req_item_name.lower()
+            matched = [
+                it for it in registered_items
+                if req_lower in it["name"].lower() or req_lower in it["code"].lower()
+            ]
+            if not matched:
+                is_unregistered_item = True
+                seen = set()
+                item_lines = []
+                for it in registered_items:
+                    if it["code"] and it["code"] not in seen:
+                        seen.add(it["code"])
+                        unit_txt = f", 단위: {it['unit']}" if it["unit"] else ""
+                        item_lines.append(f"- `{it['code']}` — {it['name']}{unit_txt}")
+                answer = (
+                    f"> 요청하신 **'{req_item_name}'** 품목은 현재 사내 ERP 및 협력사 자재 원장에 등록되어 있지 않아 발주서를 생성할 수 없습니다.\n\n"
+                    f"### 📦 현재 발주 가능한 등록 자재 목록\n"
+                    + "\n".join(item_lines)
+                    + "\n\n위 등록 품목 중 발주할 품목과 수량을 지정해 주시면 즉시 발주 초안을 작성해 드립니다."
+                )
+
+    if (
+        not is_unregistered_item  # 👈 [이 조건 1줄 추가]
+        and task_type == "scm_partner_qa"
         and is_action_req
         and selected_partner.get("partner_id")
     ):
         from modules.agent.tools.document_tools import export_outsourcing_po_pdf
-
         branch_info = erp_status.get("branch_info") or {}
         block_master = erp_status.get("block_master") or {}
 
@@ -526,7 +634,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     # 6. 사내 규격 미보유/부적합 시 하단 PDF 출처 배지 제거
     is_doc_irrelevant = (
         str(state.get("doc_grade", "")).lower() == "no"
-        or not qa_out.is_supported_by_internal_docs
+        or not is_supported_docs
     )
 
     return {

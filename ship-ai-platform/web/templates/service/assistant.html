@@ -769,13 +769,13 @@ $(document).ready(function() {
         });
     });
 
-    function appendLoadingBubble(loadingId, textMsg = 'AI 어시스턴트가 백그라운드에서 답변 및 작업지시를 작성 중입니다... (다른 화면 이동 후 복귀해도 계속 진행됩니다)') {
+    function appendLoadingBubble(loadingId, textMsg = '🧭 질의 의도 및 작업 컨텍스트 분석 중...') {
         if ($(`#${loadingId}`).length) return;
         chatWindow.append(`
             <div class="mb-3" id="${loadingId}">
                 <div class="d-inline-block bg-white border rounded-4 p-3 shadow-sm small text-secondary">
                     <span class="spinner-border spinner-border-sm text-primary me-2"></span>
-                    ${textMsg}
+                    <span class="loading-step-text">${textMsg}</span>
                 </div>
             </div>
         `);
@@ -872,6 +872,9 @@ $(document).ready(function() {
                 method: 'GET',
                 success: function(statusRes) {
                     if (statusRes.status === 'RUNNING') {
+                        if (statusRes.step_message) {
+                            $(`#${loadingId}`).find('.loading-step-text').text(statusRes.step_message);
+                        }
                         return;
                     }
                     clearInterval(pollTimer);

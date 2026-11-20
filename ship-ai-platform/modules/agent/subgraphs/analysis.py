@@ -53,7 +53,10 @@ class UniversalQueryAnalysis(BaseModel):
 
     is_action_requested: bool = Field(
         default=False,
-        description="데이터 조회(Read) 목적이 아닌 원장 기록, 발주 확정, 배차 실행 등 상태 변경 트랜잭션(Write)을 지시하는 경우에만 True",
+        description=(
+            "재고·단가·LOT·가용성 '확인'이나 '조회 요청'은 반드시 False! "
+            "오직 사용자가 구체적 품목/수량/대수를 지정하여 실제 발주서 발행, 주문 확정, 배차 실행, 원장 커밋을 명령한 경우에만 True"
+        ),
     )
     preferred_execution_mode: Literal["AUTO", "IN_HOUSE", "OUTSOURCED_B2B"] = Field(
         default="AUTO",
@@ -137,6 +140,19 @@ class UniversalQueryAnalysis(BaseModel):
             "조선소 업무 외 일상 잡담은 짧게 응대하되 조선소 공정·작업지시 지원 역할을 안내할 것"
         ),
     )
+    requested_item_name: Optional[str] = Field(
+        default=None,
+        description="사용자가 조회하거나 발주·주문하려는 구체적인 자재/품목명 원문 (예: '용접봉', '와이어', 'AH36 강판', '탄산가스'). 언급이 없으면 None"
+    )
+    worker_scope: Optional[Literal["ALL", "HQ_ONLY", "EXTERNAL_ONLY"]] = Field(
+        default="ALL",
+        description=(
+            "인사 원장(hr_worker_qa) 조회 범위 (인사 질의가 아니면 'ALL' 또는 None):\n"
+            "- 'HQ_ONLY': '우리 회사', '본사', '자사', '직영', '정규직' 등 본사 소속 인력만 물었을 때\n"
+            "- 'EXTERNAL_ONLY': '외주', '협력사', '하청', '프리랜서' 인력만 물었을 때\n"
+            "- 'ALL': 소속 구분 없이 전체 인력을 물었을 때"
+        ),
+    )
 
 
 structured_analyzer = llm.with_structured_output(
@@ -152,9 +168,10 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "[절대 원칙 - 임의 추론 금지]\n"
         "- 사용자의 현재 발화나 이전 대화에서 **실제로 언급되지 않은 `block_id`, `worker_name`, `material`, `thickness`, `process`는 절대 임의로 채우지 말고 반드시 `null`로 반환**하십시오.\n\n"
         "[판단 기준]\n"
-        "1. **멀티턴 작업지시 보충 및 보류 후 후속 선택 통합 처리**: "
-        "직전 어시스턴트 응답이 필수 제원 역질문이거나 작업지시 보류 안내 및 후속 선택지를 제시한 경우, "
-        "사용자의 이번 응답이 선택지 지목(첫 번째/두 번째 선택, A/B 선택 등)이든 구체적 조건 변경이든 대화 맥락을 종합하여 판단하십시오.\n"
+        "1. **멀티턴 후속 선택(1번/2번, A/B 등) 및 보충 통합 처리**: "
+        "직전 어시스턴트 응답이 선택지(1/2, A/B 등)를 제시했거나 추가 조건을 역질문한 경우, "
+        "사용자의 짧은 후속 응답('2번해줘', 'A로 진행할게' 등)만 단독으로 보지 말고 **직전 어시스턴트가 제시한 해당 번호 항목의 실제 내용과 이전 대화의 주제(`task_type`)를 그대로 이어받아 분류**하십시오.\n"
+        "   - 직전 안내가 협력사 조회(`scm_partner_qa`) 후속 선택지였고 사용자가 자재 납품사·재고·LOT 확인 항목을 선택했다면 `task_type='scm_partner_qa'`, `outsourcing_domain='WELDING_MATERIAL'`, `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하십시오.\n"
         "   - 작업자 교체, 블록 변경, 제원 보충, 외주 전환 등 작업지시서 발행 진행을 선택한 경우: "
         "`task_type='doc_generation'`, `context_action='KEEP_MERGE'`로 설정하고 직전 어시스턴트 응답과 사용자 발화에서 확정된 변경 값(`worker_name`, `block_id`, `material`, `thickness`, `process`, `preferred_execution_mode` 등)을 모두 반영하십시오.\n"
         "   - 안전 체크리스트, 예열 기준, 기술 규정 확인을 선택한 경우: `task_type='knowledge_qa'`로 분류하여 해당 안내를 제공하십시오.\n"
@@ -163,7 +180,11 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "4. **실행 모드**: 사용자가 명시적으로 외주·협력사·사외 연계를 지정하거나 직전 안내의 외주 전환 대안을 선택한 경우 `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하고, 별도 언급이 없으면 `'AUTO'`로 두십시오.\n"
         "5. **독립 주제 전환(`RESET_NEW`)**: 이전 작업지시서와 무관하게 전체 비전 카메라 현황, 단독 외주 배차/발주, 일반 기술 규격 등을 새로 질문한 경우에는 `context_action='RESET_NEW'`로 분류하십시오.\n"
         "6. **기상·환경 조건 질의(`knowledge_qa`)**: 지역명과 함께 현장 기상·기온·풍속·강수 상태를 묻는 질문은 일상 잡담(`chat`)이 아니라 반드시 `task_type='knowledge_qa'` 및 `need_weather=True`로 분류하십시오.\n"
-        "7. **사내 ERP 자원·블록 마스터 조회(`erp_resource_qa`)**: 등록된 선박 블록 전체 목록이나 특정 공정(SAW/FCAW/GMAW 등)에 해당하는 블록을 묻는 질문은 비전 관제(`vision_inspection_qa`)가 아니라 반드시 `task_type='erp_resource_qa'`로 분류하십시오.",
+        "7. **사내 ERP 자원·블록 마스터 조회(`erp_resource_qa`)**: 등록된 선박 블록 전체 목록이나 특정 공정(SAW/FCAW/GMAW 등)에 해당하는 블록을 묻는 질문은 비전 관제(`vision_inspection_qa`)가 아니라 반드시 `task_type='erp_resource_qa'`로 분류하십시오.\n"
+        "8. **인사 조회 범위(`worker_scope`)**: `task_type='hr_worker_qa'`일 때는 반드시 `worker_scope`를 판단하십시오. "
+        "'우리 회사', '우리 지금 회사', '본사', '자사', '직영', '정규직'처럼 자사 소속 인력만 물으면 `'HQ_ONLY'`, "
+        "'다른 회사', '타사', '외주', '협력사', '프리랜서' 소속을 확인하거나 물으면 `'EXTERNAL_ONLY'`, "
+        "소속 구분 없이 전체를 물으면 `'ALL'`로 설정하십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
@@ -278,7 +299,9 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     )
 
     # 3. worker_name 정제 (대화 내역, 직전 AI 선택지, 또는 로그인 본인 성명 허용)
-    cleaned_worker = str(res.worker_name or "").strip()
+    raw_worker = str(res.worker_name or "").strip()
+    # 👇 [추가] '최선임 (EMP-1002)' 형태에서 괄호 및 사번 제거 -> '최선임'
+    cleaned_worker = re.sub(r"\s*\([^)]*\)", "", raw_worker).strip()
     if (
         cleaned_worker
         and cleaned_worker not in conversation_raw
@@ -333,6 +356,7 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
             "weld_position": res.weld_position,
             "worker_name": cleaned_worker or None,
             "equipment": res.equipment,
+            "requested_item_name": res.requested_item_name,
         }
         for k, v in new_fields.items():
             if v is not None and str(v).strip() != "":
@@ -386,6 +410,7 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         "is_action_requested": res.is_action_requested,
         "preferred_execution_mode": res.preferred_execution_mode,
         "outsourcing_domain": res.outsourcing_domain,
+        "worker_scope": res.worker_scope,
         "is_outsourcing_required": is_outsourcing_init,
         "target_categories": res.target_categories,
         "need_weather": need_weather_flag,

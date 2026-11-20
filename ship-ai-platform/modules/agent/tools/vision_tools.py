@@ -226,7 +226,7 @@ def get_vision_overview_for_qa(
     """
     try:
         with user_engine.connect() as conn:
-            sql_list = """
+            sql_base = """
                 SELECT
                     va.analysis_id,
                     va.work_id,
@@ -235,35 +235,43 @@ def get_vision_overview_for_qa(
                     va.status_code AS analysis_status,
                     va.created_at AS captured_at,
                     vi.inspection_id,
+                    vi.estimated_length_mm,
                     vi.safety_clearance_yn,
                     vi.inspection_status,
                     vi.defect_detail_json
                 FROM VISION_ANALYSES va
                 LEFT JOIN VISION_INSPECTIONS vi
                     ON va.analysis_id = vi.analysis_id
-                WHERE (:camera_code IS NULL OR UPPER(va.camera_code) = UPPER(:camera_code))
-                ORDER BY va.created_at DESC
+                {where_clause}
+                ORDER BY va.created_at DESC NULLS LAST, va.analysis_id DESC
                 FETCH FIRST 20 ROWS ONLY
             """
+
+            norm_cam = camera_code.strip() if camera_code else None
             rows = conn.execute(
-                text(sql_list),
-                {"camera_code": camera_code.strip() if camera_code else None},
+                text(
+                    sql_base.format(
+                        where_clause="WHERE UPPER(va.camera_code) = UPPER(:camera_code)"
+                        if norm_cam
+                        else ""
+                    )
+                ),
+                {"camera_code": norm_cam} if norm_cam else {},
             ).mappings().all()
 
-            records: List[Dict[str, Any]] = []
-            pending_weld_targets: List[Dict[str, Any]] = []
-            in_welding_targets: List[Dict[str, Any]] = []
-            completed_targets: List[Dict[str, Any]] = []
-            hazard_or_defect_targets: List[Dict[str, Any]] = []
+            # camera_code가 야드/구역명 등으로 넘어와 0건일 때 전체 최신 기록으로 자동 폴백
+            camera_fallback_used = False
+            if not rows and norm_cam:
+                camera_fallback_used = True
+                rows = conn.execute(
+                    text(sql_base.format(where_clause=""))
+                ).mappings().all()
 
-            for r in rows:
+            def _build_record(r) -> Dict[str, Any]:
                 aid = r["analysis_id"]
                 wid = r["work_id"]
                 wo_meta = _lookup_work_order_meta(conn, wid)
                 resolved_block = wo_meta.get("block_id")
-
-                if block_id and resolved_block and str(resolved_block).upper() != str(block_id).upper():
-                    continue
 
                 # 탐지된 객체 요약 (좌표 제외, 클래스별 개수만 집계)
                 det_rows = conn.execute(
@@ -279,6 +287,11 @@ def get_vision_overview_for_qa(
                 w_state = str(r["welding_state"] or "BEFORE_WELD").upper()
                 i_status = str(r["inspection_status"] or "BEFORE_WELD").upper()
                 clearance = str(r["safety_clearance_yn"] or "Y").upper()
+                est_len_mm = (
+                    float(r["estimated_length_mm"])
+                    if r.get("estimated_length_mm") is not None
+                    else None
+                )
 
                 defect_raw = r["defect_detail_json"]
                 defect_info = (
@@ -287,21 +300,48 @@ def get_vision_overview_for_qa(
                     else defect_raw
                 )
 
-                item = {
+                return {
                     "analysis_id": aid,
                     "work_id": wid,
                     "work_no": wo_meta.get("work_no"),
-                    "block_id": resolved_block or f"WORK-{wid}" if wid else "미매핑 블록",
+                    "block_id": resolved_block or (f"WORK-{wid}" if wid else "미매핑 블록"),
                     "camera_code": r["camera_code"],
                     "welding_state": w_state,
                     "inspection_status": i_status,
                     "weld_joint_detected": has_weld_joint,
+                    "estimated_length_mm": est_len_mm,
                     "detected_objects": detected_summary,
                     "safety_clearance_yn": clearance,
                     "defect_detail": defect_info,
                     "captured_at": str(r["captured_at"]) if r["captured_at"] else None,
                 }
-                records.append(item)
+
+            all_items = [_build_record(r) for r in rows]
+
+            # block_id 필터 적용 — 단, 일치 건이 0건이면 전체 최신 비전 로그로 자동 폴백
+            block_fallback_used = False
+            if block_id:
+                filtered = [
+                    it for it in all_items
+                    if str(it.get("block_id", "")).upper() == str(block_id).upper()
+                ]
+                if filtered:
+                    records = filtered
+                else:
+                    records = all_items
+                    block_fallback_used = True
+            else:
+                records = all_items
+
+            pending_weld_targets: List[Dict[str, Any]] = []
+            in_welding_targets: List[Dict[str, Any]] = []
+            completed_targets: List[Dict[str, Any]] = []
+            hazard_or_defect_targets: List[Dict[str, Any]] = []
+
+            for item in records:
+                w_state = item["welding_state"]
+                i_status = item["inspection_status"]
+                clearance = item["safety_clearance_yn"]
 
                 if w_state == "BEFORE_WELD" or i_status == "BEFORE_WELD":
                     pending_weld_targets.append(item)
@@ -331,6 +371,8 @@ def get_vision_overview_for_qa(
             return {
                 "status": "SUCCESS" if records else "NO_DATA",
                 "total_records": len(records),
+                "camera_fallback_used": camera_fallback_used,
+                "block_fallback_used": block_fallback_used,
                 "summary_counts": {
                     "pending_weld_count": len(pending_weld_targets),
                     "in_welding_count": len(in_welding_targets),

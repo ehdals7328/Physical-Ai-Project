@@ -7,12 +7,16 @@ web = create_web()
 
 
 def _warmup_embedding_model():
-    """서버 기동 시 백그라운드에서 BAAI/bge-m3 임베딩 모델을 사전 로딩하여 첫 RAG 질의 지연 제거"""
+    """서버 기동 시 실제 RAG 검색 경로를 1회 더미 호출하여 싱글톤 임베딩·ChromaDB 사전 적재"""
     try:
         from modules.agent.tools import retriever_tools
-        if hasattr(retriever_tools, "KnowledgeStore"):
-            retriever_tools.KnowledgeStore()
-        print("✅ [Warm-up] BAAI/bge-m3 임베딩 모델 사전 로딩 완료")
+        ks = retriever_tools.KnowledgeStore()
+        # 실제 질의 시 사용하는 검색 메서드를 1회 호출해 내부 임베딩 싱글톤까지 강제 초기화
+        if hasattr(ks, "search"):
+            ks.search("warmup")
+        elif hasattr(retriever_tools, "search_technical_docs"):
+            retriever_tools.search_technical_docs("warmup")
+        print("✅ [Warm-up] BAAI/bge-m3 임베딩 및 ChromaDB 사전 적재 완료")
     except Exception as e:
         print(f"⚠️ [Warm-up] 임베딩 사전 로딩 건너뜀: {e}")
 
