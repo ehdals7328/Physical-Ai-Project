@@ -22,6 +22,7 @@ from flask import (
     jsonify,
     abort,
     send_from_directory,
+    send_file,
     current_app,
 )
 from sqlalchemy import func
@@ -48,6 +49,13 @@ from web.models import (
     ErpWorkerCert,
     ErpVehiclesEquipment,
     MesWorkOrderDispatch,
+    DocumentMetadata,
+    ErpCompany,
+    B2BCompanyLocation,
+    B2BDaehanMaterial,
+    B2BDonghaeWorker,
+    B2BHankookEquipment,
+    B2BSalesOrder,
 )
 
 service_bp = Blueprint("service", __name__, url_prefix="/service")
@@ -1476,3 +1484,519 @@ def update_work_order_status():
             print(f"⚠️ [MES_WORK_ORDER_DISPATCH 상태 동기화 경고]: {e}")
 
     return jsonify({"status": "SUCCESS", "message": f"작업 [{wo.work_no}] 상태가 {next_status}로 변경되었습니다."})
+
+
+# =====================================================================
+# 5. 조선소 야드 · 선박 설계도(CAD) 현황 & 야드 대시보드 (/service/yards)
+#    - 하드코딩 0%: 모든 지부, 선박/블록, 진행률, CAD, 자재, 인력 DB 동적 조회
+# =====================================================================
+def _calc_cert_days_left(expiry_str: str | None) -> int | None:
+    if not expiry_str:
+        return None
+    s = str(expiry_str).strip()[:10]
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d"):
+        try:
+            dt = datetime.strptime(s, fmt).date()
+            return (dt - datetime.now().date()).days
+        except ValueError:
+            continue
+    return None
+
+
+def _resolve_doc_abs_path(storage_uri: str | None) -> Path | None:
+    uri = (storage_uri or "").strip()
+    if not uri or uri.startswith(("http://", "https://", "s3://")) or uri == "ARCHIVED_HISTORY":
+        return None
+    p = Path(uri)
+    abs_p = p if p.is_absolute() else (PROJECT_ROOT / uri)
+    try:
+        resolved = abs_p.resolve()
+        if PROJECT_ROOT.resolve() in resolved.parents or resolved == PROJECT_ROOT.resolve():
+            return resolved
+    except Exception:
+        return None
+    return None
+
+
+def _serialize_cad_doc(doc: DocumentMetadata) -> dict:
+    from modules.knowledge.cad_parser import detect_vessel_context
+
+    abs_p = _resolve_doc_abs_path(doc.storage_uri)
+    exists = bool(abs_p and abs_p.exists() and abs_p.is_file())
+    ext = Path(doc.original_file_name or "").suffix.lower()
+    vessel_name, vessel_desc = detect_vessel_context(abs_p or Path(doc.storage_uri or doc.original_file_name or ""))
+
+    if ext == ".dxf":
+        preview_mode, ext_badge = "svg", "2D CAD (DXF)"
+    elif ext == ".pdf":
+        preview_mode, ext_badge = "pdf", "도면 PDF"
+    elif ext in (".igs", ".iges", ".stp", ".step", ".stl"):
+        preview_mode, ext_badge = "spec", f"3D 모델 ({ext.lstrip('.').upper()})"
+    else:
+        preview_mode, ext_badge = "spec", f"CAD ({ext.lstrip('.').upper() or 'FILE'})"
+
+    size_kb = round(abs_p.stat().st_size / 1024.0, 1) if exists and abs_p else 0.0
+    return {
+        "document_id": doc.document_id,
+        "document_code": doc.document_code,
+        "document_title": doc.document_title,
+        "original_file_name": doc.original_file_name,
+        "collection_type": doc.collection_type,
+        "storage_uri": doc.storage_uri,
+        "extension": ext,
+        "ext_badge": ext_badge,
+        "preview_mode": preview_mode,
+        "vessel_name": vessel_name,
+        "vessel_desc": vessel_desc,
+        "file_exists": exists,
+        "size_kb": size_kb,
+        "created_at": doc.created_at.strftime("%Y-%m-%d") if doc.created_at else "-",
+    }
+
+
+def _get_active_cad_docs() -> list[dict]:
+    rows = (
+        DocumentMetadata.query
+        .filter(
+            DocumentMetadata.category_code == "CAD_DRAWING",
+            DocumentMetadata.is_active == "Y",
+        )
+        .order_by(DocumentMetadata.document_id.desc())
+        .all()
+    )
+    items = [_serialize_cad_doc(r) for r in rows]
+    priority = {"svg": 0, "pdf": 1, "spec": 2}
+    items.sort(key=lambda x: (0 if x["file_exists"] else 1, priority.get(x["preview_mode"], 9), x["document_id"]))
+    return items
+
+
+@service_bp.route("/yards", methods=["GET"])
+@login_required
+def yards_page():
+    user = User.query.get_or_404(session["user_id"])
+    can_see_partners = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
+
+    branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    all_blocks = ErpBlockMaster.query.all()
+    all_orders = WorkOrder.query.order_by(WorkOrder.work_id.desc()).all()
+    all_workers = ErpWorkerCert.query.all()
+    all_bom = ErpBomInventory.query.all()
+    cad_docs = _get_active_cad_docs()
+
+    cad_dir = PROJECT_ROOT / "data" / "cad_drawings"
+    local_cad_count = 0
+    if cad_dir.exists():
+        local_cad_count = sum(
+            1 for p in cad_dir.rglob("*")
+            if p.is_file()
+            and p.suffix.lower() in {".dxf", ".pdf", ".igs", ".iges", ".stp", ".step", ".stl", ".dwg"}
+            and "github_pygem" not in [part.lower() for part in p.parts]
+        )
+
+    yard_cards = []
+    for br in branches:
+        br_blocks = [b for b in all_blocks if b.branch_code == br.branch_code]
+        br_orders = [o for o in all_orders if o.work_region == br.branch_code]
+        br_workers = [w for w in all_workers if w.branch_code == br.branch_code]
+        br_bom = [m for m in all_bom if m.branch_code == br.branch_code]
+
+        ships = sorted({b.ship_code for b in br_blocks if b.ship_code} | {o.ship_code for o in br_orders if o.ship_code})
+        total_o = len(br_orders)
+        done_o = sum(1 for o in br_orders if o.status_code == "COMPLETED")
+        in_prog_o = sum(1 for o in br_orders if o.status_code == "IN_PROGRESS")
+        ready_o = sum(1 for o in br_orders if o.status_code == "READY")
+        progress_pct = int(round(((done_o + 0.5 * in_prog_o) / total_o) * 100)) if total_o > 0 else 0
+        low_stock_cnt = sum(1 for m in br_bom if (float(m.total_qty or 0) - float(m.reserved_qty or 0)) <= 10)
+
+        yard_cards.append({
+            "branch_code": br.branch_code,
+            "branch_name": br.branch_name,
+            "region_name": br.region_name,
+            "branch_type": br.branch_type,
+            "address": br.address or "-",
+            "camera_code": br.camera_code or f"CAM-{br.branch_code}",
+            "ships": ships,
+            "block_count": len(br_blocks),
+            "order_count": total_o,
+            "ready_count": ready_o,
+            "in_progress_count": in_prog_o,
+            "completed_count": done_o,
+            "progress_pct": progress_pct,
+            "worker_count": len(br_workers),
+            "material_count": len(br_bom),
+            "low_stock_count": low_stock_cnt,
+        })
+
+    selected_branch = request.args.get("branch", "").strip()
+    if not selected_branch and yard_cards:
+        selected_branch = yard_cards[0]["branch_code"]
+
+    return render_template(
+        "service/yards.html",
+        me=user,
+        can_see_partners=can_see_partners,
+        yard_cards=yard_cards,
+        cad_docs=cad_docs,
+        local_cad_count=local_cad_count,
+        selected_branch=selected_branch,
+    )
+
+
+@service_bp.route("/api/yards/<branch_code>", methods=["GET"])
+@login_required
+def get_yard_dashboard_data(branch_code: str):
+    br = ErpBranch.query.filter_by(branch_code=branch_code).first()
+    if not br:
+        return jsonify({"status": "ERROR", "message": "해당 야드 정보를 찾을 수 없습니다."}), 404
+
+    blocks = ErpBlockMaster.query.filter_by(branch_code=branch_code).order_by(ErpBlockMaster.block_id.asc()).all()
+    block_map = {b.block_id: b for b in blocks}
+    orders = WorkOrder.query.filter_by(work_region=branch_code).order_by(WorkOrder.work_id.desc()).all()
+    bom_rows = ErpBomInventory.query.filter_by(branch_code=branch_code).order_by(ErpBomInventory.item_code.asc()).all()
+    worker_rows = ErpWorkerCert.query.filter_by(branch_code=branch_code).order_by(ErpWorkerCert.worker_id.asc()).all()
+    equip_rows = ErpVehiclesEquipment.query.filter_by(branch_code=branch_code).order_by(ErpVehiclesEquipment.asset_code.asc()).all()
+
+    order_ids = {o.work_id for o in orders}
+    robots = []
+    for rb in RobotExecution.query.all():
+        loc = (rb.current_location_desc or "")
+        if (rb.work_id in order_ids) or (br.region_name and br.region_name in (rb.robot_name or "") + loc):
+            robots.append({
+                "equipment_code": rb.equipment_code,
+                "robot_name": rb.robot_name,
+                "robot_status": rb.robot_status,
+                "location": rb.current_location_desc or "-",
+                "battery_percent": int(rb.battery_percent or 0),
+                "emergency_stop_yn": rb.emergency_stop_yn,
+            })
+
+    weather_info = None
+    for o in orders:
+        inst = WorkInstruction.query.filter_by(work_id=o.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+        if inst and inst.external_env_json:
+            try:
+                env_data = json.loads(_read_clob(inst.external_env_json))
+                if isinstance(env_data, dict):
+                    cand = env_data.get("weather") if isinstance(env_data.get("weather"), dict) else env_data
+                    if "temperature_c" in cand or "weather" in cand:
+                        weather_info = cand
+                        break
+            except Exception:
+                pass
+
+    waiting_blocks, active_blocks, completed_blocks = [], [], []
+    seen_order_blocks = set()
+
+    for o in orders:
+        bm = block_map.get(o.block_code)
+        seen_order_blocks.add(o.block_code)
+        entry = {
+            "work_id": o.work_id,
+            "work_no": o.work_no,
+            "work_title": o.work_title,
+            "ship_code": o.ship_code,
+            "block_code": o.block_code,
+            "block_name": bm.block_name if bm else o.block_code,
+            "steel_type": bm.steel_type if bm else o.material_grade,
+            "thickness_mm": str(bm.thickness_mm) if bm else f"{float(o.thickness_mm):.0f}mm",
+            "joint_type": bm.joint_type if bm else o.weld_position,
+            "process": o.process_code,
+            "target_dock": bm.target_dock if bm else o.work_zone,
+            "weight_ton": float(bm.weight_ton) if (bm and bm.weight_ton is not None) else None,
+            "status_code": o.status_code,
+        }
+        if o.status_code == "COMPLETED":
+            completed_blocks.append(entry)
+        elif o.status_code == "IN_PROGRESS":
+            active_blocks.append(entry)
+        else:
+            waiting_blocks.append(entry)
+
+    for bm in blocks:
+        if bm.block_id not in seen_order_blocks:
+            waiting_blocks.append({
+                "work_id": None,
+                "work_no": "지시 대기",
+                "work_title": f"{bm.block_name} 작업 준비",
+                "ship_code": bm.ship_code,
+                "block_code": bm.block_id,
+                "block_name": bm.block_name,
+                "steel_type": bm.steel_type,
+                "thickness_mm": str(bm.thickness_mm),
+                "joint_type": bm.joint_type,
+                "process": bm.process,
+                "target_dock": bm.target_dock,
+                "weight_ton": float(bm.weight_ton) if bm.weight_ton is not None else None,
+                "status_code": "READY",
+            })
+
+    ships = sorted({b.ship_code for b in blocks if b.ship_code} | {o.ship_code for o in orders if o.ship_code})
+    total_cnt = len(waiting_blocks) + len(active_blocks) + len(completed_blocks)
+    progress_pct = int(round(((len(completed_blocks) + 0.5 * len(active_blocks)) / total_cnt) * 100)) if total_cnt > 0 else 0
+
+    materials = []
+    for m in bom_rows:
+        tot = float(m.total_qty or 0)
+        res = float(m.reserved_qty or 0)
+        avail = max(tot - res, 0.0)
+        is_low = (avail <= 10) or (tot > 0 and (avail / tot) <= 0.25)
+        materials.append({
+            "item_code": m.item_code,
+            "item_name": m.item_name,
+            "category": m.material_category,
+            "lot_no": m.lot_no,
+            "total_qty": tot,
+            "reserved_qty": res,
+            "available_qty": avail,
+            "unit": m.unit,
+            "is_low": is_low,
+        })
+
+    workers = []
+    for w in worker_rows:
+        d_left = _calc_cert_days_left(w.cert_expiry_date)
+        workers.append({
+            "worker_id": w.worker_id,
+            "worker_name": w.worker_name,
+            "department_name": w.department_name or "-",
+            "role": w.role,
+            "cert_code": w.cert_code,
+            "weld_process": w.weld_process,
+            "cert_expiry_date": w.cert_expiry_date,
+            "days_left": d_left,
+            "expiring_soon": (d_left is not None and d_left <= 60),
+            "status": w.status,
+        })
+
+    equipments = [
+        {
+            "asset_code": e.asset_code,
+            "asset_name": e.asset_name,
+            "asset_category": e.asset_category,
+            "current_zone": e.current_zone or "-",
+            "max_load_ton": float(e.max_load_ton) if e.max_load_ton is not None else None,
+            "operation_status": e.operation_status,
+        }
+        for e in equip_rows
+    ]
+
+    work_zones = []
+    if br.work_zones_json:
+        try:
+            parsed_z = json.loads(br.work_zones_json)
+            if isinstance(parsed_z, list):
+                work_zones = parsed_z
+        except Exception:
+            pass
+
+    return jsonify({
+        "status": "SUCCESS",
+        "branch": {
+            "branch_code": br.branch_code,
+            "branch_name": br.branch_name,
+            "region_name": br.region_name,
+            "branch_type": br.branch_type,
+            "address": br.address or "-",
+            "camera_code": br.camera_code or f"CAM-{br.branch_code}",
+            "work_zones": work_zones,
+        },
+        "ships": ships,
+        "progress_pct": progress_pct,
+        "weather": weather_info,
+        "stages": {
+            "waiting": waiting_blocks,
+            "active": active_blocks,
+            "completed": completed_blocks,
+        },
+        "materials": materials,
+        "workers": workers,
+        "equipments": equipments,
+        "robots": robots,
+        "cad_docs": _get_active_cad_docs(),
+    })
+
+
+@service_bp.route("/api/cad/preview/<int:doc_id>", methods=["GET"])
+@login_required
+def cad_preview_api(doc_id: int):
+    doc = DocumentMetadata.query.filter_by(document_id=doc_id, category_code="CAD_DRAWING").first()
+    if not doc:
+        return jsonify({"status": "ERROR", "message": "해당 설계 도면을 찾을 수 없습니다."}), 404
+
+    from modules.knowledge.cad_parser import extract_cad_summary, render_dxf_to_svg
+
+    info = _serialize_cad_doc(doc)
+    abs_p = _resolve_doc_abs_path(doc.storage_uri)
+    if not abs_p or not abs_p.exists():
+        return jsonify({
+            "status": "SUCCESS",
+            "doc": info,
+            "summary": {"format": "파일 경로 미존재", "vessel_name": info["vessel_name"]},
+            "svg": "",
+            "pdf_url": "",
+        })
+
+    summary = extract_cad_summary(abs_p)
+    svg_html = ""
+    pdf_url = ""
+    ext = abs_p.suffix.lower()
+    sibling_pdf = abs_p.with_suffix(".pdf")
+    if ext == ".pdf":
+        pdf_url = url_for("service.cad_raw_file", doc_id=doc.document_id)
+    elif ext in (".dxf", ".dwg") and sibling_pdf.exists():
+        # 같은 이름의 공식 A0 도면 PDF가 있으면 선명한 원본 도면 뷰어(확대/축소 지원)로 표시
+        pdf_url = url_for("service.cad_raw_file", doc_id=doc.document_id, preview_pdf="1")
+    elif ext == ".dxf":
+        svg_html = render_dxf_to_svg(abs_p, cache_dir=PROJECT_ROOT / "data" / "rag_cache" / "cad_svg")
+
+    return jsonify({
+        "status": "SUCCESS",
+        "doc": info,
+        "summary": summary,
+        "svg": svg_html,
+        "pdf_url": pdf_url,
+    })
+
+
+@service_bp.route("/api/cad/file/<int:doc_id>", methods=["GET"])
+@login_required
+def cad_raw_file(doc_id: int):
+    doc = DocumentMetadata.query.filter_by(document_id=doc_id, category_code="CAD_DRAWING").first_or_404()
+    abs_p = _resolve_doc_abs_path(doc.storage_uri)
+    if not abs_p or not abs_p.exists():
+        abort(404)
+    if request.args.get("preview_pdf") == "1" and abs_p.with_suffix(".pdf").exists():
+        return send_file(abs_p.with_suffix(".pdf"), as_attachment=False)
+    as_dl = request.args.get("download", "0") == "1"
+    return send_file(abs_p, as_attachment=as_dl, download_name=doc.original_file_name)
+
+
+# =====================================================================
+# 6. 자재 · 인력 · 발주 관리 보드 (/service/erp)
+# =====================================================================
+@service_bp.route("/erp", methods=["GET"])
+@login_required
+def erp_board_page():
+    user = User.query.get_or_404(session["user_id"])
+    can_access_erp = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
+    selected_branch = request.args.get("branch", "ALL").strip() or "ALL"
+
+    branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    branch_name_map = {b.branch_code: b.branch_name for b in branches}
+
+    materials, workers, equipments, robots, dispatches = [], [], [], [], []
+    partner_materials, partner_workers, partner_equipments, partner_orders = [], [], [], []
+    partner_error = ""
+
+    if can_access_erp:
+        for m in ErpBomInventory.query.order_by(ErpBomInventory.branch_code.asc(), ErpBomInventory.item_code.asc()).all():
+            tot = float(m.total_qty or 0)
+            res = float(m.reserved_qty or 0)
+            avail = max(tot - res, 0.0)
+            is_low = (avail <= 10) or (tot > 0 and (avail / tot) <= 0.25)
+            materials.append({
+                "item_code": m.item_code,
+                "item_name": m.item_name,
+                "material_category": m.material_category,
+                "lot_no": m.lot_no,
+                "supplier_code": m.supplier_code,
+                "branch_code": m.branch_code,
+                "branch_name": branch_name_map.get(m.branch_code, m.branch_code),
+                "total_qty": tot,
+                "reserved_qty": res,
+                "available_qty": avail,
+                "unit": m.unit,
+                "is_low": is_low,
+            })
+
+        for w in ErpWorkerCert.query.order_by(ErpWorkerCert.cert_expiry_date.asc(), ErpWorkerCert.worker_id.asc()).all():
+            d_left = _calc_cert_days_left(w.cert_expiry_date)
+            workers.append({
+                "worker_id": w.worker_id,
+                "worker_name": w.worker_name,
+                "employment_type": w.employment_type,
+                "company_code": w.company_code,
+                "branch_code": w.branch_code,
+                "branch_name": branch_name_map.get(w.branch_code, w.branch_code),
+                "department_name": w.department_name or "-",
+                "role": w.role,
+                "phone": w.phone or "-",
+                "cert_code": w.cert_code,
+                "weld_process": w.weld_process,
+                "cert_expiry_date": w.cert_expiry_date,
+                "days_left": d_left,
+                "expiring_soon": (d_left is not None and d_left <= 60),
+                "is_expired": (d_left is not None and d_left < 0),
+                "status": w.status,
+            })
+
+        for e in ErpVehiclesEquipment.query.order_by(ErpVehiclesEquipment.branch_code.asc(), ErpVehiclesEquipment.asset_code.asc()).all():
+            equipments.append({
+                "asset_code": e.asset_code,
+                "asset_name": e.asset_name,
+                "asset_category": e.asset_category,
+                "branch_code": e.branch_code,
+                "branch_name": branch_name_map.get(e.branch_code, e.branch_code),
+                "current_zone": e.current_zone or "-",
+                "max_load_ton": float(e.max_load_ton) if e.max_load_ton is not None else None,
+                "operation_status": e.operation_status,
+            })
+
+        robots = RobotExecution.query.order_by(RobotExecution.robot_exec_id.asc()).all()
+        dispatches = MesWorkOrderDispatch.query.order_by(MesWorkOrderDispatch.created_at.desc()).limit(20).all()
+
+        try:
+            partner_materials = B2BDaehanMaterial.query.all()
+            partner_workers = B2BDonghaeWorker.query.all()
+            partner_equipments = B2BHankookEquipment.query.all()
+            partner_orders = B2BSalesOrder.query.order_by(B2BSalesOrder.created_at.desc()).limit(15).all()
+        except Exception as exc:
+            partner_error = f"협력사 실시간 연계 DB를 잠시 불러오지 못했습니다: {exc}"
+
+    pending_approvals = []
+    if user.role in ("ADMIN", "MANAGER"):
+        user_map = {u.user_id: u.full_name for u in User.query.all()}
+        for wo in WorkOrder.query.order_by(WorkOrder.work_id.desc()).all():
+            inst = WorkInstruction.query.filter_by(work_id=wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+            if (
+                inst
+                and inst.approval_status == "DRAFT"
+                and wo.status_code not in ("SUSPENDED", "COMPLETED", "CANCELLED")
+            ):
+                pending_approvals.append({
+                    "wo": wo,
+                    "inst": inst,
+                    "requester_name": user_map.get(wo.requested_by, "현장 요청"),
+                    "pdf_url": _extract_inst_pdf_url(inst),
+                    "po_pdf_url": _extract_inst_po_pdf_url(inst),
+                })
+
+    low_stock_count = sum(1 for m in materials if m["is_low"])
+    expiring_workers = [w for w in workers if w["expiring_soon"]]
+    partner_resource_count = len(partner_materials) + len(partner_workers) + len(partner_equipments)
+
+    return render_template(
+        "service/erp_board.html",
+        me=user,
+        can_access_erp=can_access_erp,
+        branches=branches,
+        selected_branch=selected_branch,
+        materials=materials,
+        workers=workers,
+        expiring_workers=expiring_workers,
+        equipments=equipments,
+        robots=robots,
+        dispatches=dispatches,
+        partner_materials=partner_materials,
+        partner_workers=partner_workers,
+        partner_equipments=partner_equipments,
+        partner_orders=partner_orders,
+        partner_error=partner_error,
+        pending_approvals=pending_approvals,
+        kpi={
+            "low_stock_count": low_stock_count,
+            "expiring_worker_count": len(expiring_workers),
+            "partner_resource_count": partner_resource_count,
+            "pending_approval_count": len(pending_approvals),
+        },
+    )

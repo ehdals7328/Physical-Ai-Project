@@ -412,7 +412,10 @@ def _query_internal_docs_paginated(page: int = 1, per_page: int = DOCS_PER_PAGE)
     page = max(1, int(page or 1))
     raw_internal = (
         DocumentMetadata.query
-        .filter_by(collection_type="INTERNAL")
+        .filter(
+            DocumentMetadata.collection_type == "INTERNAL",
+            DocumentMetadata.category_code != "CAD_DRAWING",
+        )
         .all()
     )
 
@@ -420,7 +423,10 @@ def _query_internal_docs_paginated(page: int = 1, per_page: int = DOCS_PER_PAGE)
 
     all_internal = (
         DocumentMetadata.query
-        .filter_by(collection_type="INTERNAL")
+        .filter(
+            DocumentMetadata.collection_type == "INTERNAL",
+            DocumentMetadata.category_code != "CAD_DRAWING",
+        )
         .order_by(
             DocumentMetadata.is_active.desc(),
             DocumentMetadata.original_file_name.asc(),
@@ -894,6 +900,8 @@ def admin_rag_pdf_sync_folder():
         synced_count = 0
 
         for row in DocumentMetadata.query.all():
+            if (row.category_code or "").upper() == "CAD_DRAWING":
+                continue
             if not _check_physical_file_exists(row.storage_uri):
                 if row.is_active == "Y" or row.storage_uri != ARCHIVED_URI_MARKER:
                     row.is_active = "N"

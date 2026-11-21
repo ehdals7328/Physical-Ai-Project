@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}K-SHIPYARD AI | 스마트 조선소 자율 용접 플랫폼{% endblock %}</title>
+    <title>{% block title %}K-SHIPYARD | 스마트 조선소 통합 운영 플랫폼{% endblock %}</title>
 
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
@@ -20,6 +20,7 @@
             border: 1.5px solid #cbd5e1;
             background: #f8fafc;
             transition: all 0.25s ease;
+            cursor: pointer;
         }
         .profile-circle-btn:hover {
             border-color: var(--shi-blue);
@@ -27,90 +28,152 @@
             box-shadow: 0 4px 12px rgba(0, 78, 162, 0.12);
         }
         .avatar-circle {
-            width: 36px;
-            height: 36px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: var(--shi-blue);
             color: #ffffff;
             font-weight: 800;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 2px solid #ffffff;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         }
+        .shi-header { padding: 14px 0; }
+        .shi-nav-caret { font-size: 0.72rem; margin-left: 4px; opacity: 0.7; }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-    <!-- 상단 고정 네비게이션 바 -->
     <header class="navbar navbar-expand-lg fixed-top shi-header" id="siteHeader">
         <div class="container">
             <a class="shi-brand d-flex align-items-center gap-2" href="/">
                 <span>🚢</span>
-                <span>K-SHIPYARD <span class="sub-brand">AI</span></span>
+                <span>K-SHIPYARD <span class="sub-brand">SMART</span></span>
             </a>
 
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shiNavbar">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#shiNavbar" aria-label="메뉴 열기">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="shiNavbar">
-                <!-- ⭐ 중앙 네비게이션: work_order 제거 & 'AI 어시스턴트'로 명칭 변경 -->
-                <ul class="navbar-nav mx-auto gap-lg-3">
-                    <li class="nav-item">
-                        <a class="nav-link shi-nav-link {{ 'active' if request.path.startswith('/service/assistant') }}"
-                           href="/service/assistant">
-                            🤖 AI 어시스턴트
+                <ul class="navbar-nav mx-auto gap-lg-2 align-items-lg-center">
+
+                    <!-- 1. 전체 작업 -->
+                    <li class="nav-item shi-nav-dropdown">
+                        <a class="nav-link shi-nav-link shi-dropdown-toggle {{ 'active' if request.path.startswith('/service/yards') or request.path.startswith('/service/history') or request.path.startswith('/service/assistant') }}"
+                           href="/service/yards">
+                            🗺️ 전체 작업 <span class="shi-nav-caret">▾</span>
                         </a>
+                        <div class="shi-submenu">
+                            <a class="shi-submenu-item {{ 'active' if request.path.startswith('/service/yards') }}" href="/service/yards">
+                                <span class="sub-title">🗺️ 야드 · 선박 도면 현황</span>
+                                <span class="sub-desc">지도에서 야드 선택 · 설계도 · 공정 확인</span>
+                            </a>
+                            <a class="shi-submenu-item {{ 'active' if request.path.startswith('/service/history') }}" href="/service/history">
+                                <span class="sub-title">📋 작업 지시 · 진행 이력</span>
+                                <span class="sub-desc">내 작업 목록 · 지시서 문서 · 진행 상태</span>
+                            </a>
+                            <a class="shi-submenu-item {{ 'active' if request.path.startswith('/service/assistant') }}" href="/service/assistant">
+                                <span class="sub-title">💬 스마트 작업 도우미</span>
+                                <span class="sub-desc">도면·기준서 질문 및 작업 요청 창구</span>
+                            </a>
+                        </div>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link shi-nav-link {{ 'active' if request.path == '/service/vision' }}"
-                           href="/service/vision">
-                            👁️ 비전 용접선 탐지
+
+                    <!-- 2. 현장 카메라 -->
+                    <li class="nav-item shi-nav-dropdown">
+                        <a class="nav-link shi-nav-link shi-dropdown-toggle {{ 'active' if request.path.startswith('/vision') }}"
+                           href="/vision/">
+                            📹 현장 카메라 <span class="shi-nav-caret">▾</span>
                         </a>
+                        <div class="shi-submenu">
+                            <a class="shi-submenu-item {{ 'active' if request.path.startswith('/vision') }}" href="/vision/">
+                                <span class="sub-title">🎥 공정별 현장 보기</span>
+                                <span class="sub-desc">운송 · 조립 · 용접 단계별 카메라 확인</span>
+                            </a>
+                            <a class="shi-submenu-item" href="/vision/#records-section">
+                                <span class="sub-title">📒 현장 점검 기록부</span>
+                                <span class="sub-desc">저장된 현장 상태 기록 조회 및 검색</span>
+                            </a>
+                        </div>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link shi-nav-link {{ 'active' if request.path == '/service/history' }}"
-                           href="/service/history">
-                            📊 작업이력·ERP
+
+                    <!-- 3. 자재 · 인력 · 발주 관리 -->
+                    <li class="nav-item shi-nav-dropdown">
+                        <a class="nav-link shi-nav-link shi-dropdown-toggle {{ 'active' if request.path.startswith('/service/erp') }}"
+                           href="/service/erp">
+                            📦 자재 · 인력 · 발주 <span class="shi-nav-caret">▾</span>
                         </a>
+                        <div class="shi-submenu">
+                            <a class="shi-submenu-item {{ 'active' if request.path.startswith('/service/erp') }}" href="/service/erp">
+                                <span class="sub-title">📦 야드별 자재 · 인력 현황</span>
+                                <span class="sub-desc">부족 자재 확인 · 자격증 만료 · 발주 요청</span>
+                            </a>
+                            <a class="shi-submenu-item" href="/service/erp#tab-partners">
+                                <span class="sub-title">🤝 협력사 자원 호출</span>
+                                <span class="sub-desc">외부 자재 · 파견 인력 · 크레인/차량 호출</span>
+                            </a>
+                            <a class="shi-submenu-item" href="/service/erp#tab-approvals">
+                                <span class="sub-title">✅ 발주 · 작업 승인함</span>
+                                <span class="sub-desc">최종 확인 후 발주서·메일 확정 처리</span>
+                            </a>
+                        </div>
                     </li>
+
+                    <!-- 4. 소통 · 문의 -->
                     <li class="nav-item">
                         <a class="nav-link shi-nav-link {{ 'active' if request.path.startswith('/service/faq') }}"
                            href="/service/faq">
-                            ❓ 사내문의·FAQ
+                            ❓ 소통 · 문의
                         </a>
                     </li>
                 </ul>
 
-                <!-- 우측 영역 -->
                 <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
                     {% if session.get('user_id') %}
-                        <a href="/mypage" class="profile-circle-btn" title="개인정보 및 권한 관리">
-                            <div class="avatar-circle">
-                                {{ session.get('full_name', '유')[0] }}
-                            </div>
-                            <div class="text-start lh-1 pe-1">
-                                <div class="fw-bold text-dark" style="font-size: 0.88rem;">
-                                    {{ session.get('full_name') }}
-                                    {% if session.get('role') == 'ADMIN' %}
-                                        <span class="badge bg-danger ms-1" style="font-size: 0.68rem;">ADMIN</span>
-                                    {% elif session.get('role') == 'MANAGER' %}
-                                        <span class="badge bg-primary ms-1" style="font-size: 0.68rem;">관리자</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary ms-1" style="font-size: 0.68rem;">작업자</span>
-                                    {% endif %}
+                        <div class="shi-nav-dropdown">
+                            <a href="/mypage" class="profile-circle-btn shi-dropdown-toggle" title="내 정보 및 관리 메뉴">
+                                <div class="avatar-circle">
+                                    {{ session.get('full_name', '유')[0] }}
                                 </div>
-                                <small class="text-muted" style="font-size: 0.72rem;">마이페이지 · 설정</small>
+                                <div class="text-start lh-1 pe-1">
+                                    <div class="fw-bold text-dark" style="font-size: 0.86rem;">
+                                        {{ session.get('full_name') }}
+                                        {% if session.get('role') == 'ADMIN' %}
+                                            <span class="badge bg-danger ms-1" style="font-size: 0.66rem;">총괄</span>
+                                        {% elif session.get('role') == 'MANAGER' %}
+                                            <span class="badge bg-primary ms-1" style="font-size: 0.66rem;">관리자</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary ms-1" style="font-size: 0.66rem;">현장</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.72rem;">내 정보 · 설정 ▾</small>
+                                </div>
+                            </a>
+                            <div class="shi-submenu" style="right: 0; left: auto; min-width: 215px;">
+                                <a class="shi-submenu-item" href="/mypage">
+                                    <span class="sub-title">👤 내 정보 · 권한 설정</span>
+                                    <span class="sub-desc">비밀번호 변경 및 계정 관리</span>
+                                </a>
+                                {% if session.get('role') in ('ADMIN', 'MANAGER') %}
+                                <a class="shi-submenu-item" href="/mypage/files">
+                                    <span class="sub-title">🗂️ 기준서 · 현장 파일 관리</span>
+                                    <span class="sub-desc">사내 작업 기준서 및 촬영 기록 관리</span>
+                                </a>
+                                {% endif %}
+                                <div class="border-top my-1"></div>
+                                <a class="shi-submenu-item text-danger" href="/logout">
+                                    <span class="sub-title text-danger">🚪 로그아웃</span>
+                                </a>
                             </div>
-                        </a>
-                        <a href="/logout" class="btn btn-outline-secondary btn-sm rounded-pill px-3">로그아웃</a>
+                        </div>
                     {% else %}
                         <a href="/login" class="btn btn-shi-outline btn-sm px-3 py-2 rounded-pill">로그인</a>
-                        <a href="/register" class="btn btn-shi-primary btn-sm px-3 py-2 rounded-pill">계정발급 신청</a>
+                        <a href="/register" class="btn btn-shi-primary btn-sm px-3 py-2 rounded-pill">계정 신청</a>
                     {% endif %}
                 </div>
             </div>
@@ -124,11 +187,11 @@
     <footer class="shi-footer">
         <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center">
             <div>
-                <h5 class="text-white fw-bold mb-1">[수정] 프로젝트/플랫폼 이름</h5>
-                <p class="small mb-0">[수정] 비전공자도 이해할 수 있는 한 줄 서비스 설명 입력</p>
+                <h5 class="text-white fw-bold mb-1">[임시-회사/플랫폼 공식 명칭 들어갈 자리]</h5>
+                <p class="small mb-0">[임시-비전공자도 한눈에 이해할 수 있는 한 줄 서비스 소개 들어갈 자리]</p>
             </div>
             <div class="small mt-3 mt-md-0">
-                © 2026 Autonomous Ship Welding Physical AI Project. All Rights Reserved.
+                © 2026 Smart Shipyard Integrated Operations Platform.
             </div>
         </div>
     </footer>
@@ -136,25 +199,39 @@
     <script src="/static/js/jquery-3.7.1.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
 
-    <!-- ⭐ 글로벌 타임존 자동 변환기: DB의 UTC 시간을 접속한 컴퓨터의 로컬 시간으로 즉시 변환 -->
     <script>
+        $(document).ready(function() {
+            $('.shi-dropdown-toggle').on('click', function(e) {
+                if (window.innerWidth < 992) {
+                    const $parent = $(this).closest('.shi-nav-dropdown');
+                    if (!$parent.hasClass('open')) {
+                        e.preventDefault();
+                        $('.shi-nav-dropdown').not($parent).removeClass('open');
+                        $parent.addClass('open');
+                    }
+                }
+            });
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.shi-nav-dropdown').length) {
+                    $('.shi-nav-dropdown').removeClass('open');
+                }
+            });
+            $(window).on('scroll', function() {
+                $('#siteHeader').toggleClass('scrolled', $(this).scrollTop() > 20);
+            });
+        });
+
         window.formatToLocalTime = function(utcString, includeDate = true) {
             if (!utcString || utcString === '-') return '-';
             let cleanStr = String(utcString).trim();
-
-            // '2026-11-12 06:11:00' 처럼 타임존 표기가 없는 문자열이면 UTC('Z')로 인식하도록 보정
             if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(cleanStr)) {
                 cleanStr = cleanStr.replace(/\s+/, 'T') + 'Z';
             } else if (/^\d{2}\/\d{2}\s+\d{2}:\d{2}$/.test(cleanStr)) {
-                // '11/12 06:11' 형태인 경우 올해 연도를 붙여 UTC로 변환
                 const year = new Date().getFullYear();
                 cleanStr = `${year}-${cleanStr.replace('/', '-').replace(/\s+/, 'T')}:00Z`;
             }
-
             const dateObj = new Date(cleanStr);
-            if (isNaN(dateObj.getTime())) return utcString; // 변환 불가 시 원본 반환
-
-            // 현재 작동 중인 컴퓨터의 로컬 시간대(OS 기준)로 연-월-일 시:분:초 추출
+            if (isNaN(dateObj.getTime())) return utcString;
             const pad = (n) => String(n).padStart(2, '0');
             const yyyy = dateObj.getFullYear();
             const mm = pad(dateObj.getMonth() + 1);
@@ -162,11 +239,9 @@
             const hh = pad(dateObj.getHours());
             const min = pad(dateObj.getMinutes());
             const sec = pad(dateObj.getSeconds());
-
             return includeDate ? `${yyyy}-${mm}-${dd} ${hh}:${min}:${sec}` : `${mm}/${dd} ${hh}:${min}`;
         };
 
-        // 페이지 로드 시 '.utc-time' 클래스가 붙은 모든 시간 텍스트를 내 컴퓨터 시간으로 자동 변환!
         window.applyLocalTimeElements = function() {
             document.querySelectorAll('.utc-time').forEach(el => {
                 const raw = el.getAttribute('data-utc') || el.innerText.trim();
@@ -177,7 +252,6 @@
                 }
             });
         };
-
         document.addEventListener('DOMContentLoaded', window.applyLocalTimeElements);
     </script>
     {% block extra_scripts %}{% endblock %}

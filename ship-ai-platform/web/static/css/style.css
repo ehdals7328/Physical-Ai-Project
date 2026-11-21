@@ -510,3 +510,164 @@ body, h1, h2, h3, h4, h5, h6, p, span, div, td, th, a, button, label {
         margin: 10px !important;
     }
 }
+
+
+/* =====================================================================
+   8. ⭐ 업무 흐름 중심 UI 개편 전용 스타일 (서브메뉴 · 야드/CAD 카드 · 3단계 공정 · ERP 보드)
+====================================================================== */
+.shi-nav-dropdown {
+    position: relative;
+}
+.shi-nav-dropdown .shi-submenu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 245px;
+    background: #ffffff;
+    border: 1px solid #dbe4f0;
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 14px 34px rgba(10, 31, 68, 0.14);
+    z-index: 1050;
+}
+.shi-nav-dropdown.open .shi-submenu {
+    display: block;
+}
+@media (min-width: 992px) {
+    .shi-nav-dropdown:hover .shi-submenu {
+        display: block;
+    }
+}
+.shi-submenu-item {
+    display: flex;
+    flex-direction: column;
+    padding: 9px 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text-dark);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.shi-submenu-item:hover,
+.shi-submenu-item.active {
+    background-color: #eef5ff;
+    color: var(--shi-blue);
+}
+.shi-submenu-item .sub-title {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+.shi-submenu-item .sub-desc {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+@media (max-width: 991.98px) {
+    .shi-nav-dropdown .shi-submenu {
+        position: static;
+        box-shadow: none;
+        border: none;
+        background: #f8fafc;
+        margin: 4px 0 8px 8px;
+        padding: 6px;
+    }
+}
+
+/* 야드 선택 카드 & 도면(CAD) 네모 카드 */
+.yard-select-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    height: 100%;
+}
+.yard-select-card:hover {
+    border-color: #93c5fd;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0, 78, 162, 0.08);
+}
+.yard-select-card.active {
+    border-color: var(--shi-blue);
+    background: linear-gradient(180deg, #f5f9ff 0%, #ffffff 100%);
+    box-shadow: 0 12px 28px rgba(0, 78, 162, 0.14);
+}
+.cad-mini-card {
+    background: #0a192f;
+    color: #e2e8f0;
+    border: 1.5px solid #1e3a5f;
+    border-radius: 14px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    height: 100%;
+}
+.cad-mini-card:hover {
+    border-color: #60a5fa;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(10, 25, 47, 0.22);
+}
+
+/* 3단계 블록 공정 보드 */
+.stage-column {
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 16px;
+    height: 100%;
+}
+.block-item-card {
+    background: #ffffff;
+    border: 1px solid #dbe4f0;
+    border-left: 4px solid var(--shi-blue);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.block-item-card:hover {
+    transform: translateX(3px);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+}
+.block-item-card.stage-waiting { border-left-color: #f59e0b; }
+.block-item-card.stage-active { border-left-color: #0284c7; }
+.block-item-card.stage-done { border-left-color: #16a34a; }
+
+/* 현장 카메라 공정 단계 버튼 (운송 -> 조립 -> 용접) */
+.process-step-btn {
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 14px;
+    padding: 10px 18px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+.process-step-btn:hover {
+    border-color: var(--shi-blue);
+    color: var(--shi-blue);
+}
+.process-step-btn.active {
+    background: var(--shi-blue);
+    border-color: var(--shi-blue);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0, 78, 162, 0.25);
+}
+
+/* ERP 보드 KPI 카드 */
+.erp-kpi-card {
+    background: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 18px 20px;
+    height: 100%;
+    transition: transform 0.2s ease;
+}
+.erp-kpi-card:hover {
+    transform: translateY(-2px);
+}
+.erp-kpi-num {
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.1;
+}

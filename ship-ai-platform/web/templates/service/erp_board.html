@@ -1,0 +1,592 @@
+<!-- web/templates/service/erp_board.html -->
+{% extends "layout/base.html" %}
+{% block title %}자재 · 인력 · 발주 관리 보드 | K-SHIPYARD{% endblock %}
+
+{% block content %}
+<section class="py-4" style="min-height: 92vh; padding-top: 94px !important; background-color: #f4f7fb;">
+    <div class="container">
+
+        <div id="erpAlertBanner" class="alert alert-success d-none shadow-sm fw-bold"></div>
+
+        <div class="bg-white border rounded-4 p-4 mb-4 shadow-sm">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <span class="badge bg-success-subtle text-success fw-bold px-3 py-1 rounded-pill mb-2">
+                        STEP 3 · 자재 · 인력 · 협력사 · 발주 승인
+                    </span>
+                    <h3 class="fw-bold mb-1" style="color: var(--shi-navy);">
+                        📦 자재 · 인력 · 발주 관리 보드
+                    </h3>
+                    <p class="small text-secondary mb-0">
+                        야드별 부족한 자재와 자격증 만료가 가까운 작업자, 협력사 호출 가능 자원을 한눈에 보고 바로 발주·메일 요청을 보냅니다.
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="/service/yards" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                        ← 🗺️ 야드 · 도면 현황
+                    </a>
+                    <a href="/service/assistant" class="btn btn-shi-primary btn-sm rounded-pill px-3 fw-bold">
+                        💬 스마트 작업 도우미 열기
+                    </a>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+                <span class="small fw-bold text-secondary me-1">야드 선택:</span>
+                <button type="button" class="btn btn-sm rounded-pill px-3 yard-filter-btn {{ 'btn-primary' if selected_branch == 'ALL' else 'btn-outline-primary' }}"
+                        data-branch="ALL">전체 야드</button>
+                {% for br in branches %}
+                <button type="button" class="btn btn-sm rounded-pill px-3 yard-filter-btn {{ 'btn-primary' if selected_branch == br.branch_code else 'btn-outline-primary' }}"
+                        data-branch="{{ br.branch_code }}">
+                    {{ br.branch_name }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if not can_access_erp %}
+        <div class="bg-white border rounded-4 p-5 text-center shadow-sm">
+            <div class="fs-1 mb-2">🔒</div>
+            <h5 class="fw-bold mb-2">자재 · 인력 관리 조회 권한이 필요합니다</h5>
+            <p class="small text-secondary mb-3">현장 관리자 또는 총괄 관리자에게 자재·인력 관리 접근 권한을 요청해 주세요.</p>
+            <a href="/mypage" class="btn btn-shi-primary rounded-pill px-4">내 권한 확인하기</a>
+        </div>
+        {% else %}
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3">
+                <div class="erp-kpi-card">
+                    <div class="small text-secondary fw-bold mb-1">⚠️ 부족 주의 자재</div>
+                    <div class="erp-kpi-num {{ 'text-danger' if kpi.low_stock_count > 0 else 'text-success' }}">{{ kpi.low_stock_count }}<span class="fs-6 fw-normal text-muted"> 종</span></div>
+                    <div class="small text-muted mt-1">여유 재고 부족 품목</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="erp-kpi-card">
+                    <div class="small text-secondary fw-bold mb-1">⏰ 자격 만료 임박</div>
+                    <div class="erp-kpi-num {{ 'text-warning' if kpi.expiring_worker_count > 0 else 'text-success' }}">{{ kpi.expiring_worker_count }}<span class="fs-6 fw-normal text-muted"> 명</span></div>
+                    <div class="small text-muted mt-1">60일 이내 만료 예정</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="erp-kpi-card">
+                    <div class="small text-secondary fw-bold mb-1">🤝 협력사 호출 자원</div>
+                    <div class="erp-kpi-num text-primary">{{ kpi.partner_resource_count }}<span class="fs-6 fw-normal text-muted"> 건</span></div>
+                    <div class="small text-muted mt-1">자재 · 파견인력 · 장비</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="erp-kpi-card">
+                    <div class="small text-secondary fw-bold mb-1">✅ 최종 승인 대기</div>
+                    <div class="erp-kpi-num text-dark">{{ kpi.pending_approval_count }}<span class="fs-6 fw-normal text-muted"> 건</span></div>
+                    <div class="small text-muted mt-1">승인 후 발주·작업 확정</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-4 p-3 p-md-4 shadow-sm">
+            <ul class="nav nav-pills flex-wrap gap-2 border-bottom pb-3 mb-4" id="erpBoardTabs" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold rounded-pill px-3" data-bs-toggle="pill" data-bs-target="#pane-materials" type="button">
+                        📦 우리 회사 자재 ({{ materials|length }})
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold rounded-pill px-3" data-bs-toggle="pill" data-bs-target="#pane-workers" type="button">
+                        👷 현장 인력 · 자격증 ({{ workers|length }})
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold rounded-pill px-3" data-bs-toggle="pill" data-bs-target="#pane-equipments" type="button">
+                        🚜 장비 · 작업 로봇 ({{ equipments|length + robots|length }})
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold rounded-pill px-3" id="btn-tab-partners" data-bs-toggle="pill" data-bs-target="#pane-partners" type="button">
+                        🤝 외부 협력사 호출 ({{ kpi.partner_resource_count }})
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold rounded-pill px-3" id="btn-tab-approvals" data-bs-toggle="pill" data-bs-target="#pane-approvals" type="button">
+                        ✅ 발주 · 작업 승인함
+                        {% if kpi.pending_approval_count > 0 %}
+                        <span class="badge bg-danger ms-1">{{ kpi.pending_approval_count }}</span>
+                        {% endif %}
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="pane-materials">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="small text-secondary">
+                            재고가 부족한 자재는 <strong>[발주 요청]</strong>을 누르면 확인 후 발주서 작성 및 협력사 메일 발송으로 이어집니다.
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="searchMaterials" placeholder="🔍 자재명, 품목코드 검색..." style="max-width: 260px;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small" id="tblMaterials">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>야드</th>
+                                    <th>품목코드 / 자재명</th>
+                                    <th>분류</th>
+                                    <th class="text-end">보유 / 예약 / 가용</th>
+                                    <th class="text-center">상태</th>
+                                    <th class="text-center">바로 실행 (도우미 연동)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in materials %}
+                                <tr data-branch="{{ m.branch_code }}">
+                                    <td><span class="badge bg-light text-dark border">{{ m.branch_name }}</span></td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ m.item_name }}</div>
+                                        <div class="text-muted font-monospace" style="font-size:0.75rem;">{{ m.item_code }} · LOT {{ m.lot_no }}</div>
+                                    </td>
+                                    <td>{{ m.material_category }}</td>
+                                    <td class="text-end">
+                                        {{ m.total_qty|int }} / {{ m.reserved_qty|int }} /
+                                        <strong class="{{ 'text-danger' if m.is_low else 'text-primary' }}">{{ m.available_qty|int }} {{ m.unit }}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if m.is_low %}<span class="badge bg-danger">부족 주의</span>{% else %}<span class="badge bg-success-subtle text-success">여유</span>{% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-hitl-trigger"
+                                                    data-title="자재 상세 문의"
+                                                    data-desc="선택한 자재의 사용 규격과 대체 가능 품목을 작업 도우미에게 물어봅니다."
+                                                    data-prompt="[자재 문의] {{ m.branch_name }}에 있는 '{{ m.item_name }}({{ m.item_code }})' 자재의 용도와 적용 가능한 용접 조건, 현재 가용 재고({{ m.available_qty|int }}{{ m.unit }})로 충분한지 확인해줘.">
+                                                💬 자재 문의
+                                            </button>
+                                            <button type="button" class="btn btn-sm py-0 px-2 btn-hitl-trigger {{ 'btn-danger' if m.is_low else 'btn-outline-success' }}"
+                                                    data-title="자재 발주 요청 (승인 후 발송)"
+                                                    data-desc="협력사 가용 재고를 확인하고 발주 주문서 초안을 생성한 뒤, 관리자 최종 승인을 거쳐 발송합니다."
+                                                    data-prompt="[자재 발주 요청] {{ m.branch_name }}({{ m.branch_code }})의 '{{ m.item_name }}({{ m.item_code }})' 자재가 현재 {{ m.available_qty|int }}{{ m.unit }} 남았습니다. 외부 협력사 재고를 확인해서 추가 발주 주문서 초안을 만들고, 승인 후 발주 메일 발송 준비를 해줘.">
+                                                🛒 발주 요청
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">등록된 자재 데이터가 없습니다.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-workers">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            {% if expiring_workers %}
+                            <button type="button" class="btn btn-warning btn-sm fw-bold rounded-pill px-3 btn-hitl-trigger"
+                                    data-title="자격증 만료 임박자 일괄 안내 메일 요청"
+                                    data-desc="만료 60일 이내 작업자 목록을 바탕으로 갱신 안내 이메일 초안을 작성하고 발송 승인 절차를 진행합니다."
+                                    data-prompt="[자격증 갱신 안내 메일 요청] 자격증 만료가 임박한 아래 작업자들에게 갱신 안내 이메일을 보내줘: {% for ew in expiring_workers %}{{ ew.worker_name }}({{ ew.worker_id }}, {{ ew.cert_code }}, 만료일 {{ ew.cert_expiry_date }}){% if not loop.last %}, {% endif %}{% endfor %}. 발송 전 내용을 먼저 보여주고 승인 후 전송해줘.">
+                                📧 만료 임박 {{ expiring_workers|length }}명 일괄 메일 요청
+                            </button>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success px-3 py-2">모든 작업자 자격증 유효 기간 양호</span>
+                            {% endif %}
+                        </div>
+                        <input type="text" class="form-control form-control-sm" id="searchWorkers" placeholder="🔍 작업자명, 자격코드, 공정 검색..." style="max-width: 260px;">
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small" id="tblWorkers">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>야드</th>
+                                    <th>성명 / 소속</th>
+                                    <th>담당 공법</th>
+                                    <th>자격증 코드</th>
+                                    <th class="text-center">만료일 (남은 기간)</th>
+                                    <th class="text-center">안내 메일</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for w in workers %}
+                                <tr data-branch="{{ w.branch_code }}" class="{{ 'table-warning' if w.expiring_soon else '' }}">
+                                    <td><span class="badge bg-light text-dark border">{{ w.branch_name }}</span></td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ w.worker_name }} <small class="text-muted">({{ w.worker_id }})</small></div>
+                                        <div class="text-muted" style="font-size:0.75rem;">{{ w.department_name }} · {{ w.role }}</div>
+                                    </td>
+                                    <td><span class="badge bg-info-subtle text-dark">{{ w.weld_process }}</span></td>
+                                    <td class="font-monospace">{{ w.cert_code }}</td>
+                                    <td class="text-center">
+                                        <div>{{ w.cert_expiry_date }}</div>
+                                        {% if w.days_left is not none %}
+                                            {% if w.is_expired %}
+                                            <span class="badge bg-danger">만료됨 ({{ w.days_left|abs }}일 경과)</span>
+                                            {% elif w.expiring_soon %}
+                                            <span class="badge bg-warning text-dark">D-{{ w.days_left }} (갱신 필요)</span>
+                                            {% else %}
+                                            <span class="badge bg-success-subtle text-success">D-{{ w.days_left }}</span>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm py-0 px-2 btn-hitl-trigger {{ 'btn-warning fw-bold' if w.expiring_soon else 'btn-outline-secondary' }}"
+                                                data-title="자격증 갱신 안내 메일 요청"
+                                                data-desc="작업자 자격증 만료 안내 이메일을 작성하고 최종 확인 후 발송합니다."
+                                                data-prompt="[자격증 만료 안내 메일] {{ w.branch_name }} 소속 {{ w.worker_name }}({{ w.worker_id }}) 작업자의 {{ w.cert_code }}({{ w.weld_process }}) 자격 만료일이 {{ w.cert_expiry_date }}입니다. 자격 갱신 일정 안내 이메일 초안을 작성하고 확인 후 발송해줘.">
+                                            📧 안내 메일
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">등록된 현장 인력이 없습니다.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-equipments">
+                    <div class="row g-3 mb-4">
+                        {% for r in robots %}
+                        <div class="col-md-6">
+                            <div class="border rounded-4 p-3 bg-light d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-primary mb-1">자동 용접 로봇</span>
+                                    <div class="fw-bold text-dark">🤖 {{ r.robot_name }}</div>
+                                    <div class="small text-secondary">위치: {{ r.current_location_desc or '-' }}</div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge {{ 'bg-danger' if r.emergency_stop_yn == 'Y' else 'bg-success' }} mb-1">
+                                        {{ '비상정지' if r.emergency_stop_yn == 'Y' else r.robot_status }}
+                                    </span>
+                                    <div class="small fw-bold text-primary">배터리 {{ r.battery_percent }}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small" id="tblEquipments">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>야드</th>
+                                    <th>장비 코드 / 이름</th>
+                                    <th>종류</th>
+                                    <th>현재 구역</th>
+                                    <th class="text-end">최대 하중</th>
+                                    <th class="text-center">가동 상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for e in equipments %}
+                                <tr data-branch="{{ e.branch_code }}">
+                                    <td><span class="badge bg-light text-dark border">{{ e.branch_name }}</span></td>
+                                    <td>
+                                        <div class="fw-bold">{{ e.asset_name }}</div>
+                                        <div class="text-muted font-monospace" style="font-size:0.75rem;">{{ e.asset_code }}</div>
+                                    </td>
+                                    <td>{{ e.asset_category }}</td>
+                                    <td>{{ e.current_zone }}</td>
+                                    <td class="text-end">{{ (e.max_load_ton|string + ' 톤') if e.max_load_ton else '-' }}</td>
+                                    <td class="text-center">
+                                        <span class="badge {{ 'bg-success' if e.operation_status == 'STANDBY' else 'bg-primary' }}">{{ e.operation_status }}</span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">등록된 장비 정보가 없습니다.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-partners">
+                    {% if partner_error %}
+                    <div class="alert alert-warning small">{{ partner_error }}</div>
+                    {% endif %}
+
+                    <h6 class="fw-bold mb-2" style="color: var(--shi-navy);">🧱 협력사 즉시 발주 가능 자재</h6>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-hover align-middle small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>협력사</th>
+                                    <th>자재명 (SKU)</th>
+                                    <th class="text-end">가용 수량</th>
+                                    <th class="text-end">단가</th>
+                                    <th class="text-center">납기</th>
+                                    <th class="text-center">발주</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pm in partner_materials %}
+                                <tr>
+                                    <td><span class="badge bg-danger-subtle text-danger">{{ pm.partner_id }}</span></td>
+                                    <td><strong>{{ pm.item_name }}</strong> <small class="text-muted">({{ pm.supplier_sku }})</small></td>
+                                    <td class="text-end fw-bold text-primary">{{ pm.available_qty|int }} {{ pm.unit }}</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(pm.unit_price_krw or 0) }}원</td>
+                                    <td class="text-center">{{ pm.lead_time_hours }}시간</td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-danger btn-sm py-0 px-2 btn-hitl-trigger"
+                                                data-title="협력사 자재 발주 (승인 후 발송)"
+                                                data-desc="협력사 발주 주문서를 자동 생성하고 관리자 승인 후 발주 메일을 전송합니다."
+                                                data-prompt="[협력사 자재 발주] {{ pm.partner_id }} 협력사의 '{{ pm.item_name }}({{ pm.supplier_sku }})' 자재 발주 주문서를 작성해줘. 단가 {{ '{:,.0f}'.format(pm.unit_price_krw or 0) }}원, 납기 {{ pm.lead_time_hours }}시간 조건 확인 후 승인 대기 상태로 올려줘.">
+                                            🛒 발주하기
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="6" class="text-center text-muted py-3">조회된 협력사 자재 없음</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-2" style="color: var(--shi-navy);">👷 호출 가능 외부 용접 인력</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle small">
+                                    <thead class="table-light">
+                                        <tr><th>성명</th><th>공법 / 지역</th><th>상태</th><th class="text-center">호출</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pw in partner_workers %}
+                                        <tr>
+                                            <td><strong>{{ pw.worker_name }}</strong><br><small class="text-muted">{{ pw.cert_code }}</small></td>
+                                            <td>{{ pw.weld_process }} · {{ pw.current_region }}</td>
+                                            <td><span class="badge bg-success-subtle text-success">{{ pw.dispatch_status }}</span></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-hitl-trigger"
+                                                        data-title="외부 용접 인력 파견 호출"
+                                                        data-desc="협력사 파견 요청서 및 안내 메일을 작성합니다."
+                                                        data-prompt="[외부 인력 파견 요청] {{ pw.partner_id }} 소속 {{ pw.worker_name }}({{ pw.cert_code }}, {{ pw.weld_process }}, {{ pw.current_region }}) 작업자 파견 요청서와 메일 초안을 작성해줘.">
+                                                    📞 호출
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="4" class="text-center text-muted py-3">가용 인력 없음</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <h6 class="fw-bold mb-2" style="color: var(--shi-navy);">🚛 호출 가능 외부 차량 · 장비</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle small">
+                                    <thead class="table-light">
+                                        <tr><th>장비명</th><th>지역 / 하중</th><th>상태</th><th class="text-center">호출</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pe in partner_equipments %}
+                                        <tr>
+                                            <td><strong>{{ pe.asset_name }}</strong><br><small class="text-muted">운전자: {{ pe.operator_name }}</small></td>
+                                            <td>{{ pe.current_region }} · {{ pe.max_load_ton }}톤</td>
+                                            <td><span class="badge bg-info-subtle text-dark">{{ pe.availability_status }}</span></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-hitl-trigger"
+                                                        data-title="외부 차량·장비 배차 호출"
+                                                        data-desc="협력사 장비 임차 및 배차 요청을 작성합니다."
+                                                        data-prompt="[외부 장비 배차 요청] {{ pe.partner_id }}의 '{{ pe.asset_name }}'({{ pe.current_region }}, 최대 {{ pe.max_load_ton }}톤) 배차 요청서와 협력사 발송 메일 초안을 작성해줘.">
+                                                    📞 호출
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr><td colspan="4" class="text-center text-muted py-3">가용 장비 없음</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="pane-approvals">
+                    <div class="alert alert-info small mb-3">
+                        💡 <strong>최종 확인 후 실행(승인 절차):</strong> 작업 도우미가 만든 작업지시서·발주 주문서는 관리자 승인 버튼을 눌러야 실제 자원 배정 및 협력사 메일 발송이 확정됩니다.
+                    </div>
+                    {% if pending_approvals %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle small">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>작업번호</th>
+                                    <th>제목 / 블록</th>
+                                    <th>요청자</th>
+                                    <th class="text-center">생성 문서</th>
+                                    <th class="text-center">최종 결정</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in pending_approvals %}
+                                <tr id="approvalRow-{{ item.inst.instruction_id }}">
+                                    <td class="fw-bold font-monospace">{{ item.wo.work_no }}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">{{ item.wo.work_title }}</div>
+                                        <div class="text-muted" style="font-size:0.75rem;">
+                                            {{ item.wo.ship_code }} · {{ item.wo.block_code }} · {{ item.wo.material_grade }} {{ item.wo.thickness_mm }}mm
+                                        </div>
+                                    </td>
+                                    <td>{{ item.requester_name }}</td>
+                                    <td class="text-center">
+                                        {% if item.pdf_url %}
+                                        <a href="{{ item.pdf_url }}" target="_blank" class="btn btn-outline-dark btn-sm py-0 px-2">📄 지시서</a>
+                                        {% endif %}
+                                        {% if item.po_pdf_url %}
+                                        <a href="{{ item.po_pdf_url }}" target="_blank" class="btn btn-outline-danger btn-sm py-0 px-2">🧾 발주서</a>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button type="button" class="btn btn-success btn-sm fw-bold btn-hitl-decision"
+                                                    data-work-id="{{ item.wo.work_id }}"
+                                                    data-inst-id="{{ item.inst.instruction_id }}"
+                                                    data-action="APPROVE">
+                                                👍 승인 확정
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm btn-hitl-decision"
+                                                    data-work-id="{{ item.wo.work_id }}"
+                                                    data-inst-id="{{ item.inst.instruction_id }}"
+                                                    data-action="REJECT">
+                                                ❌ 반려
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <div class="fs-2 mb-2">✅</div>
+                        <div class="fw-bold">현재 승인 대기 중인 발주·작업 요청이 없습니다.</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</section>
+
+<div class="modal fade" id="hitlRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title fw-bold" id="hitlModalTitle">작업 도우미 요청 확인</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="small text-secondary mb-2" id="hitlModalDesc"></p>
+                <label class="form-label small fw-bold">작업 도우미에게 전달할 요청 내용 (수정 가능)</label>
+                <textarea id="hitlPromptTextarea" class="form-control small" rows="5"></textarea>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-shi-primary btn-sm rounded-pill px-4 fw-bold" id="btnProceedToAssistant">
+                    💬 스마트 작업 도우미로 넘기기 →
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* global $, bootstrap */
+$(document).ready(function() {
+    let activeBranch = "{{ selected_branch }}";
+
+    function activateTabFromHash() {
+        if (window.location.hash === '#tab-partners') $('#btn-tab-partners').trigger('click');
+        else if (window.location.hash === '#tab-approvals') $('#btn-tab-approvals').trigger('click');
+    }
+    activateTabFromHash();
+    $(window).on('hashchange', activateTabFromHash);
+
+    function applyFilters() {
+        const matQ = ($('#searchMaterials').val() || '').trim().toLowerCase();
+        const wrkQ = ($('#searchWorkers').val() || '').trim().toLowerCase();
+
+        $('#tblMaterials tbody tr[data-branch]').each(function() {
+            const brOk = (activeBranch === 'ALL' || $(this).data('branch') === activeBranch);
+            const txtOk = (!matQ || $(this).text().toLowerCase().includes(matQ));
+            $(this).toggle(brOk && txtOk);
+        });
+        $('#tblWorkers tbody tr[data-branch]').each(function() {
+            const brOk = (activeBranch === 'ALL' || $(this).data('branch') === activeBranch);
+            const txtOk = (!wrkQ || $(this).text().toLowerCase().includes(wrkQ));
+            $(this).toggle(brOk && txtOk);
+        });
+        $('#tblEquipments tbody tr[data-branch]').each(function() {
+            $(this).toggle(activeBranch === 'ALL' || $(this).data('branch') === activeBranch);
+        });
+    }
+
+    $('.yard-filter-btn').on('click', function() {
+        activeBranch = $(this).data('branch');
+        $('.yard-filter-btn').removeClass('btn-primary').addClass('btn-outline-primary');
+        $(this).removeClass('btn-outline-primary').addClass('btn-primary');
+        applyFilters();
+    });
+    $('#searchMaterials, #searchWorkers').on('input', applyFilters);
+    applyFilters();
+
+    const modalEl = document.getElementById('hitlRequestModal');
+    const hitlModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+    $(document).on('click', '.btn-hitl-trigger', function() {
+        $('#hitlModalTitle').text($(this).data('title') || '작업 도우미 요청');
+        $('#hitlModalDesc').text($(this).data('desc') || '');
+        $('#hitlPromptTextarea').val($(this).data('prompt') || '');
+        if (hitlModal) hitlModal.show();
+    });
+
+    $('#btnProceedToAssistant').on('click', function() {
+        const promptText = ($('#hitlPromptTextarea').val() || '').trim();
+        if (!promptText) return;
+        window.location.href = `/service/assistant?prompt=${encodeURIComponent(promptText)}`;
+    });
+
+    $(document).on('click', '.btn-hitl-decision', function() {
+        const btn = $(this);
+        const workId = btn.data('work-id');
+        const instId = btn.data('inst-id');
+        const action = btn.data('action');
+        const label = action === 'APPROVE' ? '승인 확정' : '반려';
+        if (!confirm(`이 요청을 [${label}] 처리하시겠습니까?`)) return;
+
+        btn.prop('disabled', true);
+        $.ajax({
+            url: '/service/api/assistant/approve',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ action: action, work_id: workId, instruction_id: instId, doc: {} }),
+            success: function(res) {
+                $('#erpAlertBanner')
+                    .removeClass('d-none alert-danger')
+                    .addClass('alert-success')
+                    .text('✅ ' + (res.message || `${label} 처리가 완료되었습니다.`));
+                $(`#approvalRow-${instId}`).fadeOut(300, function() { $(this).remove(); });
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false);
+                const msg = xhr.responseJSON ? xhr.responseJSON.message : '처리 중 오류가 발생했습니다.';
+                $('#erpAlertBanner')
+                    .removeClass('d-none alert-success')
+                    .addClass('alert-danger')
+                    .text('❌ ' + msg);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

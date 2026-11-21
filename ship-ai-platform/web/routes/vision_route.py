@@ -13,6 +13,8 @@ from werkzeug.utils import secure_filename
 from web.models import (
     db,
     User,
+    WorkOrder,
+    ErpBlockMaster,
     VisionAnalysis,
     VisionDetection,
     VisionInspection,
@@ -56,6 +58,8 @@ _VISION_UPLOAD_SEMAPHORE = threading.BoundedSemaphore(2)
 _CAMERA_AUTOSAVE_LOCK = threading.Lock()
 _LAST_CAMERA_AUTOSAVE_TS: dict[str, float] = {}
 AUTOSAVE_COOLDOWN_SEC = 10.0
+_LAST_MANUAL_SAVE_TS: dict[str, float] = {}
+MANUAL_SAVE_COOLDOWN_SEC = 3.0
 
 MAX_DISK_FILES_PER_FOLDER = 40
 MAX_VISION_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB 제한
@@ -334,12 +338,63 @@ def index():
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
     initial_records = _query_inspections_paginated(page=1, per_page=RECORDS_PER_PAGE)
 
+    active_orders_raw = (
+        WorkOrder.query
+        .filter(WorkOrder.status_code.in_(["IN_PROGRESS", "READY"]))
+        .order_by(WorkOrder.work_id.desc())
+        .all()
+    )
+    all_orders_summary = [
+        {
+            "work_id": wo.work_id,
+            "work_no": wo.work_no,
+            "work_title": wo.work_title,
+            "ship_code": wo.ship_code,
+            "block_code": wo.block_code,
+            "work_region": wo.work_region,
+            "work_zone": wo.work_zone,
+            "process_code": wo.process_code,
+            "material_grade": wo.material_grade,
+            "thickness_mm": float(wo.thickness_mm) if wo.thickness_mm is not None else 0.0,
+            "weld_position": wo.weld_position,
+            "status_code": wo.status_code,
+        }
+        for wo in active_orders_raw
+    ]
+
+    branch_cards = []
+    for br in branches:
+        raw_vid = br.default_video or "Test_1.mp4"
+        mapped_vid = VIDEO_FILENAME_ALIASES.get(raw_vid.lower(), raw_vid)
+        br_orders = [o for o in all_orders_summary if o["work_region"] == br.branch_code]
+        branch_cards.append({
+            "branch_code": br.branch_code,
+            "branch_name": br.branch_name,
+            "region_name": br.region_name,
+            "address": br.address or "",
+            "camera_code": br.camera_code or f"CAM-{br.branch_code}",
+            "default_video": mapped_vid,
+            "active_order_count": len(br_orders),
+            "orders": br_orders,
+        })
+
+    selected_branch = request.args.get("branch", "").strip()
+    if not selected_branch and branch_cards:
+        selected_branch = branch_cards[0]["branch_code"]
+    selected_stage = request.args.get("stage", "welding").strip().lower()
+    if selected_stage not in ("transport", "assembly", "welding"):
+        selected_stage = "welding"
+
     return render_template(
         "service/vision.html",
         me=user,
         initial_records=initial_records,
         robots=robots,
         branches=branches,
+        branch_cards=branch_cards,
+        active_orders=all_orders_summary,
+        selected_branch=selected_branch,
+        selected_stage=selected_stage,
         runpod_base=RUNPOD_BASE,
     )
 
@@ -815,6 +870,18 @@ def save_vision_snapshot():
 
     if auto_mode and welding_state == "IN_WELDING":
         return jsonify({"status": "LOCKED", "welding_state": "IN_WELDING"})
+
+    # 수동 저장 시 연속 클릭(3초 이내 중복 클릭)으로 인한 DB 과다 적재 방지
+    if not auto_mode:
+        now_ts = time.time()
+        with _CAMERA_AUTOSAVE_LOCK:
+            last_manual = _LAST_MANUAL_SAVE_TS.get(camera_code, 0.0)
+            if now_ts - last_manual < MANUAL_SAVE_COOLDOWN_SEC:
+                return jsonify({
+                    "status": "THROTTLED",
+                    "message": "방금 기록을 남겼습니다. 3초 뒤에 다시 눌러주세요.",
+                })
+            _LAST_MANUAL_SAVE_TS[camera_code] = now_ts
 
     # ⭐ 자동 저장 시: 동일 tracker_id(용접선) 또는 동일 OCR 블록 번호 중복 저장 원천 차단
     if auto_mode:

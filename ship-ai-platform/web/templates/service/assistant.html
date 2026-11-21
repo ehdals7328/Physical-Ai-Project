@@ -1,6 +1,6 @@
 <!-- web/templates/service/assistant.html -->
 {% extends "layout/base.html" %}
-{% block title %}AI 어시스턴트 | K-SHIPYARD AI{% endblock %}
+{% block title %}스마트 작업 도우미 | K-SHIPYARD AI{% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -670,8 +670,21 @@ $(document).ready(function() {
         else $('#btnShrinkInput').addClass('d-none');
     }
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const incomingPrompt = (urlParams.get('prompt') || '').trim();
     const savedDraft = localStorage.getItem(DRAFT_KEY);
-    if (savedDraft) {
+    if (incomingPrompt) {
+        $('#questionInput').val(incomingPrompt).focus();
+        localStorage.setItem(DRAFT_KEY, incomingPrompt);
+        adjustTextareaHeight(110);
+        if (!$('#incomingPromptNotice').length) {
+            $('#questionInput').closest('form').before(
+                '<div id="incomingPromptNotice" class="alert alert-info py-2 px-3 small fw-bold mb-2">' +
+                '💡 이전 화면에서 선택한 요청 내용이 입력되었습니다. 내용을 확인한 뒤 [전송] 버튼을 눌러주세요.' +
+                '</div>'
+            );
+        }
+    } else if (savedDraft) {
         $('#questionInput').val(savedDraft);
         adjustTextareaHeight();
     }
