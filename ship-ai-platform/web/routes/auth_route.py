@@ -21,6 +21,8 @@ from web.models import (
     VisionAnalysis,
     VisionDetection,
     VisionInspection,
+    ErpBranch,
+    ErpCompany,
 )
 
 auth_bp = Blueprint("auth", __name__)
@@ -44,6 +46,47 @@ CATEGORY_RULES = [
     ("CAD_DRAWING", ("도면", "cad", "drawing", "블록", "배치도")),
     ("WELDING_SOP", ("용접", "품질", "검사", "인사", "근로", "임금", "보수", "휴일", "휴가", "성과", "윤리", "보안", "문서", "규정", "sop", "가이드", "운영")),
 ]
+
+
+
+def _build_page_items(page: int, total_pages: int) -> list:
+    """10페이지 초과 시 중간을 '...'으로 생략하는 스마트 페이지네이션"""
+    if total_pages <= 10:
+        return list(range(1, total_pages + 1))
+    items = [1]
+    if page > 4:
+        items.append("...")
+    for p in range(max(2, page - 2), min(total_pages, page + 3)):
+        items.append(p)
+    if page < total_pages - 3:
+        items.append("...")
+    items.append(total_pages)
+    return items
+
+
+
+
+_MOJIBAKE_RE = re.compile(r"[\u2500-\u259f\u0400-\u04ff\u0080-\u00ff\u0100-\u024f\ufffd\u2116]")
+
+
+def _clean_display_title(raw_title: str | None, original_file_name: str | None) -> str:
+    """깨진 PDF 메타데이터 제목(인코딩 오류 문자 포함)을 감지하여 원본 파일명 기반으로 자동 복구"""
+    title = (raw_title or "").strip()
+    fname = (original_file_name or "").strip()
+    fallback = Path(fname).stem.replace("_", " ").strip() if fname else title
+    if not title:
+        return fallback or "제목 없음"
+    if _MOJIBAKE_RE.search(title):
+        return fallback or title
+    readable = sum(
+        1 for ch in title
+        if ("\uac00" <= ch <= "\ud7a3")
+        or ("\u3131" <= ch <= "\u318e")
+        or (ch.isascii() and (ch.isalnum() or ch in " -_.,()[]/+:&·"))
+    )
+    if len(title) > 0 and (readable / len(title)) < 0.6:
+        return fallback or title
+    return title
 
 
 def verify_user_password(stored_hash: str, input_pw: str) -> bool:
@@ -394,7 +437,9 @@ def _serialize_doc_row(doc: DocumentMetadata) -> dict:
     return {
         "document_id": doc.document_id,
         "document_code": doc.document_code,
-        "document_title": doc.document_title,
+        "document_title": _clean_display_title(doc.document_title, doc.original_file_name),
+        "collection_type": doc.collection_type,
+        "category_code": doc.category_code,
         "original_file_name": doc.original_file_name,
         "storage_uri": doc.storage_uri,
         "short_hash": (doc.file_hash_sha256 or "")[:8],
@@ -412,7 +457,10 @@ def _query_internal_docs_paginated(page: int = 1, per_page: int = DOCS_PER_PAGE)
     page = max(1, int(page or 1))
     raw_internal = (
         DocumentMetadata.query
-        .filter_by(collection_type="INTERNAL")
+        .filter(
+            DocumentMetadata.collection_type == "INTERNAL",
+            DocumentMetadata.category_code != "CAD_DRAWING",
+        )
         .all()
     )
 
@@ -420,7 +468,10 @@ def _query_internal_docs_paginated(page: int = 1, per_page: int = DOCS_PER_PAGE)
 
     all_internal = (
         DocumentMetadata.query
-        .filter_by(collection_type="INTERNAL")
+        .filter(
+            DocumentMetadata.collection_type == "INTERNAL",
+            DocumentMetadata.category_code != "CAD_DRAWING",
+        )
         .order_by(
             DocumentMetadata.is_active.desc(),
             DocumentMetadata.original_file_name.asc(),
@@ -567,7 +618,8 @@ def _query_vision_files_paginated(
             "resolution": f"{ana.image_width}x{ana.image_height}",
             "welding_state": ana.welding_state,
             "detected_summary": cls_summary,
-            "estimated_length_mm": float(insp.estimated_length_mm or 0.0) if insp else 0.0,
+            "estimated_length_mm": float(getattr(insp, "estimated_length_mm", 0.0) or 0.0) if insp else 0.0,
+            "ocr_text": (getattr(insp, "ocr_text", None) or "-") if insp else "-",
             "start_point": insp.start_point_json if insp else "-",
             "end_point": insp.end_point_json if insp else "-",
             "created_at": ana.created_at.strftime("%Y-%m-%d %H:%M:%S") if ana.created_at else "-",
@@ -596,7 +648,7 @@ def login():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
 
-        user = User.query.filter_by(username=username).first()
+        user = User.query.filter(or_(User.username == username, User.erp_employee_code == username)).first()
 
         if not user or not verify_user_password(user.password_hash, password):
             if user:
@@ -622,10 +674,59 @@ def login():
         session["display_name"] = user.display_name or user.full_name
         session["role"] = user.role
         session["user_type"] = user.user_type
+        session["can_access_erp"] = user.can_access_erp or "N"
+        session["can_access_internal_rag"] = user.can_access_internal_rag or "N"
+        session["can_control_robot"] = user.can_control_robot or "N"
 
+        next_url = (request.form.get("next") or request.args.get("next") or "").strip()
+        if next_url.startswith("/"):
+            return redirect(next_url)
         return redirect(url_for("main.index"))
 
-    return render_template("auth/login.html")
+    quick_users = []
+    try:
+        quick_users = (
+            User.query
+            .filter_by(is_active="Y")
+            .order_by(User.user_id.asc())
+            .all()
+        )
+    except Exception:
+        quick_users = []
+    return render_template("auth/login.html", quick_users=quick_users)
+
+
+@auth_bp.route("/login/quick", methods=["POST"])
+def quick_login():
+    """DB(USERS)에 등록된 활성 계정으로 원클릭 바로 로그인 (권한별 화면 검증용)"""
+    uid = request.form.get("user_id", type=int)
+    next_url = (request.form.get("next") or "").strip()
+    if not uid:
+        flash("선택된 계정이 올바르지 않습니다.", "warning")
+        return redirect(url_for("auth.login"))
+
+    user = User.query.filter_by(user_id=uid, is_active="Y").first()
+    if not user:
+        flash("해당 활성 계정을 찾을 수 없습니다.", "danger")
+        return redirect(url_for("auth.login"))
+
+    user.failed_login_attempts = 0
+    user.last_login_at = datetime.utcnow()
+    db.session.commit()
+
+    session["user_id"] = user.user_id
+    session["username"] = user.username
+    session["full_name"] = user.full_name
+    session["display_name"] = user.display_name or user.full_name
+    session["role"] = user.role
+    session["user_type"] = user.user_type
+    session["can_access_erp"] = user.can_access_erp or "N"
+    session["can_access_internal_rag"] = user.can_access_internal_rag or "N"
+    session["can_control_robot"] = user.can_control_robot or "N"
+
+    if next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect(url_for("main.index"))
 
 
 # ---------------------------------------------------------------------
@@ -651,8 +752,8 @@ def register():
         user_type = request.form.get("user_type", "INTERNAL")
         department_name = request.form.get("department_name", "").strip()
         default_workspace = request.form.get("default_workspace", "ZONE-A-BAY1")
-        erp_company_code = request.form.get("erp_company_code", "COMP-HQ").strip()
-        erp_branch_code = request.form.get("erp_branch_code", "BR-ULSAN-01").strip()
+        erp_company_code = request.form.get("erp_company_code", "").strip()
+        erp_branch_code = request.form.get("erp_branch_code", "").strip()
         erp_employee_code = request.form.get("erp_employee_code", "").strip()
 
         if User.query.filter_by(username=username).first():
@@ -688,7 +789,13 @@ def register():
         )
         return redirect(url_for("auth.login"))
 
-    return render_template("auth/register.html")
+    companies, branches = [], []
+    try:
+        companies = ErpCompany.query.filter_by(contract_status="ACTIVE").order_by(ErpCompany.company_code.asc()).all()
+        branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    except Exception:
+        pass
+    return render_template("auth/register.html", companies=companies, branches=branches)
 
 
 # ---------------------------------------------------------------------
@@ -698,21 +805,36 @@ def register():
 def mypage():
     if "user_id" not in session:
         flash("로그인이 필요한 서비스입니다.", "warning")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth.login", next=request.full_path))
 
     current_user = User.query.get_or_404(session["user_id"])
+    q = (request.args.get("q") or "").strip()
+    user_type_filter = (request.args.get("user_type") or "ALL").strip()
 
     all_users = []
     pending_count = 0
     if current_user.role in ("ADMIN", "MANAGER"):
-        all_users = User.query.order_by(User.is_active.asc(), User.user_id.desc()).all()
-        pending_count = sum(1 for u in all_users if u.is_active == "N" and u.created_by is None)
+        uq = User.query
+        if q:
+            like_q = f"%{q}%"
+            uq = uq.filter(or_(
+                User.full_name.ilike(like_q),
+                User.username.ilike(like_q),
+                User.erp_employee_code.ilike(like_q),
+                User.department_name.ilike(like_q),
+            ))
+        if user_type_filter in ("INTERNAL", "EXTERNAL"):
+            uq = uq.filter(User.user_type == user_type_filter)
+        all_users = uq.order_by(User.is_active.asc(), User.user_id.asc()).all()
+        pending_count = User.query.filter(User.is_active == "N", User.created_by.is_(None)).count()
 
     return render_template(
         "auth/mypage.html",
         me=current_user,
         all_users=all_users,
         pending_count=pending_count,
+        q=q,
+        user_type_filter=user_type_filter,
     )
 
 
@@ -723,19 +845,77 @@ def mypage():
 def mypage_files():
     if "user_id" not in session:
         flash("로그인이 필요한 서비스입니다.", "warning")
-        return redirect(url_for("auth.login"))
+        return redirect(url_for("auth.login", next=request.full_path))
 
     current_user = User.query.get_or_404(session["user_id"])
-    if current_user.role not in ("ADMIN", "MANAGER"):
-        flash("파일 관리 콘솔은 관리자(ADMIN/MANAGER)만 접근할 수 있습니다.", "danger")
-        return redirect(url_for("auth.mypage"))
+    is_admin_or_mgr = current_user.role in ("ADMIN", "MANAGER")
+    can_internal = (current_user.can_access_internal_rag == "Y") or is_admin_or_mgr
 
-    internal_docs_data = _query_internal_docs_paginated(page=1, per_page=DOCS_PER_PAGE)
-    vision_files_data = _query_vision_files_paginated(page=1, per_page=VISION_PER_PAGE, filter_type="ALL")
+    tab = (request.args.get("tab") or "pdf").strip().lower()
+    if tab not in ("pdf", "cad", "admin"):
+        tab = "pdf"
+    if tab == "admin" and not is_admin_or_mgr:
+        tab = "pdf"
+
+    q = (request.args.get("q") or "").strip()
+    cat = (request.args.get("category") or "ALL").strip()
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = 10
+
+    doc_q = DocumentMetadata.query.filter(DocumentMetadata.is_active == "Y")
+    if not can_internal:
+        doc_q = doc_q.filter(DocumentMetadata.collection_type == "PUBLIC")
+
+    if tab == "cad":
+        doc_q = doc_q.filter(DocumentMetadata.category_code == "CAD_DRAWING")
+    else:
+        doc_q = doc_q.filter(DocumentMetadata.category_code != "CAD_DRAWING")
+        if cat != "ALL":
+            doc_q = doc_q.filter(DocumentMetadata.category_code == cat)
+
+    if q:
+        like_q = f"%{q}%"
+        doc_q = doc_q.filter(or_(
+            DocumentMetadata.document_title.ilike(like_q),
+            DocumentMetadata.original_file_name.ilike(like_q),
+            DocumentMetadata.document_code.ilike(like_q),
+        ))
+
+    total_docs = doc_q.count()
+    total_pages = max(1, (total_docs + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    docs_list = (
+        doc_q.order_by(DocumentMetadata.document_id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    docs_serialized = [_serialize_doc_row(d) for d in docs_list]
+
+    base_cnt_q = DocumentMetadata.query.filter(DocumentMetadata.is_active == "Y")
+    if not can_internal:
+        base_cnt_q = base_cnt_q.filter(DocumentMetadata.collection_type == "PUBLIC")
+    pdf_total_count = base_cnt_q.filter(DocumentMetadata.category_code != "CAD_DRAWING").count()
+    cad_total_count = base_cnt_q.filter(DocumentMetadata.category_code == "CAD_DRAWING").count()
+
+    internal_docs_data = _query_internal_docs_paginated(page=1, per_page=DOCS_PER_PAGE) if is_admin_or_mgr else {"items": [], "active_job": None, "total_count": 0}
+    vision_files_data = _query_vision_files_paginated(page=1, per_page=VISION_PER_PAGE, filter_type="ALL") if is_admin_or_mgr else {"items": [], "total_count": 0}
 
     return render_template(
         "auth/mypage_files.html",
         me=current_user,
+        is_admin_or_mgr=is_admin_or_mgr,
+        can_internal=can_internal,
+        tab=tab,
+        q=q,
+        category=cat,
+        docs=docs_serialized,
+        page=page,
+        total_pages=total_pages,
+        total_docs=total_docs,
+        page_items=_build_page_items(page, total_pages),
+        pdf_total_count=pdf_total_count,
+        cad_total_count=cad_total_count,
         internal_docs_data=internal_docs_data,
         vision_files_data=vision_files_data,
         max_pdf_pages=MAX_PDF_PAGES,
@@ -893,6 +1073,8 @@ def admin_rag_pdf_sync_folder():
         synced_count = 0
 
         for row in DocumentMetadata.query.all():
+            if (row.category_code or "").upper() == "CAD_DRAWING":
+                continue
             if not _check_physical_file_exists(row.storage_uri):
                 if row.is_active == "Y" or row.storage_uri != ARCHIVED_URI_MARKER:
                     row.is_active = "N"

@@ -41,3 +41,6 @@ httpx>=0.27.0
 python-dotenv>=1.0.0
 pydantic>=2.7.0
 psycopg2-binary
+
+# 2D CAD (DXF) Parsing & Lightweight SVG Preview
+ezdxf>=1.3.0

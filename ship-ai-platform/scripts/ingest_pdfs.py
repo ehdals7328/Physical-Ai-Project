@@ -77,6 +77,8 @@ def deactivate_missing_file_rows(store: KnowledgeStore | None, *, dry_run: bool 
     """디스크 폴더에서 삭제된 파일은 DB 기록을 지우지 않고 IS_ACTIVE='N' 으로 보존하며 RAG 벡터만 제거"""
     deactivated = 0
     for row in DocumentMetadata.query.all():
+        if (row.category_code or "").upper() == "CAD_DRAWING":
+            continue
         uri = (row.storage_uri or "").strip()
         abs_p = (PROJECT_ROOT / uri) if uri and not uri.startswith(("http://", "https://", "s3://")) else None
         if abs_p is None or not abs_p.exists():

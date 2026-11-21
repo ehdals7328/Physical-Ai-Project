@@ -1,0 +1,503 @@
+{% extends "layout/base.html" %}
+{% block title %}자원관리 대시보드 (ERP) | K-SmartShip{% endblock %}
+{% block page_context %}
+{"page_title": "자원관리 대시보드 (ERP)", "branch_code": "{{ selected_branch }}", "summary": "자재 {{ kpi.total_materials }}종(부족 {{ kpi.low_stock_count }}건), 인력 {{ kpi.total_workers }}명(만료임박 {{ kpi.expiring_worker_count }}명), 장비 {{ kpi.total_equipments }}대, 승인대기 {{ kpi.pending_approval_count }}건"}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">안녕하세요, {{ me.full_name }}님</h1>
+    <p class="page-desc">
+      사내 자재, 직영·외부 인력, 로봇·차량 현황을 요약합니다. 전체 목록은 각 항목의 '전체 보기' 서랍에서 빠르게 검색할 수 있습니다.
+    </p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <form method="get" action="/service/erp" class="d-flex align-items-center gap-2">
+      <select name="branch" class="form-select form-select-sm" style="width:210px;" onchange="this.form.submit()">
+        <option value="ALL" {% if selected_branch == 'ALL' %}selected{% endif %}>전체 야드 보기</option>
+        {% for b in branches %}
+        <option value="{{ b.branch_code }}" {% if selected_branch == b.branch_code %}selected{% endif %}>{{ b.branch_name }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <span class="small text-muted border rounded px-2 py-1 bg-white">갱신 {{ last_updated }}</span>
+  </div>
+</div>
+
+{% if not can_access_erp %}
+<div class="panel-card text-center py-5">
+  <h5 class="fw-bold mb-2">ERP 자원 조회 권한이 필요합니다</h5>
+  <p class="text-muted mb-3">현재 계정은 ERP 연동 권한이 비활성화되어 있습니다. 관리자에게 권한 부여를 요청해 주세요.</p>
+  <a href="/service/faq?tab=inquiry" class="btn btn-primary btn-sm">1:1 공식 문의로 권한 요청</a>
+</div>
+{% else %}
+
+<!-- 1. 핵심 지표 4카드 (클릭 시 우측 슬라이드 서랍 오픈) -->
+<div class="row g-4 mb-4">
+  <div class="col-md-6 col-xl-3">
+    <div class="kpi-tile clickable" onclick="openResourceDrawer('materials')">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="kpi-label">자재 · 재고</span>
+        <span class="small text-primary fw-semibold">전체 보기 ▸</span>
+      </div>
+      <div class="kpi-value">{{ kpi.total_materials }} <span class="fs-6 fw-normal text-muted">품목</span></div>
+      <div class="kpi-sub">
+        {% if kpi.low_stock_count > 0 %}
+          <span class="status-chip status-danger">재고 부족 {{ kpi.low_stock_count }}건</span>
+        {% else %}
+          <span class="status-chip status-ok">전 품목 재고 양호</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="kpi-tile clickable" onclick="openResourceDrawer('workers')">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="kpi-label">사내 · 외부 작업자</span>
+        <span class="small text-primary fw-semibold">전체 보기 ▸</span>
+      </div>
+      <div class="kpi-value">{{ kpi.total_workers }} <span class="fs-6 fw-normal text-muted">명</span></div>
+      <div class="kpi-sub">
+        {% if kpi.expiring_worker_count > 0 %}
+          <span class="status-chip status-warn">자격 만료·임박 {{ kpi.expiring_worker_count }}명</span>
+        {% else %}
+          <span class="status-chip status-ok">전원 자격 유효</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="kpi-tile clickable" onclick="openResourceDrawer('equipment')">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="kpi-label">로봇 · 장비 · 차량</span>
+        <span class="small text-primary fw-semibold">전체 보기 ▸</span>
+      </div>
+      <div class="kpi-value">{{ eq_stats.standby }} <span class="fs-6 fw-normal text-muted">/ {{ eq_stats.total }} 대 대기</span></div>
+      <div class="kpi-sub">사용 중 {{ eq_stats.in_use }}대 · 점검 {{ eq_stats.maint }}대</div>
+    </div>
+  </div>
+
+  <div class="col-md-6 col-xl-3">
+    <div class="kpi-tile clickable" onclick="openResourceDrawer('partners')">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="kpi-label">협력사 B2B 자원 · 승인함</span>
+        <span class="small text-primary fw-semibold">협력사 보기 ▸</span>
+      </div>
+      <div class="kpi-value">{{ kpi.pending_approval_count }} <span class="fs-6 fw-normal text-muted">건 결재 대기</span></div>
+      <div class="kpi-sub">외부 협력사 가용 자원 {{ kpi.partner_resource_count }}건 연동 중</div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. 선박 공정 진행률 + 장비/로봇 운용 상태 -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="panel-title">선박별 블록 작업 진행률</h2>
+        <a href="/service/yards" class="small text-decoration-none fw-semibold">작업현황 보기 →</a>
+      </div>
+      {% for sp in ship_progress %}
+      <div class="mb-4">
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="fw-bold">{{ sp.ship_code }} <span class="text-muted fw-normal">· {{ sp.region }}</span></span>
+          <span class="fw-semibold">{{ sp.pct }}% (진행 {{ sp.in_progress }} / 완료 {{ sp.completed }} / 전체 {{ sp.total }})</span>
+        </div>
+        <div class="progress" style="height:10px;background:#eef2f7;">
+          <div class="progress-bar bg-primary" style="width:{{ sp.pct }}%"></div>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-muted small py-3">표시할 선박 공정 데이터가 없습니다.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="panel-title">로봇 · 장비 실시간 상태</h2>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="openResourceDrawer('equipment')">전체 장비 ▸</button>
+      </div>
+      <div class="row g-3 mb-4 text-center">
+        <div class="col-4">
+          <div class="p-3 border rounded bg-light">
+            <div class="small text-muted">대기</div>
+            <div class="fs-4 fw-bold text-success">{{ eq_stats.standby }}</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 border rounded bg-light">
+            <div class="small text-muted">사용 중</div>
+            <div class="fs-4 fw-bold text-primary">{{ eq_stats.in_use }}</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="p-3 border rounded bg-light">
+            <div class="small text-muted">점검·정지</div>
+            <div class="fs-4 fw-bold text-secondary">{{ eq_stats.maint }}</div>
+          </div>
+        </div>
+      </div>
+
+      {% for rb in robots %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-top small">
+        <div>
+          <div class="fw-semibold">{{ rb.robot_name }}</div>
+          <div class="text-muted">{{ rb.current_location_desc or '-' }} · 배터리 {{ rb.battery_percent }}%</div>
+        </div>
+        <span class="status-chip {{ 'status-danger' if rb.emergency_stop_yn == 'Y' else ('status-info' if rb.robot_status == 'WELDING' else 'status-ok') }}">
+          {{ '비상정지' if rb.emergency_stop_yn == 'Y' else rb.robot_status }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- 3. 긴급 조치 항목 (AI Agent 자동 발주 · 자격증 만료 안내 메일) -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2 class="panel-title">자재 재고 점검 및 AI 자동 발주</h2>
+          <div class="small text-muted mt-1">잔여량이 적은 우선 품목만 표시됩니다.</div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openResourceDrawer('materials')">전체 자재 검색</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-enterprise align-middle">
+          <thead>
+            <tr>
+              <th>품목 / 야드</th>
+              <th>가용 재고</th>
+              <th class="text-end">AI 자동작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in low_materials %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ m.item_name }}</div>
+                <div class="small text-muted">{{ m.item_code }} · {{ m.branch_name }}</div>
+              </td>
+              <td>
+                <span class="fw-bold">{{ m.available_qty|int }} {{ m.unit }}</span>
+                {% if m.is_low %}<div><span class="status-chip status-danger mt-1">부족 주의</span></div>{% endif %}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm {{ 'btn-primary' if m.is_low else 'btn-outline-primary' }}"
+                        onclick="openAssistantWithPrompt('{{ m.branch_name }}({{ m.branch_code }})의 {{ m.item_name }}({{ m.item_code }}) 현재 가용 재고가 {{ m.available_qty|int }}{{ m.unit }}입니다. 협력사 B2B 재고를 조회하고 발주 검토안을 작성해줘.')">
+                  AI 발주 요청
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">조회된 자재가 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2 class="panel-title">작업자 자격증 만료 점검 및 안내 메일</h2>
+          <div class="small text-muted mt-1">만료되었거나 60일 이내 만료 예정인 작업자를 우선 표시합니다.</div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openResourceDrawer('workers')">전체 인력 검색</button>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-enterprise align-middle">
+          <thead>
+            <tr>
+              <th>성명 / 소속</th>
+              <th>자격증 / 만료일</th>
+              <th class="text-end">AI 자동작업</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for w in expiring_workers %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ w.worker_name }} ({{ w.worker_id }})</div>
+                <div class="small text-muted">{{ w.branch_name }} · {{ w.department_name }}</div>
+              </td>
+              <td>
+                <div class="small fw-semibold">{{ w.cert_code }}</div>
+                {% if w.is_expired %}
+                  <span class="status-chip status-danger">만료됨 ({{ w.cert_expiry_date }})</span>
+                {% else %}
+                  <span class="status-chip status-warn">D-{{ w.days_left }} ({{ w.cert_expiry_date }})</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-dark"
+                        onclick="openAssistantWithPrompt('작업자 {{ w.worker_name }}({{ w.worker_id }})의 자격증({{ w.cert_code }}) 만료일이 {{ w.cert_expiry_date }}입니다. 자격 갱신 안내 이메일을 작성해서 발송해줘.')">
+                  갱신 메일 발송
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-4">만료 임박 작업자가 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 4. 관리자 최종 승인함 (HITL) -->
+<div class="panel-card" id="hitl-section">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="panel-title">작업지시서 · 발주 최종 승인함 (HITL)</h2>
+      <p class="text-muted small mb-0 mt-1">AI가 작성한 초안(DRAFT)은 담당자가 미리보기 검토 후 승인 버튼을 눌러야 실제 ERP 원장에 확정됩니다.</p>
+    </div>
+    <a href="/service/history?tab=orders" class="btn btn-outline-secondary btn-sm">전체 문서 이력</a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-enterprise align-middle">
+      <thead>
+        <tr>
+          <th>문서 번호</th>
+          <th>야드 · 선박 / 블록</th>
+          <th>작업명</th>
+          <th>요청자</th>
+          <th>문서 확인</th>
+          <th class="text-end">승인 처리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in pending_approvals %}
+        <tr id="hitl-row-{{ item.inst.instruction_id }}">
+          <td class="fw-bold">{{ item.wo.work_no }}</td>
+          <td>
+            <div class="fw-semibold">{{ item.wo.ship_code }} / {{ item.wo.block_code }}</div>
+            <div class="small text-muted">{{ item.wo.work_region }} · {{ item.wo.work_zone }}</div>
+          </td>
+          <td>{{ item.wo.work_title }}</td>
+          <td class="small">{{ item.requester_name }}</td>
+          <td>
+            {% if item.pdf_url %}
+              <a href="{{ item.pdf_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">초안 PDF</a>
+            {% else %}
+              <span class="small text-muted">초안 대기</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <button type="button" class="btn btn-primary btn-sm js-hitl-btn"
+                    data-work-id="{{ item.wo.work_id }}" data-inst-id="{{ item.inst.instruction_id }}" data-action="APPROVE">
+              승인 확정
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm js-hitl-btn"
+                    data-work-id="{{ item.wo.work_id }}" data-inst-id="{{ item.inst.instruction_id }}" data-action="REJECT">
+              반려
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">현재 승인 대기 중인 작업지시서가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 5. 대량 자재/인력/장비/협력사 검색용 우측 슬라이드 서랍 (Offcanvas) -->
+<div id="erp-drawer-backdrop" class="drawer-backdrop"></div>
+<aside id="erp-side-drawer" class="side-drawer" aria-label="전체 자원 조회">
+  <div class="side-drawer-header">
+    <div>
+      <h5 id="drawer-title" class="fw-bold mb-0" style="color:#0b1f3a;">전체 자원 조회</h5>
+      <div id="drawer-subtitle" class="small text-muted">검색어와 필터로 빠르게 찾고 즉시 AI 업무를 요청할 수 있습니다.</div>
+    </div>
+    <button type="button" id="btn-close-drawer" class="btn btn-outline-secondary btn-sm">닫기</button>
+  </div>
+  <div class="side-drawer-body">
+    <div class="d-flex gap-2 mb-3">
+      <button type="button" class="btn btn-sm btn-outline-dark js-drawer-tab" data-type="materials">자재</button>
+      <button type="button" class="btn btn-sm btn-outline-dark js-drawer-tab" data-type="workers">인력</button>
+      <button type="button" class="btn btn-sm btn-outline-dark js-drawer-tab" data-type="equipment">로봇·장비·차량</button>
+      <button type="button" class="btn btn-sm btn-outline-dark js-drawer-tab" data-type="partners">협력사 B2B</button>
+    </div>
+
+    <div class="row g-2 mb-3">
+      <div class="col-7">
+        <input type="text" id="drawer-search-input" class="form-control form-control-sm" placeholder="코드, 품명, 성명, Lot 번호 검색...">
+      </div>
+      <div class="col-3">
+        <select id="drawer-filter-select" class="form-select form-select-sm"></select>
+      </div>
+      <div class="col-2 d-grid">
+        <button type="button" id="btn-drawer-search" class="btn btn-dark btn-sm">검색</button>
+      </div>
+    </div>
+
+    <div id="drawer-count-info" class="small text-muted mb-2"></div>
+    <div id="drawer-table-wrap"></div>
+    <nav id="drawer-pagination" class="mt-4"></nav>
+  </div>
+</aside>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var drawerState = { type: 'materials', q: '', filter: 'ALL', page: 1, branch: '{{ selected_branch }}' };
+
+var FILTER_OPTIONS = {
+  materials: [['ALL', '전체 품목'], ['LOW', '부족 주의만'], ['FILLER_WIRE', '용접와이어'], ['STEEL_PLATE', '선체강판'], ['SHIELDING_GAS', '차폐가스']],
+  workers: [['ALL', '전체 인력'], ['EXPIRING', '만료·임박만'], ['REGULAR', '직영 직원'], ['SUBCONTRACT', '협력사'], ['FREELANCER', '프리랜서']],
+  equipment: [['ALL', '전체 상태'], ['STANDBY', '대기'], ['IN_USE', '사용 중'], ['MAINTENANCE', '점검 중']],
+  partners: [['ALL', '전체 협력사 자원']]
+};
+
+var DRAWER_TITLES = {
+  materials: '전체 자재 · 재고 목록',
+  workers: '전체 사내 · 외부 작업자 목록',
+  equipment: '전체 로봇 · 장비 · 차량 목록',
+  partners: '외부 협력사 B2B 가용 자원'
+};
+
+function openResourceDrawer(type) {
+  drawerState.type = type || 'materials';
+  drawerState.page = 1;
+  drawerState.q = '';
+  drawerState.filter = 'ALL';
+  $('#drawer-search-input').val('');
+  syncDrawerHeader();
+  $('#erp-drawer-backdrop').fadeIn(150);
+  $('#erp-side-drawer').addClass('open');
+  fetchDrawerPage(1);
+}
+
+function closeResourceDrawer() {
+  $('#erp-side-drawer').removeClass('open');
+  $('#erp-drawer-backdrop').fadeOut(150);
+}
+
+function syncDrawerHeader() {
+  $('#drawer-title').text(DRAWER_TITLES[drawerState.type] || '자원 조회');
+  $('.js-drawer-tab').removeClass('btn-dark').addClass('btn-outline-dark');
+  $('.js-drawer-tab[data-type="' + drawerState.type + '"]').removeClass('btn-outline-dark').addClass('btn-dark');
+  var $sel = $('#drawer-filter-select').empty();
+  $.each(FILTER_OPTIONS[drawerState.type] || [['ALL', '전체']], function (_, pair) {
+    $sel.append($('<option>').val(pair[0]).text(pair[1]));
+  });
+}
+
+function fetchDrawerPage(page) {
+  drawerState.page = page || 1;
+  drawerState.q = $('#drawer-search-input').val() || '';
+  drawerState.filter = $('#drawer-filter-select').val() || 'ALL';
+  $('#drawer-table-wrap').html('<div class="text-center text-muted py-5 small">데이터를 불러오는 중입니다...</div>');
+
+  $.getJSON('/service/api/erp/resources', drawerState, function (res) {
+    $('#drawer-count-info').text('총 ' + res.total_count + '건 (' + res.page + ' / ' + res.total_pages + ' 페이지)');
+    if (!res.items || !res.items.length) {
+      $('#drawer-table-wrap').html('<div class="text-center text-muted py-5 small border rounded">조건에 맞는 자원 데이터가 없습니다.</div>');
+      $('#drawer-pagination').empty();
+      return;
+    }
+
+    var html = '<div class="table-responsive"><table class="table table-enterprise table-sm align-middle"><thead><tr>';
+    if (drawerState.type === 'materials') {
+      html += '<th>품목 / Lot</th><th>야드</th><th>가용 재고</th><th class="text-end">조치</th></tr></thead><tbody>';
+      $.each(res.items, function (_, it) {
+        var prompt = it.branch_name + ' ' + it.name + '(' + it.code + ') 재고 확인 및 발주 검토해줘.';
+        html += '<tr><td><div class="fw-semibold">' + it.name + '</div><div class="small text-muted">' + it.code + ' · ' + it.lot_no + '</div></td>'
+          + '<td class="small">' + it.branch_name + '</td>'
+          + '<td><strong>' + Math.round(it.available_qty) + '</strong> ' + it.unit + (it.is_low ? ' <span class="status-chip status-danger">부족</span>' : '') + '</td>'
+          + '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm" onclick="closeResourceDrawer();openAssistantWithPrompt('' + prompt.replace(/'/g, '') + '')">발주</button></td></tr>';
+      });
+    } else if (drawerState.type === 'workers') {
+      html += '<th>성명 / 소속</th><th>자격증 / 공정</th><th>만료일</th><th class="text-end">조치</th></tr></thead><tbody>';
+      $.each(res.items, function (_, it) {
+        var prompt = '작업자 ' + it.name + '(' + it.code + ') 자격증 ' + it.cert_code + ' 만료일(' + it.expiry + ') 갱신 안내 메일 보내줘.';
+        var badge = it.expired ? '<span class="status-chip status-danger">만료</span>' : (it.expiring ? '<span class="status-chip status-warn">D-' + it.days_left + '</span>' : '<span class="status-chip status-ok">유효</span>');
+        html += '<tr><td><div class="fw-semibold">' + it.name + ' (' + it.code + ')</div><div class="small text-muted">' + it.branch_name + ' · ' + it.employment_type + '</div></td>'
+          + '<td class="small">' + it.cert_code + ' / ' + it.weld_process + '</td>'
+          + '<td class="small">' + it.expiry + ' ' + badge + '</td>'
+          + '<td class="text-end"><button type="button" class="btn btn-outline-dark btn-sm" onclick="closeResourceDrawer();openAssistantWithPrompt('' + prompt.replace(/'/g, '') + '')">메일</button></td></tr>';
+      });
+    } else if (drawerState.type === 'equipment') {
+      html += '<th>장비 / 차량명</th><th>야드 · 구역</th><th>상태</th><th class="text-end">하중</th></tr></thead><tbody>';
+      $.each(res.items, function (_, it) {
+        var stCls = it.status === 'STANDBY' ? 'status-ok' : (it.status === 'IN_USE' ? 'status-info' : 'status-muted');
+        html += '<tr><td><div class="fw-semibold">' + it.name + '</div><div class="small text-muted">' + it.code + ' · ' + it.category + '</div></td>'
+          + '<td class="small">' + it.branch_name + ' · ' + it.zone + '</td>'
+          + '<td><span class="status-chip ' + stCls + '">' + it.status + '</span></td>'
+          + '<td class="text-end small">' + (it.max_load_ton ? it.max_load_ton + 't' : '-') + '</td></tr>';
+      });
+    } else {
+      html += '<th>구분 · 협력사</th><th>품목 / 자원명</th><th>상세</th><th class="text-end">요청</th></tr></thead><tbody>';
+      $.each(res.items, function (_, it) {
+        var prompt = '협력사 ' + it.partner_id + '의 ' + it.name + '(' + it.code + ') 가용 여부와 발주 조건을 확인해줘.';
+        html += '<tr><td><span class="status-chip status-info">' + it.kind + '</span><div class="small text-muted mt-1">' + it.partner_id + '</div></td>'
+          + '<td class="fw-semibold">' + it.name + '</td>'
+          + '<td class="small text-muted">' + it.detail + '</td>'
+          + '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm" onclick="closeResourceDrawer();openAssistantWithPrompt('' + prompt.replace(/'/g, '') + '')">AI 조회</button></td></tr>';
+      });
+    }
+    html += '</tbody></table></div>';
+    $('#drawer-table-wrap').html(html);
+    $('#drawer-pagination').html(window.buildPaginationHtml(res.page, res.total_pages, res.page_items, 'fetchDrawerPage'));
+  });
+}
+
+$(function () {
+  $('#btn-close-drawer, #erp-drawer-backdrop').on('click', closeResourceDrawer);
+  $('.js-drawer-tab').on('click', function () {
+    drawerState.type = $(this).data('type');
+    drawerState.filter = 'ALL';
+    syncDrawerHeader();
+    fetchDrawerPage(1);
+  });
+  $('#btn-drawer-search').on('click', function () { fetchDrawerPage(1); });
+  $('#drawer-filter-select').on('change', function () { fetchDrawerPage(1); });
+  $('#drawer-search-input').on('keydown', function (e) { if (e.key === 'Enter') fetchDrawerPage(1); });
+
+  // HITL 승인/반려 (기존 /service/api/assistant/approve 연동)
+  $('.js-hitl-btn').on('click', function () {
+    var $btn = $(this);
+    var action = $btn.data('action');
+    var label = action === 'APPROVE' ? '승인 확정' : '반려';
+    if (!confirm('선택한 작업지시서를 [' + label + '] 처리하시겠습니까?')) return;
+    $btn.prop('disabled', true).text('처리 중...');
+    $.ajax({
+      url: '/service/api/assistant/approve',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        work_id: $btn.data('work-id'),
+        instruction_id: $btn.data('inst-id'),
+        action: action
+      }),
+      success: function (res) {
+        alert(res.message || '처리가 완료되었습니다.');
+        location.reload();
+      },
+      error: function (xhr) {
+        alert((xhr.responseJSON && xhr.responseJSON.message) || '승인 처리 중 오류가 발생했습니다.');
+        $btn.prop('disabled', false).text(label);
+      }
+    });
+  });
+
+  var initDrawer = '{{ initial_drawer }}';
+  if (initDrawer) openResourceDrawer(initDrawer);
+  var initPrompt = {{ initial_prompt | tojson }};
+  if (initPrompt) openAssistantWithPrompt(initPrompt, true);
+});
+</script>
+{% endblock %}

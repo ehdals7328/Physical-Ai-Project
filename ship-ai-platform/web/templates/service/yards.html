@@ -1,0 +1,277 @@
+{% extends "layout/base.html" %}
+{% block title %}작업현황 (야드 지도 · CAD 도면) | K-SmartShip{% endblock %}
+{% block page_context %}
+{"page_title": "작업현황 (야드 지도 · CAD 도면)", "summary": "운영 야드 {{ yard_cards|length }}곳, 진행 중 선박·블록 작업 {{ active_work_cards|length }}건"}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  #shipyard-gis-map { height: 390px; width: 100%; border-radius: 8px; border: 1px solid #dde3ec; }
+  .cad-svg-stage svg { max-width: 100%; height: 360px; display: block; margin: 0 auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">작업현황 · 야드 및 CAD 도면</h1>
+    <p class="page-desc">
+      지도에서 우리 회사 야드와 계약 협력사 위치를 확인하고, 아래 진행 중인 CAD 도면 카드를 클릭해 상세 설명과 현장카메라로 이동하세요.
+    </p>
+  </div>
+  <form method="get" action="/service/yards" class="d-flex gap-2">
+    <input type="text" name="q" class="form-control form-control-sm" style="width:240px;" value="{{ q }}" placeholder="선박번호 · 블록번호 · 야드 검색">
+    <button type="submit" class="btn btn-dark btn-sm px-3">검색</button>
+    {% if q %}<a href="/service/yards" class="btn btn-outline-secondary btn-sm">초기화</a>{% endif %}
+  </form>
+</div>
+
+<!-- 1. 야드 및 협력사 위치 지도 (원형 마커) -->
+<div class="panel-card">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h2 class="panel-title">우리 회사 야드 및 계약 협력사 위치 지도</h2>
+    <div class="d-flex align-items-center gap-3 small">
+      <span><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#0052cc;"></span>우리 회사 야드</span>
+      {% if can_see_partners %}
+      <span><span class="d-inline-block rounded-circle me-1" style="width:10px;height:10px;background:#dc2626;"></span>계약 중인 협력사 (만료 업체 자동 제외)</span>
+      {% endif %}
+    </div>
+  </div>
+  <div id="shipyard-gis-map"></div>
+</div>
+
+<!-- 2. 현재 우리 회사에서 작업 중인 선박·블록 CAD 카드 목록 -->
+<div class="panel-card" id="active-cad-section">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+      <h2 class="panel-title">현재 작업 중인 선박 · 블록 (CAD 도면)</h2>
+      <p class="text-muted small mb-0 mt-1">카드를 클릭하면 도면 확대 보기, 쉬운 제원 설명, 해당 야드 날씨와 현장카메라 바로가기가 열립니다.</p>
+    </div>
+    <span class="small text-muted">총 {{ active_work_cards|length }}건 진행 중</span>
+  </div>
+
+  <div class="row g-4">
+    {% for card in active_work_cards %}
+    <div class="col-md-6 col-lg-4">
+      <div class="cad-job-card js-open-cad-modal"
+           data-card='{{ card | tojson }}'>
+        <div class="cad-thumb-box cad-blueprint-grid">
+          <div class="position-absolute top-0 end-0 m-2">
+            <span class="status-chip {{ 'status-info' if card.stage == 'TRANSPORT' else 'status-ok' }}">{{ card.stage_label }}</span>
+          </div>
+          <!-- 담백한 선박 단면 도면 아이콘 -->
+          <svg width="110" height="58" viewBox="0 0 120 64" fill="none" stroke="#1e3a8a" stroke-width="1.6">
+            <path d="M12 42 L26 54 H94 L108 32 H34 L12 42 Z" fill="#eff6ff"/>
+            <line x1="34" y1="32" x2="34" y2="54"/>
+            <line x1="64" y1="32" x2="64" y2="54"/>
+            <line x1="88" y1="32" x2="88" y2="54"/>
+            <rect x="46" y="18" width="28" height="14" fill="#ffffff"/>
+          </svg>
+          <div class="small text-muted mt-2 text-truncate w-100 text-center">{{ card.cad_file }}</div>
+        </div>
+        <div class="p-3 d-flex flex-column flex-grow-1 justify-content-between">
+          <div>
+            <div class="small fw-bold text-primary mb-1">{{ card.branch_name }}</div>
+            <div class="fw-bold mb-1" style="font-size:16px;color:#0b1f3a;">
+              {{ card.ship_code }} · {{ card.block_id }}
+            </div>
+            <div class="small text-secondary mb-2">{{ card.block_name }}</div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center pt-2 border-top small text-muted">
+            <span>{{ card.steel_type }} / {{ card.thickness_mm }} · {{ card.process }}</span>
+            <span class="text-primary fw-semibold">도면 해설 보기 →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center text-muted py-5">검색 조건에 맞는 진행 중인 작업이 없습니다.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- 3. CAD 도면 및 쉬운 해설 모달 -->
+<div class="modal fade" id="cadDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 id="modal-cad-title" class="modal-title fw-bold" style="color:#0b1f3a;">선박 · 블록 도면 상세</h5>
+          <div id="modal-cad-sub" class="small text-muted"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="row g-4">
+          <div class="col-lg-7">
+            <div class="border rounded bg-light p-3 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small fw-bold text-secondary">CAD 도면 미리보기</span>
+                <a id="modal-cad-raw-link" href="#" target="_blank" class="small text-decoration-none" style="display:none;">원본 도면 열기 ↗</a>
+              </div>
+              <div id="modal-cad-viewer" class="cad-svg-stage bg-white border rounded p-3 text-center" style="min-height:360px;">
+                <div class="text-muted small py-5">도면을 불러오는 중입니다...</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="border rounded p-4 h-100 d-flex flex-column justify-content-between">
+              <div>
+                <h6 class="fw-bold mb-3" style="color:#0b1f3a;">도면에 적힌 핵심 정보 (쉬운 요약)</h6>
+                <table class="table table-sm table-borderless mb-3" style="font-size:14px;">
+                  <tbody>
+                    <tr><th class="text-muted fw-normal" style="width:120px;">작업 야드</th><td id="m-branch" class="fw-semibold"></td></tr>
+                    <tr><th class="text-muted fw-normal">선박 번호</th><td id="m-ship" class="fw-bold text-primary"></td></tr>
+                    <tr><th class="text-muted fw-normal">블록 번호</th><td id="m-block" class="fw-bold"></td></tr>
+                    <tr><th class="text-muted fw-normal">철판 종류·두께</th><td id="m-steel"></td></tr>
+                    <tr><th class="text-muted fw-normal">용접 방식</th><td id="m-process"></td></tr>
+                    <tr><th class="text-muted fw-normal">블록 중량</th><td id="m-weight"></td></tr>
+                    <tr><th class="text-muted fw-normal">현재 단계</th><td id="m-stage"></td></tr>
+                  </tbody>
+                </table>
+                <div id="m-easy-guide" class="p-3 bg-light rounded small text-secondary mb-3"></div>
+                <div id="m-weather-box" class="p-2 px-3 border rounded small text-secondary" style="display:none;"></div>
+              </div>
+
+              <div class="d-grid gap-2 mt-4">
+                <a id="btn-go-vision" href="/vision/" class="btn btn-primary py-2 fw-semibold">
+                  해당 야드 현장카메라 (Vision) 바로가기 →
+                </a>
+                <button type="button" id="btn-ask-cad-ai" class="btn btn-outline-dark btn-sm">
+                  AI 업무 도우미에게 작업지시서 초안 요청
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+$(function () {
+  // 1. Leaflet GIS 지도 초기화 (지구 1개 크기 엄격 제한 · 타일 가로 무한반복 차단)
+  var worldBounds = L.latLngBounds(L.latLng(-82, -180), L.latLng(82, 180));
+  var map = L.map('shipyard-gis-map', {
+    center: [35.30, 128.50],
+    zoom: 8,
+    minZoom: 3,
+    maxZoom: 18,
+    maxBounds: worldBounds,
+    maxBoundsViscosity: 1.0,
+    worldCopyJump: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    minZoom: 3,
+    maxZoom: 18,
+    noWrap: true,
+    bounds: worldBounds
+  }).addTo(map);
+
+  $.getJSON('/vision/api/map-markers', function (res) {
+    var allCoords = [];
+    if (res.hq_branches) {
+      $.each(res.hq_branches, function (_, b) {
+        allCoords.push([b.lat, b.lng]);
+        L.circleMarker([b.lat, b.lng], {
+          radius: 10, color: '#0052cc', fillColor: '#2563eb', fillOpacity: 0.75, weight: 2
+        }).addTo(map).bindPopup(
+          '<strong>' + b.branch_name + '</strong><br>' +
+          '<span style="font-size:12px;color:#4b5563;">' + b.address + '</span><br>' +
+          '<a href="/vision/?branch=' + encodeURIComponent(b.branch_code) + '" style="font-size:12px;font-weight:700;">현장카메라 이동 →</a>'
+        );
+      });
+    }
+    if (res.partners) {
+      $.each(res.partners, function (_, p) {
+        allCoords.push([p.lat, p.lng]);
+        L.circleMarker([p.lat, p.lng], {
+          radius: 8, color: '#b91c1c', fillColor: '#ef4444', fillOpacity: 0.7, weight: 2
+        }).addTo(map).bindPopup(
+          '<strong>[협력사] ' + p.company_name + '</strong><br>' +
+          '<span style="font-size:12px;">' + (p.shared_b2b_resources || p.company_type) + '</span><br>' +
+          '<span style="font-size:11px;color:#6b7280;">계약기간: ' + (p.contract_period || '-') + '</span>'
+        );
+      });
+    }
+    if (allCoords.length > 1) {
+      map.fitBounds(allCoords, { padding: [36, 36], maxZoom: 10 });
+    }
+  });
+
+  // 2. CAD 작업 카드 클릭 → 상세 모달
+  var cadModal = new bootstrap.Modal(document.getElementById('cadDetailModal'));
+  $('.js-open-cad-modal').on('click', function () {
+    var card = $(this).data('card');
+    window.ShipContext.set({
+      branch_code: card.branch_code,
+      branch_name: card.branch_name,
+      ship_code: card.ship_code,
+      block_id: card.block_id
+    });
+
+    $('#modal-cad-title').text(card.ship_code + ' · 블록 ' + card.block_id);
+    $('#modal-cad-sub').text(card.branch_name + ' · ' + card.block_name);
+    $('#m-branch').text(card.branch_name + ' (' + card.branch_code + ')');
+    $('#m-ship').text(card.ship_code);
+    $('#m-block').text(card.block_id + ' (' + card.block_name + ')');
+    $('#m-steel').text(card.steel_type + ' 강종 · 두께 ' + card.thickness_mm);
+    $('#m-process').text(card.process + ' (' + card.joint_type + ' 이음)');
+    $('#m-weight').text(card.weight_ton ? card.weight_ton + ' 톤' : '-');
+    $('#m-stage').html('<span class="status-chip ' + (card.stage === 'TRANSPORT' ? 'status-info' : 'status-ok') + '">' + card.stage_label + '</span>');
+
+    $('#m-easy-guide').text(
+      '이 작업은 [' + card.branch_name + ']에서 진행되는 선박 ' + card.ship_code + '의 ' + card.block_name + ' 공정입니다. ' +
+      card.steel_type + ' 재질(' + card.thickness_mm + ')을 ' + card.process + ' 방식으로 접합하며, 현재 [' + card.stage_label + '] 단계입니다.'
+    );
+
+    $('#btn-go-vision').attr('href', '/vision/?branch=' + encodeURIComponent(card.branch_code));
+    $('#btn-ask-cad-ai').off('click').on('click', function () {
+      cadModal.hide();
+      openAssistantWithPrompt(
+        card.branch_name + ' 선박 ' + card.ship_code + ' 블록 ' + card.block_id +
+        '(' + card.steel_type + ', ' + card.thickness_mm + ', ' + card.process + ')의 용접 작업지시서 초안과 필요한 자재·작업자를 확인해줘.'
+      );
+    });
+
+    // 야드 기상 상태 조회
+    $('#m-weather-box').hide();
+    $.getJSON('/service/api/yards/' + encodeURIComponent(card.branch_code), function (yres) {
+      if (yres.weather) {
+        var w = yres.weather;
+        $('#m-weather-box').text(
+          '야드 기상 정보: 기온 ' + (w.temperature_c || '-') + '℃ · 습도 ' + (w.humidity_pct || '-') + '% · 풍속 ' + (w.wind_speed_m_s || '-') + 'm/s'
+        ).show();
+      }
+    });
+
+    // CAD SVG / PDF 미리보기 로드
+    $('#modal-cad-viewer').html('<div class="text-muted small py-5">CAD 도면을 불러오는 중입니다...</div>');
+    $('#modal-cad-raw-link').hide();
+    if (card.cad_doc_id) {
+      $.getJSON('/service/api/cad/preview/' + card.cad_doc_id, function (cres) {
+        $('#modal-cad-raw-link').attr('href', '/service/api/cad/file/' + card.cad_doc_id).show();
+        if (cres.pdf_url) {
+          $('#modal-cad-viewer').html('<iframe src="' + cres.pdf_url + '" style="width:100%;height:380px;border:0;"></iframe>');
+        } else if (cres.svg) {
+          $('#modal-cad-viewer').html(cres.svg);
+        } else {
+          $('#modal-cad-viewer').html('<div class="py-5 text-muted small">도면 파일: ' + (card.cad_file || '-') + '<br>상단 원본 도면 열기를 이용해 주세요.</div>');
+        }
+      }).fail(function () {
+        $('#modal-cad-viewer').html('<div class="py-5 text-muted small">도면 미리보기를 불러오지 못했습니다.</div>');
+      });
+    } else {
+      $('#modal-cad-viewer').html('<div class="py-5 text-muted small">연결된 CAD 도면이 없습니다.</div>');
+    }
+
+    cadModal.show();
+  });
+});
+</script>
+{% endblock %}
