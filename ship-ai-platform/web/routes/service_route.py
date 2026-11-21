@@ -451,7 +451,20 @@ def _run_assistant_background(
             from modules.agent.supervisor import ship_agent_app
 
             config = {"configurable": {"thread_id": thread_id}}
-            result = ship_agent_app.invoke(state_input, config=config)
+
+            # 👇 [수정] invoke 대신 stream(stream_mode="updates")으로 단계별 진행 상태 실시간 기록
+            for event in ship_agent_app.stream(state_input, config=config, stream_mode="updates"):
+                for node_name in event.keys():
+                    try:
+                        step_exec = AgentExecution.query.get(exec_id)
+                        if step_exec and step_exec.status_code == "RUNNING":
+                            step_exec.current_state = str(node_name)
+                            db.session.commit()
+                    except Exception:
+                        db.session.rollback()
+
+            final_snapshot = ship_agent_app.get_state(config)
+            result = dict(final_snapshot.values) if final_snapshot and final_snapshot.values else {}
             elapsed_ms = round((time.time() - start_ts) * 1000, 2)
 
             user = User.query.get(user_id)
@@ -786,6 +799,13 @@ def ask_assistant_agent():
             "message": f"요청 접수 중 오류 발생: {type(e).__name__} - {str(e)}"
         }), 500
 
+STEP_STATUS_LABELS = {
+    "RUNNING_AGENT": "🧭 질의 의도 및 작업 컨텍스트 분석 중...",
+    "team1_analysis": "🏭 본사 SHIP_ERP 재고·자격·설비 진단 및 제원 검증 중...",
+    "team2_knowledge": "📚 사내 WPS 규정·현장 기상·비전 관제·협력사 데이터 수집 중...",
+    "team3_docgen": "🛡️ 안전·자격 거버넌스 인터록 검사 및 결과서 작성 중...",
+}
+
 
 @service_bp.route("/api/assistant/status/<session_id>", methods=["GET"])
 @login_required
@@ -794,9 +814,19 @@ def get_assistant_execution_status(session_id):
     user = User.query.get_or_404(session["user_id"])
 
     if _check_session_running(user.user_id, session_id):
+        running_exec = (
+            AgentExecution.query
+            .filter_by(user_id=user.user_id, session_id=session_id, status_code="RUNNING")
+            .order_by(AgentExecution.execution_id.desc())
+            .first()
+        )
+        raw_state = (running_exec.current_state if running_exec else "") or "RUNNING_AGENT"
+        step_msg = STEP_STATUS_LABELS.get(raw_state, "🤖 AI 어시스턴트가 에이전트 협업 작업을 처리 중입니다...")
         return jsonify({
             "status": "RUNNING",
             "session_id": session_id,
+            "current_state": raw_state,
+            "step_message": step_msg,
         })
 
     latest_exec = (
@@ -1900,7 +1930,7 @@ def yards_page():
     can_see_partners = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
 
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
-    all_blocks = ErpBlockMaster.query.all()
+    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
     all_orders = WorkOrder.query.order_by(WorkOrder.work_id.desc()).all()
     all_workers = ErpWorkerCert.query.all()
     all_bom = ErpBomInventory.query.all()
@@ -1955,7 +1985,9 @@ def yards_page():
         selected_branch = yard_cards[0]["branch_code"]
 
     q = (request.args.get("q") or "").strip()
+    branch_filter = (request.args.get("branch_filter") or "ALL").strip() or "ALL"
     branch_map = {b.branch_code: b for b in branches}
+
     active_work_cards = []
     for idx, blk in enumerate(all_blocks):
         br = branch_map.get(blk.branch_code)
@@ -1964,6 +1996,7 @@ def yards_page():
         stage = _infer_yard_stage(br, br_orders) if br else "WORKING"
         matched_cad = _match_cad_for_block(blk, cad_docs, idx)
         matched_wo = next((o for o in all_orders if o.block_code == blk.block_id), None)
+
         card = {
             "branch_code": blk.branch_code,
             "branch_name": b_name,
@@ -1984,6 +2017,8 @@ def yards_page():
             "cad_title": matched_cad["document_title"] if matched_cad else f"{blk.ship_code} 블록 도면",
             "cad_file": matched_cad["original_file_name"] if matched_cad else "-",
         }
+        if branch_filter != "ALL" and card["branch_code"] != branch_filter:
+            continue
         if q:
             ql = q.lower()
             if not (
@@ -1996,12 +2031,25 @@ def yards_page():
                 continue
         active_work_cards.append(card)
 
+    # 스마트 페이지네이션 (3열 그리드 기준 페이지당 9개 · 10페이지 초과 시 ... 생략)
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = 9
+    total_cards = len(active_work_cards)
+    total_pages = max(1, (total_cards + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    paged_work_cards = active_work_cards[(page - 1) * per_page : page * per_page]
+
     return render_template(
         "service/yards.html",
         me=user,
         can_see_partners=can_see_partners,
         yard_cards=yard_cards,
-        active_work_cards=active_work_cards,
+        active_work_cards=paged_work_cards,
+        total_cards=total_cards,
+        page=page,
+        total_pages=total_pages,
+        page_items=_build_page_items(page, total_pages),
+        branch_filter=branch_filter,
         cad_docs=cad_docs,
         local_cad_count=local_cad_count,
         selected_branch=selected_branch,
@@ -2244,6 +2292,7 @@ def cad_raw_file(doc_id: int):
 @service_bp.route("/erp", methods=["GET"])
 @login_required
 def erp_board_page():
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     can_access_erp = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
     selected_branch = request.args.get("branch", "ALL").strip() or "ALL"
@@ -2419,7 +2468,8 @@ def erp_board_page():
 @service_bp.route("/api/erp/resources", methods=["GET"])
 @login_required
 def api_erp_resources():
-    """우측 슬라이드 서랍(Offcanvas) 전용 대량 자원 검색 · 필터 · 스마트 페이지네이션 API"""
+    """ERP 대량 자원 검색 · 필터 · 스마트 페이지네이션 API (실시간 DB 동기화 지원)"""
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     if not (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER")):
         return jsonify({"status": "ERROR", "message": "ERP 조회 권한이 없습니다."}), 403
@@ -2563,3 +2613,209 @@ def api_erp_resources():
         "page_items": _build_page_items(page, total_pages),
     })
 
+
+# =====================================================================
+# 7. ERP 자원별 전용 상세 조회 페이지 (/service/erp/<resource_type>)
+#    - /service/erp/materials  (전체 자재·재고 조회)
+#    - /service/erp/workers    (사내·외부 작업자 및 자격증)
+#    - /service/erp/equipment  (로봇·장비·차량 현황)
+#    - /service/erp/partners   (협력사 B2B 가용 자원)
+# =====================================================================
+@service_bp.route("/erp/materials", defaults={"resource_type": "materials"}, methods=["GET"])
+@service_bp.route("/erp/workers", defaults={"resource_type": "workers"}, methods=["GET"])
+@service_bp.route("/erp/equipment", defaults={"resource_type": "equipment"}, methods=["GET"])
+@service_bp.route("/erp/partners", defaults={"resource_type": "partners"}, methods=["GET"])
+@login_required
+def erp_resource_page(resource_type: str):
+    db.session.expire_all()
+    user = User.query.get_or_404(session["user_id"])
+    can_access_erp = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
+
+    selected_branch = (request.args.get("branch") or "ALL").strip() or "ALL"
+    q = (request.args.get("q") or "").strip()
+    filter_flag = (request.args.get("filter") or "ALL").strip().upper()
+    page = max(1, request.args.get("page", 1, type=int))
+    per_page = 12
+
+    branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    branch_name_map = {b.branch_code: b.branch_name for b in branches}
+
+    meta_map = {
+        "materials": {
+            "title": "전체 자재 · 재고 조회",
+            "desc": "전 야드 강판·용접와이어·차폐가스 재고와 Lot 번호를 검색하고 부족 품목은 AI에게 즉시 발주 요청할 수 있습니다.",
+            "filters": [("ALL", "전체 품목"), ("LOW", "부족 주의만"), ("FILLER_WIRE", "용접와이어"), ("STEEL_PLATE", "선체강판"), ("SHIELDING_GAS", "차폐가스")],
+        },
+        "workers": {
+            "title": "사내 · 외부 작업자 및 자격증",
+            "desc": "직영·협력사·프리랜서 작업자의 용접 자격증 유효기간을 조회하고 만료 임박 대상자에게 갱신 안내 메일을 보낼 수 있습니다.",
+            "filters": [("ALL", "전체 인력"), ("EXPIRING", "만료·임박만"), ("REGULAR", "직영 직원"), ("SUBCONTRACT", "협력사"), ("FREELANCER", "프리랜서")],
+        },
+        "equipment": {
+            "title": "로봇 · 장비 · 차량 현황",
+            "desc": "전 야드 용접로봇, 트랜스포터, 지게차, 크레인의 실시간 운용 상태(대기/사용 중/점검)를 확인합니다.",
+            "filters": [("ALL", "전체 상태"), ("STANDBY", "대기"), ("IN_USE", "사용 중"), ("MAINTENANCE", "점검 중")],
+        },
+        "partners": {
+            "title": "협력사 B2B 가용 자원",
+            "desc": "계약 중인 외부 협력사(PostgreSQL B2B 뷰)의 가용 자재, 파견 가능 인력, 임대 장비를 실시간 조회합니다.",
+            "filters": [("ALL", "전체 자원"), ("MATERIAL", "외부 자재"), ("WORKER", "외부 인력"), ("EQUIPMENT", "외부 장비·차량")],
+        },
+    }
+    page_meta = meta_map.get(resource_type, meta_map["materials"])
+
+    items = []
+    partner_error = ""
+    ql = q.lower()
+
+    if can_access_erp:
+        if resource_type == "materials":
+            for m in ErpBomInventory.query.order_by(ErpBomInventory.branch_code.asc(), ErpBomInventory.item_code.asc()).all():
+                tot = float(m.total_qty or 0)
+                res = float(m.reserved_qty or 0)
+                avail = max(tot - res, 0.0)
+                is_low = (avail <= 10) or (tot > 0 and (avail / tot) <= 0.25)
+                row = {
+                    "code": m.item_code,
+                    "name": m.item_name,
+                    "category": m.material_category,
+                    "lot_no": m.lot_no,
+                    "supplier_code": m.supplier_code,
+                    "branch_code": m.branch_code,
+                    "branch_name": branch_name_map.get(m.branch_code, m.branch_code),
+                    "total_qty": tot,
+                    "reserved_qty": res,
+                    "available_qty": avail,
+                    "unit": m.unit,
+                    "is_low": is_low,
+                }
+                if selected_branch != "ALL" and row["branch_code"] != selected_branch:
+                    continue
+                if filter_flag == "LOW" and not is_low:
+                    continue
+                if filter_flag in ("FILLER_WIRE", "STEEL_PLATE", "SHIELDING_GAS") and row["category"] != filter_flag:
+                    continue
+                if ql and not (ql in row["code"].lower() or ql in row["name"].lower() or ql in row["lot_no"].lower()):
+                    continue
+                items.append(row)
+
+        elif resource_type == "workers":
+            for w in ErpWorkerCert.query.order_by(ErpWorkerCert.cert_expiry_date.asc(), ErpWorkerCert.worker_id.asc()).all():
+                d_left = _calc_cert_days_left(w.cert_expiry_date)
+                expiring = (d_left is not None and d_left <= 60)
+                expired = (d_left is not None and d_left < 0)
+                row = {
+                    "code": w.worker_id,
+                    "name": w.worker_name,
+                    "employment_type": w.employment_type,
+                    "company_code": w.company_code,
+                    "branch_code": w.branch_code,
+                    "branch_name": branch_name_map.get(w.branch_code, w.branch_code),
+                    "department": w.department_name or "-",
+                    "role": w.role,
+                    "phone": w.phone or "-",
+                    "cert_code": w.cert_code,
+                    "weld_process": w.weld_process,
+                    "expiry": w.cert_expiry_date,
+                    "days_left": d_left,
+                    "expiring": expiring,
+                    "expired": expired,
+                    "status": w.status,
+                }
+                if selected_branch != "ALL" and row["branch_code"] != selected_branch:
+                    continue
+                if filter_flag == "EXPIRING" and not expiring:
+                    continue
+                if filter_flag in ("REGULAR", "SUBCONTRACT", "FREELANCER") and row["employment_type"] != filter_flag:
+                    continue
+                if ql and not (ql in row["code"].lower() or ql in row["name"].lower() or ql in row["cert_code"].lower() or ql in row["department"].lower()):
+                    continue
+                items.append(row)
+
+        elif resource_type == "equipment":
+            for e in ErpVehiclesEquipment.query.order_by(ErpVehiclesEquipment.branch_code.asc(), ErpVehiclesEquipment.asset_code.asc()).all():
+                row = {
+                    "code": e.asset_code,
+                    "name": e.asset_name,
+                    "category": e.asset_category,
+                    "company_code": e.company_code,
+                    "branch_code": e.branch_code,
+                    "branch_name": branch_name_map.get(e.branch_code, e.branch_code),
+                    "zone": e.current_zone or "-",
+                    "max_load_ton": float(e.max_load_ton) if e.max_load_ton is not None else None,
+                    "status": e.operation_status,
+                }
+                if selected_branch != "ALL" and row["branch_code"] != selected_branch:
+                    continue
+                if filter_flag in ("STANDBY", "IN_USE", "MAINTENANCE") and row["status"] != filter_flag:
+                    continue
+                if ql and not (ql in row["code"].lower() or ql in row["name"].lower() or ql in row["category"].lower() or ql in row["zone"].lower()):
+                    continue
+                items.append(row)
+
+        elif resource_type == "partners":
+            try:
+                if filter_flag in ("ALL", "MATERIAL"):
+                    for pm in B2BDaehanMaterial.query.all():
+                        items.append({
+                            "kind": "외부 자재",
+                            "kind_code": "MATERIAL",
+                            "partner_id": pm.partner_id,
+                            "code": pm.hq_item_code,
+                            "name": pm.item_name,
+                            "detail": f"가용 {int(pm.available_qty or 0)} {pm.unit} · 납기 {pm.lead_time_hours}시간 · Lot {pm.supplier_lot_no}",
+                            "region": "협력사 직출",
+                        })
+                if filter_flag in ("ALL", "WORKER"):
+                    for pw in B2BDonghaeWorker.query.all():
+                        items.append({
+                            "kind": "외부 인력",
+                            "kind_code": "WORKER",
+                            "partner_id": pw.partner_id,
+                            "code": pw.ext_worker_id,
+                            "name": f"{pw.worker_name} ({pw.cert_code})",
+                            "detail": f"{pw.specialty_role} · {pw.weld_process} · 만료 {pw.cert_expiry_date}",
+                            "region": pw.current_region or "-",
+                        })
+                if filter_flag in ("ALL", "EQUIPMENT"):
+                    for pe in B2BHankookEquipment.query.all():
+                        items.append({
+                            "kind": "외부 장비·차량",
+                            "kind_code": "EQUIPMENT",
+                            "partner_id": pe.partner_id,
+                            "code": pe.ext_asset_code,
+                            "name": pe.asset_name,
+                            "detail": f"{pe.asset_category} · 최대 {pe.max_load_ton or '-'}톤 · {pe.availability_status}",
+                            "region": pe.current_region or "-",
+                        })
+                if ql:
+                    items = [
+                        it for it in items
+                        if ql in it["code"].lower() or ql in it["name"].lower() or ql in it["partner_id"].lower() or ql in it["detail"].lower()
+                    ]
+            except Exception as exc:
+                partner_error = f"협력사 B2B DB 연결 중 오류가 발생했습니다: {exc}"
+
+    total_count = len(items)
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    paged_items = items[(page - 1) * per_page : page * per_page]
+
+    return render_template(
+        "service/erp_resources.html",
+        me=user,
+        can_access_erp=can_access_erp,
+        resource_type=resource_type,
+        page_meta=page_meta,
+        branches=branches,
+        selected_branch=selected_branch,
+        q=q,
+        filter_flag=filter_flag,
+        items=paged_items,
+        total_count=total_count,
+        page=page,
+        total_pages=total_pages,
+        page_items=_build_page_items(page, total_pages),
+        partner_error=partner_error,
+        last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    )
