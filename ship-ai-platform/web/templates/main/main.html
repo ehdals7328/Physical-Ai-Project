@@ -1,292 +1,208 @@
-<!-- web/templates/main/main.html -->
 {% extends "layout/base.html" %}
-{% block title %}K-SHIPYARD SMART | 스마트 조선소 통합 운영 플랫폼{% endblock %}
+{% block title %}K-SmartShip | 스마트 조선소 통합 운영 플랫폼{% endblock %}
+{% block main_class %}{% endblock %}
 
-{% block extra_head %}
-<style>
-    .hero-carousel-wrap { margin-top: 66px; position: relative; }
-    #mainHeroCarousel .carousel-item { height: 76vh; min-height: 500px; max-height: 740px; }
-    .hero-slide-panel {
-        width: 100%; height: 100%; display: flex; align-items: center;
-        position: relative; color: #ffffff; background-size: cover; background-position: center;
-    }
-    .hero-slide-1 { background: linear-gradient(115deg, #071936 0%, #0d3b75 55%, #165ea8 100%); }
-    .hero-slide-2 { background: linear-gradient(115deg, #0b1f3a 0%, #134e6f 55%, #1e6f8c 100%); }
-    .hero-slide-3 { background: linear-gradient(115deg, #0a192f 0%, #1d3557 55%, #2b4c7e 100%); }
-    .hero-slide-panel::after {
-        content: ""; position: absolute; inset: 0;
-        background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-        background-size: 28px 28px; pointer-events: none;
-    }
-    .hero-inner-content { position: relative; z-index: 2; }
-    .hero-placeholder-media {
-        border: 2px dashed rgba(255, 255, 255, 0.4);
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 20px; min-height: 290px;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 28px; text-align: center; backdrop-filter: blur(4px);
-    }
-    .workflow-step-card {
-        background: #ffffff; border: 1.5px solid #e2e8f0; border-top: 5px solid var(--shi-blue);
-        border-radius: 18px; padding: 28px 24px; height: 100%;
-        transition: all 0.25s ease; text-decoration: none; color: inherit;
-        display: flex; flex-direction: column; justify-content: space-between;
-    }
-    .workflow-step-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 18px 36px rgba(0, 78, 162, 0.12);
-        border-color: var(--shi-blue);
-    }
-    .step-number-pill {
-        display: inline-flex; align-items: center; gap: 6px;
-        background: #eef5ff; color: var(--shi-blue); font-weight: 800;
-        font-size: 0.82rem; padding: 5px 12px; border-radius: 999px; margin-bottom: 14px;
-    }
-    .corp-feature-box {
-        background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 26px; height: 100%;
-    }
-    @media (max-width: 767.98px) {
-        #mainHeroCarousel .carousel-item { height: auto; min-height: 520px; max-height: none; }
-        .hero-slide-panel { padding: 46px 0 60px; }
-        .hero-placeholder-media { min-height: 180px; margin-top: 20px; }
-    }
-</style>
+{% block page_context %}
+{"page_title": "메인 홈", "summary": "선박 번호 기준 조선소 업무 흐름 안내 및 빠른 검색"}
+{% endblock %}
+
+{% block full_width_top %}
+<!-- 전체 폭 캐러셀 -->
+<div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6000">
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active"></button>
+    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1"></button>
+    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2"></button>
+  </div>
+  <div class="carousel-inner">
+    <div class="carousel-item active">
+      <div class="hero-slide">
+        <div class="container-enterprise">
+          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">Smart Shipyard Platform</div>
+          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
+            선박 번호 하나로 연결되는<br>스마트 조선소 현장 관제 및 자율 용접
+          </h1>
+          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
+            CAD 도면 확인부터 현장 카메라 탐지, 자재·인력 확인, 작업지시서 승인까지 비전공자도 업무 순서대로 처리할 수 있습니다.
+          </p>
+          <div class="d-flex gap-3">
+            <a href="/service/yards" class="btn btn-primary px-4 py-2 fw-semibold">작업현황 바로가기</a>
+            <a href="/service/erp" class="btn btn-outline-light px-4 py-2 fw-semibold">자원관리 대시보드</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="carousel-item">
+      <div class="hero-slide" style="background:#102a4c;">
+        <div class="container-enterprise">
+          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">Field Vision Monitoring</div>
+          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
+            운반 단계 블록 번호 식별부터<br>작업 중 CCTV·로봇 용접선 탐지까지
+          </h1>
+          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
+            운반 중인 야드는 블록 번호를 자동 확인하고, 작업 중인 야드는 광역 CCTV와 로봇 용접선 시점을 버튼으로 전환합니다.
+          </p>
+          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-primary px-4 py-2 fw-semibold">현장카메라 열기</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="carousel-item">
+      <div class="hero-slide" style="background:#142840;">
+        <div class="container-enterprise">
+          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">ERP &amp; AI Automation</div>
+          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
+            자재·자격증 이상 조기 감지 및<br>근거 기반 작업지시서 자동 작성
+          </h1>
+          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
+            사내 규정 문서와 실시간 ERP·기상 정보를 종합해 초안을 작성하고, 담당자의 최종 승인 후 원장에 확정합니다.
+          </p>
+          <a href="/service/erp#hitl-section" class="btn btn-primary px-4 py-2 fw-semibold">승인함 확인</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon"></span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon"></span>
+  </button>
+</div>
+
+<!-- 선박번호 빠른 시작 바 -->
+<section style="background:#ffffff;border-bottom:1px solid #dde3ec;padding:30px 0;">
+  <div class="container-enterprise">
+    <form action="/service/yards" method="get" class="row g-3 align-items-center">
+      <div class="col-lg-4">
+        <div class="fw-bold" style="color:#0b1f3a;font-size:16px;">빠른 업무 시작</div>
+        <div class="text-muted" style="font-size:13px;">CAD에 적힌 선박 번호나 블록 번호로 해당 야드와 도면을 바로 찾습니다.</div>
+      </div>
+      <div class="col-lg-6">
+        <input type="text" name="q" class="form-control form-control-lg" placeholder="{{ ('예: ' ~ (sample_hints | join(', '))) if sample_hints else '선박 번호 또는 블록 번호를 입력하세요' }}">
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button type="submit" class="btn btn-dark btn-lg fs-6 fw-semibold">작업 찾기</button>
+      </div>
+    </form>
+  </div>
+</section>
 {% endblock %}
 
 {% block content %}
-<section class="hero-carousel-wrap">
-    <div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5500">
-        <div class="carousel-indicators">
-            <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="슬라이드 1"></button>
-            <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1" aria-label="슬라이드 2"></button>
-            <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2" aria-label="슬라이드 3"></button>
+<!-- 대기업식 스크롤텔링: 주요 기능 3개 영역 -->
+<section class="story-section">
+  <div class="container-enterprise">
+    <div class="row align-items-center g-5 story-reveal">
+      <div class="col-lg-6">
+        <div class="text-primary fw-bold mb-2" style="font-size:13px;">01. 작업현황 · 현장카메라 (Vision)</div>
+        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">야드 지도와 CAD 도면에서 현장 영상으로 바로 연결</h2>
+        <p class="text-secondary mb-4" style="font-size:16px;">
+          지도에서 우리 야드와 계약 협력사 위치를 한눈에 확인하고, 진행 중인 CAD 도면을 쉬운 요약 설명으로 봅니다.
+          바로가기를 누르면 운반 중 야드는 블록 번호를, 작업 중 야드는 광역 CCTV와 로봇 용접선 탐지 화면을 보여줍니다.
+        </p>
+        <div class="d-flex gap-2">
+          <a href="/service/yards" class="btn btn-outline-primary">작업현황 보기</a>
+          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-link text-decoration-none">현장카메라 이동 →</a>
         </div>
-
-        <div class="carousel-inner">
-            <div class="carousel-item active">
-                <div class="hero-slide-panel hero-slide-1">
-                    <div class="container hero-inner-content">
-                        <div class="row align-items-center g-4">
-                            <div class="col-lg-7">
-                                <span class="badge bg-light text-primary fw-bold px-3 py-2 rounded-pill mb-3">
-                                    [임시-핵심 키워드 배지 들어갈 자리]
-                                </span>
-                                <h1 class="display-5 fw-bold mb-3 lh-sm">
-                                    [임시-메인 비전 타이틀 1줄 들어갈 자리]<br>
-                                    [임시-스마트 조선소 핵심 슬로건 들어갈 자리]
-                                </h1>
-                                <p class="lead text-white-50 mb-4" style="max-width: 580px;">
-                                    [임시-설계 도면부터 현장 카메라 점검, 자재·인력 발주까지 한눈에 연결하는 플랫폼 소개 문구 들어갈 자리]
-                                </p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a href="/service/yards" class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill">
-                                        🗺️ 야드 · 도면 현황 보기 →
-                                    </a>
-                                    <a href="/service/erp" class="btn btn-outline-light fw-bold px-4 py-2 rounded-pill">
-                                        📦 자재 · 인력 관리 가기
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="col-lg-5">
-                                <div class="hero-placeholder-media">
-                                    <div class="fs-1 mb-2">🚢</div>
-                                    <div class="fw-bold mb-1">[임시-조선소 전경 또는 건조 선박 대표 사진 들어갈 자리]</div>
-                                    <div class="small text-white-50">권장 비율 16:9 고해상도 이미지</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="panel-card mb-0" style="background:#f8fafc;">
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 bg-white border rounded h-100">
+                <div class="small text-muted mb-1">운반 중 단계</div>
+                <div class="fw-bold">블록 번호 OCR 확인</div>
+                <div class="small text-secondary mt-2">작업 투입 전 목표 선박·블록 일치 여부 검증</div>
+              </div>
             </div>
-
-            <div class="carousel-item">
-                <div class="hero-slide-panel hero-slide-2">
-                    <div class="container hero-inner-content">
-                        <div class="row align-items-center g-4">
-                            <div class="col-lg-7">
-                                <span class="badge bg-info text-dark fw-bold px-3 py-2 rounded-pill mb-3">
-                                    [임시-현장 공정 관제 배지 들어갈 자리]
-                                </span>
-                                <h1 class="display-5 fw-bold mb-3 lh-sm">
-                                    [임시-운송·조립·용접 현장 카메라 소개 제목 들어갈 자리]
-                                </h1>
-                                <p class="lead text-white-50 mb-4" style="max-width: 580px;">
-                                    [임시-선박 블록 이동부터 조립·용접 상태까지 실시간으로 확인하고 필요한 순간만 기록하는 설명 들어갈 자리]
-                                </p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a href="/vision/" class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill">
-                                        📹 현장 카메라 바로 보기 →
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="col-lg-5">
-                                <div class="hero-placeholder-media">
-                                    <div class="fs-1 mb-2">📹</div>
-                                    <div class="fw-bold mb-1">[임시-현장 용접 로봇 / 공정 카메라 대표 사진 들어갈 자리]</div>
-                                    <div class="small text-white-50">권장 비율 16:9 고해상도 이미지</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="col-6">
+              <div class="p-3 bg-white border rounded h-100">
+                <div class="small text-muted mb-1">작업 중 단계</div>
+                <div class="fw-bold">CCTV · 로봇 시점 전환</div>
+                <div class="small text-secondary mt-2">작업자·크레인 안전 감시 및 용접선 궤적 탐지</div>
+              </div>
             </div>
-
-            <div class="carousel-item">
-                <div class="hero-slide-panel hero-slide-3">
-                    <div class="container hero-inner-content">
-                        <div class="row align-items-center g-4">
-                            <div class="col-lg-7">
-                                <span class="badge bg-warning text-dark fw-bold px-3 py-2 rounded-pill mb-3">
-                                    [임시-자재·인력·협력사 연동 배지 들어갈 자리]
-                                </span>
-                                <h1 class="display-5 fw-bold mb-3 lh-sm">
-                                    [임시-부족한 자재 발주와 작업자 자격 관리 소개 제목 들어갈 자리]
-                                </h1>
-                                <p class="lead text-white-50 mb-4" style="max-width: 580px;">
-                                    [임시-야드별 재고와 인력을 한눈에 확인하고 클릭 한 번으로 발주 요청 및 승인까지 이어지는 설명 들어갈 자리]
-                                </p>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <a href="/service/erp" class="btn btn-light text-primary fw-bold px-4 py-2 rounded-pill">
-                                        📦 자재 · 인력 보드 열기 →
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="col-lg-5">
-                                <div class="hero-placeholder-media">
-                                    <div class="fs-1 mb-2">📐</div>
-                                    <div class="fw-bold mb-1">[임시-선박 CAD 도면 · 야드 통합 관리 사진 들어갈 자리]</div>
-                                    <div class="small text-white-50">권장 비율 16:9 고해상도 이미지</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
-
-        <button class="carousel-control-prev" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">이전</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">다음</span>
-        </button>
+      </div>
     </div>
+  </div>
 </section>
 
-<section class="py-5 bg-shi-gray border-bottom">
-    <div class="container py-3">
-        <div class="text-center mb-5">
-            <span class="shi-eng-tag">WORKFLOW GUIDE</span>
-            <h2 class="fw-bold mb-2" style="color: var(--shi-navy);">
-                처음이신가요? 조선소 작업 순서대로 눌러보세요
-            </h2>
-            <p class="text-secondary mb-0">
-                어려운 기능 없이, 배를 만드는 순서(설계도 확인 → 현장 점검 → 자재·인력 관리) 그대로 화면이 이어집니다.
-            </p>
+<section class="story-section alt">
+  <div class="container-enterprise">
+    <div class="row align-items-center g-5 story-reveal">
+      <div class="col-lg-6 order-lg-2">
+        <div class="text-primary fw-bold mb-2" style="font-size:13px;">02. 자원관리 (ERP) &amp; AI 자동 처리</div>
+        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">부족 자재와 만료 임박 자격증을 먼저 알려주고 원클릭 처리</h2>
+        <p class="text-secondary mb-4" style="font-size:16px;">
+          사내 자재, 직영·협력사 인력, 로봇, 차량 현황을 깔끔한 대시보드로 요약합니다.
+          재고가 부족한 자재의 협력사 발주나 자격증 갱신 안내 메일은 AI 업무 도우미가 초안을 만들고, 담당자 승인 후 최종 반영합니다.
+        </p>
+        <a href="/service/erp" class="btn btn-outline-primary">자원관리 대시보드 보기</a>
+      </div>
+      <div class="col-lg-6 order-lg-1">
+        <div class="panel-card mb-0">
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+            <span class="fw-bold">통합 ERP · 협력사 B2B 연동</span>
+            <span class="status-chip status-info">DB 실시간 조회</span>
+          </div>
+          <div class="row g-3 text-center">
+            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">자재·재고</div><div class="fw-bold mt-1">부족 감지</div></div></div>
+            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">사내·외부 인력</div><div class="fw-bold mt-1">자격 D-Day</div></div></div>
+            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">로봇·차량</div><div class="fw-bold mt-1">대기/사용/점검</div></div></div>
+          </div>
         </div>
-
-        <div class="row g-4">
-            <div class="col-lg-4">
-                <a href="/service/yards" class="workflow-step-card">
-                    <div>
-                        <span class="step-number-pill">STEP 1 · 야드 & 설계도</span>
-                        <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">
-                            🗺️ 어느 야드에서 어떤 배를 만드나요?
-                        </h4>
-                        <p class="text-secondary small lh-lg mb-3">
-                            지도에서 울산·거제 등 조선소 야드를 누르면, 현재 건조 중인 선박의 <strong>CAD 설계 도면</strong>,
-                            블록별 진행 단계(대기·진행·완료), 투입 인력과 자재를 한눈에 볼 수 있습니다.
-                        </p>
-                    </div>
-                    <div class="fw-bold text-primary small">야드 · 도면 현황 열기 →</div>
-                </a>
-            </div>
-
-            <div class="col-lg-4">
-                <a href="/vision/" class="workflow-step-card" style="border-top-color: #0284c7;">
-                    <div>
-                        <span class="step-number-pill" style="background:#e0f2fe; color:#0369a1;">STEP 2 · 현장 카메라</span>
-                        <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">
-                            📹 지금 현장은 어떻게 돌아가나요?
-                        </h4>
-                        <p class="text-secondary small lh-lg mb-3">
-                            <strong>운송 → 조립 → 용접</strong> 순서대로 현재 진행 중인 현장 카메라를 확인합니다.
-                            확인이 필요한 순간에만 <strong>[현재 상태 기록 남기기]</strong> 버튼을 눌러 점검 기록부에 저장합니다.
-                        </p>
-                    </div>
-                    <div class="fw-bold text-primary small">공정별 현장 카메라 보기 →</div>
-                </a>
-            </div>
-
-            <div class="col-lg-4">
-                <a href="/service/erp" class="workflow-step-card" style="border-top-color: #0f766e;">
-                    <div>
-                        <span class="step-number-pill" style="background:#ccfbf1; color:#0f766e;">STEP 3 · 자재 · 인력 · 발주</span>
-                        <h4 class="fw-bold mb-2" style="color: var(--shi-navy);">
-                            📦 자재와 작업자는 충분한가요?
-                        </h4>
-                        <p class="text-secondary small lh-lg mb-3">
-                            야드별 남은 자재와 자격증 만료가 가까운 작업자, 협력사 호출 가능 자원을 한 번에 확인합니다.
-                            부족한 자재 발주나 안내 메일 요청도 버튼 한 번으로 도우미에게 바로 넘길 수 있습니다.
-                        </p>
-                    </div>
-                    <div class="fw-bold text-primary small">자재 · 인력 · 발주 보드 열기 →</div>
-                </a>
-            </div>
-        </div>
+      </div>
     </div>
+  </div>
 </section>
 
-<section class="py-5 bg-white border-bottom">
-    <div class="container py-3">
-        <div class="row align-items-end mb-4 g-3">
-            <div class="col-lg-8">
-                <span class="shi-eng-tag">ABOUT PLATFORM</span>
-                <h2 class="fw-bold mb-1" style="color: var(--shi-navy);">
-                    [임시-기업 핵심 역량 및 스마트 야드 소개 대제목 들어갈 자리]
-                </h2>
-                <p class="text-secondary mb-0">
-                    [임시-우리 조선소가 추진하는 자동화·안전·품질 혁신에 대한 간략한 설명 문구 들어갈 자리]
-                </p>
-            </div>
-            <div class="col-lg-4 text-lg-end">
-                <a href="/service/faq" class="btn btn-shi-outline rounded-pill px-4">
-                    ❓ 현장 소통 · 문의 바로가기
-                </a>
-            </div>
+<section class="story-section">
+  <div class="container-enterprise">
+    <div class="row align-items-center g-5 story-reveal">
+      <div class="col-lg-6">
+        <div class="text-primary fw-bold mb-2" style="font-size:13px;">03. 작업지시서 생성 · 자료실 · 이력 관리</div>
+        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">도면 제원과 사내 규정을 근거로 표준 문서를 자동 생성</h2>
+        <p class="text-secondary mb-4" style="font-size:16px;">
+          계정 권한에 맞춰 사내 규정 문서(RAG)와 현장 기상·용접선 데이터를 종합해 작업지시서를 작성합니다.
+          생성된 문서와 야드별 용접선 탐지 기록은 이력 화면에서 언제든 추적하고 다운로드할 수 있습니다.
+        </p>
+        <div class="d-flex gap-2">
+          <a href="/service/history" class="btn btn-outline-primary">작업·용접 이력 보기</a>
+          <a href="/mypage/files" class="btn btn-link text-decoration-none">자료실 이동 →</a>
         </div>
-
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="corp-feature-box">
-                    <div class="badge bg-primary-subtle text-primary fw-bold mb-2">01</div>
-                    <h5 class="fw-bold mb-2">[임시-핵심 강점 1 제목 (예: 선박 CAD 설계 연계)]</h5>
-                    <p class="small text-secondary mb-0">
-                        [임시-실제 선박 도면 데이터를 기준으로 현장 작업자와 관리자가 동일한 정보를 확인한다는 설명 들어갈 자리]
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="corp-feature-box">
-                    <div class="badge bg-primary-subtle text-primary fw-bold mb-2">02</div>
-                    <h5 class="fw-bold mb-2">[임시-핵심 강점 2 제목 (예: 안전한 현장 공정 관리)]</h5>
-                    <p class="small text-secondary mb-0">
-                        [임시-운송·조립·용접 단계별 현장 확인과 점검 이력 관리로 사고를 예방한다는 설명 들어갈 자리]
-                    </p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="corp-feature-box">
-                    <div class="badge bg-primary-subtle text-primary fw-bold mb-2">03</div>
-                    <h5 class="fw-bold mb-2">[임시-핵심 강점 3 제목 (예: 신속한 자재·협력사 연계)]</h5>
-                    <p class="small text-secondary mb-0">
-                        [임시-부족한 자재나 인력을 즉시 파악하고 관리자 최종 승인(HITL)을 거쳐 발주한다는 설명 들어갈 자리]
-                    </p>
-                </div>
-            </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="panel-card mb-0" style="background:#f8fafc;">
+          <ol class="mb-0 ps-3" style="line-height:2.1;">
+            <li><strong>선박·블록 선택</strong> — 지도와 CAD 도면에서 대상 확인</li>
+            <li><strong>현장 영상 검증</strong> — 운반 번호 확인 및 작업 중 CCTV·로봇 용접선 탐지</li>
+            <li><strong>자원 및 규정 검토</strong> — ERP 재고·자격 확인 및 AI 초안 생성</li>
+            <li><strong>최종 승인·보관</strong> — 담당자 결재 후 공식 DOCX/PDF 발행 및 이력 저장</li>
+          </ol>
         </div>
+      </div>
     </div>
+  </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  function revealOnScroll() {
+    var trigger = $(window).scrollTop() + $(window).height() * 0.92;
+    $('.story-reveal').each(function () {
+      if ($(this).offset().top < trigger) {
+        $(this).addClass('visible');
+      }
+    });
+  }
+  revealOnScroll();
+  $(window).on('scroll', revealOnScroll);
+});
+</script>
 {% endblock %}

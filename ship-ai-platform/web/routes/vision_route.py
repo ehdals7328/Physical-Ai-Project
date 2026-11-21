@@ -298,11 +298,12 @@ def _query_inspections_paginated(
         filtered_items.append({
             "inspection_id": insp.inspection_id,
             "analysis_id": insp.analysis_id,
-            "camera_code": ana.camera_code if ana else "CAM-ULS-BAY1",
+            "camera_code": ana.camera_code if ana else "-",
             "start_point": insp.start_point_json,
             "end_point": insp.end_point_json,
             "ocr_text": ocr_val or "-",
             "detected_objects_str": obj_summary_ko,
+            "inspection_status": insp.inspection_status,
             "created_at": recorded_time,
         })
 
@@ -378,12 +379,37 @@ def index():
             "orders": br_orders,
         })
 
+    # DB(ERP_BRANCHES.DEFAULT_VIDEO 및 WORK_ORDERS) 기반 동적 공정 단계 & 영상 채널 매핑 (하드코딩 제거)
+    robot_detail_video = os.getenv("ROBOT_DETAIL_VIDEO", "seg_Test.mp4")
+    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
+    for card in branch_cards:
+        def_vid = (card.get("default_video") or "").strip()
+        is_ocr_vid = "ocr" in def_vid.lower()
+        st = "TRANSPORT" if is_ocr_vid else "WORKING"
+        card["work_stage"] = st
+        card["stage_label"] = "운반 중" if st == "TRANSPORT" else "작업 중"
+        card["ocr_video"] = def_vid if is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video2.mp4", "ocr_test.mp4")
+        card["cctv_video"] = def_vid if not is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video1.mp4", "Test_1.mp4")
+        card["robot_video"] = robot_detail_video
+        br_blocks = [b for b in all_blocks if b.branch_code == card["branch_code"]]
+        if card["orders"]:
+            card["primary_ship"] = card["orders"][0]["ship_code"]
+            card["primary_block"] = card["orders"][0]["block_code"]
+            card["primary_work_id"] = card["orders"][0]["work_id"]
+        elif br_blocks:
+            card["primary_ship"] = br_blocks[0].ship_code
+            card["primary_block"] = br_blocks[0].block_id
+            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
+        else:
+            card["primary_ship"] = "-"
+            card["primary_block"] = "-"
+            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
+
     selected_branch = request.args.get("branch", "").strip()
     if not selected_branch and branch_cards:
         selected_branch = branch_cards[0]["branch_code"]
-    selected_stage = request.args.get("stage", "welding").strip().lower()
-    if selected_stage not in ("transport", "assembly", "welding"):
-        selected_stage = "welding"
+    current_card = next((c for c in branch_cards if c["branch_code"] == selected_branch), branch_cards[0] if branch_cards else None)
+    selected_stage = current_card["work_stage"] if current_card else "WORKING"
 
     return render_template(
         "service/vision.html",
@@ -392,6 +418,7 @@ def index():
         robots=robots,
         branches=branches,
         branch_cards=branch_cards,
+        current_card=current_card,
         active_orders=all_orders_summary,
         selected_branch=selected_branch,
         selected_stage=selected_stage,
@@ -840,7 +867,7 @@ def _insert_vision_records(
 def save_vision_snapshot():
     payload = request.get_json(silent=True) or {}
     work_id = payload.get("work_id") or 1
-    camera_code = payload.get("camera_code", "CAM-ULS-BAY1")
+    camera_code = payload.get("camera_code") or "CAM-UNASSIGNED"
     video_name = payload.get("video_name", "Test_1.mp4")
     auto_mode = payload.get("auto_mode", True)
     detection_data = payload.get("detection_data") or {}
