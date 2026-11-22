@@ -1,512 +1,639 @@
-/* web/static/css/style.css */
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
-
+/* ==========================================================================
+   K-SmartShip Enterprise Portal Stylesheet (Bootstrap 5 + jQuery 3.7.1)
+   ========================================================================== */
 :root {
-    --shi-blue: #004ea2;         /* 메인 로열 블루 */
-    --shi-navy: #0a1f44;         /* 딥 오션 네이비 (강조 타이틀용) */
-    --shi-sky: #0072ce;          /* 서브 액센트 블루 */
-    --shi-light-bg: #f4f7fb;     /* 밝은 블루그레이 섹션 배경 */
-    --shi-white: #ffffff;
-    --text-dark: #111827;
-    --text-gray: #4b5563;
-    --border-line: #e5e7eb;
+  --brand-navy: #0b1f3a;
+  --brand-blue: #0052cc;
+  --brand-blue-dark: #003e9e;
+  --surface-bg: #f4f6f9;
+  --surface-card: #ffffff;
+  --border-subtle: #dde3ec;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --status-ok: #0f766e;
+  --status-warn: #b45309;
+  --status-danger: #b91c1c;
 }
 
-html {
-    scroll-behavior: smooth;
-    scroll-snap-type: y proximity;
+html, body {
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
+  font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
+.container-enterprise {
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+/* ---------- 1. Header & Full Mega Menu ---------- */
+.site-header {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.header-bar {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--brand-navy);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+
+.brand-square {
+  width: 28px;
+  height: 28px;
+  background: var(--brand-navy);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.primary-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.primary-nav > li > a {
+  display: inline-block;
+  padding: 22px 18px;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.primary-nav > li > a:hover,
+.primary-nav > li > a.active {
+  color: var(--brand-blue);
+  border-bottom-color: var(--brand-blue);
+}
+
+.header-util {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.util-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 6px;
+}
+
+.util-link:hover {
+  background: #eef2f7;
+  color: var(--brand-navy);
+}
+
+.mega-panel {
+  display: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 70px;
+  background: #ffffff;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: 0 16px 32px rgba(11, 31, 58, 0.08);
+  padding: 28px 0 32px;
+  z-index: 1029;
+}
+
+.mega-col-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.mega-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mega-list li {
+  margin-bottom: 8px;
+}
+
+.mega-list a {
+  display: block;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 3px 0;
+}
+
+.mega-list a:hover {
+  color: var(--brand-blue);
+  font-weight: 600;
+}
+
+/* Account Dropdown */
+.account-menu-wrap {
+  position: relative;
+}
+
+.account-dropdown {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 220px;
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+  padding: 8px 0;
+  z-index: 1040;
+}
+
+.account-dropdown a {
+  display: block;
+  padding: 9px 16px;
+  font-size: 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.account-dropdown a:hover {
+  background: #f4f6f9;
+  color: var(--brand-blue);
+}
+
+/* ---------- 2. Global Ship/Block Context Ribbon ---------- */
+.context-ribbon {
+  background: #edf2f8;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: #334155;
+  padding: 8px 0;
+}
+
+/* ---------- 3. Page Shell, Cards, Tables ---------- */
+.page-shell {
+  padding: 36px 0 80px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.page-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.page-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 28px;
+  margin-bottom: 28px;
+}
+
+.panel-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin: 0;
+}
+
+.kpi-tile {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 22px 24px;
+  height: 100%;
+  transition: border-color 0.15s;
+}
+
+.kpi-tile.clickable {
+  cursor: pointer;
+}
+
+.kpi-tile.clickable:hover {
+  border-color: var(--brand-blue);
+}
+
+.kpi-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--brand-navy);
+  line-height: 1.15;
+}
+
+.kpi-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.table-enterprise {
+  margin-bottom: 0;
+  font-size: 14px;
+}
+
+.table-enterprise thead th {
+  background: #f8fafc;
+  color: #374151;
+  font-weight: 700;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  white-space: nowrap;
+}
+
+.table-enterprise tbody td {
+  padding: 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef2f6;
+}
+
+/* Status Chips */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-ok { background: #ecfdf5; color: var(--status-ok); }
+.status-ok::before { background: var(--status-ok); }
+.status-warn { background: #fffbeb; color: var(--status-warn); }
+.status-warn::before { background: var(--status-warn); }
+.status-danger { background: #fef2f2; color: var(--status-danger); }
+.status-danger::before { background: var(--status-danger); }
+.status-info { background: #eff6ff; color: var(--brand-blue); }
+.status-info::before { background: var(--brand-blue); }
+.status-muted { background: #f3f4f6; color: #4b5563; }
+.status-muted::before { background: #9ca3af; }
+
+/* ---------- 4. Main Home Carousel & Scroll-telling ---------- */
+.hero-slide {
+  min-height: 460px;
+  background: var(--brand-navy);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 64px 0;
+}
+
+.story-section {
+  padding: 76px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #ffffff;
+}
+
+.story-section.alt {
+  background: #f8fafc;
+}
+
+.story-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.story-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- 5. Yards CAD Card ---------- */
+.cad-job-card {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.cad-job-card:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 8px 20px rgba(11, 31, 58, 0.07);
+}
+
+.cad-thumb-box {
+  height: 140px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  position: relative;
+}
+
+.cad-blueprint-grid {
+  background-image: linear-gradient(to right, rgba(11, 31, 58, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(11, 31, 58, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* ---------- 6. Vision 2-Stage Indicator ---------- */
+.stage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stage-box {
+  border: 1px solid #d1d5db;
+  background: #eef1f5;
+  color: #6b7280;
+  border-radius: 8px;
+  padding: 18px 22px;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.stage-box.active {
+  border: 2px solid var(--brand-blue);
+  background: #ffffff;
+  color: var(--brand-navy);
+  opacity: 1;
+  pointer-events: auto;
+  box-shadow: 0 4px 14px rgba(0, 82, 204, 0.08);
+}
+
+/* ---------- 7. Right Slide Drawer (Offcanvas) ---------- */
+.drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 58, 0.45);
+  z-index: 1045;
+}
+
+.side-drawer {
+  position: fixed;
+  top: 0;
+  right: -780px;
+  width: 760px;
+  max-width: 96vw;
+  height: 100vh;
+  background: #ffffff;
+  box-shadow: -8px 0 32px rgba(11, 31, 58, 0.18);
+  z-index: 1046;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.25s ease;
+}
+
+.side-drawer.open {
+  right: 0;
+}
+
+.side-drawer-header {
+  padding: 20px 26px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.side-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 22px 26px;
+}
+
+/* ---------- 8. Global Bottom-Right AI Chatbot ---------- */
+#ai-launcher-btn {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 24px;
+  border: none;
+  background: var(--brand-navy);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(11, 31, 58, 0.24);
+  z-index: 1050;
+  cursor: pointer;
+}
+
+#ai-launcher-btn:hover {
+  background: var(--brand-blue);
+}
+
+#ai-chat-panel {
+  display: none;
+  position: fixed;
+  right: 28px;
+  bottom: 88px;
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  height: 580px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 18px 42px rgba(11, 31, 58, 0.22);
+  z-index: 1050;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#ai-chat-panel.open {
+  display: flex;
+}
+
+.ai-panel-head {
+  background: var(--brand-navy);
+  color: #ffffff;
+  padding: 14px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-panel-ctx {
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ai-bubble.user {
+  align-self: flex-end;
+  background: var(--brand-blue);
+  color: #ffffff;
+}
+
+.ai-bubble.assistant {
+  align-self: flex-start;
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.ai-panel-foot {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: #ffffff;
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- 9. Sticky Enterprise Footer & Quick Login Panel ---------- */
 body {
-    font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
-    background-color: var(--shi-white);
-    color: var(--text-dark);
-    overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* =====================================================================
-   1. 상단 고정 헤더 (화이트 GNB)
-====================================================================== */
-.shi-header {
-    padding: 20px 0;
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border-line);
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 1030;
+main {
+  flex: 1 0 auto;
 }
 
-.shi-header.scrolled {
-    padding: 13px 0;
-    background: #ffffff;
-    box-shadow: 0 6px 24px rgba(0, 78, 162, 0.08);
+.site-footer {
+  flex-shrink: 0;
+  background: #ffffff;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 36px 0 32px;
+  font-size: 13.5px;
 }
 
-.shi-brand {
-    font-size: 1.35rem;
-    font-weight: 800;
-    color: var(--shi-blue) !important;
-    letter-spacing: -0.5px;
-    text-decoration: none;
+.footer-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin-bottom: 10px;
 }
 
-.shi-brand span.sub-brand {
-    color: var(--shi-navy);
-    font-weight: 700;
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.shi-nav-link {
-    color: var(--text-dark) !important;
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 8px 18px !important;
-    position: relative;
-    transition: color 0.25s ease;
+.footer-links li {
+  margin-bottom: 6px;
 }
 
-.shi-nav-link::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    width: 0;
-    height: 3px;
-    background-color: var(--shi-blue);
-    transition: all 0.3s ease;
-    transform: translateX(-50%);
+.footer-links a {
+  color: var(--text-secondary);
+  text-decoration: none;
 }
 
-.shi-nav-link:hover,
-.shi-nav-link.active {
-    color: var(--shi-blue) !important;
+.footer-links a:hover {
+  color: var(--brand-blue);
+  text-decoration: underline;
 }
 
-.shi-nav-link:hover::after,
-.shi-nav-link.active::after {
-    width: 70%;
+.quick-account-row {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-.btn-shi-primary {
-    background-color: var(--shi-blue);
-    color: #ffffff;
-    font-weight: 600;
-    border: 1px solid var(--shi-blue);
-    transition: all 0.25s ease;
-}
-
-.btn-shi-primary:hover {
-    background-color: var(--shi-navy);
-    border-color: var(--shi-navy);
-    color: #ffffff;
-    transform: translateY(-2px);
-}
-
-.btn-shi-outline {
-    background-color: transparent;
-    color: var(--shi-blue);
-    font-weight: 600;
-    border: 1.5px solid var(--shi-blue);
-    transition: all 0.25s ease;
-}
-
-.btn-shi-outline:hover {
-    background-color: var(--shi-blue);
-    color: #ffffff;
-}
-
-/* =====================================================================
-   2. 우측 고정 섹션 인디케이터 (우측 도트 네비게이션)
-====================================================================== */
-.section-dots {
-    position: fixed;
-    right: 32px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 1020;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-}
-
-.section-dots a {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    text-decoration: none;
-    gap: 10px;
-}
-
-.section-dots .dot-label {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--shi-blue);
-    opacity: 0;
-    transform: translateX(8px);
-    transition: all 0.25s ease;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 3px 8px;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.section-dots .dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50px;
-    background-color: #cbd5e1;
-    transition: all 0.3s ease;
-}
-
-.section-dots a:hover .dot-label,
-.section-dots a.active .dot-label {
-    opacity: 1;
-    transform: translateX(0);
-}
-
-.section-dots a.active .dot {
-    height: 28px;
-    background-color: var(--shi-blue);
-}
-
-/* =====================================================================
-   3. 풀페이지 스크롤텔링 섹션 레이아웃
-====================================================================== */
-.shi-section {
-    min-height: 100vh;
-    scroll-snap-align: start;
-    display: flex;
-    align-items: center;
-    padding: 120px 0 90px;
-    position: relative;
-    border-bottom: 1px solid var(--border-line);
-    overflow: hidden;
-}
-
-.bg-shi-white { background-color: var(--shi-white); }
-.bg-shi-gray { background-color: var(--shi-light-bg); }
-.bg-shi-hero {
-    background: linear-gradient(135deg, #f0f6ff 0%, #ffffff 60%, #e6f0fa 100%);
-}
-
-.shi-eng-tag {
-    display: inline-block;
-    color: var(--shi-blue);
-    font-weight: 800;
-    font-size: 0.85rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    border-left: 3px solid var(--shi-blue);
-    padding-left: 10px;
-}
-
-.shi-title {
-    font-size: clamp(2rem, 3.6vw, 3rem);
-    font-weight: 800;
-    color: var(--shi-navy);
-    line-height: 1.28;
-    letter-spacing: -0.8px;
-}
-
-.shi-desc {
-    font-size: 1.1rem;
-    color: var(--text-gray);
-    line-height: 1.8;
-}
-
-/* =====================================================================
-   4. 양방향 스크롤텔링 애니메이션 (올리고 내릴 때마다 반복 재생)
-====================================================================== */
-/* 아래에서 위로 떠오르는 효과 */
-.anim-up {
-    opacity: 0;
-    transform: translateY(60px);
-    transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 왼쪽에서 오른쪽으로 슬라이드 등장 */
-.anim-left {
-    opacity: 0;
-    transform: translateX(-70px);
-    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 오른쪽에서 왼쪽으로 슬라이드 등장 */
-.anim-right {
-    opacity: 0;
-    transform: translateX(70px);
-    transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 이미지 스케일 줌인 효과 */
-.anim-scale {
-    opacity: 0;
-    transform: scale(0.92);
-    transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* 화면에 들어왔을 때 활성화 클래스 */
-.in-view {
-    opacity: 1 !important;
-    transform: translate(0, 0) scale(1) !important;
-}
-
-/* 순차 등장 딜레이 (카드 1 -> 2 -> 3) */
-.delay-1 { transition-delay: 0.12s; }
-.delay-2 { transition-delay: 0.26s; }
-.delay-3 { transition-delay: 0.40s; }
-
-/* =====================================================================
-   5. 사진 플레이스홀더 & 카드 & Event 탭
-====================================================================== */
-.shi-img-box {
-    width: 100%;
-    min-height: 350px;
-    background: #eef3f9;
-    border: 2px dashed #93b4d8;
-    border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 30px;
-    text-align: center;
-    color: var(--shi-navy);
-    transition: all 0.3s ease;
-}
-
-.shi-img-box:hover {
-    border-color: var(--shi-blue);
-    background: #e5effa;
-}
-
-.shi-card {
-    background: #ffffff;
-    border: 1px solid var(--border-line);
-    border-top: 4px solid var(--shi-blue);
-    border-radius: 12px;
-    padding: 32px 26px;
-    height: 100%;
-    box-shadow: 0 8px 24px rgba(10, 31, 68, 0.04);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.shi-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 18px 36px rgba(0, 78, 162, 0.12);
-}
-
-/* Event 섹션 탭 */
-.shi-event-wrap {
-    background: #ffffff;
-    border-radius: 18px;
-    padding: 40px;
-    border: 1px solid var(--border-line);
-    box-shadow: 0 12px 32px rgba(10, 31, 68, 0.06);
-}
-
-.shi-tab-btn {
-    width: 100%;
-    padding: 16px 20px;
-    border: 1px solid var(--border-line);
-    background: #f8fafc;
-    color: var(--text-gray);
-    font-weight: 700;
-    border-radius: 10px;
-    transition: all 0.25s ease;
-}
-
-.shi-tab-btn.active,
-.shi-tab-btn:hover {
-    background: var(--shi-blue);
-    color: #ffffff;
-    border-color: var(--shi-blue);
-    box-shadow: 0 6px 16px rgba(0, 78, 162, 0.25);
-}
-
-/* 하단 스크롤 안내 마우스 아이콘 */
-.scroll-mouse {
-    position: absolute;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    color: var(--shi-blue);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-}
-
-.mouse-icon {
-    width: 24px;
-    height: 38px;
-    border: 2px solid var(--shi-blue);
-    border-radius: 14px;
-    margin: 0 auto 6px;
-    position: relative;
-}
-
-.mouse-wheel {
-    width: 4px;
-    height: 8px;
-    background: var(--shi-blue);
-    border-radius: 2px;
-    position: absolute;
-    top: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    animation: wheelMove 1.6s infinite;
-}
-
-@keyframes wheelMove {
-    0% { opacity: 1; top: 6px; }
-    100% { opacity: 0; top: 20px; }
-}
-
-.shi-footer {
-    background: #0a192f;
-    color: #94a3b8;
-    padding: 45px 0;
-}
-
-@media (max-width: 991px) {
-    .section-dots { display: none; }
-}
-
-
-/* =====================================================================
-   6. ⭐ 모바일·태블릿 반응형 최적화 (글자 잘림·뭉개짐·가로 삐져나감 원천 방지)
-====================================================================== */
-*, *::before, *::after {
-    box-sizing: border-box;
-}
-
-/* 한글 단어 단위 줄바꿈 유지 + 긴 영문/코드(LOT번호, 문서코드, URL) 영역 이탈 방지 */
-body, h1, h2, h3, h4, h5, h6, p, span, div, td, th, a, button, label {
-    word-break: keep-all;
-    overflow-wrap: break-word;
-}
-
-.font-monospace, code, pre {
-    overflow-wrap: anywhere;
-    word-break: break-all;
-}
-
-@media (max-width: 991.98px) {
-    html {
-        scroll-snap-type: none !important;
-    }
-    .shi-header {
-        padding: 12px 0;
-    }
-    .shi-section {
-        min-height: auto;
-        padding: 96px 0 60px;
-    }
-}
-
-@media (max-width: 767.98px) {
-    html, body {
-        overflow-x: hidden !important;
-        width: 100%;
-        -webkit-text-size-adjust: 100%;
-    }
-
-    .container {
-        padding-left: 14px !important;
-        padding-right: 14px !important;
-    }
-
-    /* 타이틀 및 본문 폰트 크기 유동 조절 (모바일에서 글자 뭉개짐/겹침 방지) */
-    .shi-title, h1 {
-        font-size: clamp(1.45rem, 6vw, 2rem) !important;
-        line-height: 1.35 !important;
-        letter-spacing: -0.4px;
-    }
-    h2, .h2 {
-        font-size: clamp(1.25rem, 5vw, 1.6rem) !important;
-        line-height: 1.35 !important;
-    }
-    h3, .h3, h4, .h4 {
-        font-size: clamp(1.08rem, 4.3vw, 1.3rem) !important;
-        line-height: 1.38 !important;
-    }
-    h5, .h5 {
-        font-size: 1rem !important;
-        line-height: 1.4 !important;
-    }
-    .shi-desc, p {
-        font-size: 0.95rem !important;
-        line-height: 1.65 !important;
-    }
-
-    /* 카드 및 이벤트 박스 패딩 축소로 텍스트 가용 폭 확보 */
-    .shi-card, .shi-event-wrap {
-        padding: 20px 16px !important;
-    }
-
-    /* 버튼 및 배지가 좁은 폭에서 잘리지 않고 자연스럽게 줄바꿈되도록 처리 */
-    .btn, .badge {
-        white-space: normal !important;
-        text-align: center;
-        line-height: 1.35;
-    }
-
-    /* 테이블 가로 스크롤 보장 및 셀 텍스트 뭉개짐 방지 */
-    .table-responsive {
-        overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch;
-    }
-    .table th, .table td {
-        font-size: 0.8rem !important;
-        padding: 8px 6px !important;
-        white-space: nowrap;
-    }
-    .table td.text-break {
-        white-space: normal !important;
-        min-width: 140px;
-    }
-}
-
-
-/* =====================================================================
-   7. ⭐ 모바일 GNB 드롭다운 메뉴 · 채팅 테이블 · 입력 폼 완벽 보정 (GitHub 배포용)
-====================================================================== */
-@media (max-width: 991.98px) {
-    .shi-header .navbar-collapse {
-        background: #ffffff;
-        margin-top: 12px;
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-    }
-    .shi-nav-link {
-        padding: 10px 12px !important;
-        border-radius: 8px;
-    }
-    .shi-nav-link::after {
-        display: none;
-    }
-    .shi-nav-link.active {
-        background-color: #eef5ff;
-    }
-}
-
-@media (max-width: 767.98px) {
-    /* 모바일에서 인라인 상단 패딩(100~130px)이 과도하게 넓어지는 현상 방지 */
-    section[style*="padding-top"] {
-        padding-top: 84px !important;
-    }
-    /* 모바일에서 스크롤 마우스 아이콘이 버튼과 겹치지 않도록 숨김 */
-    .scroll-mouse {
-        display: none !important;
-    }
-    /* 모달 창 여백 최적화 */
-    .modal-dialog {
-        margin: 10px !important;
-    }
+.quick-account-row:hover {
+  border-color: var(--brand-blue);
+  background: #ffffff;
 }

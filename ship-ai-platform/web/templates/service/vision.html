@@ -1,1063 +1,297 @@
-<!-- web/templates/service/vision.html -->
 {% extends "layout/base.html" %}
-{% block title %}스마트 야드 지도 & 실시간 현장 카메라 관제 | K-SHIPYARD{% endblock %}
-
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<style>
-    /* 1. 상단 야드 위치 지도 */
-    #yardMap {
-        width: 100%;
-        height: 360px;
-        border-radius: 16px;
-        border: 2px solid #cbd5e1;
-        background: #cad2d3;
-        z-index: 1;
-        transition: height 0.3s ease;
-    }
-    #yardMap.minimized {
-        height: 180px;
-    }
-
-    .pin-hq {
-        background: #004ea2;
-        color: #ffffff;
-        border: 2.5px solid #ffffff;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.85rem;
-        box-shadow: 0 3px 10px rgba(0, 78, 162, 0.7);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-    }
-    .pin-hq:hover { transform: scale(1.25); background: #0284c7; }
-    .pin-partner {
-        background: #dc2626;
-        color: #ffffff;
-        border: 2px solid #ffffff;
-        border-radius: 50%;
-        width: 22px;
-        height: 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.65rem;
-        font-weight: 800;
-        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.75);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-    }
-    .pin-partner:hover { transform: scale(1.3); }
-
-    /* 2. 실시간 현장 카메라 뷰어 박스 */
-    .vision-player-wrapper {
-        background: #0f172a;
-        border-radius: 16px;
-        overflow: hidden;
-        position: relative;
-        min-height: 430px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px solid #cbd5e1;
-    }
-    .vision-player-wrapper img,
-    .vision-player-wrapper video {
-        width: 100%;
-        max-height: 540px;
-        object-fit: contain;
-        display: block;
-    }
-    .live-badge-bar {
-        position: absolute;
-        top: 12px;
-        left: 12px;
-        right: 12px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        z-index: 15;
-        pointer-events: none;
-    }
-
-    /* 업로드 미디어 위 분석 오버레이 캔버스 */
-    .yolo-stage-box {
-        position: relative;
-        width: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    #yoloOverlayCanvas {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 12;
-    }
-
-    /* 3. 우측 현장 인식 현황 카드 */
-    .status-summary-card {
-        background: #ffffff;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 18px 18px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
-    }
-    .status-summary-card .card-label {
-        font-size: 0.82rem;
-        font-weight: 700;
-        color: #64748b;
-        margin-bottom: 6px;
-    }
-    .status-summary-card .card-value {
-        font-size: clamp(1.1rem, 2.5vw, 1.32rem);
-        font-weight: 800;
-        color: var(--shi-navy);
-        word-break: keep-all;
-    }
-
-    @media (max-width: 768px) {
-        #yardMap { height: 260px; }
-        .vision-player-wrapper { min-height: 260px; }
-        .status-summary-card { padding: 14px 14px; }
-    }
-</style>
+{% block title %}현장카메라 (Vision) | K-SmartShip{% endblock %}
+{% block page_context %}
+{"page_title": "현장카메라 (Vision)", "branch_code": "{{ selected_branch }}", "summary": "야드 {{ current_card.branch_name if current_card else selected_branch }}, 선박 {{ current_card.primary_ship if current_card else '-' }}, 블록 {{ current_card.primary_block if current_card else '-' }}, 단계 {{ current_card.stage_label if current_card else '-' }}"}
 {% endblock %}
 
 {% block content %}
-<section class="py-4" style="min-height: 92vh; padding-top: 92px !important; background-color: #f4f7fb;">
-    <div class="container">
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      {{ current_card.branch_name if current_card else selected_branch }}
+      <span class="fs-5 fw-semibold text-primary ms-2">
+        선박 {{ current_card.primary_ship if current_card else '-' }} · 블록 {{ current_card.primary_block if current_card else '-' }}
+      </span>
+    </h1>
+    <p class="page-desc">
+      야드의 현재 공정 단계(운반 중 / 작업 중)에 맞는 카메라가 자동 연결됩니다. 작업 중인 야드에서는 광역 CCTV와 로봇 시점을 전환할 수 있습니다.
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <select id="yard-select" class="form-select form-select-sm" style="width:240px;" onchange="location.href='/vision/?branch='+this.value">
+      {% for bc in branch_cards %}
+      <option value="{{ bc.branch_code }}" {% if bc.branch_code == selected_branch %}selected{% endif %}>
+        {{ bc.branch_name }} ({{ bc.stage_label }})
+      </option>
+      {% endfor %}
+    </select>
+    <a href="/service/yards" class="btn btn-outline-secondary btn-sm">작업현황 지도</a>
+  </div>
+</div>
 
-        <!-- =================================================================
-             1. 상단: 조선소 야드 및 협력사 위치 지도
-        ================================================================== -->
-        <div class="bg-white border rounded-4 p-3 p-md-4 mb-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-                <div>
-                    <span class="badge bg-primary mb-1">현장 위치 지도</span>
-                    <h4 class="fw-bold mb-0" style="color: var(--shi-navy);">
-                        🗺️ 조선소 야드 지부 및 협력사 위치 관제
-                    </h4>
-                    <p class="small text-secondary mb-0 mt-1">
-                        🔵 <strong>파란 핀(본사 야드)</strong>을 클릭하면 해당 공장으로 확대되며 아래 실시간 카메라가 연결됩니다.
-                        {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
-                            (🔴 <strong>빨간 핀</strong>: 계약 중인 외주 협력사)
-                        {% endif %}
-                    </p>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-pill" id="btnResetMapZoom">
-                        🗺️ 전체 지도 보기
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-1 rounded-pill" id="btnToggleMap">
-                        ↕ 지도 접기/펼치기
-                    </button>
-                </div>
-            </div>
-
-            <!-- 지부/업체 빠른 선택 바 -->
-            <div class="d-flex flex-wrap align-items-center gap-2 py-2 mb-2 border-top border-bottom small" id="mapQuickSelectBar">
-                <span class="fw-bold text-dark me-1">📍 현장 바로 선택:</span>
-                <span class="text-muted">위치 정보를 불러오는 중...</span>
-            </div>
-
-            <div id="yardMap"></div>
-        </div>
-
-
-        <!-- =================================================================
-             2. 중단: 실시간 현장 카메라 관제 + (캠 밑) 사진·영상 직접 분석
-        ================================================================== -->
-        <div class="bg-white border rounded-4 p-3 p-md-4 mb-4 shadow-sm" id="liveConsoleSection">
-            <div class="border-bottom pb-3 mb-3">
-                <!-- 1줄: 지부 배지 + 현장 카메라 관제 제목 (고정 분리) -->
-                <div class="mb-2">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <span class="badge bg-primary" id="branchCodeBadge">BR-ULSAN-01</span>
-                        <span class="badge bg-success" id="branchCamBadge">📹 CAM-ULS-BAY1</span>
-                    </div>
-                    <h4 class="fw-bold mb-0 text-break" style="color: var(--shi-navy);" id="branchTitleText">
-                        👁️ 울산 제1야드 (중조립 A동) 실시간 현장 카메라 관제
-                    </h4>
-                </div>
-
-                <!-- 2줄: 야드 카메라 선택 드롭다운 + 일시정지/복귀 제어 버튼 (항상 아랫줄 고정) -->
-                <div class="d-flex flex-wrap align-items-center gap-2 pt-1">
-                    <select id="visionCameraSelect" class="form-select form-select-sm fw-bold" style="width: auto; max-width: 100%;">
-                        {% for br in branches %}
-                        <option value="{{ br.branch_code }}"
-                                data-bname="{{ br.branch_name }}"
-                                data-cam="{{ br.camera_code or ('CAM-' ~ br.branch_code) }}"
-                                data-stream="{{ br.default_video or 'Test_1.mp4' }}">
-                            📹 {{ br.branch_name }} ({{ br.camera_code or br.branch_code }})
-                        </option>
-                        {% endfor %}
-                    </select>
-
-                    <button type="button" class="btn btn-warning btn-sm fw-bold px-3" id="btnPauseStream">
-                        ⏸️ 일시정지
-                    </button>
-
-                    <button type="button" class="btn btn-outline-dark btn-sm fw-bold px-3" id="btnReconnectStream">
-                        🔄 실시간 화면 복귀
-                    </button>
-                </div>
-            </div>
-
-            <!-- 3개 현장 관제 모드 전환 바 -->
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 p-2 px-3 mb-3 rounded-3 border bg-dark text-white small">
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-primary btn-sm fw-bold runpod-channel-btn" data-video="Test_1.mp4">
-                        🏗️ 1. 조립장 광역 CCTV
-                    </button>
-                    <button type="button" class="btn btn-outline-light btn-sm fw-bold runpod-channel-btn" data-video="ocr_test.mp4">
-                        🚛 2. 블록 번호 자동 인식
-                    </button>
-                    <button type="button" class="btn btn-outline-light btn-sm fw-bold runpod-channel-btn" data-video="seg_Test.mp4">
-                        🤖 3. 로봇 용접선 정밀 추적
-                    </button>
-                </div>
-                <div class="d-flex flex-wrap gap-3 align-items-center">
-                    <span>📡 <strong id="metaModelText" class="text-info">조립장 광역 감시 모드</strong></span>
-                    <span>🔎 <strong id="metaTargetText" class="text-warning">인식 대기 중...</strong></span>
-                </div>
-            </div>
-
-            <!-- 메인 카메라 화면(좌) + 실시간 인식 현황(우) -->
-            <div class="row g-4 align-items-stretch">
-                <!-- 좌측 8칸: 실시간 카메라 스트림 & 업로드 분석 뷰어 -->
-                <div class="col-lg-8">
-                    <div class="vision-player-wrapper h-100" id="visionStageWrapper">
-                        <div class="live-badge-bar">
-                            <span class="badge bg-danger px-3 py-2" id="liveStatusPill">● 실시간 중계</span>
-                            <span class="badge bg-dark px-3 py-2" id="camNameBadge">CAM-ULS-BAY1</span>
-                            <span class="badge bg-primary px-3 py-2 d-none" id="yoloInferenceBadge">분석 완료</span>
-                        </div>
-
-                        <!-- 1) 기본 실시간 스트리밍 이미지 -->
-                        <img src="/vision/video_feed" id="liveStreamImg" alt="실시간 현장 카메라 화면"
-                             onerror="this.style.display='none'; document.getElementById('streamOfflineBox').classList.remove('d-none');">
-
-                        <!-- 2) 사진/영상 업로드 시 활성화되는 분석 뷰어 -->
-                        <div id="uploadedMediaStage" class="yolo-stage-box d-none">
-                            <img id="uploadedPreviewImg" class="d-none" alt="업로드 사진 분석 결과">
-                            <video id="uploadedPreviewVideo" class="d-none" controls playsinline muted loop></video>
-                            <canvas id="yoloOverlayCanvas"></canvas>
-                        </div>
-
-                        <!-- 3) 연결 대기 안내 박스 -->
-                        <div id="streamOfflineBox" class="text-center text-white-50 p-4 d-none">
-                            <div class="fs-1 mb-2">📡</div>
-                            <h5 class="text-white fw-bold">현장 카메라 연결 대기 중</h5>
-                            <p class="small mb-0">상단의 [🔄 실시간 화면 복귀]를 누르거나 아래에서 현장 사진·영상을 직접 올려 분석해 보세요.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 우측 4칸: 현장 인식 현황 요약 카드 -->
-                <div class="col-lg-4 d-flex flex-column justify-content-between">
-                    <div>
-                        <div class="status-summary-card">
-                            <div class="card-label">용접선 추적 · 블록 번호 인식 현황</div>
-                            <div class="card-value text-primary" id="jointStatusText">탐색 대기 중...</div>
-                            <div class="small text-secondary mt-2 text-break" id="jointSubText">
-                                화면에 용접 이음부나 블록 번호가 포착되면 자동으로 기록됩니다.
-                            </div>
-                        </div>
-
-                        <div class="status-summary-card mb-0">
-                            <div class="card-label">현재 화면 객체 인식 현황</div>
-                            <div class="card-value text-dark" id="objCountText">0개 대상 인식</div>
-                            <div class="small text-secondary mt-2 text-break" id="detectedObjectsText">
-                                인식된 대상: 대기 중
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid gap-2 mt-3">
-                        <button type="button" class="btn btn-shi-primary fw-bold py-2" id="btnManualSaveDb">
-                            📸 현재 화면 기록으로 저장하기
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ⭐ [캠 밑으로 이동] 현장 사진·영상 직접 올려서 분석하기 -->
-            <form id="yoloUploadForm" enctype="multipart/form-data" class="bg-light border rounded-4 p-3 mt-4 position-relative">
-                <div id="visionLiveStageBanner" class="d-none mb-3 p-3 rounded-3 border border-primary bg-white shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
-                            <strong class="text-primary" id="visionStageBadgeText">📹 [1/2단계: 파일 확인 중]</strong>
-                            <span class="small fw-bold text-dark" id="visionStageDetailText">업로드한 현장 사진·영상을 불러오고 있습니다...</span>
-                        </div>
-                        <span class="badge bg-warning text-dark">🔒 분석 완료 시까지 잠시 대기</span>
-                    </div>
-                    <div class="progress" style="height: 10px;">
-                        <div id="visionStageProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                             role="progressbar" style="width: 35%;"></div>
-                    </div>
-                </div>
-
-                <fieldset id="visionUploadFieldset">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-lg-3 col-md-12">
-                            <span class="badge bg-primary me-1">직접 분석</span>
-                            <strong class="small text-dark">현장 사진·영상 분석기</strong>
-                            <div class="text-muted" style="font-size: 0.74rem;">
-                                촬영한 사진(JPG, PNG)이나 영상(MP4, MOV)을 올리면 용접선과 블록을 자동 분석합니다.
-                            </div>
-                        </div>
-                        <div class="col-lg-5 col-md-7 col-sm-12">
-                            <input type="file" name="media_file" id="yoloMediaInput" class="form-control form-control-sm"
-                                   accept="image/*,video/mp4,video/quicktime,video/x-msvideo,video/webm" required>
-                        </div>
-                        <div class="col-lg-2 col-md-2 col-6">
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" id="chkAutoSaveUpload" name="auto_save" value="Y" checked>
-                                <label class="form-check-label small fw-bold" for="chkAutoSaveUpload">자동 기록</label>
-                            </div>
-                        </div>
-                        <div class="col-lg-2 col-md-3 col-6 d-grid">
-                            <button type="submit" class="btn btn-shi-primary btn-sm fw-bold py-2" id="btnRunYoloUpload">
-                                🔍 화면 분석하기
-                            </button>
-                        </div>
-                    </div>
-                </fieldset>
-            </form>
-        </div>
-
-
-        <!-- =================================================================
-             3. 하단: 현장 카메라 분석 기록 (검색 · 페이지네이션 · OCR 문자 표시)
-        ================================================================== -->
-        <div class="bg-white border rounded-4 p-3 p-md-4 shadow-sm">
-            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                <div>
-                    <span class="badge bg-dark me-1">현장 기록</span>
-                    <strong class="fs-5" style="color: var(--shi-navy);">📋 용접선 · 블록 인식 기록</strong>
-                    <span class="small text-secondary ms-2">
-                        총 <strong class="text-primary" id="recordTotalCount">{{ initial_records.total_count }}</strong>건
-                    </span>
-                </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" id="btnRefreshDb">
-                    🔄 새로고침
-                </button>
-            </div>
-
-            <!-- 카메라 · 촬영일 · 키워드 검색 바 -->
-            <div class="bg-light border rounded-3 p-3 mb-3">
-                <div class="row g-2 align-items-end">
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <label class="form-label small fw-bold mb-1 text-secondary">📹 카메라 채널</label>
-                        <select id="logCameraFilter" class="form-select form-select-sm">
-                            <option value="ALL">전체 카메라</option>
-                            {% for cam in initial_records.camera_options or [] %}
-                            <option value="{{ cam }}">{{ cam }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-lg-3 col-md-4 col-sm-6">
-                        <label class="form-label small fw-bold mb-1 text-secondary">📅 촬영 날짜</label>
-                        <input type="date" id="logDateFilter" class="form-control form-control-sm">
-                    </div>
-                    <div class="col-lg-4 col-md-4 col-sm-12">
-                        <label class="form-label small fw-bold mb-1 text-secondary">🔍 검색어</label>
-                        <input type="text" id="logKeywordInput" class="form-control form-control-sm"
-                               placeholder="기록번호 · 블록번호(문자) · 인식 대상">
-                    </div>
-                    <div class="col-lg-2 col-md-12 col-sm-12 d-flex gap-1">
-                        <button type="button" id="btnLogSearch" class="btn btn-shi-primary btn-sm fw-bold flex-grow-1">
-                            검색
-                        </button>
-                        <button type="button" id="btnLogReset" class="btn btn-outline-secondary btn-sm">
-                            초기화
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle small mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>기록 번호</th>
-                            <th>촬영 카메라</th>
-                            <th>인식된 대상</th>
-                            <th>인식된 문자 (블록 번호)</th>
-                            <th>용접선 시작점 ➔ 끝점</th>
-                            <th>촬영 일시</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dbUnifiedTbody">
-                        {% for i in initial_records.inspections %}
-                        <tr>
-                            <td class="fw-bold text-primary">기록 #{{ i.inspection_id }}</td>
-                            <td>{{ i.camera_code }}</td>
-                            <td class="text-break">{{ i.detected_objects_str }}</td>
-                            <td>
-                                {% if i.ocr_text and i.ocr_text != '-' %}
-                                <span class="badge bg-info text-dark fw-bold">{{ i.ocr_text }}</span>
-                                {% else %}
-                                <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td class="font-monospace">{{ i.start_point }} ➔ {{ i.end_point }}</td>
-                            <td class="text-secondary fw-semibold utc-time">{{ i.created_at }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">기록된 현장 분석 내역이 없습니다.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 페이지네이션 -->
-            <nav class="mt-3 d-flex justify-content-center">
-                <ul class="pagination pagination-sm mb-0" id="visionLogPagination"></ul>
-            </nav>
-        </div>
-
+<!-- 1. 작업 단계 2단 표시등 (해당되는 상태만 불이 들어오고 나머지는 비활성화) -->
+<div class="stage-grid">
+  <div class="stage-box {% if selected_stage == 'TRANSPORT' %}active{% endif %}">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="fw-bold" style="font-size:16px;">1단계 · 운반 중</span>
+      <span class="status-chip {{ 'status-info' if selected_stage == 'TRANSPORT' else 'status-muted' }}">
+        {{ '현재 활성' if selected_stage == 'TRANSPORT' else '비활성' }}
+      </span>
     </div>
-</section>
+    <div class="small">작업 시작 전 블록 번호(OCR)를 탐지해 목표 선박·블록과 일치하는지 확인합니다.</div>
+  </div>
+
+  <div class="stage-box {% if selected_stage == 'WORKING' %}active{% endif %}">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="fw-bold" style="font-size:16px;">2단계 · 작업 중</span>
+      <span class="status-chip {{ 'status-ok' if selected_stage == 'WORKING' else 'status-muted' }}">
+        {{ '현재 활성' if selected_stage == 'WORKING' else '비활성' }}
+      </span>
+    </div>
+    <div class="small">광역 CCTV(작업자·적재물·크레인 탐지)와 로봇 시점(용접선 디텍팅)을 전환해 모니터링합니다.</div>
+  </div>
+</div>
+
+<!-- 2. 메인 영상 + 우측 인식 결과 패널 -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+          <span id="stream-mode-label" class="fw-bold" style="color:#0b1f3a;">
+            {% if selected_stage == 'TRANSPORT' %}
+              운반 단계 CCTV · 블록 번호 OCR 탐지 ({{ current_card.ocr_video if current_card else '' }})
+            {% else %}
+              작업 중 광역 CCTV · 사람·적재물·크레인 탐지 ({{ current_card.cctv_video if current_card else '' }})
+            {% endif %}
+          </span>
+          <span id="stream-status-chip" class="status-chip status-info ms-2">연결 확인 중</span>
+        </div>
+
+        <div class="d-flex gap-2">
+          {% if selected_stage == 'WORKING' %}
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" id="btn-view-cctv" class="btn btn-primary">광역 CCTV</button>
+            <button type="button" id="btn-view-robot" class="btn btn-outline-primary">로봇 시점 (용접선 탐지)</button>
+          </div>
+          {% endif %}
+          <button type="button" id="btn-toggle-pause" class="btn btn-outline-secondary btn-sm">일시정지</button>
+        </div>
+      </div>
+
+      <div class="bg-dark rounded overflow-hidden position-relative text-center" style="min-height:420px;">
+        <img id="live-video-img" src="/vision/video_feed" class="img-fluid w-100" style="max-height:500px;object-fit:contain;" alt="현장 실시간 영상">
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="panel-card h-100 mb-0 d-flex flex-column justify-content-between">
+      <div>
+        <h2 class="panel-title mb-3">실시간 인식 결과</h2>
+
+        <div class="p-3 bg-light border rounded mb-3 small">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">목표 선박 / 블록</span>
+            <strong>{{ current_card.primary_ship if current_card else '-' }} / {{ current_card.primary_block if current_card else '-' }}</strong>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">카메라 채널</span>
+            <span>{{ current_card.camera_code if current_card else '-' }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">인식된 블록 번호(OCR)</span>
+            <strong id="det-ocr-text" class="text-primary">탐지 대기 중</strong>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="small fw-bold text-secondary mb-2">현재 화면 탐지 객체</div>
+          <div id="det-object-list" class="small text-muted border rounded p-3 bg-white" style="min-height:110px;">
+            실시간 탐지 데이터를 수신하는 중입니다...
+          </div>
+        </div>
+
+        <!-- 로봇·안전 상태 (ROS2 확장 대비) -->
+        {% if robots %}
+        {% set rb = robots[0] %}
+        <div class="border rounded p-3 mb-3 small">
+          <div class="fw-bold mb-2">로봇 · 안전 상태</div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">대상 로봇</span><span>{{ rb.robot_name }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">ROS2 연결 / 비상정지</span>
+            <span>{{ rb.ros2_node_status }} / {{ '작동' if rb.emergency_stop_yn == 'Y' else '해제' }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">배터리 / 상태</span>
+            <span>{{ rb.battery_percent }}% · {{ rb.robot_status }}</span>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="d-grid gap-2">
+        <button type="button" id="btn-save-snapshot" class="btn btn-dark btn-sm py-2">
+          현재 탐지 상태 기록 저장 (중복 방지)
+        </button>
+        <button type="button" class="btn btn-primary btn-sm py-2"
+                onclick="openAssistantWithPrompt('{{ current_card.branch_name if current_card else selected_branch }} 선박 {{ current_card.primary_ship if current_card else '' }} 블록 {{ current_card.primary_block if current_card else '' }}의 현재 현장 카메라 탐지 결과와 사내 규정을 반영해 용접 작업지시서 초안을 작성해줘.')">
+          AI 작업지시서 초안 생성
+        </button>
+        <div id="snapshot-feedback" class="small text-center text-success"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 최근 탐지 기록 요약 -->
+<div class="panel-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="panel-title">최근 현장 탐지 기록</h2>
+    <a href="/service/history?tab=vision&branch={{ selected_branch }}" class="small text-decoration-none fw-semibold">전체 야드별 용접선 이력 보기 →</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-enterprise table-sm align-middle">
+      <thead>
+        <tr>
+          <th>기록 ID</th>
+          <th>카메라</th>
+          <th>블록 OCR</th>
+          <th>탐지 요약</th>
+          <th>상태</th>
+          <th>기록 일시</th>
+        </tr>
+      </thead>
+      <tbody id="recent-vision-tbody">
+        {% for rec in initial_records.get('inspections', []) %}
+        <tr>
+          <td>#{{ rec.inspection_id }}</td>
+          <td class="small">{{ rec.camera_code }}</td>
+          <td><code>{{ rec.ocr_text or '-' }}</code></td>
+          <td class="small">{{ rec.detected_objects_str or '-' }}</td>
+          <td><span class="status-chip status-info">{{ rec.inspection_status }}</span></td>
+          <td class="small text-muted">{{ rec.created_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">저장된 현장 탐지 기록이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
 
-{% block extra_scripts %}
+{% block extra_js %}
 <script>
-/* global $, L */
-$(document).ready(function() {
-    let latestDetectionPayload = null;
-    let savedTrackerKeys = new Set();
-    let savedOcrKeys = new Set();
-    let currentCameraCode = 'CAM-ULS-BAY1';
-    let currentStreamKey = 'Test_1.mp4';
-    let isStreamPaused = false;
-    let isUploadMode = false;
-    let pollTimer = null;
+$(function () {
+  var activeStage = '{{ selected_stage }}';
+  var ocrVideo = {{ (current_card.ocr_video if current_card else '') | tojson }};
+  var cctvVideo = {{ (current_card.cctv_video if current_card else '') | tojson }};
+  var robotVideo = {{ (current_card.robot_video if current_card else '') | tojson }};
+  var currentVideo = activeStage === 'TRANSPORT' ? ocrVideo : cctvVideo;
+  var latestDetection = null;
 
-    // 하단 기록 검색 & 페이지네이션 상태
-    let currentLogPage = 1;
-    let currentLogCamera = 'ALL';
-    let currentLogDate = '';
-    let currentLogKeyword = '';
-    const initialRecordsPayload = {{ initial_records | tojson | safe }};
+  // 전역 컨텍스트 자동 동기화
+  window.ShipContext.set({
+    branch_code: '{{ selected_branch }}',
+    branch_name: '{{ current_card.branch_name if current_card else selected_branch }}',
+    ship_code: '{{ current_card.primary_ship if current_card else "" }}',
+    block_id: '{{ current_card.primary_block if current_card else "" }}'
+  });
 
-    const CLASS_LABEL_KO = {
-        weld_joint: '용접선',
-        weld_bead: '용접비드',
-        ship_block: '선박블록',
-        block: '선박블록',
-        crane_hook: '크레인후크',
-        hook: '크레인후크',
-        heavy_equipment: '중장비',
-        robot: '용접로봇',
-        worker: '작업자',
-        torch: '용접토치',
-        hand: '작업자손',
-        spark: '용접불꽃'
-    };
-
-    const RUNPOD_CHANNEL_META = {
-        "Test_1.mp4": { model: "조립장 광역 감시 모드", btnClass: "btn-primary" },
-        "ocr_test.mp4": { model: "블록 번호 자동 인식 모드", btnClass: "btn-info text-dark" },
-        "seg_Test.mp4": { model: "로봇 용접선 정밀 추적 모드", btnClass: "btn-success" }
-    };
-
-    $(window).on('beforeunload pagehide', function() {
-        if (pollTimer) clearInterval(pollTimer);
-        $('#liveStreamImg').attr('src', '');
+  function switchVideo(filename, labelText) {
+    currentVideo = filename;
+    $('#stream-mode-label').text(labelText);
+    $.get('/vision/change_video/' + encodeURIComponent(filename), function () {
+      $('#live-video-img').attr('src', '/vision/video_feed?t=' + Date.now());
     });
+  }
 
-    // 1. 한반도 야드 위치 지도 초기화
-    const koreaBounds = L.latLngBounds(L.latLng(32.5, 124.0), L.latLng(39.0, 132.5));
-    const map = L.map('yardMap', {
-        center: [35.38, 129.10],
-        zoom: 8,
-        minZoom: 7,
-        maxZoom: 18,
-        maxBounds: koreaBounds,
-        maxBoundsViscosity: 1.0,
-        worldCopyJump: false
+  // 페이지 진입 시 야드 단계에 맞는 초기 동영상 자동 연결
+  switchVideo(
+    currentVideo,
+    activeStage === 'TRANSPORT'
+      ? '운반 단계 CCTV · 블록 번호 OCR 탐지 ({{ current_card.ocr_video if current_card else '' }})'
+      : '작업 중 광역 CCTV · 사람·적재물·크레인 탐지 ({{ current_card.cctv_video if current_card else '' }})'
+  );
+
+  // 작업 중 야드 전용: 광역 CCTV ↔ 로봇 시점 전환
+  $('#btn-view-cctv').on('click', function () {
+    $(this).removeClass('btn-outline-primary').addClass('btn-primary');
+    $('#btn-view-robot').removeClass('btn-primary').addClass('btn-outline-primary');
+    switchVideo('Test_1.mp4', '작업 중 광역 CCTV · 사람·적재물·크레인 탐지 ({{ current_card.cctv_video if current_card else '' }})');
+  });
+
+  $('#btn-view-robot').on('click', function () {
+    $(this).removeClass('btn-outline-primary').addClass('btn-primary');
+    $('#btn-view-cctv').removeClass('btn-primary').addClass('btn-outline-primary');
+    switchVideo(robotVideo, '로봇 시점 · 실시간 용접선(Weld Joint) 디텍팅 (' + robotVideo + ')');
+  });
+
+  $('#btn-toggle-pause').on('click', function () {
+    var $b = $(this);
+    $.getJSON('/vision/pause', function (res) {
+      $b.text(res.is_paused ? '재생 재개' : '일시정지');
     });
+  });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        noWrap: true,
-        bounds: koreaBounds,
-        attribution: '&copy; OpenStreetMap'
-    }).addTo(map);
+  // 실시간 탐지 JSON 폴링 (2초 간격)
+  function pollDetections() {
+    $.getJSON('/vision/detections', function (res) {
+      latestDetection = res;
+      if (res.source === 'LIVE') {
+        $('#stream-status-chip').attr('class', 'status-chip status-ok ms-2').text('실시간 수신 중');
+      } else {
+        $('#stream-status-chip').attr('class', 'status-chip status-muted ms-2').text('스트림 대기');
+      }
+      var preds = res.predictions || [];
+      if (!preds.length) {
+        $('#det-object-list').text('현재 프레임에 탐지된 객체가 없습니다.');
+        return;
+      }
+      var counts = {};
+      var ocrFound = '';
+      $.each(preds, function (_, p) {
+        var cls = p.class || 'object';
+        counts[cls] = (counts[cls] || 0) + 1;
+        if (p.ocr_text) ocrFound = p.ocr_text;
+      });
+      if (ocrFound) $('#det-ocr-text').text(ocrFound);
 
-    function syncChannelButtonUI(filename) {
-        const meta = RUNPOD_CHANNEL_META[filename] || RUNPOD_CHANNEL_META["Test_1.mp4"];
-        $('.runpod-channel-btn')
-            .removeClass('btn-primary btn-info btn-success text-dark')
-            .addClass('btn-outline-light');
-        const $targetBtn = $(`.runpod-channel-btn[data-video="${filename}"]`);
-        if ($targetBtn.length) {
-            $targetBtn.removeClass('btn-outline-light').addClass(meta.btnClass);
-        }
-        $('#metaModelText').text(meta.model);
-    }
-
-    function reconnectVideoStream() {
-        isStreamPaused = false;
-        isUploadMode = false;
-        $('#uploadedMediaStage').addClass('d-none');
-        $('#uploadedPreviewVideo')[0].pause();
-        $('#yoloInferenceBadge').addClass('d-none');
-
-        $('#btnPauseStream').text('⏸️ 일시정지').removeClass('btn-success').addClass('btn-warning');
-        $('#liveStatusPill').removeClass('bg-secondary bg-primary').addClass('bg-danger').text('● 실시간 중계');
-        $('#streamOfflineBox').addClass('d-none');
-        $('#liveStreamImg').attr('src', '');
-        setTimeout(function() {
-            $('#liveStreamImg').attr('src', '/vision/video_feed?t=' + Date.now()).show();
-        }, 120);
-    }
-
-    function switchYardCamera(b) {
-        currentCameraCode = b.camera_code;
-        currentStreamKey = b.default_video || 'Test_1.mp4';
-        savedTrackerKeys.clear();
-        savedOcrKeys.clear();
-
-        $('#branchCodeBadge').text(b.branch_code);
-        $('#branchCamBadge').text(`📹 ${b.camera_code}`);
-        $('#branchTitleText').text(`👁️ ${b.branch_name} 실시간 현장 카메라 관제`);
-        $('#camNameBadge').text(b.camera_code);
-        $('#visionCameraSelect').val(b.branch_code);
-        syncChannelButtonUI(currentStreamKey);
-        $('#metaTargetText').text('화면 전환 중...');
-
-        $.getJSON('/vision/change_video/' + encodeURIComponent(currentStreamKey), function() {
-            reconnectVideoStream();
-        });
-    }
-
-    // 3개 관제 모드 버튼 클릭
-    $('.runpod-channel-btn').on('click', function() {
-        const filename = $(this).data('video');
-        currentStreamKey = filename;
-        savedTrackerKeys.clear();
-        savedOcrKeys.clear();
-        syncChannelButtonUI(filename);
-        $('#metaTargetText').text('화면 전환 중...');
-
-        $.getJSON('/vision/change_video/' + encodeURIComponent(filename), function(res) {
-            if (res && res.status === 'success') {
-                reconnectVideoStream();
-            }
-        });
+      var rows = [];
+      $.each(counts, function (k, v) {
+        rows.push('<div class="d-flex justify-content-between py-1 border-bottom"><span>' + k + '</span><strong>' + v + '건</strong></div>');
+      });
+      $('#det-object-list').html(rows.join(''));
     });
+  }
+  pollDetections();
+  setInterval(pollDetections, 2000);
 
-    $.getJSON('/vision/api/map-markers', function(res) {
-        if (res.status !== 'SUCCESS') return;
-
-        const quickBar = $('#mapQuickSelectBar');
-        quickBar.html('<span class="fw-bold text-dark me-1">📍 현장 바로 선택:</span>');
-
-        res.hq_branches.forEach(b => {
-            const hqIcon = L.divIcon({
-                className: '',
-                html: `<div class="pin-hq">🏭</div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
-
-            const m = L.marker([b.lat, b.lng], { icon: hqIcon, zIndexOffset: 1000 }).addTo(map);
-            m.bindTooltip(`
-                <div class="p-1">
-                    <span class="badge bg-primary mb-1">본사 야드 (${b.branch_code})</span>
-                    <div class="fw-bold text-dark">${b.branch_name}</div>
-                    <div class="small text-secondary">${b.address}</div>
-                    <div class="small fw-bold text-primary mt-1">👉 클릭 시 확대 및 실시간 카메라 연결</div>
-                </div>
-            `, { direction: 'top', offset: [0, -14] });
-
-            m.on('click', function() {
-                map.flyTo([b.lat, b.lng], 14, { duration: 0.6 });
-                switchYardCamera(b);
-            });
-
-            const btn = $(`<button type="button" class="btn btn-primary btn-sm py-0 px-2 rounded-pill">🏭 ${b.branch_name}</button>`);
-            btn.on('click', function() {
-                map.flyTo([b.lat, b.lng], 14, { duration: 0.6 });
-                m.openTooltip();
-                switchYardCamera(b);
-            });
-            quickBar.append(btn);
-        });
-
-        if (res.can_see_partners && res.partners) {
-            res.partners.forEach(p => {
-                const partnerIcon = L.divIcon({
-                    className: '',
-                    html: `<div class="pin-partner">외</div>`,
-                    iconSize: [22, 22],
-                    iconAnchor: [11, 11]
-                });
-
-                const pm = L.marker([p.lat, p.lng], { icon: partnerIcon, zIndexOffset: 500 }).addTo(map);
-                const tooltipHtml = `
-                    <div class="p-1" style="min-width: 210px;">
-                        <span class="badge bg-danger mb-1">계약중 협력사 (${p.company_code})</span>
-                        <div class="fw-bold text-dark">${p.company_name}</div>
-                        <div class="small text-secondary">${p.company_type} · 대표: ${p.representative}</div>
-                        <div class="small text-muted">📍 ${p.address || ''}</div>
-                        <div class="border-top pt-1 mt-1">
-                            <div class="small text-primary fw-bold">📅 계약기간: ${p.contract_period}</div>
-                            <div class="small text-success fw-semibold">📦 ${p.shared_b2b_resources || ''}</div>
-                        </div>
-                    </div>
-                `;
-                pm.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -10] });
-                pm.on('click', function() {
-                    map.flyTo([p.lat, p.lng], 14, { duration: 0.6 });
-                    pm.openTooltip();
-                });
-
-                const pBtn = $(`<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 rounded-pill">🔴 ${p.company_name}</button>`);
-                pBtn.on('click', function() {
-                    map.flyTo([p.lat, p.lng], 14, { duration: 0.6 });
-                    pm.openTooltip();
-                });
-                quickBar.append(pBtn);
-            });
-        }
+  // 수동 기록 저장 (기존 /vision/api/save-snapshot 연동)
+  $('#btn-save-snapshot').on('click', function () {
+    $('#snapshot-feedback').text('기록을 저장하는 중...');
+    $.ajax({
+      url: '/vision/api/save-snapshot',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        work_id: {{ current_card.primary_work_id if current_card else 1 }},
+        camera_code: {{ (current_card.camera_code if current_card else "") | tojson }},
+        video_name: currentVideo,
+        auto_mode: false,
+        detection_data: latestDetection || {}
+      }),
+      success: function (res) {
+        $('#snapshot-feedback').text(res.message || '기록이 저장되었습니다.');
+      },
+      error: function () {
+        $('#snapshot-feedback').text('저장 중 오류가 발생했습니다.');
+      }
     });
-
-    $('#visionCameraSelect').on('change', function() {
-        const opt = $(this).find('option:selected');
-        switchYardCamera({
-            branch_code: opt.val(),
-            branch_name: opt.data('bname'),
-            camera_code: opt.data('cam'),
-            default_video: opt.data('stream')
-        });
-    });
-
-    $('#btnResetMapZoom').on('click', function() {
-        map.flyTo([35.38, 129.10], 8, { duration: 0.5 });
-    });
-
-    $('#btnToggleMap').on('click', function() {
-        $('#yardMap').toggleClass('minimized');
-        setTimeout(() => map.invalidateSize(), 320);
-    });
-
-    // 2. 우측 현장 인식 현황 업데이트 + 용접선/블록번호 자동 기록(중복 방지)
-    function updateReadableStatus(data, fromUpload = false) {
-        latestDetectionPayload = data;
-        const preds = data.predictions || [];
-        $('#objCountText').text(`${preds.length}개 대상 인식`);
-
-        if (preds.length === 0) {
-            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('탐색 대기 중...');
-            $('#detectedObjectsText').text('현재 화면에 인식된 대상이 없습니다.');
-            $('#metaTargetText').text('인식 대상 없음');
-            return;
-        }
-
-        const joints = preds.filter(p => p.class === 'weld_joint');
-        const ocrObj = preds.find(p => p.block_id && p.block_id !== 'Scanning...');
-        const summaryNames = preds.map(p => {
-            const ko = CLASS_LABEL_KO[String(p.class || '').toLowerCase()] || p.class;
-            return `${ko}(${Math.round((p.confidence || 0) * 100)}%)`;
-        }).slice(0, 6).join(', ');
-        $('#detectedObjectsText').text(`인식됨: ${summaryNames}`);
-
-        if (ocrObj) {
-            $('#metaTargetText').text(`블록 번호 인식: ${ocrObj.block_id}`);
-            $('#jointStatusText').removeClass('text-secondary').addClass('text-primary')
-                .text(`🚛 블록 번호: ${ocrObj.block_id}`);
-            $('#jointSubText').text(`문자 인식 정확도 ${Math.round((ocrObj.confidence || 0) * 100)}% · 실시간 추적 중`);
-
-            const ocrKey = `${currentCameraCode}::${ocrObj.block_id}`;
-            if (!fromUpload && !savedOcrKeys.has(ocrKey)) {
-                savedOcrKeys.add(ocrKey);
-                saveSnapshotToDb(true);
-            }
-        } else if (joints.length > 0) {
-            const j0 = joints[0];
-            const wp = j0.centerline_waypoints || [];
-            $('#metaTargetText').text(wp.length > 0 ? `용접선 경로 포착 (${wp.length}개 지점)` : '용접선 추적 중');
-            $('#jointStatusText').removeClass('text-secondary').addClass('text-primary')
-                .text(`✅ 용접선 ${joints.length}건 포착됨 (추적 #${j0.tracker_id || 1})`);
-            if (wp.length >= 2) {
-                $('#jointSubText').text(`시작점 [${wp[0]}] ➔ 끝점 [${wp[wp.length - 1]}]`);
-            }
-            const trkKey = `${currentCameraCode}::${j0.tracker_id}`;
-            if (!fromUpload && j0.tracker_id !== undefined && j0.tracker_id !== null && !savedTrackerKeys.has(trkKey)) {
-                savedTrackerKeys.add(trkKey);
-                saveSnapshotToDb(true);
-            }
-        } else {
-            $('#metaTargetText').text(`현장 대상 ${preds.length}개 추적 중`);
-            $('#jointStatusText').removeClass('text-primary').addClass('text-secondary').text('현장 광역 감시 중');
-            $('#jointSubText').text(`총 ${preds.length}개 대상을 실시간으로 추적하고 있습니다.`);
-        }
-    }
-
-    // 3. 업로드된 사진/영상 위 분석 결과 오버레이
-    function drawYoloOverlay(detectionData) {
-        const canvas = document.getElementById('yoloOverlayCanvas');
-        const stage = document.getElementById('uploadedMediaStage');
-        if (!canvas || !stage || !detectionData) return;
-
-        const rect = stage.getBoundingClientRect();
-        if (rect.width < 10 || rect.height < 10) return;
-
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const imgMeta = detectionData.image || { width: 960, height: 540 };
-        const srcW = imgMeta.width || 960;
-        const srcH = imgMeta.height || 540;
-        const scaleX = canvas.width / srcW;
-        const scaleY = canvas.height / srcH;
-
-        const preds = detectionData.predictions || [];
-        preds.forEach(p => {
-            const cls = String(p.class || 'object');
-            const ko = CLASS_LABEL_KO[cls.toLowerCase()] || cls;
-            const conf = Math.round((p.confidence || 0) * 100);
-            const box = p.box || {};
-            let bx = (box.x - box.width / 2) * scaleX;
-            let by = (box.y - box.height / 2) * scaleY;
-            let bw = box.width * scaleX;
-            let bh = box.height * scaleY;
-
-            bx = Math.max(4, Math.min(bx, canvas.width - 60));
-            by = Math.max(22, Math.min(by, canvas.height - 40));
-            bw = Math.min(bw, canvas.width - bx - 4);
-            bh = Math.min(bh, canvas.height - by - 4);
-
-            const color = (cls === 'weld_joint')
-                ? '#00ff88'
-                : ((cls === 'block' || cls === 'ship_block') ? '#38bdf8' : '#facc15');
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;
-            ctx.strokeRect(bx, by, bw, bh);
-
-            const label = `${ko} (${conf}%)`;
-            ctx.font = 'bold 12px Pretendard, sans-serif';
-            const textW = ctx.measureText(label).width + 10;
-            ctx.fillStyle = color;
-            ctx.fillRect(bx, Math.max(0, by - 20), textW, 20);
-            ctx.fillStyle = '#0f172a';
-            ctx.fillText(label, bx + 5, Math.max(14, by - 6));
-
-            if (cls === 'weld_joint' && Array.isArray(p.centerline_waypoints) && p.centerline_waypoints.length >= 2) {
-                const pts = p.centerline_waypoints;
-                ctx.beginPath();
-                pts.forEach((pt, idx) => {
-                    const px = Math.min(canvas.width - 6, Math.max(6, pt[0] * scaleX));
-                    const py = Math.min(canvas.height - 6, Math.max(6, pt[1] * scaleY));
-                    if (idx === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
-                });
-                ctx.strokeStyle = '#ff2a85';
-                ctx.lineWidth = 3.5;
-                ctx.stroke();
-
-                const sPt = pts[0];
-                const ePt = pts[pts.length - 1];
-                [
-                    { pt: sPt, c: '#22c55e' },
-                    { pt: ePt, c: '#ef4444' }
-                ].forEach(node => {
-                    const nx = Math.min(canvas.width - 10, Math.max(10, node.pt[0] * scaleX));
-                    const ny = Math.min(canvas.height - 10, Math.max(10, node.pt[1] * scaleY));
-                    ctx.beginPath();
-                    ctx.arc(nx, ny, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = node.c;
-                    ctx.fill();
-                    ctx.strokeStyle = '#ffffff';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                });
-            }
-        });
-    }
-
-    $(window).on('resize', function() {
-        if (isUploadMode && latestDetectionPayload) {
-            drawYoloOverlay(latestDetectionPayload);
-        }
-    });
-
-    // 4. 사진/영상 직접 업로드 분석 핸들러
-    $('#yoloUploadForm').on('submit', function(e) {
-        e.preventDefault();
-        const fileInput = $('#yoloMediaInput')[0];
-        if (!fileInput.files || !fileInput.files.length) {
-            alert('분석할 사진 또는 영상 파일을 선택해 주세요.');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('media_file', fileInput.files[0]);
-        formData.append('camera_code', currentCameraCode || 'CAM-UPLOAD');
-        formData.append('work_id', 1);
-        formData.append('auto_save', $('#chkAutoSaveUpload').is(':checked') ? 'Y' : 'N');
-
-        const btn = $('#btnRunYoloUpload');
-        const origTxt = btn.text();
-        const stageBanner = $('#visionLiveStageBanner');
-        $('#visionUploadFieldset').prop('disabled', true);
-        btn.prop('disabled', true).text('⏳ 분석 중...');
-
-        stageBanner.removeClass('d-none');
-        $('#visionStageBadgeText').text('📹 [1/2단계: 파일 불러오기]');
-        $('#visionStageDetailText').text('업로드한 현장 사진·영상을 확인하고 있습니다...');
-        $('#visionStageProgressBar').css('width', '40%');
-
-        const stageTimer = setTimeout(function() {
-            $('#visionStageBadgeText').text('🔍 [2/2단계: 용접선 · 블록 자동 분석]');
-            $('#visionStageDetailText').text('화면 내 용접선 경로와 주요 대상을 분석하여 기록하고 있습니다...');
-            $('#visionStageProgressBar').css('width', '85%');
-        }, 450);
-
-        $.ajax({
-            url: '/vision/api/upload-yolo',
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(res) {
-                clearTimeout(stageTimer);
-                $('#visionUploadFieldset').prop('disabled', false);
-                btn.prop('disabled', false).text(origTxt);
-                stageBanner.addClass('d-none');
-                if (res.status !== 'SUCCESS') {
-                    alert(res.message || '분석 중 오류가 발생했습니다.');
-                    return;
-                }
-
-                isUploadMode = true;
-                isStreamPaused = true;
-                $('#liveStreamImg').attr('src', '').hide();
-                $('#streamOfflineBox').addClass('d-none');
-                $('#uploadedMediaStage').removeClass('d-none');
-
-                $('#liveStatusPill').removeClass('bg-danger bg-secondary').addClass('bg-primary')
-                    .text(`📁 파일 분석 (${res.media_type === 'IMAGE' ? '사진' : '영상'})`);
-                $('#yoloInferenceBadge').removeClass('d-none')
-                    .text(`✅ 분석 완료 (${res.inference_time_ms}ms)`);
-
-                const imgEl = $('#uploadedPreviewImg');
-                const vidEl = $('#uploadedPreviewVideo');
-
-                if (res.media_type === 'IMAGE') {
-                    vidEl.addClass('d-none')[0].pause();
-                    imgEl.removeClass('d-none').off('load').on('load', function() {
-                        drawYoloOverlay(res.detection_data);
-                    }).attr('src', res.media_url + '?t=' + Date.now());
-                } else {
-                    imgEl.addClass('d-none');
-                    vidEl.removeClass('d-none').off('loadeddata').on('loadeddata', function() {
-                        drawYoloOverlay(res.detection_data);
-                    }).attr('src', res.media_url + '?t=' + Date.now());
-                    vidEl[0].play().catch(() => {});
-                }
-
-                updateReadableStatus(res.detection_data, true);
-                setTimeout(() => drawYoloOverlay(res.detection_data), 200);
-                loadRecordsPage(1);
-            },
-            error: function(xhr) {
-                clearTimeout(stageTimer);
-                $('#visionUploadFieldset').prop('disabled', false);
-                btn.prop('disabled', false).text(origTxt);
-                stageBanner.addClass('d-none');
-                const msg = xhr.responseJSON ? xhr.responseJSON.message : '파일 분석 실패';
-                alert('❌ ' + msg);
-            }
-        });
-    });
-
-    function pollVision() {
-        if (isStreamPaused || isUploadMode) return;
-        $.getJSON('/vision/detections', function(data) { updateReadableStatus(data, false); });
-    }
-    pollTimer = setInterval(pollVision, 800);
-    pollVision();
-
-    $('#btnPauseStream').on('click', function() {
-        if (isUploadMode) {
-            reconnectVideoStream();
-            return;
-        }
-        const $btn = $(this);
-        $.getJSON('/vision/pause', function(res) {
-            isStreamPaused = Boolean(res.is_paused);
-            if (isStreamPaused) {
-                $('#liveStatusPill').removeClass('bg-danger').addClass('bg-secondary').text('⏸️ 일시정지');
-                $btn.text('▶️ 다시 재생').removeClass('btn-warning').addClass('btn-success');
-            } else {
-                $('#liveStatusPill').removeClass('bg-secondary').addClass('bg-danger').text('● 실시간 중계');
-                $btn.text('⏸️ 일시정지').removeClass('btn-success').addClass('btn-warning');
-            }
-        });
-    });
-
-    $('#btnReconnectStream').on('click', () => reconnectVideoStream());
-
-    function saveSnapshotToDb(isAuto = true) {
-        if (!latestDetectionPayload || !latestDetectionPayload.predictions || latestDetectionPayload.predictions.length === 0) {
-            if (!isAuto) alert('현재 화면에 인식된 대상이 없습니다.');
-            return;
-        }
-        $.ajax({
-            url: '/vision/api/save-snapshot',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                work_id: 1,
-                camera_code: currentCameraCode,
-                video_name: currentStreamKey,
-                auto_mode: isAuto,
-                detection_data: latestDetectionPayload
-            }),
-            success: function(res) {
-                if (res.status === 'SUCCESS') {
-                    if (!isAuto) alert('✅ 현재 화면의 분석 결과가 기록되었습니다.');
-                    loadRecordsPage(1);
-                }
-            }
-        });
-    }
-
-    // 5. 하단 탐지 기록 렌더링 + 검색 + 페이지네이션
-    function renderRecordsSection(res) {
-        if (!res) return;
-        currentLogPage = res.page || 1;
-        $('#recordTotalCount').text(res.total_count || 0);
-
-        // 카메라 필터 옵션 최신화
-        if (Array.isArray(res.camera_options)) {
-            const $sel = $('#logCameraFilter');
-            const prev = currentLogCamera || $sel.val() || 'ALL';
-            const opts = ['<option value="ALL">전체 카메라</option>'].concat(
-                res.camera_options.map(c => `<option value="${c}">${c}</option>`)
-            );
-            $sel.html(opts.join(''));
-            if ($sel.find(`option[value="${prev}"]`).length) $sel.val(prev);
-        }
-
-        const list = res.inspections || [];
-        const $tbody = $('#dbUnifiedTbody');
-        if (!list.length) {
-            $tbody.html('<tr><td colspan="6" class="text-center py-4 text-muted">조건에 맞는 현장 기록이 없습니다.</td></tr>');
-        } else {
-            const rows = list.map(i => {
-                const ocrBadge = (i.ocr_text && i.ocr_text !== '-')
-                    ? `<span class="badge bg-info text-dark fw-bold">${i.ocr_text}</span>`
-                    : `<span class="text-muted">-</span>`;
-                const localTime = window.formatToLocalTime ? window.formatToLocalTime(i.created_at) : i.created_at;
-                return `
-                    <tr>
-                        <td class="fw-bold text-primary">기록 #${i.inspection_id}</td>
-                        <td>${i.camera_code}</td>
-                        <td class="text-break">${i.detected_objects_str}</td>
-                        <td>${ocrBadge}</td>
-                        <td class="font-monospace">${i.start_point} ➔ ${i.end_point}</td>
-                        <td class="text-secondary fw-semibold">${localTime}</td>
-                    </tr>
-                `;
-            }).join('');
-            $tbody.html(rows);
-        }
-
-        const totalPages = res.total_pages || 1;
-        const $ul = $('#visionLogPagination');
-        if (totalPages <= 1) {
-            $ul.html('');
-        } else {
-            let pHtml = `
-                <li class="page-item ${currentLogPage <= 1 ? 'disabled' : ''}">
-                    <a class="page-link log-page-link" href="#" data-page="${currentLogPage - 1}">이전</a>
-                </li>
-            `;
-            for (let p = 1; p <= totalPages; p++) {
-                pHtml += `
-                    <li class="page-item ${p === currentLogPage ? 'active' : ''}">
-                        <a class="page-link log-page-link" href="#" data-page="${p}">${p}</a>
-                    </li>
-                `;
-            }
-            pHtml += `
-                <li class="page-item ${currentLogPage >= totalPages ? 'disabled' : ''}">
-                    <a class="page-link log-page-link" href="#" data-page="${currentLogPage + 1}">다음</a>
-                </li>
-            `;
-            $ul.html(pHtml);
-        }
-    }
-
-    function loadRecordsPage(pageNo) {
-        $.getJSON('/vision/api/db-records', {
-            page: pageNo,
-            camera_code: currentLogCamera,
-            saved_date: currentLogDate,
-            keyword: currentLogKeyword
-        }, function(res) {
-            if (res.status === 'SUCCESS') {
-                renderRecordsSection(res);
-            }
-        });
-    }
-
-    function applyLogSearch() {
-        currentLogCamera = $('#logCameraFilter').val() || 'ALL';
-        currentLogDate = $('#logDateFilter').val() || '';
-        currentLogKeyword = ($('#logKeywordInput').val() || '').trim();
-        loadRecordsPage(1);
-    }
-
-    $('#logCameraFilter, #logDateFilter').on('change', applyLogSearch);
-    $('#btnLogSearch').on('click', applyLogSearch);
-    $('#logKeywordInput').on('keypress', function(e) {
-        if (e.which === 13) {
-            e.preventDefault();
-            applyLogSearch();
-        }
-    });
-    $('#btnLogReset').on('click', function() {
-        $('#logCameraFilter').val('ALL');
-        $('#logDateFilter').val('');
-        $('#logKeywordInput').val('');
-        currentLogCamera = 'ALL';
-        currentLogDate = '';
-        currentLogKeyword = '';
-        loadRecordsPage(1);
-    });
-    $(document).on('click', '.log-page-link', function(e) {
-        e.preventDefault();
-        const targetPage = Number($(this).data('page'));
-        if (!targetPage || targetPage === currentLogPage) return;
-        loadRecordsPage(targetPage);
-    });
-
-    $('#btnManualSaveDb').on('click', () => saveSnapshotToDb(false));
-    $('#btnRefreshDb').on('click', () => loadRecordsPage(currentLogPage));
-
-    renderRecordsSection(initialRecordsPayload);
+  });
 });
 </script>
 {% endblock %}

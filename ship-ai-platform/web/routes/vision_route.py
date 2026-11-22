@@ -13,6 +13,8 @@ from werkzeug.utils import secure_filename
 from web.models import (
     db,
     User,
+    WorkOrder,
+    ErpBlockMaster,
     VisionAnalysis,
     VisionDetection,
     VisionInspection,
@@ -56,6 +58,8 @@ _VISION_UPLOAD_SEMAPHORE = threading.BoundedSemaphore(2)
 _CAMERA_AUTOSAVE_LOCK = threading.Lock()
 _LAST_CAMERA_AUTOSAVE_TS: dict[str, float] = {}
 AUTOSAVE_COOLDOWN_SEC = 10.0
+_LAST_MANUAL_SAVE_TS: dict[str, float] = {}
+MANUAL_SAVE_COOLDOWN_SEC = 3.0
 
 MAX_DISK_FILES_PER_FOLDER = 40
 MAX_VISION_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB 제한
@@ -294,11 +298,12 @@ def _query_inspections_paginated(
         filtered_items.append({
             "inspection_id": insp.inspection_id,
             "analysis_id": insp.analysis_id,
-            "camera_code": ana.camera_code if ana else "CAM-ULS-BAY1",
+            "camera_code": ana.camera_code if ana else "-",
             "start_point": insp.start_point_json,
             "end_point": insp.end_point_json,
             "ocr_text": ocr_val or "-",
             "detected_objects_str": obj_summary_ko,
+            "inspection_status": insp.inspection_status,
             "created_at": recorded_time,
         })
 
@@ -334,12 +339,89 @@ def index():
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
     initial_records = _query_inspections_paginated(page=1, per_page=RECORDS_PER_PAGE)
 
+    active_orders_raw = (
+        WorkOrder.query
+        .filter(WorkOrder.status_code.in_(["IN_PROGRESS", "READY"]))
+        .order_by(WorkOrder.work_id.desc())
+        .all()
+    )
+    all_orders_summary = [
+        {
+            "work_id": wo.work_id,
+            "work_no": wo.work_no,
+            "work_title": wo.work_title,
+            "ship_code": wo.ship_code,
+            "block_code": wo.block_code,
+            "work_region": wo.work_region,
+            "work_zone": wo.work_zone,
+            "process_code": wo.process_code,
+            "material_grade": wo.material_grade,
+            "thickness_mm": float(wo.thickness_mm) if wo.thickness_mm is not None else 0.0,
+            "weld_position": wo.weld_position,
+            "status_code": wo.status_code,
+        }
+        for wo in active_orders_raw
+    ]
+
+    branch_cards = []
+    for br in branches:
+        raw_vid = br.default_video or "Test_1.mp4"
+        mapped_vid = VIDEO_FILENAME_ALIASES.get(raw_vid.lower(), raw_vid)
+        br_orders = [o for o in all_orders_summary if o["work_region"] == br.branch_code]
+        branch_cards.append({
+            "branch_code": br.branch_code,
+            "branch_name": br.branch_name,
+            "region_name": br.region_name,
+            "address": br.address or "",
+            "camera_code": br.camera_code or f"CAM-{br.branch_code}",
+            "default_video": mapped_vid,
+            "active_order_count": len(br_orders),
+            "orders": br_orders,
+        })
+
+    # DB(ERP_BRANCHES.DEFAULT_VIDEO 및 WORK_ORDERS) 기반 동적 공정 단계 & 영상 채널 매핑 (하드코딩 제거)
+    robot_detail_video = os.getenv("ROBOT_DETAIL_VIDEO", "seg_Test.mp4")
+    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
+    for card in branch_cards:
+        def_vid = (card.get("default_video") or "").strip()
+        is_ocr_vid = "ocr" in def_vid.lower()
+        st = "TRANSPORT" if is_ocr_vid else "WORKING"
+        card["work_stage"] = st
+        card["stage_label"] = "운반 중" if st == "TRANSPORT" else "작업 중"
+        card["ocr_video"] = def_vid if is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video2.mp4", "ocr_test.mp4")
+        card["cctv_video"] = def_vid if not is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video1.mp4", "Test_1.mp4")
+        card["robot_video"] = robot_detail_video
+        br_blocks = [b for b in all_blocks if b.branch_code == card["branch_code"]]
+        if card["orders"]:
+            card["primary_ship"] = card["orders"][0]["ship_code"]
+            card["primary_block"] = card["orders"][0]["block_code"]
+            card["primary_work_id"] = card["orders"][0]["work_id"]
+        elif br_blocks:
+            card["primary_ship"] = br_blocks[0].ship_code
+            card["primary_block"] = br_blocks[0].block_id
+            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
+        else:
+            card["primary_ship"] = "-"
+            card["primary_block"] = "-"
+            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
+
+    selected_branch = request.args.get("branch", "").strip()
+    if not selected_branch and branch_cards:
+        selected_branch = branch_cards[0]["branch_code"]
+    current_card = next((c for c in branch_cards if c["branch_code"] == selected_branch), branch_cards[0] if branch_cards else None)
+    selected_stage = current_card["work_stage"] if current_card else "WORKING"
+
     return render_template(
         "service/vision.html",
         me=user,
         initial_records=initial_records,
         robots=robots,
         branches=branches,
+        branch_cards=branch_cards,
+        current_card=current_card,
+        active_orders=all_orders_summary,
+        selected_branch=selected_branch,
+        selected_stage=selected_stage,
         runpod_base=RUNPOD_BASE,
     )
 
@@ -785,7 +867,7 @@ def _insert_vision_records(
 def save_vision_snapshot():
     payload = request.get_json(silent=True) or {}
     work_id = payload.get("work_id") or 1
-    camera_code = payload.get("camera_code", "CAM-ULS-BAY1")
+    camera_code = payload.get("camera_code") or "CAM-UNASSIGNED"
     video_name = payload.get("video_name", "Test_1.mp4")
     auto_mode = payload.get("auto_mode", True)
     detection_data = payload.get("detection_data") or {}
@@ -815,6 +897,18 @@ def save_vision_snapshot():
 
     if auto_mode and welding_state == "IN_WELDING":
         return jsonify({"status": "LOCKED", "welding_state": "IN_WELDING"})
+
+    # 수동 저장 시 연속 클릭(3초 이내 중복 클릭)으로 인한 DB 과다 적재 방지
+    if not auto_mode:
+        now_ts = time.time()
+        with _CAMERA_AUTOSAVE_LOCK:
+            last_manual = _LAST_MANUAL_SAVE_TS.get(camera_code, 0.0)
+            if now_ts - last_manual < MANUAL_SAVE_COOLDOWN_SEC:
+                return jsonify({
+                    "status": "THROTTLED",
+                    "message": "방금 기록을 남겼습니다. 3초 뒤에 다시 눌러주세요.",
+                })
+            _LAST_MANUAL_SAVE_TS[camera_code] = now_ts
 
     # ⭐ 자동 저장 시: 동일 tracker_id(용접선) 또는 동일 OCR 블록 번호 중복 저장 원천 차단
     if auto_mode:

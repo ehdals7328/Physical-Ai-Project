@@ -1,1036 +1,181 @@
-<!-- web/templates/service/history.html -->
 {% extends "layout/base.html" %}
-{% block title %}작업이력·ERP 커스텀 대시보드 | K-SHIPYARD AI{% endblock %}
-
-{% block extra_head %}
-<style>
-    .widget-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        transition: all 0.25s ease;
-    }
-    .widget-header {
-        padding: 16px 20px;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    .widget-body {
-        padding: 18px 20px;
-        flex-grow: 1;
-        overflow-x: auto;
-    }
-    .dash-table th {
-        background: #f8fafc;
-        font-size: 0.78rem;
-        color: #475569;
-        padding: 9px 10px;
-        border-bottom: 1px solid #cbd5e1;
-        white-space: nowrap;
-    }
-    .dash-table td {
-        font-size: 0.84rem;
-        padding: 9px 10px;
-        vertical-align: middle;
-        border-bottom: 1px solid #f1f5f9;
-    }
-
-    /* 커스터마이징 컨트롤 바 */
-    .customizer-drawer {
-        background: #ffffff;
-        border: 2px solid var(--shi-blue);
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 30px rgba(0, 78, 162, 0.12);
-    }
-    .widget-ctrl-bar {
-        display: none;
-        gap: 4px;
-    }
-    .customizing-mode .widget-ctrl-bar {
-        display: inline-flex !important;
-    }
-    .customizing-mode .widget-card {
-        border: 2px dashed #60a5fa;
-    }
-
-    .widget-search-input {
-        width: 210px;
-        font-size: 0.78rem;
-    }
-
-    @media (max-width: 767.98px) {
-        .widget-header {
-            padding: 12px 14px;
-        }
-        .widget-body {
-            padding: 12px 12px;
-        }
-        .widget-search-input {
-            width: 100%;
-        }
-        #modalPdfViewer {
-            height: 58vh !important;
-        }
-    }
-</style>
+{% block title %}작업 · 용접 이력 | K-SmartShip{% endblock %}
+{% block page_context %}
+{"page_title": "작업·용접 이력", "summary": "용접선 탐지 {{ vision_total }}건, 작업지시서 {{ order_total }}건, AI 실행 {{ agent_total }}건"}
 {% endblock %}
 
 {% block content %}
-<section class="py-4" style="min-height: 92vh; padding-top: 95px !important; background-color: #f4f7fb;">
-    <div class="container">
-
-        <!-- 상단 타이틀 & 내 화면 커스터마이징 버튼 -->
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-            <div>
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <span class="badge bg-primary">CUSTOM WORKSPACE</span>
-                    <span class="small text-secondary">
-                        <strong>{{ me.full_name }} ({{ me.role }})</strong>님의 권한에 맞춰 활성화된 작업이력 & ERP 통합 보드입니다.
-                    </span>
-                </div>
-                <h3 class="fw-bold mb-0" style="color: var(--shi-navy);">📊 작업이력 · ERP 자원 통합 대시보드</h3>
-            </div>
-
-            <div class="d-flex gap-2 mt-2 mt-md-0">
-                <button type="button" class="btn btn-shi-outline btn-sm px-3 py-2 rounded-pill fw-bold" id="btnToggleCustomizer">
-                    ⚙️ 내 화면 커스터마이징 (위젯 편집)
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm px-3 py-2 rounded-pill" id="btnResetLayout">
-                    ↺ 기본 배치로 초기화
-                </button>
-            </div>
-        </div>
-
-        <!-- 실시간 알림 배너 -->
-        <div id="dashToast" class="alert alert-success d-none py-2 small fw-bold shadow-sm"></div>
-
-        <!-- [커스터마이징 패널] -->
-        <div class="customizer-drawer d-none" id="customizerDrawer">
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
-                <div>
-                    <h6 class="fw-bold mb-0" style="color: var(--shi-blue);">🎨 내 권한 맞춤 위젯 커스터마이징</h6>
-                    <small class="text-secondary">
-                        보고 싶은 위젯을 켜고 끄거나, 각 위젯 우측 상단의 <strong>[↔ 크기 (50% / 100%)]</strong> 및 <strong>[▲/▼ 순서 이동]</strong> 버튼으로 화면을 구성하세요.
-                    </small>
-                </div>
-                <button type="button" class="btn btn-primary btn-sm px-3 rounded-pill fw-bold" id="btnCloseCustomizer">
-                    완료
-                </button>
-            </div>
-
-            <div class="row g-2 small">
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-my-orders" id="chkMyOrders" checked>
-                        <label class="form-check-label fw-bold" for="chkMyOrders">📝 내가 내린 작업지시 내역</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-all-orders" id="chkAllOrders" checked>
-                        <label class="form-check-label fw-bold" for="chkAllOrders">📋 현장 전체 작업오더 이력</label>
-                    </div>
-                </div>
-
-                {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-bom" id="chkErpBom" checked>
-                        <label class="form-check-label fw-bold text-primary" for="chkErpBom">📦 [ERP] 자재·와이어 재고</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-worker" id="chkErpWorker" checked>
-                        <label class="form-check-label fw-bold text-primary" for="chkErpWorker">👷 [ERP] 작업자·자격증 원장</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-equip" id="chkErpEquip" checked>
-                        <label class="form-check-label fw-bold text-primary" for="chkErpEquip">🚜 [ERP] 대기차량·설비 배차</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-check form-switch p-2 border rounded-3 bg-light">
-                        <input class="form-check-input ms-0 me-2 widget-toggle-chk" type="checkbox" value="w-erp-dispatch" id="chkErpDispatch" checked>
-                        <label class="form-check-label fw-bold text-primary" for="chkErpDispatch">📑 [MES] 직영·외주 배정원장</label>
-                    </div>
-                </div>
-                {% else %}
-                <div class="col-md-4">
-                    <div class="p-2 border rounded-3 bg-secondary-subtle text-muted">
-                        🔒 [ERP 위젯 잠김] ERP 조회 권한(CAN_ACCESS_ERP=Y) 필요
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-
-
-        <!-- 대시보드 위젯 그리드 컨테이너 -->
-        <div class="row g-4" id="widgetGrid">
-            {% if me.role in ('ADMIN', 'MANAGER') %}
-            <!-- [위젯 0] 관리자 전용 HITL 결재 대기함 -->
-            <div class="col-lg-12 dash-widget-item" data-wid="w-pending-approvals" data-size="12">
-                <div class="widget-card" style="border: 2px solid #f59e0b;">
-                    <div class="widget-header" style="background-color: #fffbeb;">
-                        <div>
-                            <span class="badge bg-warning text-dark me-1">HITL APPROVAL QUEUE</span>
-                            <strong style="color: #92400e;">🛡️ 관리자 작업지시 결재 대기함 ({{ pending_approvals|length }}건)</strong>
-                        </div>
-                        <span class="small text-muted">현장 작업자/반장이 상신한 초안(DRAFT)을 검토 후 최종 승인 또는 반려합니다.</span>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>임시번호</th>
-                                    <th>기안자</th>
-                                    <th>블록 / 구역</th>
-                                    <th>작업 제목</th>
-                                    <th>시공 제원</th>
-                                    <th>지침서</th>
-                                    <th>결재 처리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in pending_approvals %}
-                                {% set wo = item.wo %}
-                                {% set inst = item.inst %}
-                                <tr id="approval-row-{{ wo.work_id }}">
-                                    <td class="fw-bold text-warning-emphasis">{{ wo.work_no }}</td>
-                                    <td><strong>{{ item.requester_name }}</strong></td>
-                                    <td>{{ wo.block_code }} <small class="text-muted">({{ wo.work_zone }})</small></td>
-                                    <td>{{ wo.work_title }}</td>
-                                    <td>{{ wo.process_code }} · {{ wo.material_grade }} ({{ wo.thickness_mm }}T)</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% if item.pdf_url %}
-                                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 btn-view-inst"
-                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 작업지시서 초안 검토"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.pdf_url }}"
-                                                    data-params="{{ inst.welding_params_json }}"
-                                                    data-text="{{ inst.instruction_text }}">
-                                                📄 지시서 초안
-                                            </button>
-                                            {% endif %}
-                                            {% if item.po_pdf_url %}
-                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
-                                                    data-title="{{ wo.work_no }} 외주 발주 주문서(PO) 초안 검토"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.po_pdf_url }}">
-                                                📋 발주서(PO) 초안
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex gap-1">
-                                            <button type="button" class="btn btn-success btn-sm py-0 px-2 fw-bold btn-dash-approve"
-                                                    data-action="APPROVE"
-                                                    data-woid="{{ wo.work_id }}"
-                                                    data-instid="{{ inst.instruction_id }}">
-                                                👍 최종 승인
-                                            </button>
-                                            <button type="button" class="btn btn-danger btn-sm py-0 px-2 fw-bold btn-dash-approve"
-                                                    data-action="REJECT"
-                                                    data-woid="{{ wo.work_id }}"
-                                                    data-instid="{{ inst.instruction_id }}">
-                                                ❌ 반려
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center py-3 text-muted small">
-                                        현재 결재 대기 중인 작업지시서 초안(DRAFT)이 없습니다.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- [위젯 1] 내가 작업지시 내렸던 내역 -->
-            <div class="col-lg-12 dash-widget-item" data-wid="w-my-orders" data-size="12">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-primary-subtle text-primary me-1">MY ORDERS</span>
-                            <strong style="color: var(--shi-navy);">
-                                📝 내가 내린 작업지시 내역 (<span id="myOrdersCount">{{ my_orders|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="myOrdersSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 번호·블록·제목·상태 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget" title="가로폭 50% / 100% 전환">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                            <a href="/service/assistant" class="btn btn-shi-primary btn-sm py-1 px-3 rounded-pill" style="font-size: 0.78rem;">
-                                + 새 작업지시 내리기
-                            </a>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>작업번호</th>
-                                    <th>블록 / 작업구역</th>
-                                    <th>작업 제목</th>
-                                    <th>시공 조건</th>
-                                    <th>진행 상태</th>
-                                    <th>AI 지침서</th>
-                                </tr>
-                            </thead>
-                            <tbody id="myOrdersTbody">
-                                {% for item in my_orders %}
-                                {% set wo = item.wo %}
-                                {% set inst = item.inst %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold text-primary">{{ wo.work_no }}</td>
-                                    <td>
-                                        <span class="fw-bold">{{ wo.block_code }}</span>
-                                        <small class="text-muted ms-1">({{ wo.work_zone }})</small>
-                                    </td>
-                                    <td>{{ wo.work_title }}</td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border">{{ wo.material_grade }} {{ wo.thickness_mm }}mm</span>
-                                        <span class="badge bg-secondary">{{ wo.process_code }} ({{ wo.weld_position }})</span>
-                                    </td>
-                                    <td>
-                                        <select class="form-select form-select-sm order-status-select" data-woid="{{ wo.work_id }}" style="width: 130px; font-size: 0.76rem;">
-                                            <option value="READY" {{ 'selected' if wo.status_code == 'READY' }}>READY (대기)</option>
-                                            <option value="IN_PROGRESS" {{ 'selected' if wo.status_code == 'IN_PROGRESS' }}>IN_PROGRESS</option>
-                                            <option value="COMPLETED" {{ 'selected' if wo.status_code == 'COMPLETED' }}>COMPLETED</option>
-                                            <option value="SUSPENDED" {{ 'selected' if wo.status_code == 'SUSPENDED' }}>SUSPENDED</option>
-                                        </select>
-                                    </td>
-                                    <td>
-                                        {% if inst %}
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% if item.pdf_url %}
-                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
-                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.pdf_url }}"
-                                                    data-params="{{ inst.welding_params_json }}"
-                                                    data-text="{{ inst.instruction_text }}">
-                                                📄 지침서 보기
-                                            </button>
-                                            {% endif %}
-                                            {% if item.po_pdf_url %}
-                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
-                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 외주 발주 주문서(PO)"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.po_pdf_url }}">
-                                                📋 발주서(PO)
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                        {% else %}
-                                        <span class="text-muted small">미생성</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="6" class="text-center py-4 text-muted small">
-                                        아직 직접 발주/요청하신 작업지시가 없습니다. [AI 어시스턴트]에서 작업지시를 생성해 보세요!
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="6" class="text-center py-4 text-muted small">
-                                        검색 조건에 일치하는 작업지시 내역이 없습니다.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="myOrdersPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [위젯 2] 현장 전체 작업오더 이력 -->
-            <div class="col-lg-12 dash-widget-item" data-wid="w-all-orders" data-size="12">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-dark me-1">ALL WORK ORDERS</span>
-                            <strong style="color: var(--shi-navy);">
-                                📋 현장 전체 용접 작업오더 이력 (<span id="allOrdersCount">{{ all_orders|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="allOrdersSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 번호·호선·블록·요청자 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>작업관리번호</th>
-                                    <th>호선 / 블록</th>
-                                    <th>작업 제목</th>
-                                    <th>야드 / 작업구역</th>
-                                    <th>시공 제원</th>
-                                    <th>요청자</th>
-                                    <th>진행 상태</th>
-                                    <th>지침서</th>
-                                </tr>
-                            </thead>
-                            <tbody id="allOrdersTbody">
-                                {% for item in all_orders %}
-                                {% set wo = item.wo %}
-                                {% set inst = item.inst %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold">{{ wo.work_no }}</td>
-                                    <td>{{ wo.ship_code }} / <strong>{{ wo.block_code }}</strong></td>
-                                    <td>{{ wo.work_title }}</td>
-                                    <td>{{ wo.work_region }} · <span class="text-primary fw-semibold">{{ wo.work_zone }}</span></td>
-                                    <td>{{ wo.process_code }} · {{ wo.material_grade }} ({{ wo.thickness_mm }}T, {{ wo.weld_position }})</td>
-                                    <td>{{ item.requester_name }}</td>
-                                    <td>
-                                        <span class="badge {{ 'bg-success' if wo.status_code == 'COMPLETED' else ('bg-primary' if wo.status_code == 'IN_PROGRESS' else 'bg-secondary') }}">
-                                            {{ wo.status_code }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if inst %}
-                                        <div class="d-flex flex-wrap gap-1">
-                                            {% if item.pdf_url %}
-                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 btn-view-inst"
-                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) AI 작업지침서"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.pdf_url }}"
-                                                    data-params="{{ inst.welding_params_json }}"
-                                                    data-text="{{ inst.instruction_text }}">
-                                                📄 열람
-                                            </button>
-                                            {% endif %}
-                                            {% if item.po_pdf_url %}
-                                            <button type="button" class="btn btn-outline-warning text-dark btn-sm py-0 px-2 fw-bold btn-view-inst"
-                                                    data-title="{{ wo.work_no }} ({{ wo.block_code }}) 외주 발주 주문서(PO)"
-                                                    data-status="{{ inst.approval_status }}"
-                                                    data-pdf="{{ item.po_pdf_url }}">
-                                                📋 발주서
-                                            </button>
-                                            {% endif %}
-                                        </div>
-                                        {% else %}
-                                        <span class="text-muted small">-</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="8" class="text-center py-4 text-muted small">등록된 작업오더 이력이 없습니다.</td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="8" class="text-center py-4 text-muted small">
-                                        검색 조건에 일치하는 작업오더 이력이 없습니다.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="allOrdersPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ERP 권한 보유자 전용 위젯 4종 -->
-            {% if me.can_access_erp == 'Y' or me.role in ('ADMIN', 'MANAGER') %}
-
-            <!-- [위젯 3 - ERP] 자재 및 와이어 재고 원장 -->
-            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-bom" data-size="6">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-success me-1">SHIP_ERP · BOM</span>
-                            <strong style="color: var(--shi-navy);">
-                                📦 사내 자재 및 와이어 재고 원장 (<span id="erpBomCount">{{ erp_bom|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="erpBomSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 품번·품목명·LOT 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>품번</th>
-                                    <th>품목명</th>
-                                    <th>LOT 번호</th>
-                                    <th>총 재고</th>
-                                    <th>선점(예약)</th>
-                                    <th>가용 수량</th>
-                                </tr>
-                            </thead>
-                            <tbody id="erpBomTbody">
-                                {% for bom in erp_bom %}
-                                {% set avail = (bom.total_qty or 0) - (bom.reserved_qty or 0) %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold">{{ bom.item_code }}</td>
-                                    <td>{{ bom.item_name }}</td>
-                                    <td class="small text-muted">{{ bom.lot_no }}</td>
-                                    <td>{{ bom.total_qty }} {{ bom.unit }}</td>
-                                    <td class="text-danger fw-semibold">{{ bom.reserved_qty }} {{ bom.unit }}</td>
-                                    <td class="fw-bold text-success">{{ avail }} {{ bom.unit }}</td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="6" class="text-center py-4 text-muted small">등록된 자재 재고 내역이 없습니다.</td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="6" class="text-center py-4 text-muted small">검색 조건에 일치하는 자재가 없습니다.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="erpBomPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [위젯 4 - ERP] 대기차량 및 중장비 마스터 -->
-            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-equip" data-size="6">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-success me-1">SHIP_ERP · FLEET</span>
-                            <strong style="color: var(--shi-navy);">
-                                🚜 자재운용 대기차량 및 중장비 마스터 (<span id="erpEquipCount">{{ erp_equipments|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="erpEquipSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 코드·장비명·구역·상태 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>설비코드</th>
-                                    <th>장비/차량명</th>
-                                    <th>분류</th>
-                                    <th>현재 구역</th>
-                                    <th>운용 상태</th>
-                                </tr>
-                            </thead>
-                            <tbody id="erpEquipTbody">
-                                {% for eq in erp_equipments %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold">{{ eq.asset_code }}</td>
-                                    <td>{{ eq.asset_name }} ({{ eq.max_load_ton }}t)</td>
-                                    <td><span class="badge bg-light text-dark border">{{ eq.asset_category }}</span></td>
-                                    <td>{{ eq.current_zone }}</td>
-                                    <td>
-                                        <span class="badge {{ 'bg-success' if eq.operation_status == 'STANDBY' else 'bg-warning text-dark' }}">
-                                            {{ eq.operation_status }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="5" class="text-center py-4 text-muted small">등록된 차량/설비 내역이 없습니다.</td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="5" class="text-center py-4 text-muted small">검색 조건에 일치하는 차량/설비가 없습니다.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="erpEquipPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [위젯 5 - ERP] 작업자 및 선급 자격증 원장 -->
-            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-worker" data-size="6">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-success me-1">SHIP_ERP · HR CERT</span>
-                            <strong style="color: var(--shi-navy);">
-                                👷 직영·협력사 작업자 및 선급 자격증 원장 (<span id="erpWorkerCount">{{ erp_workers|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="erpWorkerSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 사번·성명·야드·자격증 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>사번</th>
-                                    <th>성명 (직책)</th>
-                                    <th>고용/야드</th>
-                                    <th>보유 자격증</th>
-                                    <th>만료일 / 상태</th>
-                                </tr>
-                            </thead>
-                            <tbody id="erpWorkerTbody">
-                                {% for wk in erp_workers %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold">{{ wk.worker_id }}</td>
-                                    <td><strong>{{ wk.worker_name }}</strong> <small class="text-muted">({{ wk.role }})</small></td>
-                                    <td>{{ wk.employment_type }} · {{ wk.branch_code }}</td>
-                                    <td><span class="badge bg-primary-subtle text-primary">{{ wk.cert_code }}</span></td>
-                                    <td>
-                                        <small>{{ wk.cert_expiry_date }}</small>
-                                        <span class="badge {{ 'bg-success' if wk.status == 'VALID' else 'bg-danger' }} ms-1">
-                                            {{ wk.status }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="5" class="text-center py-4 text-muted small">등록된 작업자 내역이 없습니다.</td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="5" class="text-center py-4 text-muted small">검색 조건에 일치하는 작업자가 없습니다.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="erpWorkerPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            <!-- [위젯 6 - MES] 작업·자재·인력·차량 배정 원장 -->
-            <div class="col-lg-6 dash-widget-item" data-wid="w-erp-dispatch" data-size="6">
-                <div class="widget-card">
-                    <div class="widget-header">
-                        <div>
-                            <span class="badge bg-success me-1">SHIP_ERP · MES DISPATCH</span>
-                            <strong style="color: var(--shi-navy);">
-                                📑 MES 작업·자재·인력·차량 배정 원장 (<span id="erpDispatchCount">{{ erp_dispatches|length }}</span>건)
-                            </strong>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <input type="text" id="erpDispatchSearch" class="form-control form-control-sm rounded-pill px-3 widget-search-input"
-                                   placeholder="🔍 지시번호·블록·작업자·설비 검색">
-                            <div class="widget-ctrl-bar">
-                                <button class="btn btn-outline-primary btn-sm py-0 px-2 btn-resize-widget">↔ 크기</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-up">▲</button>
-                                <button class="btn btn-outline-secondary btn-sm py-0 px-2 btn-move-down">▼</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="widget-body">
-                        <table class="table dash-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>작업지시번호</th>
-                                    <th>블록 / 수행방식</th>
-                                    <th>배정 자재 LOT</th>
-                                    <th>투입 작업자</th>
-                                    <th>배차 설비</th>
-                                    <th>상태</th>
-                                </tr>
-                            </thead>
-                            <tbody id="erpDispatchTbody">
-                                {% for dp in erp_dispatches %}
-                                <tr class="pager-row">
-                                    <td class="fw-bold text-primary">{{ dp.wo_number }}</td>
-                                    <td>
-                                        <strong>{{ dp.block_id }}</strong>
-                                        <span class="badge {{ 'bg-info text-dark' if dp.execution_type == 'IN_HOUSE' else 'bg-warning text-dark' }}">
-                                            {{ dp.execution_type }}
-                                        </span>
-                                    </td>
-                                    <td class="small">{{ dp.allocated_lot_no }}</td>
-                                    <td>{{ dp.worker_name }} ({{ dp.worker_id }})</td>
-                                    <td>{{ dp.assigned_vehicle_code or '-' }}</td>
-                                    <td><span class="badge bg-success">{{ dp.status }}</span></td>
-                                </tr>
-                                {% else %}
-                                <tr class="empty-init-row">
-                                    <td colspan="6" class="text-center py-4 text-muted small">등록된 MES 배정 원장 내역이 없습니다.</td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="no-search-result d-none">
-                                    <td colspan="6" class="text-center py-4 text-muted small">검색 조건에 일치하는 배정 내역이 없습니다.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <nav class="mt-3 d-flex justify-content-center">
-                            <ul class="pagination pagination-sm mb-0" id="erpDispatchPagination"></ul>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-
-            {% endif %}
-
-        </div>
-    </div>
-</section>
-
-<!-- AI 작업지침서 / 발주서 상세 열람 모달 -->
-<div class="modal fade" id="instDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header d-flex align-items-center">
-                <div class="d-flex align-items-center gap-2 text-truncate">
-                    <h5 class="modal-title fw-bold mb-0 text-truncate" id="modalInstTitle" style="color: var(--shi-navy);">AI 작업지침서</h5>
-                    <span class="badge bg-primary" id="modalInstStatus">APPROVED</span>
-                </div>
-                <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
-                    <a href="#" id="modalPdfNewTabBtn" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm fw-bold d-none">
-                        ↗ 새 탭에서 열기
-                    </a>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
-                </div>
-            </div>
-            <div class="modal-body p-0" id="modalPdfContainer">
-                <iframe id="modalPdfViewer" src="" style="width: 100%; height: 78vh; border: none; display: block;"></iframe>
-            </div>
-            <div class="modal-body d-none" id="modalTextFallbackContainer">
-                <h6 class="fw-bold small text-secondary">⚙️ 용접 공정 및 궤적 파라미터 (WELDING_PARAMS_JSON)</h6>
-                <pre class="bg-light border rounded-3 p-3 small text-dark mb-3" id="modalInstParams"></pre>
-                <h6 class="fw-bold small text-secondary">📋 AI 생성 작업 지침 본문 (INSTRUCTION_TEXT)</h6>
-                <div class="border rounded-3 p-3 bg-white small text-dark" id="modalInstText" style="white-space: pre-line; line-height: 1.7;"></div>
-            </div>
-        </div>
-    </div>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">야드별 작업 · 용접선 이력</h1>
+    <p class="page-desc">어느 야드에서 어떤 선박·블록의 용접선이 탐지되었는지와 승인된 작업지시서, AI 업무 실행 기록을 조회합니다.</p>
+  </div>
+  <form method="get" action="/service/history" class="d-flex gap-2">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <select name="branch" class="form-select form-select-sm" style="width:190px;" onchange="this.form.submit()">
+      <option value="ALL" {% if branch_filter == 'ALL' %}selected{% endif %}>전체 야드</option>
+      {% for b in branches %}
+      <option value="{{ b.branch_code }}" {% if branch_filter == b.branch_code %}selected{% endif %}>{{ b.branch_name }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="q" class="form-control form-control-sm" style="width:200px;" value="{{ q }}" placeholder="선박·블록·문서번호 검색">
+    <button type="submit" class="btn btn-dark btn-sm px-3">검색</button>
+  </form>
 </div>
-{% endblock %}
 
-{% block extra_scripts %}
-<script>
-/* global $, bootstrap */
-$(document).ready(function() {
-    const LAYOUT_STORAGE_KEY = 'custom_dash_layout_v2_user_{{ me.user_id }}';
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'vision' %}active{% endif %}" href="/service/history?tab=vision&branch={{ branch_filter }}&q={{ q }}">
+      야드별 용접선 탐지 로그 <span class="badge bg-light text-dark border ms-1">{{ vision_total }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'orders' %}active{% endif %}" href="/service/history?tab=orders&branch={{ branch_filter }}&q={{ q }}">
+      작업지시서 · 승인 이력 <span class="badge bg-light text-dark border ms-1">{{ order_total }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'agent' %}active{% endif %}" href="/service/history?tab=agent&branch={{ branch_filter }}&q={{ q }}">
+      AI 업무 실행 이력 <span class="badge bg-light text-dark border ms-1">{{ agent_total }}</span>
+    </a>
+  </li>
+</ul>
 
-    function saveDashboardLayout() {
-        const layout = [];
-        $('#widgetGrid .dash-widget-item').each(function() {
-            const wid = $(this).data('wid');
-            const size = $(this).attr('data-size') || '6';
-            const visible = !$(this).hasClass('d-none');
-            layout.push({ wid: wid, size: size, visible: visible });
-        });
-        localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(layout));
-    }
+<div class="panel-card">
+  {% if tab == 'vision' %}
+  <div class="table-responsive">
+    <table class="table table-enterprise align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>탐지 야드</th>
+          <th>선박 / 블록</th>
+          <th>OCR 번호</th>
+          <th>Tracker ID</th>
+          <th>시작점 → 끝점 좌표</th>
+          <th>안전</th>
+          <th>상태</th>
+          <th>기록 일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in vision_logs %}
+        <tr>
+          <td class="small text-muted">#{{ log.inspection_id }}</td>
+          <td><span class="status-chip status-info">{{ log.branch_name }}</span></td>
+          <td><strong>{{ log.ship_code }}</strong> / {{ log.block_code }}</td>
+          <td><code>{{ log.ocr_text }}</code></td>
+          <td>{{ '#' ~ log.tracker_id if log.tracker_id is not none else '-' }}</td>
+          <td class="small text-muted">{{ log.start_point }} → {{ log.end_point }}</td>
+          <td><span class="status-chip {{ 'status-ok' if log.safety_yn == 'Y' else 'status-danger' }}">{{ '양호' if log.safety_yn == 'Y' else '주의' }}</span></td>
+          <td><span class="status-chip status-muted">{{ log.status }}</span></td>
+          <td class="small text-muted">{{ log.created_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-5">조회된 용접선 탐지 기록이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-    function loadDashboardLayout() {
-        const raw = localStorage.getItem(LAYOUT_STORAGE_KEY);
-        if (!raw) return;
-        try {
-            const layout = JSON.parse(raw);
-            const grid = $('#widgetGrid');
-            layout.forEach(item => {
-                const el = grid.find(`.dash-widget-item[data-wid="${item.wid}"]`);
-                if (el.length) {
-                    grid.append(el);
-                    el.removeClass('col-lg-6 col-lg-12').addClass(`col-lg-${item.size}`).attr('data-size', item.size);
-                    if (item.visible) {
-                        el.removeClass('d-none');
-                        $(`.widget-toggle-chk[value="${item.wid}"]`).prop('checked', true);
-                    } else {
-                        el.addClass('d-none');
-                        $(`.widget-toggle-chk[value="${item.wid}"]`).prop('checked', false);
-                    }
-                }
-            });
-        } catch (e) {}
-    }
+  {% elif tab == 'orders' %}
+  <div class="table-responsive">
+    <table class="table table-enterprise align-middle">
+      <thead>
+        <tr>
+          <th>작업번호</th>
+          <th>야드 · 선박 / 블록</th>
+          <th>작업명</th>
+          <th>요청자</th>
+          <th>진행 상태</th>
+          <th>지시서 결재</th>
+          <th class="text-end">문서</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in paged_orders %}
+        <tr>
+          <td class="fw-bold">{{ item.wo.work_no }}</td>
+          <td>
+            <div class="fw-semibold">{{ item.wo.ship_code }} / {{ item.wo.block_code }}</div>
+            <div class="small text-muted">{{ branch_name_map.get(item.wo.work_region, item.wo.work_region) }}</div>
+          </td>
+          <td>{{ item.wo.work_title }}</td>
+          <td class="small">{{ item.requester_name }}</td>
+          <td><span class="status-chip {{ 'status-ok' if item.wo.status_code == 'COMPLETED' else 'status-info' }}">{{ item.wo.status_code }}</span></td>
+          <td>
+            {% if item.inst %}
+              <span class="status-chip {{ 'status-ok' if item.inst.approval_status == 'APPROVED' else ('status-danger' if item.inst.approval_status == 'REJECTED' else 'status-warn') }}">
+                {{ item.inst.approval_status }}
+              </span>
+            {% else %}
+              <span class="small text-muted">-</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            {% if item.pdf_url %}<a href="{{ item.pdf_url }}" target="_blank" class="btn btn-outline-primary btn-sm">PDF</a>{% endif %}
+            {% if item.po_pdf_url %}<a href="{{ item.po_pdf_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">발주서</a>{% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">조회된 작업지시서가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
-    loadDashboardLayout();
+  {% else %}
+  <div class="table-responsive">
+    <table class="table table-enterprise align-middle">
+      <thead>
+        <tr>
+          <th>실행 ID</th>
+          <th>요청자</th>
+          <th>업무 유형</th>
+          <th>실행 단계</th>
+          <th>소요 시간</th>
+          <th>결과</th>
+          <th>실행 일시</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ag in agent_logs %}
+        <tr>
+          <td class="small text-muted">AG-{{ ag.execution_id }}</td>
+          <td class="fw-semibold">{{ ag.requester_name }}</td>
+          <td>{{ ag.intent_type }}</td>
+          <td class="small text-muted">{{ ag.current_state }}</td>
+          <td class="small">{{ (ag.execution_time_ms / 1000) | round(2) }}초</td>
+          <td><span class="status-chip {{ 'status-ok' if ag.status_code == 'SUCCESS' else ('status-danger' if ag.status_code == 'FAILED' else 'status-info') }}">{{ ag.status_code }}</span></td>
+          <td class="small text-muted">{{ ag.created_at }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">AI 실행 기록이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
-    $('#btnToggleCustomizer, #btnCloseCustomizer').on('click', function() {
-        $('#customizerDrawer').toggleClass('d-none');
-        $('#widgetGrid').toggleClass('customizing-mode');
-    });
-
-    $('.widget-toggle-chk').on('change', function() {
-        const wid = $(this).val();
-        const isChecked = $(this).is(':checked');
-        const target = $(`.dash-widget-item[data-wid="${wid}"]`);
-        if (isChecked) target.removeClass('d-none');
-        else target.addClass('d-none');
-        saveDashboardLayout();
-    });
-
-    $(document).on('click', '.btn-resize-widget', function() {
-        const item = $(this).closest('.dash-widget-item');
-        const currentSize = item.attr('data-size') || '6';
-        const nextSize = (currentSize === '6') ? '12' : '6';
-        item.removeClass('col-lg-6 col-lg-12').addClass(`col-lg-${nextSize}`).attr('data-size', nextSize);
-        saveDashboardLayout();
-    });
-
-    $(document).on('click', '.btn-move-up', function() {
-        const item = $(this).closest('.dash-widget-item');
-        const prev = item.prev('.dash-widget-item');
-        if (prev.length) {
-            item.insertBefore(prev);
-            saveDashboardLayout();
-        }
-    });
-
-    $(document).on('click', '.btn-move-down', function() {
-        const item = $(this).closest('.dash-widget-item');
-        const next = item.next('.dash-widget-item');
-        if (next.length) {
-            item.insertAfter(next);
-            saveDashboardLayout();
-        }
-    });
-
-    $('#btnResetLayout').on('click', function() {
-        localStorage.removeItem(LAYOUT_STORAGE_KEY);
-        location.reload();
-    });
-
-    $('.order-status-select').on('change', function() {
-        const woid = $(this).data('woid');
-        const nextStatus = $(this).val();
-        $.ajax({
-            url: '/service/api/history/order-status',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({ work_id: woid, status_code: nextStatus }),
-            success: function(res) {
-                $('#dashToast').removeClass('d-none alert-danger').addClass('alert-success').text('✅ ' + res.message);
-            }
-        });
-    });
-
-    // 1) 지침서 / 발주서(PO) PDF 뷰어 모달 열기 (PDF 미존재 시에만 텍스트 폴백)
-    $(document).on('click', '.btn-view-inst', function() {
-        const title = $(this).data('title') || '문서 상세 보기';
-        const status = $(this).data('status') || 'DRAFT';
-        const pdfUrl = ($(this).data('pdf') || '').trim();
-
-        $('#modalInstTitle').text(title);
-        $('#modalInstStatus')
-            .text(status)
-            .removeClass('bg-primary bg-warning text-dark bg-danger')
-            .addClass(status === 'APPROVED' ? 'bg-primary' : (status === 'REJECTED' ? 'bg-danger' : 'bg-warning text-dark'));
-
-        if (pdfUrl) {
-            $('#modalPdfViewer').attr('src', pdfUrl);
-            $('#modalPdfNewTabBtn').attr('href', pdfUrl).removeClass('d-none');
-            $('#modalPdfContainer').removeClass('d-none');
-            $('#modalTextFallbackContainer').addClass('d-none');
-        } else {
-            $('#modalPdfViewer').attr('src', '');
-            $('#modalPdfNewTabBtn').addClass('d-none');
-            $('#modalPdfContainer').addClass('d-none');
-            $('#modalTextFallbackContainer').removeClass('d-none');
-
-            const rawParams = $(this).data('params');
-            const formattedParams = (typeof rawParams === 'object')
-                ? JSON.stringify(rawParams, null, 2)
-                : (rawParams || '{}');
-            $('#modalInstParams').text(formattedParams);
-            $('#modalInstText').text($(this).data('text') || '');
-        }
-
-        const modal = new bootstrap.Modal(document.getElementById('instDetailModal'));
-        modal.show();
-    });
-
-    // 2) 관리자 대시보드 결재 대기함 [👍 최종 승인] / [❌ 반려] 버튼 핸들러
-    $(document).on('click', '.btn-dash-approve', function() {
-        const btn = $(this);
-        const action = btn.data('action');
-        const woid = btn.data('woid');
-        const instid = btn.data('instid');
-        const row = $(`#approval-row-${woid}`);
-
-        row.find('button').prop('disabled', true);
-        btn.text(action === 'APPROVE' ? '⏳ 승인 처리 중...' : '⏳ 반려 처리 중...');
-
-        $.ajax({
-            url: '/service/api/assistant/approve',
-            method: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                action: action,
-                work_id: woid,
-                instruction_id: instid,
-                doc: {}
-            }),
-            success: function(res) {
-                const alertClass = (action === 'APPROVE') ? 'alert-success' : 'alert-warning';
-                $('#dashToast')
-                    .removeClass('d-none alert-danger alert-success alert-warning')
-                    .addClass(alertClass)
-                    .text(res.message);
-                setTimeout(() => location.reload(), 1000);
-            },
-            error: function(xhr) {
-                row.find('button').prop('disabled', false);
-                btn.text(action === 'APPROVE' ? '👍 최종 승인' : '❌ 반려');
-                const errMsg = (xhr.responseJSON && xhr.responseJSON.message)
-                    ? xhr.responseJSON.message
-                    : '결재 처리 중 오류가 발생했습니다.';
-                $('#dashToast')
-                    .removeClass('d-none alert-success alert-warning')
-                    .addClass('alert-danger')
-                    .text('❌ ' + errMsg);
-            }
-        });
-    });
-
-    // =====================================================================
-    // 공통: 테이블 실시간 검색 + 5건 단위 페이지네이션
-    // =====================================================================
-    function initTablePager({ tbodyId, searchId, paginationId, countId, perPage = 5 }) {
-        const $tbody = $(tbodyId);
-        if (!$tbody.length) return;
-
-        const $search = $(searchId);
-        const $pagination = $(paginationId);
-        const $count = $(countId);
-        const $allRows = $tbody.find('tr.pager-row');
-        const $noResultRow = $tbody.find('tr.no-search-result');
-
-        let currentPage = 1;
-
-        function getFilteredRows() {
-            const keyword = ($search.val() || '').trim().toLowerCase();
-            if (!keyword) return $allRows;
-
-            return $allRows.filter(function() {
-                const text = $(this).text().toLowerCase();
-                const selectVal = ($(this).find('select').val() || '').toLowerCase();
-                return text.includes(keyword) || selectVal.includes(keyword);
-            });
-        }
-
-        function render(page = 1) {
-            const $filtered = getFilteredRows();
-            const total = $filtered.length;
-            const totalPages = Math.max(1, Math.ceil(total / perPage));
-            currentPage = Math.min(Math.max(1, page), totalPages);
-
-            if ($count.length) $count.text(total);
-            $allRows.hide();
-
-            if (total === 0) {
-                if ($allRows.length > 0) $noResultRow.removeClass('d-none');
-                $pagination.empty();
-                return;
-            }
-
-            $noResultRow.addClass('d-none');
-
-            const start = (currentPage - 1) * perPage;
-            const end = start + perPage;
-            $filtered.slice(start, end).show();
-
-            if (totalPages <= 1) {
-                $pagination.empty();
-                return;
-            }
-
-            let html = `
-                <li class="page-item ${currentPage <= 1 ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${currentPage - 1}">이전</a>
-                </li>
-            `;
-            for (let p = 1; p <= totalPages; p++) {
-                html += `
-                    <li class="page-item ${p === currentPage ? 'active' : ''}">
-                        <a class="page-link" href="#" data-page="${p}">${p}</a>
-                    </li>
-                `;
-            }
-            html += `
-                <li class="page-item ${currentPage >= totalPages ? 'disabled' : ''}">
-                    <a class="page-link" href="#" data-page="${currentPage + 1}">다음</a>
-                </li>
-            `;
-            $pagination.html(html);
-        }
-
-        $search.on('input', function() {
-            render(1);
-        });
-
-        $pagination.on('click', 'a.page-link', function(e) {
-            e.preventDefault();
-            const targetPage = Number($(this).data('page'));
-            if (targetPage && targetPage !== currentPage) {
-                render(targetPage);
-            }
-        });
-
-        render(1);
-    }
-
-    const pagerConfigs = [
-        { tbodyId: '#myOrdersTbody',    searchId: '#myOrdersSearch',    paginationId: '#myOrdersPagination',    countId: '#myOrdersCount' },
-        { tbodyId: '#allOrdersTbody',   searchId: '#allOrdersSearch',   paginationId: '#allOrdersPagination',   countId: '#allOrdersCount' },
-        { tbodyId: '#erpBomTbody',      searchId: '#erpBomSearch',      paginationId: '#erpBomPagination',      countId: '#erpBomCount' },
-        { tbodyId: '#erpEquipTbody',    searchId: '#erpEquipSearch',    paginationId: '#erpEquipPagination',    countId: '#erpEquipCount' },
-        { tbodyId: '#erpWorkerTbody',   searchId: '#erpWorkerSearch',   paginationId: '#erpWorkerPagination',   countId: '#erpWorkerCount' },
-        { tbodyId: '#erpDispatchTbody', searchId: '#erpDispatchSearch', paginationId: '#erpDispatchPagination', countId: '#erpDispatchCount' }
-    ];
-
-    pagerConfigs.forEach(cfg => initTablePager({ ...cfg, perPage: 5 }));
-});
-</script>
+  <!-- 스마트 페이지네이션 (10페이지 초과 시 중간 ... 생략) -->
+  <nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/service/history?tab={{ tab }}&branch={{ branch_filter }}&q={{ q }}&page={{ page - 1 }}">이전</a>
+      </li>
+      {% for it in page_items %}
+        {% if it == '...' %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% else %}
+          <li class="page-item {% if it == page %}active{% endif %}">
+            <a class="page-link" href="/service/history?tab={{ tab }}&branch={{ branch_filter }}&q={{ q }}&page={{ it }}">{{ it }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/service/history?tab={{ tab }}&branch={{ branch_filter }}&q={{ q }}&page={{ page + 1 }}">다음</a>
+      </li>
+    </ul>
+  </nav>
+</div>
 {% endblock %}
