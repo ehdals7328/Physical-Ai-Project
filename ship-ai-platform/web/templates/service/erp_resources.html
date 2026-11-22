@@ -1,0 +1,291 @@
+{% extends "layout/base.html" %}
+{% block title %}{{ page_meta.title }} | K-SmartShip{% endblock %}
+{% block page_context %}
+{"page_title": "ERP - {{ page_meta.title }}", "branch_code": "{{ selected_branch }}", "summary": "{{ page_meta.title }} 총 {{ total_count }}건 조회 중 ({{ page }}/{{ total_pages }} 페이지)"}
+{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+  <a href="/service/erp?branch={{ selected_branch }}" class="small text-decoration-none text-secondary">
+    ← 자원관리 (ERP) 대시보드로 돌아가기
+  </a>
+</div>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ page_meta.title }}</h1>
+    <p class="page-desc">{{ page_meta.desc }}</p>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <button type="button" id="btn-resource-sync" class="btn btn-outline-primary btn-sm fw-semibold px-3"
+            onclick="syncResourcePage(this)">
+      DB 동기화
+    </button>
+    <span class="small text-muted border rounded px-2 py-1 bg-white">동기화 {{ last_updated }}</span>
+  </div>
+</div>
+
+{% if not can_access_erp %}
+<div class="panel-card text-center py-5">
+  <h5 class="fw-bold mb-2">ERP 자원 조회 권한이 필요합니다</h5>
+  <p class="text-muted mb-3">현재 계정은 ERP 연동 권한이 비활성화되어 있습니다. 관리자에게 권한을 요청해 주세요.</p>
+  <a href="/service/faq?tab=inquiry" class="btn btn-primary btn-sm">1:1 공식 문의로 권한 요청</a>
+</div>
+{% else %}
+
+<!-- 4개 자원 전용 페이지 탭 이동 -->
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if resource_type == 'materials' %}active{% endif %}"
+       href="/service/erp/materials?branch={{ selected_branch }}">자재 · 재고</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if resource_type == 'workers' %}active{% endif %}"
+       href="/service/erp/workers?branch={{ selected_branch }}">사내 · 외부 작업자</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if resource_type == 'equipment' %}active{% endif %}"
+       href="/service/erp/equipment?branch={{ selected_branch }}">로봇 · 장비 · 차량</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if resource_type == 'partners' %}active{% endif %}"
+       href="/service/erp/partners">협력사 B2B 자원</a>
+  </li>
+</ul>
+
+{% if partner_error %}
+<div class="alert alert-warning small">{{ partner_error }}</div>
+{% endif %}
+
+<div class="panel-card">
+  <!-- 검색 · 야드 · 상태 필터 바 -->
+  <form method="get" action="/service/erp/{{ resource_type }}" class="row g-2 align-items-center mb-4">
+    {% if resource_type != 'partners' %}
+    <div class="col-md-3">
+      <select name="branch" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="ALL" {% if selected_branch == 'ALL' %}selected{% endif %}>전체 야드</option>
+        {% for b in branches %}
+        <option value="{{ b.branch_code }}" {% if selected_branch == b.branch_code %}selected{% endif %}>{{ b.branch_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="col-md-2">
+      <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for fcode, flabel in page_meta.filters %}
+        <option value="{{ fcode }}" {% if filter_flag == fcode %}selected{% endif %}>{{ flabel }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <input type="text" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="코드, 품명, 성명, Lot 번호, 자격증 검색...">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-dark btn-sm px-3">검색</button>
+      {% if q or filter_flag != 'ALL' or selected_branch != 'ALL' %}
+      <a href="/service/erp/{{ resource_type }}" class="btn btn-outline-secondary btn-sm">초기화</a>
+      {% endif %}
+    </div>
+    <div class="col text-end small text-muted">총 <strong>{{ total_count }}</strong>건</div>
+  </form>
+
+  <!-- 자원 유형별 테이블 -->
+  <div class="table-responsive">
+    <table class="table table-enterprise align-middle">
+      {% if resource_type == 'materials' %}
+      <thead>
+        <tr>
+          <th>품번 / 품명</th>
+          <th>분류</th>
+          <th>Lot 번호</th>
+          <th>보관 야드</th>
+          <th>총량 / 예약 / 가용</th>
+          <th>상태</th>
+          <th class="text-end">AI 자동작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>
+            <div class="fw-bold">{{ it.name }}</div>
+            <div class="small text-muted">{{ it.code }} · {{ it.supplier_code }}</div>
+          </td>
+          <td><span class="status-chip status-muted">{{ it.category }}</span></td>
+          <td class="small text-muted"><code>{{ it.lot_no }}</code></td>
+          <td class="small">{{ it.branch_name }}</td>
+          <td class="small">
+            {{ it.total_qty|int }} / {{ it.reserved_qty|int }} / <strong class="text-dark">{{ it.available_qty|int }} {{ it.unit }}</strong>
+          </td>
+          <td>
+            {% if it.is_low %}
+              <span class="status-chip status-danger">부족 주의</span>
+            {% else %}
+              <span class="status-chip status-ok">정상</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <button type="button" class="btn btn-sm {{ 'btn-primary' if it.is_low else 'btn-outline-primary' }}"
+                    onclick="openAssistantWithPrompt('{{ it.branch_name }}({{ it.branch_code }})의 {{ it.name }}({{ it.code }}) 현재 가용 재고가 {{ it.available_qty|int }}{{ it.unit }}입니다. 협력사 B2B 재고를 조회하고 발주 검토안을 작성해줘.')">
+              AI 발주 요청
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">조회된 자재 데이터가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+
+      {% elif resource_type == 'workers' %}
+      <thead>
+        <tr>
+          <th>사번 / 성명</th>
+          <th>고용 구분</th>
+          <th>야드 · 부서</th>
+          <th>자격증 / 공정</th>
+          <th>만료일</th>
+          <th>상태</th>
+          <th class="text-end">AI 자동작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>
+            <div class="fw-bold">{{ it.name }} ({{ it.code }})</div>
+            <div class="small text-muted">{{ it.role }} · {{ it.phone }}</div>
+          </td>
+          <td><span class="status-chip {{ 'status-info' if it.employment_type == 'REGULAR' else 'status-muted' }}">{{ it.employment_type }}</span></td>
+          <td class="small">{{ it.branch_name }}<div class="text-muted">{{ it.department }}</div></td>
+          <td class="small"><strong>{{ it.cert_code }}</strong> / {{ it.weld_process }}</td>
+          <td class="small">{{ it.expiry }}</td>
+          <td>
+            {% if it.expired %}
+              <span class="status-chip status-danger">만료됨</span>
+            {% elif it.expiring %}
+              <span class="status-chip status-warn">D-{{ it.days_left }}</span>
+            {% else %}
+              <span class="status-chip status-ok">유효</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <button type="button" class="btn btn-sm {{ 'btn-dark' if it.expiring else 'btn-outline-dark' }}"
+                    onclick="openAssistantWithPrompt('작업자 {{ it.name }}({{ it.code }})의 자격증({{ it.cert_code }}) 만료일이 {{ it.expiry }}입니다. 갱신 안내 이메일을 작성해서 발송해줘.')">
+              갱신 메일 발송
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">조회된 작업자 데이터가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+
+      {% elif resource_type == 'equipment' %}
+      <thead>
+        <tr>
+          <th>자산 코드 / 장비명</th>
+          <th>분류</th>
+          <th>배치 야드 · 구역</th>
+          <th>최대 하중</th>
+          <th>운용 상태</th>
+          <th class="text-end">AI 조회</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>
+            <div class="fw-bold">{{ it.name }}</div>
+            <div class="small text-muted">{{ it.code }} · {{ it.company_code }}</div>
+          </td>
+          <td><span class="status-chip status-muted">{{ it.category }}</span></td>
+          <td class="small">{{ it.branch_name }} · {{ it.zone }}</td>
+          <td class="small">{{ (it.max_load_ton ~ ' 톤') if it.max_load_ton else '-' }}</td>
+          <td>
+            <span class="status-chip {{ 'status-ok' if it.status == 'STANDBY' else ('status-info' if it.status == 'IN_USE' else 'status-warn') }}">
+              {{ '대기' if it.status == 'STANDBY' else ('사용 중' if it.status == 'IN_USE' else '점검 중') }}
+            </span>
+          </td>
+          <td class="text-end">
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    onclick="openAssistantWithPrompt('{{ it.branch_name }}의 {{ it.name }}({{ it.code }}) 현재 배차 및 작업 투입 가능 여부를 확인해줘.')">
+              투입 가능 확인
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-5">조회된 장비·차량 데이터가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+
+      {% else %}
+      <thead>
+        <tr>
+          <th>구분</th>
+          <th>협력사 코드</th>
+          <th>자원 코드 / 명칭</th>
+          <th>상세 제원 · 가용 정보</th>
+          <th>대기 지역</th>
+          <th class="text-end">AI 자동작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td><span class="status-chip status-info">{{ it.kind }}</span></td>
+          <td class="small text-muted">{{ it.partner_id }}</td>
+          <td>
+            <div class="fw-bold">{{ it.name }}</div>
+            <div class="small text-muted">{{ it.code }}</div>
+          </td>
+          <td class="small text-secondary">{{ it.detail }}</td>
+          <td class="small">{{ it.region }}</td>
+          <td class="text-end">
+            <button type="button" class="btn btn-outline-primary btn-sm"
+                    onclick="openAssistantWithPrompt('협력사 {{ it.partner_id }}의 {{ it.name }}({{ it.code }}) 가용 조건과 외주 발주 초안을 검토해줘.')">
+              AI 발주 검토
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-5">조회된 협력사 B2B 자원이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+      {% endif %}
+    </table>
+  </div>
+
+  <!-- 스마트 페이지네이션 (10페이지 초과 시 중간 ... 생략) -->
+  <nav class="mt-4">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="/service/erp/{{ resource_type }}?branch={{ selected_branch }}&filter={{ filter_flag }}&q={{ q }}&page={{ page - 1 }}">이전</a>
+      </li>
+      {% for it in page_items %}
+        {% if it == '...' %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% else %}
+          <li class="page-item {% if it == page %}active{% endif %}">
+            <a class="page-link" href="/service/erp/{{ resource_type }}?branch={{ selected_branch }}&filter={{ filter_flag }}&q={{ q }}&page={{ it }}">{{ it }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="/service/erp/{{ resource_type }}?branch={{ selected_branch }}&filter={{ filter_flag }}&q={{ q }}&page={{ page + 1 }}">다음</a>
+      </li>
+    </ul>
+  </nav>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function syncResourcePage(btn) {
+  $(btn).prop('disabled', true).text('동기화 중...');
+  var url = new URL(window.location.href);
+  url.searchParams.set('_sync', Date.now());
+  window.location.href = url.toString();
+}
+</script>
+{% endblock %}

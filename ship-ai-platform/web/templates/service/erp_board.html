@@ -21,7 +21,11 @@
         {% endfor %}
       </select>
     </form>
-    <span class="small text-muted border rounded px-2 py-1 bg-white">갱신 {{ last_updated }}</span>
+    <button type="button" id="btn-erp-sync" class="btn btn-outline-primary btn-sm fw-semibold px-3"
+            onclick="syncErpDashboard(this)">
+      DB 동기화
+    </button>
+    <span id="erp-sync-time" class="small text-muted border rounded px-2 py-1 bg-white">동기화 {{ last_updated }}</span>
   </div>
 </div>
 
@@ -36,7 +40,7 @@
 <!-- 1. 핵심 지표 4카드 (클릭 시 우측 슬라이드 서랍 오픈) -->
 <div class="row g-4 mb-4">
   <div class="col-md-6 col-xl-3">
-    <div class="kpi-tile clickable" onclick="openResourceDrawer('materials')">
+    <div class="kpi-tile clickable" onclick="location.href='/service/erp/materials?branch={{ selected_branch }}'">
       <div class="d-flex justify-content-between align-items-center">
         <span class="kpi-label">자재 · 재고</span>
         <span class="small text-primary fw-semibold">전체 보기 ▸</span>
@@ -53,7 +57,7 @@
   </div>
 
   <div class="col-md-6 col-xl-3">
-    <div class="kpi-tile clickable" onclick="openResourceDrawer('workers')">
+    <div class="kpi-tile clickable" onclick="location.href='/service/erp/workers?branch={{ selected_branch }}'">
       <div class="d-flex justify-content-between align-items-center">
         <span class="kpi-label">사내 · 외부 작업자</span>
         <span class="small text-primary fw-semibold">전체 보기 ▸</span>
@@ -70,7 +74,7 @@
   </div>
 
   <div class="col-md-6 col-xl-3">
-    <div class="kpi-tile clickable" onclick="openResourceDrawer('equipment')">
+    <div class="kpi-tile clickable" onclick="location.href='/service/erp/equipment?branch={{ selected_branch }}'">
       <div class="d-flex justify-content-between align-items-center">
         <span class="kpi-label">로봇 · 장비 · 차량</span>
         <span class="small text-primary fw-semibold">전체 보기 ▸</span>
@@ -81,7 +85,7 @@
   </div>
 
   <div class="col-md-6 col-xl-3">
-    <div class="kpi-tile clickable" onclick="openResourceDrawer('partners')">
+    <div class="kpi-tile clickable" onclick="location.href='/service/erp/partners?branch={{ selected_branch }}'">
       <div class="d-flex justify-content-between align-items-center">
         <span class="kpi-label">협력사 B2B 자원 · 승인함</span>
         <span class="small text-primary fw-semibold">협력사 보기 ▸</span>
@@ -120,7 +124,7 @@
     <div class="panel-card h-100 mb-0">
       <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="panel-title">로봇 · 장비 실시간 상태</h2>
-        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="openResourceDrawer('equipment')">전체 장비 ▸</button>
+        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" onclick="location.href='/service/erp/equipment?branch={{ selected_branch }}'">전체 장비 ▸</button>
       </div>
       <div class="row g-3 mb-4 text-center">
         <div class="col-4">
@@ -167,7 +171,7 @@
           <h2 class="panel-title">자재 재고 점검 및 AI 자동 발주</h2>
           <div class="small text-muted mt-1">잔여량이 적은 우선 품목만 표시됩니다.</div>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openResourceDrawer('materials')">전체 자재 검색</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.href='/service/erp/materials?branch={{ selected_branch }}'">전체 자재 검색</button>
       </div>
       <div class="table-responsive">
         <table class="table table-enterprise align-middle">
@@ -212,7 +216,7 @@
           <h2 class="panel-title">작업자 자격증 만료 점검 및 안내 메일</h2>
           <div class="small text-muted mt-1">만료되었거나 60일 이내 만료 예정인 작업자를 우선 표시합니다.</div>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openResourceDrawer('workers')">전체 인력 검색</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="location.href='/service/erp/workers?branch={{ selected_branch }}'">전체 인력 검색</button>
       </div>
       <div class="table-responsive">
         <table class="table table-enterprise align-middle">
@@ -496,6 +500,12 @@ $(function () {
 
   var initDrawer = '{{ initial_drawer }}';
   if (initDrawer) openResourceDrawer(initDrawer);
+  window.syncErpDashboard = function (btn) {
+    $(btn).prop('disabled', true).text('동기화 중...');
+    var branch = $('select[name="branch"]').val() || 'ALL';
+    window.location.href = '/service/erp?branch=' + encodeURIComponent(branch) + '&_sync=' + Date.now();
+  };
+
   var initPrompt = {{ initial_prompt | tojson }};
   if (initPrompt) openAssistantWithPrompt(initPrompt, true);
 });
