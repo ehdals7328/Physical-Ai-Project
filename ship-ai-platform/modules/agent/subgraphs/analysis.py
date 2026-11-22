@@ -1,7 +1,7 @@
 """
 modules/agent/subgraphs/analysis.py
 Team 1: 4-Node 전문 분업 서브그래프 (하드코딩 0% - DB 메타데이터 & 스키마 기반 자율 추론)
-[1. RBAC/야드 컨텍스트 초기화] -> [2. LLM 의도/슬롯 추출] -> [3. SHIP_ERP 정밀 진단] -> [4. 제원 완결성/외주 판정]
+[1. RBAC/야드 컨텍스트 초기화] -> [2. LLM 의도/슬롯 추출] -> [3. SHIP_ERP 정밀 진단 + 중량물 하중 검토] -> [4. 제원 완결성/외주 판정]
 """
 
 import json
@@ -16,6 +16,7 @@ from langchain_core.messages import AIMessage
 from modules.agent.state import DocCategory, ShipAgentState
 from modules.agent.tools.erp_tools import (
     check_hq_erp_resources,
+    evaluate_heavy_lifting_capacity,
     get_branch_context_from_db,
     list_erp_workers,
     list_registered_partners_from_db,
@@ -26,6 +27,7 @@ llm = ChatOpenAI(model="gpt-5-mini", reasoning_effort="low")
 
 VALID_WELD_PROCESSES = {"FCAW", "SAW", "GMAW", "SMAW", "GTAW", "TIG", "MIG"}
 STEEL_GRADES = {"SS400", "AH36", "DH36", "EH36", "AH32", "DH32", "EH32", "AH40", "DH40", "EH40"}
+
 
 class UniversalQueryAnalysis(BaseModel):
     task_type: Literal[
@@ -41,12 +43,12 @@ class UniversalQueryAnalysis(BaseModel):
         description=(
             "질의의 핵심 목적 분류:\n"
             "- 'vision_inspection_qa': 현장 비전 탐지 현황, 용접 대기 구역, 용접선 포착 상태, 간섭 위험물, 용접 품질/결함 및 로봇 관제 상태 조회\n"
-            "- 'scm_partner_qa': 사외 협력사 소속의 자재·단가·외주인력·일당·장비 가용성 조회 및 외주 발주·배차 실행\n"
+            "- 'scm_partner_qa': 사외 협력사 소속의 자재·단가·외주인력·일당·장비 가용성 조회, 납기/조건 협의(A2A) 및 외주 발주·배차 실행\n"
             "- 'erp_resource_qa': 본사 야드(사업장) 현황 및 공정, 본사 창고의 자재 재고 또는 본사 보유 장비 조회\n"
             "- 'hr_worker_qa': 사내외 인사 원장(ERP_WORKER_CERT) 기반 전체 작업자 명단 및 공정별 투입 가능 인력 조회 (야드·구역·설비·본인 위치만 묻는 질문 제외)\n"
             "- 'hr_safety_qa': 특정 작업자 1인의 선급 자격증 유효성 단건 검증\n"
             "- 'knowledge_qa': 사내 조선·해양 WPS 기술 규격, 안전 지침, 실시간 기상/날씨 조회 등 도메인 정보 질의\n"
-            "- 'doc_generation': 사용자가 명시적으로 작업지시서·작업계획서의 작성, 생성, 발행을 요청한 경우에만 선택 (단순 날씨·규격·자원 문의는 절대 선택 금지)\n"
+            "- 'doc_generation': 사용자가 명시적으로 작업지시서·중량물 취급 계획서·작업계획서의 작성, 생성, 발행을 요청한 경우에만 선택 (단순 날씨·규격·자원 문의는 절대 선택 금지)\n"
             "- 'chat': 일상 인사, 플랫폼 사용법, 로그인 사용자의 현재 위치·담당 야드·작업구역 확인, 또는 조선·해양 도메인 외 분야의 지원 가능 여부 확인\n"
         )
     )
@@ -54,7 +56,7 @@ class UniversalQueryAnalysis(BaseModel):
     is_action_requested: bool = Field(
         default=False,
         description=(
-            "재고·단가·LOT·가용성 '확인'이나 '조회 요청'은 반드시 False! "
+            "재고·단가·LOT·가용성 '확인'이나 '조회/협의 요청'은 반드시 False! "
             "오직 사용자가 구체적 품목/수량/대수를 지정하여 실제 발주서 발행, 주문 확정, 배차 실행, 원장 커밋을 명령한 경우에만 True"
         ),
     )
@@ -74,7 +76,7 @@ class UniversalQueryAnalysis(BaseModel):
             "외주 연계 또는 협력사 조회(scm_partner_qa) 시 대상 자원 유형:\n"
             "- 'ALL_PARTNERS': 특정 품목·인력·장비 지정 없이 등록된 전체 협력사 목록, 업체 수, 업종 현황을 묻는 일반 조회\n"
             "- 'OUTSOURCED_WORKER': 외주 용접사, 작업자, 인력 명단, 용접 공정 자격 보유 여부, 인건비/일당 문의\n"
-            "- 'WELDING_MATERIAL': 와이어, 강판, 가스 등 물리적 자재 재고·단가·납품 문의\n"
+            "- 'WELDING_MATERIAL': 와이어, 강판, 가스 등 물리적 자재 재고·단가·납품·긴급 협의 문의\n"
             "- 'HEAVY_TRANSPORT': 중량물 운송, 트랜스포터, 크레인 배차 문의\n"
             "- 'NOT_APPLICABLE': 외주나 협력사 자원과 무관한 일반 대화·사내 단순 질의·비전 관제 질의"
         ),
@@ -83,8 +85,8 @@ class UniversalQueryAnalysis(BaseModel):
         default="KEEP_MERGE",
         description=(
             "대화 맥락 처리 방식:\n"
-            "- 'KEEP_MERGE': 작업지시서 작성 흐름을 이어가거나 이전 대화의 블록·제원·작업자 조건을 유지·보충할 때\n"
-            "- 'RESET_NEW': 작업지시서 작성과 완전히 무관한 새로운 독립 주제 질의일 때"
+            "- 'KEEP_MERGE': 작업지시서/중량물 취급 계획서 작성 흐름을 이어가거나 이전 대화의 블록·제원·작업자 조건을 유지·보충할 때\n"
+            "- 'RESET_NEW': 이전 문서 작성과 완전히 무관한 새로운 독립 주제 질의일 때"
         ),
     )
     target_categories: List[DocCategory] = Field(
@@ -121,7 +123,7 @@ class UniversalQueryAnalysis(BaseModel):
             "사람 이름은 반드시 추출하고 뒤에 붙은 직책·호칭만 제외할 것"
         ),
     )
-    equipment: Optional[str] = Field(None, description="질의에 직접 언급된 투입 설비 또는 차량명 (없으면 None)")
+    equipment: Optional[str] = Field(None, description="질의에 직접 언급된 투입 설비 또는 차량명 (예: '50톤 크레인', '15톤 지게차', '트랜스포터', 없으면 None)")
     quantity: Optional[float] = Field(None, description="질의에 직접 언급된 자재/품목의 수치 수량 (없으면 None)")
     additional_specs: Dict[str, Any] = Field(
         default_factory=dict,
@@ -142,7 +144,7 @@ class UniversalQueryAnalysis(BaseModel):
     )
     requested_item_name: Optional[str] = Field(
         default=None,
-        description="사용자가 조회하거나 발주·주문하려는 구체적인 자재/품목명 원문 (예: '용접봉', '와이어', 'AH36 강판', '탄산가스'). 언급이 없으면 None"
+        description="사용자가 조회하거나 발주·주문·협의하려는 구체적인 자재/품목명 원문 (예: '용접봉', '와이어', 'AH36 강판', '탄산가스'). 언급이 없으면 None",
     )
     worker_scope: Optional[Literal["ALL", "HQ_ONLY", "EXTERNAL_ONLY"]] = Field(
         default="ALL",
@@ -152,6 +154,22 @@ class UniversalQueryAnalysis(BaseModel):
             "- 'EXTERNAL_ONLY': '외주', '협력사', '하청', '프리랜서' 인력만 물었을 때\n"
             "- 'ALL': 소속 구분 없이 전체 인력을 물었을 때"
         ),
+    )
+    doc_type: Literal["WELDING_WORK_ORDER", "HEAVY_LIFTING_PLAN"] = Field(
+        default="WELDING_WORK_ORDER",
+        description=(
+            "task_type이 'doc_generation'일 때 발급할 문서 종류:\n"
+            "- 'HEAVY_LIFTING_PLAN': 중량물 취급 계획서, 블록 인양/양중 계획서, 크레인/트랜스포터 이동 안전 계획서 작성·발급 요청 시\n"
+            "- 'WELDING_WORK_ORDER': 일반 용접 작업지시서 작성·발급 요청 시"
+        ),
+    )
+    urgency: Literal["NORMAL", "URGENT"] = Field(
+        default="NORMAL",
+        description="긴급, 급행, 당일, 2시간 이내 등 납기 단축이 필요한 요청이면 'URGENT', 일반이면 'NORMAL'",
+    )
+    target_destination: Optional[str] = Field(
+        default=None,
+        description="중량물 이동/인양 시 최종 목적지 구역 또는 도크 (예: 'DOCK-1', '탑재장', 언급 없으면 None)",
     )
 
 
@@ -170,10 +188,10 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "[판단 기준]\n"
         "1. **멀티턴 후속 선택(1번/2번, A/B 등) 및 보충 통합 처리**: "
         "직전 어시스턴트 응답이 선택지(1/2, A/B 등)를 제시했거나 추가 조건을 역질문한 경우, "
-        "사용자의 짧은 후속 응답('2번해줘', 'A로 진행할게' 등)만 단독으로 보지 말고 **직전 어시스턴트가 제시한 해당 번호 항목의 실제 내용과 이전 대화의 주제(`task_type`)를 그대로 이어받아 분류**하십시오.\n"
+        "사용자의 짧은 후속 응답('2번해줘', 'A로 진행할게' 등)만 단독으로 보지 말고 **직전 어시스턴트가 제시한 해당 번호 항목의 실제 내용과 이전 대화의 주제(`task_type`, `doc_type`)를 그대로 이어받아 분류**하십시오.\n"
         "   - 직전 안내가 협력사 조회(`scm_partner_qa`) 후속 선택지였고 사용자가 자재 납품사·재고·LOT 확인 항목을 선택했다면 `task_type='scm_partner_qa'`, `outsourcing_domain='WELDING_MATERIAL'`, `preferred_execution_mode='OUTSOURCED_B2B'`로 설정하십시오.\n"
-        "   - 작업자 교체, 블록 변경, 제원 보충, 외주 전환 등 작업지시서 발행 진행을 선택한 경우: "
-        "`task_type='doc_generation'`, `context_action='KEEP_MERGE'`로 설정하고 직전 어시스턴트 응답과 사용자 발화에서 확정된 변경 값(`worker_name`, `block_id`, `material`, `thickness`, `process`, `preferred_execution_mode` 등)을 모두 반영하십시오.\n"
+        "   - 작업자 교체, 장비 교체, 블록 변경, 제원 보충, 외주 전환 등 문서 발행 진행을 선택한 경우: "
+        "`task_type='doc_generation'`, `context_action='KEEP_MERGE'`로 설정하고 직전 어시스턴트 응답과 사용자 발화에서 확정된 변경 값(`worker_name`, `equipment`, `block_id`, `material`, `thickness`, `process`, `preferred_execution_mode`, `doc_type` 등)을 모두 반영하십시오.\n"
         "   - 안전 체크리스트, 예열 기준, 기술 규정 확인을 선택한 경우: `task_type='knowledge_qa'`로 분류하여 해당 안내를 제공하십시오.\n"
         "2. **인사 조회 vs 협력사 외주 조회 구분**: 사용자가 사외 협력사, 하청, 외주 또는 등록된 협력사명을 명시적으로 언급하지 않고 투입 가능한 작업자를 묻는 경우에는 `hr_worker_qa`로 분류하십시오.\n"
         "3. **비전 관제 질의**: 현장 비전 탐지 현황, 용접 대기 구역, 용접선 포착 상태, 간섭 장애물, 결함 현황 조회는 `vision_inspection_qa`로 분류하십시오.\n"
@@ -184,7 +202,9 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "8. **인사 조회 범위(`worker_scope`)**: `task_type='hr_worker_qa'`일 때는 반드시 `worker_scope`를 판단하십시오. "
         "'우리 회사', '우리 지금 회사', '본사', '자사', '직영', '정규직'처럼 자사 소속 인력만 물으면 `'HQ_ONLY'`, "
         "'다른 회사', '타사', '외주', '협력사', '프리랜서' 소속을 확인하거나 물으면 `'EXTERNAL_ONLY'`, "
-        "소속 구분 없이 전체를 물으면 `'ALL'`로 설정하십시오.",
+        "소속 구분 없이 전체를 물으면 `'ALL'`로 설정하십시오.\n"
+        "9. **중량물 취급 계획서(`HEAVY_LIFTING_PLAN`)**: 중량물 취급 계획서, 블록 인양·양중·운반 계획서, 크레인/트랜스포터 이동 작업계획서 작성·발급 요청은 반드시 `task_type='doc_generation'`, `doc_type='HEAVY_LIFTING_PLAN'`으로 분류하십시오.\n"
+        "10. **긴급도(`urgency`)**: 사용자가 긴급, 급행, 당일, 빠르게, 즉시 납품·배차 협의를 요구하면 `urgency='URGENT'`로 설정하십시오.",
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (
@@ -197,6 +217,7 @@ ANALYSIS_PROMPT = ChatPromptTemplate.from_messages([
         "[최신 사용자 질의]: {query}",
     ),
 ])
+
 
 # ==============================================================================
 # Node 1: RBAC 권한 및 ERP_BRANCHES 작업장 컨텍스트 동적 초기화 노드
@@ -268,7 +289,6 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
             last_ai_text = str(getattr(m, "content", ""))
             break
 
-    # 대화 전체 맥락(최근 사용자 발화 + 직전 AI 선택지 안내)
     recent_user_texts = [query]
     for m in (messages[-6:] if messages else []):
         if getattr(m, "type", "") == "human":
@@ -300,7 +320,6 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
 
     # 3. worker_name 정제 (대화 내역, 직전 AI 선택지, 또는 로그인 본인 성명 허용)
     raw_worker = str(res.worker_name or "").strip()
-    # 👇 [추가] '최선임 (EMP-1002)' 형태에서 괄호 및 사번 제거 -> '최선임'
     cleaned_worker = re.sub(r"\s*\([^)]*\)", "", raw_worker).strip()
     if (
         cleaned_worker
@@ -326,7 +345,6 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         or (res.context_action == "RESET_NEW" and res.task_type != "doc_generation")
     )
 
-    # intent_slot_extractor_node 내부 슬롯 병합 부분 교체
     if should_reset_context:
         base_ctx = get_branch_context_from_db(branch_code)
         merged_params: Dict[str, Any] = {
@@ -336,10 +354,21 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         }
     else:
         merged_params = dict(existing_params)
-        
+
     # 날씨 질의(knowledge_qa)에서도 사용자가 명시한 도시명(예: '대구')은 기상 MCP 조회를 위해 반영
     if res.location and str(res.location).strip():
         merged_params["location"] = str(res.location).strip()
+
+    # 멀티턴 보충 턴에서 직전 중량물 취급 계획서(HEAVY_LIFTING_PLAN) 흐름 보호
+    resolved_doc_type = res.doc_type
+    if (
+        not should_reset_context
+        and existing_params.get("doc_type") == "HEAVY_LIFTING_PLAN"
+        and res.task_type == "doc_generation"
+        and res.doc_type == "WELDING_WORK_ORDER"
+        and not cleaned_process
+    ):
+        resolved_doc_type = "HEAVY_LIFTING_PLAN"
 
     # knowledge_qa는 단순 기술 질문이므로 이후 작업지시서 슬롯에 누적하지 않음
     if res.task_type != "knowledge_qa":
@@ -357,6 +386,9 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
             "worker_name": cleaned_worker or None,
             "equipment": res.equipment,
             "requested_item_name": res.requested_item_name,
+            "doc_type": resolved_doc_type if res.task_type == "doc_generation" else merged_params.get("doc_type"),
+            "urgency": res.urgency,
+            "target_destination": res.target_destination,
         }
         for k, v in new_fields.items():
             if v is not None and str(v).strip() != "":
@@ -366,18 +398,22 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
         if res.additional_specs:
             merged_params.update(res.additional_specs)
 
+    # [패치 4] ERP 원장 조회·예약을 수반하는 doc_generation에도 RBAC 접근 권한 검사 적용
     if can_access_erp == "N" and res.task_type in (
         "erp_resource_qa",
         "hr_worker_qa",
         "hr_safety_qa",
         "scm_partner_qa",
+        "doc_generation",
     ):
         blocked_msg = (
-            "🔒 **[접근 권한 제한]** 현재 로그인하신 계정은 전사 ERP 자원 및 인사·공급망 원장 조회 권한이 부여되어 있지 않습니다. "
+            "🔒 **[접근 권한 제한]** 현재 로그인하신 계정은 전사 ERP 자원·인사·공급망 원장 조회 및 "
+            "작업지시서·계획서 발행 권한이 부여되어 있지 않습니다. "
             "시스템 관리자 또는 공정 관리자에게 권한 승인을 요청해 주세요."
         )
         return {
             "task_type": "chat",
+            "need_erp_check": False,
             "extracted_params": merged_params,
             "is_param_complete": "yes",
             "missing_params": [],
@@ -421,14 +457,15 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     }
 
 
-def route_after_intent(state: ShipAgentState) -> Literal["hq_erp_diagnostician", "spec_completeness_judge", "__end__"]:
+def route_after_intent(
+    state: ShipAgentState,
+) -> Literal["hq_erp_diagnostician", "spec_completeness_judge", "__end__"]:
     task_type = state.get("task_type")
     params = state.get("extracted_params") or {}
     if task_type == "chat":
         return "__end__"
     if task_type == "vision_inspection_qa":
         return "spec_completeness_judge"
-    # 단순 기상 질의 등 블록·작업자·자재 진단이 불필요한 knowledge_qa는 ERP 진단 생략
     if task_type == "knowledge_qa" and not any(
         params.get(k) for k in ("block_id", "material", "worker_name", "equipment")
     ):
@@ -437,7 +474,7 @@ def route_after_intent(state: ShipAgentState) -> Literal["hq_erp_diagnostician",
 
 
 # ==============================================================================
-# Node 3: 본사 SHIP_ERP 마스터 제원 동기화 및 자원 가용성 진단 노드
+# Node 3: 본사 SHIP_ERP 마스터 제원 동기화 및 자원·중량물 하중 진단 노드
 # ==============================================================================
 def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
     task_type = state.get("task_type")
@@ -468,7 +505,6 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
             if bm.get(bk) is not None:
                 merged_params[bk] = bm[bk]
 
-        # block_master의 work_zone(DOCK-1, ZONE-A-BAY1 등)을 작업구역으로 매핑
         if bm.get("work_zone"):
             merged_params["work_zone"] = bm["work_zone"]
 
@@ -477,7 +513,6 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
     current_loc = str(merged_params.get("location") or "").strip()
     loc_upper = current_loc.upper()
 
-    # 사용자가 현재 질문에 직접 언급한 지역명(예: '대구')이 있으면 로그인 야드 지역명('울산')으로 덮어쓰지 않음
     is_user_explicit_loc = bool(current_loc and current_loc in user_query_text)
 
     if branch_info.get("region_name") and not is_user_explicit_loc:
@@ -491,6 +526,24 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
     if not merged_params.get("work_zone") and branch_info.get("default_zone"):
         merged_params["work_zone"] = branch_info["default_zone"]
 
+    # 중량물 취급 작업계획서(HEAVY_LIFTING_PLAN) 요청 시 정격하중 안전율 사전 진단
+    outsource_domain = state.get("outsourcing_domain") or "NOT_APPLICABLE"
+    if merged_params.get("doc_type") == "HEAVY_LIFTING_PLAN":
+        lifting_eval = evaluate_heavy_lifting_capacity(
+            block_weight_ton=merged_params.get("weight_ton"),
+            vehicles_equipment=erp_status.get("vehicles_equipment") or [],
+            target_branch=merged_params.get("branch_code"),
+            requested_equipment=merged_params.get("equipment"),
+        )
+        erp_status["lifting_capacity_eval"] = lifting_eval
+        if lifting_eval.get("selected_equipment"):
+            erp_status["assigned_vehicle_code"] = lifting_eval["selected_equipment"].get("asset_code")
+        # 사내 장비 정격하중 초과(OVERLOAD) 또는 미보유 시 외주 중량물 A2A 배차 자동 연계
+        if lifting_eval.get("need_outsourcing"):
+            erp_status["require_outsourcing"] = True
+            erp_status["outsourcing_reason"] = f"HEAVY_TRANSPORT: {lifting_eval.get('reason')}"
+            outsource_domain = "HEAVY_TRANSPORT"
+
     pref_mode = state.get("preferred_execution_mode", "AUTO")
     if task_type == "scm_partner_qa" or pref_mode == "OUTSOURCED_B2B":
         is_outsourcing = True
@@ -502,6 +555,7 @@ def hq_erp_diagnostician_node(state: ShipAgentState) -> Dict[str, Any]:
     return {
         "extracted_params": merged_params,
         "erp_resource_status": erp_status,
+        "outsourcing_domain": outsource_domain,
         "is_outsourcing_required": is_outsourcing,
     }
 
@@ -513,12 +567,12 @@ CLARIFICATION_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         "당신은 스마트 조선소 공정 관리 AI 어시스턴트입니다.\n"
-        "사용자가 작업지시서 발행을 요청했으나 아직 일부 필수 제원이 입력되지 않았습니다.\n"
+        "사용자가 문서(용접 작업지시서 또는 중량물 취급 작업계획서) 발행을 요청했으나 아직 일부 필수 제원이 입력되지 않았습니다.\n"
         "딱딱한 경고성 표현이나 영문 DB 컬럼명·상태 코드(`BLOCK_ID`, `VALID`, `is_busy`, `weld_process` 등)를 절대 쓰지 말고, "
         "현장 실무자가 한눈에 보고 바로 답할 수 있도록 아래 구조로 간결하게 안내하세요.\n\n"
         "[출력 구조]\n"
-        "1. 상단 `>` 인용구(1줄): 작업지시서 작성을 위해 **추가 확인이 필요한 필수 항목**을 굵게 요약\n"
-        "2. `### 📋 선택 가능한 등록 블록 및 가용 작업자`: [ERP 등록 블록 목록] 전체(블록 지정 시 강종·두께·공정 자동 매핑 안내)와 [ERP 가용 작업자 목록] 중 자격이 유효하고 대기 중인 적격 작업자를 간결한 불릿으로 추천\n"
+        "1. 상단 `>` 인용구(1줄): 문서 작성을 위해 **추가 확인이 필요한 필수 항목**을 굵게 요약\n"
+        "2. `### 📋 선택 가능한 등록 블록 및 가용 자원`: [ERP 등록 블록 목록] 전체(블록 지정 시 강종·두께·중량·공정 자동 매핑 안내)와, 용접 작업지시서인 경우 [ERP 가용 작업자 목록] 중 자격이 유효하고 대기 중인 적격 작업자를 간결한 불릿으로 추천\n"
         "3. `💡 입력 예시`: 사용자가 바로 따라 입력할 수 있는 한 줄 문장 예시 제시",
     ),
     (
@@ -544,18 +598,35 @@ def spec_completeness_judge_node(state: ShipAgentState) -> Dict[str, Any]:
     clarification_answer = None
 
     if task_type == "doc_generation":
-        required_slots = {
-            "material": "모재 강종",
-            "thickness": "판 두께",
-            "process": "용접 공정",
-            "worker_name": "투입 작업자 성명",
-        }
+        is_lifting = merged_params.get("doc_type") == "HEAVY_LIFTING_PLAN"
+        if is_lifting:
+            required_slots = {
+                "block_id": "작업 대상 블록 번호",
+                "weight_ton": "대상 블록 중량(톤)",
+            }
+        else:
+            required_slots = {
+                "block_id": "작업 대상 블록 번호",
+                "material": "모재 강종",
+                "thickness": "판 두께",
+                "process": "용접 공정",
+                "worker_name": "투입 작업자 성명",
+            }
         missing = [k for k in required_slots if not merged_params.get(k)]
+
+        # [패치 1] 입력된 block_id가 실제 ERP_BLOCK_MASTER에 등록된 유효 블록인지 엄격 검증
+        if merged_params.get("block_id") and not erp_status.get("block_master"):
+            if "block_id" not in missing:
+                missing.insert(0, "block_id")
+            required_slots["block_id"] = (
+                f"유효한 등록 블록 번호 (입력값 '{merged_params.get('block_id')}' 미등록)"
+            )
+
         if missing:
             is_complete = "no"
             missing_kor = ", ".join(required_slots[m] for m in missing)
             req_proc = str(merged_params.get("process") or "").upper()
-            valid_workers = [
+            valid_workers = [] if is_lifting else [
                 w for w in (erp_status.get("available_workers") or [])
                 if str(w.get("status", "")).upper() == "VALID"
                 and str(w.get("weld_process", "NA")).upper() != "NA"
@@ -573,18 +644,21 @@ def spec_completeness_judge_node(state: ShipAgentState) -> Dict[str, Any]:
             except Exception as e:
                 print(f"⚠️ [Team 1 역질문 생성 경고]: {e}")
                 clarification_answer = (
-                    f"작업지시서 발행을 위해 다음 필수 제원을 추가로 알려주세요: **{missing_kor}** "
-                    "(대상 블록 코드와 투입할 작업자 성명을 입력해 주시면 즉시 처리해 드립니다.)"
+                    f"문서 발행을 위해 다음 필수 제원을 추가로 알려주세요: **{missing_kor}** "
+                    "(ERP에 등록된 대상 블록 코드를 입력해 주시면 관련 제원이 자동으로 연동됩니다.)"
                 )
 
     if not queries and task_type in ("knowledge_qa", "doc_generation"):
-        mat = merged_params.get("material", "")
-        thk = merged_params.get("thickness", "")
-        proc = merged_params.get("process", "용접")
-        if task_type == "doc_generation" and (mat or thk):
-            queries = [f"{mat} {thk} {proc} WPS 작업 표준 규격".strip()]
+        if task_type == "doc_generation" and merged_params.get("doc_type") == "HEAVY_LIFTING_PLAN":
+            queries = ["중량물 취급 작업계획서 크레인 양중 줄걸이 와이어로프 신호수 안전 기준"]
         else:
-            queries = [query]
+            mat = merged_params.get("material", "")
+            thk = merged_params.get("thickness", "")
+            proc = merged_params.get("process", "용접")
+            if task_type == "doc_generation" and (mat or thk):
+                queries = [f"{mat} {thk} {proc} WPS 작업 표준 규격".strip()]
+            else:
+                queries = [query]
 
     result_dict: Dict[str, Any] = {
         "missing_params": missing,

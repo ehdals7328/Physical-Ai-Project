@@ -54,6 +54,8 @@ def get_vision_inspection_status(
 ) -> Dict[str, Any]:
     """
     [Oracle SHIP_USER 비전 & 로봇 상태 단건 조회 - 작업지시서 및 안전 인터록용]
+    - NO_DATA: 계측 이력이 없는 상태 (safety_clearance_yn=None 반환, 안전 확인 완료와 명확히 분리)
+    - ERROR: DB/조회 장애 발생 시 Fail-Closed 원칙에 따라 safety_clearance_yn='N' 반환
     """
     try:
         with user_engine.connect() as conn:
@@ -81,12 +83,14 @@ def get_vision_inspection_status(
                     )
                 ).mappings().first()
 
+            # [패치 2-1] 분석 이력 미존재(NO_DATA) 시 안전 확인 완료('Y')와 분리
             if not ana_row:
                 return {
                     "status": "NO_DATA",
-                    "inspection_status": "BEFORE_WELD",
+                    "inspection_status": "NO_DATA",
                     "welding_state": "BEFORE_WELD",
-                    "safety_clearance_yn": "Y",
+                    "safety_clearance_yn": None,
+                    "interfering_objects": [],
                     "detections": [],
                 }
 
@@ -108,7 +112,11 @@ def get_vision_inspection_status(
             for d in det_rows:
                 c_name = str(d["class_name"] or "").lower()
                 wp_raw = d["centerline_waypoints_json"]
-                wp_parsed = json.loads(wp_raw) if isinstance(wp_raw, str) and wp_raw.strip() else (wp_raw or [])
+                wp_parsed = (
+                    json.loads(wp_raw)
+                    if isinstance(wp_raw, str) and wp_raw.strip()
+                    else (wp_raw or [])
+                )
                 if c_name == "weld_joint" and wp_parsed:
                     waypoints = wp_parsed
 
@@ -203,15 +211,16 @@ def get_vision_inspection_status(
             }
 
     except Exception as e:
+        # [패치 2-2] 조회 실패(ERROR) 시 Fail-Closed 원칙 적용 ('Y' 절대 반환 금지)
         return {
             "status": "ERROR",
             "error": f"VISION DB 조회 오류: {str(e)}",
-            "inspection_status": "BEFORE_WELD",
-            "welding_state": "BEFORE_WELD",
-            "safety_clearance_yn": "Y",
+            "inspection_status": "ERROR",
+            "welding_state": "UNKNOWN",
+            "safety_clearance_yn": "N",
+            "interfering_objects": ["VISION_DB_ERROR"],
             "detections": [],
         }
-
 
 @tool
 def get_vision_overview_for_qa(
