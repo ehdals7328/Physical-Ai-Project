@@ -685,12 +685,12 @@ def login():
 
     quick_users = []
     try:
-        quick_users = (
-            User.query
-            .filter_by(is_active="Y")
-            .order_by(User.user_id.asc())
-            .all()
-        )
+        seen_keys = set()
+        for u in User.query.filter_by(is_active="Y").order_by(User.user_id.asc()).all():
+            key = (u.role, u.user_type)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                quick_users.append(u)
     except Exception:
         quick_users = []
     return render_template("auth/login.html", quick_users=quick_users)
