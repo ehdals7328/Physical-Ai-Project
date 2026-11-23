@@ -1,6 +1,6 @@
 """
 modules/agent/supervisor.py
-Top-Level Supervisor & Multi-Turn Memory Graph
+Top-Level Supervisor & Self-Correction Loop Multi-Turn Graph
 """
 
 from typing import Any, Dict, Literal
@@ -15,12 +15,42 @@ from modules.agent.subgraphs.search import team2_subgraph
 
 def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
     """
-    새로운 턴 시작 시 직전 턴의 출처(retrieved_docs), 센서/비전 결과, 생성 문서 및
-    하위 서브그래프의 동적 플랜 큐를 초기화하여 멀티턴 상태 오염(출처 잔류)을 차단합니다.
-    직전 턴에 이미 원장 커밋(COMMITTED)이 완료된 경우 hitl_approved 플래그도 함께 해제합니다.
+    새로운 턴 시작 시 직전 턴의 일회성 상태를 초기화합니다.
+    직전 턴에 문서(DRAFT/APPROVED)가 이미 생성된 경우, 해당 블록·작업자를 기발행 이력에 기록하고
+    extracted_params의 이전 문서 전용 슬롯을 비워 다음 턴에서 동일 문서가 중복 발행되지 않도록 합니다.
     """
     prev_commit = state.get("erp_commit_result") or {}
     was_already_committed = prev_commit.get("erp_transaction_status") == "COMMITTED"
+
+    drafted_blocks = list(state.get("drafted_blocks_history") or [])
+    drafted_workers = list(state.get("drafted_workers_history") or [])
+    cleaned_params = dict(state.get("extracted_params") or {})
+
+    prev_doc = state.get("generated_document") or {}
+    if prev_doc.get("status") in ("DRAFT", "APPROVED"):
+        prev_params = prev_doc.get("parameters") or {}
+        p_blk = str(prev_params.get("block_id") or "").strip().upper()
+        p_wrk = str(prev_params.get("worker_name") or "").strip()
+        if p_blk and p_blk not in drafted_blocks:
+            drafted_blocks.append(p_blk)
+        if p_wrk and p_wrk not in drafted_workers:
+            drafted_workers.append(p_wrk)
+
+        # 이미 초안 발행이 끝난 직전 문서의 블록·작업자·공정 슬롯 비우기 (야드·구역 컨텍스트만 유지)
+        for doc_key in (
+            "block_id",
+            "block_name",
+            "ship_code",
+            "material",
+            "thickness",
+            "joint_type",
+            "process",
+            "weight_ton",
+            "worker_name",
+            "equipment",
+            "doc_type",
+        ):
+            cleaned_params.pop(doc_key, None)
 
     init_updates: Dict[str, Any] = {
         "team2_plan": None,
@@ -31,9 +61,21 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
         "weather_data": None,
         "generated_document": None,
         "erp_commit_result": None,
+        "erp_resource_status": None,
         "partner_erp_plan": None,
         "final_answer": None,
         "audit_saved": False,
+        "extracted_params": cleaned_params,
+        "auto_assign_mode": False,
+        "replan_count": 0,
+        "replan_needed": False,
+        "replan_feedback": None,
+        "excluded_blocks": list(drafted_blocks),
+        "excluded_workers": list(drafted_workers),
+        "drafted_blocks_history": drafted_blocks,
+        "drafted_workers_history": drafted_workers,
+        "agent_reasoning_summary": None,
+        "tool_trace": [],
     }
     if was_already_committed:
         init_updates["hitl_approved"] = False
@@ -46,23 +88,39 @@ def route_after_team1(
 ) -> Literal["team2_search", "team3_docgen", "__end__"]:
     task_type = state.get("task_type")
     is_complete = state.get("is_param_complete", "yes")
-    missing = state.get("missing_params")
     is_outsourcing = state.get("is_outsourcing_required", False)
+    auto_assign = state.get("auto_assign_mode", False)
 
     print("\n" + "=" * 60)
-    print(f"🧭 [Top Supervisor Routing] task_type='{task_type}', is_param_complete='{is_complete}'")
-    print(f"   - 누락 제원: {missing}")
-    print(f"   - 사내 ERP 자원 진단: {state.get('erp_resource_status') is not None}")
-    print(f"   - 외주 연계 필요 여부: {is_outsourcing}")
+    print(
+        f"🧭 [Top Supervisor Routing] task='{task_type}', "
+        f"complete='{is_complete}', auto_assign={auto_assign}, outsourcing={is_outsourcing}"
+    )
 
     if task_type == "chat" or (task_type == "doc_generation" and is_complete == "no"):
         return "__end__"
 
-    # 순수 사내(IN_HOUSE) 조회일 때만 Team 2를 건너뛰고 Team 3으로 직행
+    # 순수 사내 단건/원장 조회는 빠르게 Team 3 브리핑으로 직행
     if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa") and not is_outsourcing:
         return "team3_docgen"
 
     return "team2_search"
+
+
+def route_after_team3(
+    state: ShipAgentState,
+) -> Literal["team2_search", "__end__"]:
+    """
+    Team 3 거버넌스 게이트키퍼가 복구 가능한 결격을 감지한 경우
+    Team 2 ReAct 에이전트로 제어권을 되돌려(Back-edge) 자율 재편성을 수행합니다.
+    """
+    if state.get("replan_needed") and int(state.get("replan_count", 0)) <= 2:
+        print(
+            f"🔁 [Top Supervisor Self-Correction Loop] "
+            f"Team 3 ➔ Team 2 재편성 진입 (시도 #{state.get('replan_count')})"
+        )
+        return "team2_search"
+    return "__end__"
 
 
 builder = StateGraph(ShipAgentState)
@@ -84,7 +142,14 @@ builder.add_conditional_edges(
     },
 )
 builder.add_edge("team2_search", "team3_docgen")
-builder.add_edge("team3_docgen", END)
+builder.add_conditional_edges(
+    "team3_docgen",
+    route_after_team3,
+    {
+        "team2_search": "team2_search",
+        "__end__": END,
+    },
+)
 
 memory = MemorySaver()
 ship_agent_app = builder.compile(checkpointer=memory)

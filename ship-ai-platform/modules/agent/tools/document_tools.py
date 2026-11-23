@@ -912,7 +912,9 @@ def export_outsourcing_po_pdf(
         {
             "status": "SUCCESS",
             "po_number": po_num,
+            "pdf_path": str(pdf_path.resolve()),
             "po_pdf_path": str(pdf_path.resolve()),
+            "download_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
             "download_po_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
         },
         ensure_ascii=False,
@@ -986,6 +988,11 @@ def export_heavy_lifting_plan_pdf(
     rigging_w = cap_eval.get("rigging_weight_ton") or "-"
     total_lift = cap_eval.get("total_lifting_ton") or "-"
     load_ratio = a2a_prop.get("load_ratio_pct") or cap_eval.get("load_ratio_pct") or "-"
+    cap_status_display = (
+        "PASS (외주 A2A 안전 배차)"
+        if a2a_prop.get("assigned_vehicle_code")
+        else (cap_eval.get("status") or "PASS")
+    )
 
     safety_eval = weather.get("safety_evaluation") or {}
     env_rules = safety_eval.get("mandatory_rules") or []
@@ -1073,7 +1080,7 @@ def export_heavy_lifting_plan_pdf(
         </tr>
         <tr>
             <th>정격 하중률 (안전율)</th><td><b>{load_ratio}%</b> (기준: 90% 이하 안전)</td>
-            <th>하중 검토 판정</th><td><b>{cap_eval.get('status', 'PASS')}</b></td>
+            <th>하중 검토 판정</th><td><b>{cap_status_display}</b></td>
         </tr>
         <tr>
             <th>운전원 / 작업지휘자</th><td>운전원: {eq.get('driver_worker_id', '지정운전원')} / 지휘자: {lifting.get('supervisor_name') or reviewer}</td>
@@ -1098,7 +1105,7 @@ def export_heavy_lifting_plan_pdf(
             <th>실시간 기상 스냅샷</th><td colspan="3">{weather_line}</td>
         </tr>
         <tr>
-            <th>비전 구역 장애물 감시</th><td colspan="3">안전거리 확보 여부: <b>{vision.get('safety_clearance_yn', 'Y')}</b> (인양 경로 간섭물 사전 제거 확인)</td>
+            <th>비전 구역 장애물 감시</th><td colspan="3">안전거리 확보 여부: <b>{vision.get('safety_clearance_yn') or '계측 대기 (작업 전 현장 육안 확인 필수)'}</b> (인양 경로 간섭물 사전 제거 확인)</td>
         </tr>
         <tr>
             <th>필수 안전 점검표</th><td colspan="3">{checks_html}</td>

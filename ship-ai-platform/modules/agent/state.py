@@ -40,51 +40,69 @@ class ShipAgentState(TypedDict, total=False):
     user_query: str
 
     # 2. SHIP_USER.USERS 권한(RBAC) 및 작업 오더(WORK_ORDERS) 컨텍스트
-    user_id: Optional[str]                        # USERS.USER_ID
+    user_id: Optional[str]
     user_name: Optional[str]
     user_role: Optional[str]                      # WORKER | MANAGER | ADMIN
     user_type: Optional[str]                      # INTERNAL | EXTERNAL
     can_access_erp: Optional[str]                 # 'Y' | 'N'
     can_access_internal_rag: Optional[str]        # 'Y' | 'N'
     can_control_robot: Optional[str]              # 'Y' | 'N'
-    default_workspace: Optional[str]              # 예: 'ZONE-A-BAY1'
-    branch_code: Optional[str]                    # 예: 'BR-ULSAN-01', 'BR-GEOJE-01'
-    work_id: Optional[str]                        # WORK_ORDERS.WORK_ID
-    work_no: Optional[str]                        # WORK_ORDERS.WORK_NO (MES_WORK_ORDER_DISPATCH.WO_NUMBER와 1:1 매핑)
+    default_workspace: Optional[str]
+    branch_code: Optional[str]
+    work_id: Optional[str]
+    work_no: Optional[str]
 
-    # 3. Team 1 (4-Node 분업: 보안게이트 -> 의도분석 -> ERP진단 -> 완결성판정) 상태
+    # 3. Team 1 (RBAC 초기화 -> 의도/목표 추출 -> ERP 사전진단 -> 완결성/자율편성 판정) 상태
     task_type: Optional[TaskType]
-    is_action_requested: bool                     # 단순 조회(False) vs 원장 커밋/발주 실행(True)
+    is_action_requested: bool
     preferred_execution_mode: Optional[Literal["AUTO", "IN_HOUSE", "OUTSOURCED_B2B"]]
     outsourcing_domain: Optional[
-        Literal["HEAVY_TRANSPORT", "WELDING_MATERIAL", "OUTSOURCED_WORKER", "NOT_APPLICABLE"]
+        Literal[
+            "ALL_PARTNERS",
+            "HEAVY_TRANSPORT",
+            "WELDING_MATERIAL",
+            "OUTSOURCED_WORKER",
+            "NOT_APPLICABLE",
+        ]
     ]
     worker_scope: Optional[Literal["ALL", "HQ_ONLY", "EXTERNAL_ONLY"]]
 
+    # Agentic 자율 편성 및 Self-Correction 제어 상태
+    auto_assign_mode: bool                        # 블록/작업자 미지정 시 에이전트 자율 탐색·배정 허용
+    replan_count: int                             # Team 3 Gatekeeper 차단 후 자율 재편성 횟수
+    replan_needed: bool                           # Team 3 -> Team 2 복구 백엣지 트리거 플래그
+    replan_feedback: Optional[str]                # 차단 사유 및 재편성 지시 피드백
+    excluded_blocks: List[str]                    # 자율 탐색 중 불가 판정된 블록 제외 목록
+    excluded_workers: List[str]                   # 결격 판정된 작업자 제외 목록
+    agent_reasoning_summary: Optional[str]        # 에이전트 자율 선택·복구 판단 근거 요약
+    tool_trace: List[Dict[str, Any]]              # ReAct 도구 호출·관찰 이력
+    drafted_blocks_history: List[str]             # 현재 세션에서 이미 초안 발행된 블록 목록
+    drafted_workers_history: List[str]            # 현재 세션에서 이미 초안 배정된 작업자 목록
+
     target_categories: List[DocCategory]
     need_weather: bool
-    extracted_params: Dict[str, Any]              # 누적 보존 제원
+    extracted_params: Dict[str, Any]
     is_param_complete: Optional[str]              # "yes" | "no"
-    missing_params: List[str]                     # 누락된 현장 필수 입력 제원
-    search_queries: List[str]                     # 공학 표준 검색어 리스트
+    missing_params: List[str]
+    search_queries: List[str]
 
     # 4. SHIP_ERP & B2B SCM 연동 상태
-    erp_resource_status: Optional[Dict[str, Any]]  # SHIP_ERP 통합 진단 결과
-    is_outsourcing_required: bool                  # B2B 협력사 호출 플래그
-    partner_erp_plan: Optional[Dict[str, Any]]     # PostgreSQL B2B 협력사 조회 결과
-    erp_commit_result: Optional[Dict[str, Any]]    # 최종 재고 선점 및 MES_WORK_ORDER_DISPATCH 커밋 결과
-    hitl_approved: Optional[bool]                  # 관리자 최종 승인 여부
+    erp_resource_status: Optional[Dict[str, Any]]
+    is_outsourcing_required: bool
+    partner_erp_plan: Optional[Dict[str, Any]]
+    erp_commit_result: Optional[Dict[str, Any]]
+    hitl_approved: Optional[bool]
 
-    # 5. Team 2 (Supervisor 기반 지식·환경·비전·공급망 자율 감리) 상태
-    team2_plan: Optional[List[str]]                # Team 2 Supervisor가 수립한 동적 실행 대기열
+    # 5. Team 2 (ReAct 자율 탐색 에이전트) 수집 결과
+    team2_plan: Optional[List[str]]
     search_status: SearchStatus
     retrieved_docs: List[Dict[str, Any]]
-    doc_grade: Optional[str]                       # "yes" | "no"
-    retry_count: int                               # 쿼리 재작성 루프 카운터
+    doc_grade: Optional[str]                      # "yes" | "no"
+    retry_count: int
     weather_data: Optional[Dict[str, Any]]
-    vision_data: Optional[Dict[str, Any]]          # VISION_ANALYSES / DETECTIONS / INSPECTIONS 통합 데이터
+    vision_data: Optional[Dict[str, Any]]
 
-    # 6. Team 3 (거버넌스 라우터 & 문서 생성 & 트랜잭션 마감) 산출물
+    # 6. Team 3 (거버넌스 게이트키퍼 & 문서 생성 & 트랜잭션 마감) 산출물
     generated_document: Optional[Dict[str, Any]]
     final_answer: Optional[str]
     audit_saved: bool

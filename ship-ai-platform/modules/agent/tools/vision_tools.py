@@ -139,9 +139,7 @@ def get_vision_inspection_status(
                 })
 
             sql_ins = """
-                SELECT inspection_id, start_point_json, end_point_json,
-                       estimated_length_mm, safety_clearance_yn,
-                       inspection_status, defect_detail_json
+                SELECT *
                 FROM VISION_INSPECTIONS
                 WHERE analysis_id = :analysis_id
                 ORDER BY created_at DESC
@@ -157,19 +155,19 @@ def get_vision_inspection_status(
             defect_detail = None
 
             if ins_row:
-                if ins_row["start_point_json"]:
+                if ins_row.get("start_point_json"):
                     sp = ins_row["start_point_json"]
                     start_pt = json.loads(sp) if isinstance(sp, str) else sp
-                if ins_row["end_point_json"]:
+                if ins_row.get("end_point_json"):
                     ep = ins_row["end_point_json"]
                     end_pt = json.loads(ep) if isinstance(ep, str) else ep
-                if ins_row["estimated_length_mm"] is not None:
+                if ins_row.get("estimated_length_mm") is not None:
                     est_len = float(ins_row["estimated_length_mm"])
-                if ins_row["safety_clearance_yn"]:
+                if ins_row.get("safety_clearance_yn"):
                     safety_yn = str(ins_row["safety_clearance_yn"]).upper()
-                if ins_row["inspection_status"]:
+                if ins_row.get("inspection_status"):
                     ins_status = str(ins_row["inspection_status"]).upper()
-                if ins_row["defect_detail_json"]:
+                if ins_row.get("defect_detail_json"):
                     dd = ins_row["defect_detail_json"]
                     defect_detail = json.loads(dd) if isinstance(dd, str) else dd
 
@@ -244,7 +242,6 @@ def get_vision_overview_for_qa(
                     va.status_code AS analysis_status,
                     va.created_at AS captured_at,
                     vi.inspection_id,
-                    vi.estimated_length_mm,
                     vi.safety_clearance_yn,
                     vi.inspection_status,
                     vi.defect_detail_json
