@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from sqlalchemy import create_engine, text
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 # 불필요한 스트림 종료 로그 억제 (weather_server.py와 동일)
 logging.getLogger("mcp.server.streamable_http").setLevel(logging.CRITICAL)
@@ -42,6 +42,13 @@ mcp = FastMCP("partner-b2b-server", host="0.0.0.0", port=8001)
 # A2A Task 상태 메모리 저장소 (감사 추적 및 tasks/get 조회용)
 A2A_TASK_STORE: Dict[str, Dict[str, Any]] = {}
 
+def _safe_json_response(payload: Any, status_code: int = 200) -> Response:
+    """PostgreSQL date / Decimal 타입이 포함돼도 500 에러 없이 직렬화하는 JSON 응답 헬퍼"""
+    return Response(
+        content=json.dumps(payload, ensure_ascii=False, default=str),
+        status_code=status_code,
+        media_type="application/json",
+    )
 
 @mcp.tool()
 def query_partner_b2b_catalog(
@@ -191,23 +198,25 @@ def query_partner_b2b_catalog(
                 transporters = []
                 try:
                     rows = conn.execute(
-                        text("SELECT * FROM v_b2b_hankook_transporters")
+                        text("SELECT * FROM v_b2b_hankook_equipment")
                     ).mappings().all()
-                    transporters = [dict(r) for r in rows]
+                    for r in rows:
+                        d = dict(r)
+                        cat = str(d.get("asset_category") or "").upper()
+                        if any(k in cat for k in ("TRANSPORTER", "CRANE", "FORKLIFT", "VEHICLE")):
+                            d["assigned_vehicle_code"] = d.get("ext_asset_code")
+                            d["partner_name"] = d.get("partner_name") or "한국중량물운송(주)"
+                            d["business_type"] = "HEAVY_TRANSPORT"
+                            transporters.append(d)
                 except Exception as view_err:
-                    print(f"⚠️ [v_b2b_hankook_transporters 조회 참고]: {view_err}")
+                    print(f"⚠️ [v_b2b_hankook_equipment 조회 참고]: {view_err}")
 
-                selected = None
-                if transporters:
-                    selected = dict(transporters[0])
-                    selected.setdefault("partner_id", "VEND-HANKOOK-TP")
-                    selected.setdefault("partner_name", "한국중량물운송(주)")
-                    selected.setdefault("business_type", "HEAVY_TRANSPORT")
+                selected = dict(transporters[0]) if transporters else None
 
                 res = {
                     "status": "SUCCESS",
                     "b2b_inquiry_timestamp": timestamp_iso,
-                    "source": "FastMCP Partner Gateway -> PostgreSQL (v_b2b_hankook_transporters)",
+                    "source": "FastMCP Partner Gateway -> PostgreSQL (v_b2b_hankook_equipment)",
                     "available_transporters": transporters,
                     "selected_partner": selected,
                 }
@@ -550,54 +559,89 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                 transporters = []
                 try:
                     rows = conn.execute(
-                        text("SELECT * FROM v_b2b_hankook_transporters")
+                        text("SELECT * FROM v_b2b_hankook_equipment")
                     ).mappings().all()
-                    transporters = [dict(r) for r in rows]
-                except Exception:
+                    for r in rows:
+                        d = dict(r)
+                        cat = str(d.get("asset_category") or "").upper()
+                        if any(k in cat for k in ("TRANSPORTER", "CRANE", "FORKLIFT", "VEHICLE")):
+                            transporters.append(d)
+                except Exception as view_err:
+                    print(f"⚠️ [A2A v_b2b_hankook_equipment 조회 오류]: {view_err}")
                     transporters = []
 
-                required_cap = round((req_weight_ton * 1.05) / 0.9, 1) if req_weight_ton > 0 else 50.0
-                chosen = None
-                for tp in transporters:
-                    cap = float(tp.get("max_load_ton") or 200.0)
-                    if cap >= required_cap:
-                        chosen = dict(tp)
-                        break
-                if not chosen and transporters:
-                    chosen = dict(transporters[0])
+                if not transporters:
+                    return {
+                        "a2a_task_status": "completed",
+                        "business_status": "REJECTED",
+                        "negotiation_decision": "REJECTED",
+                        "partner_id": "VEND-HANKOOK-TP",
+                        "partner_name": "한국중량물운송(주)",
+                        "domain": domain,
+                        "assigned_vehicle_code": None,
+                        "summary": "협력사에 현재 배차 가능한 대기(STANDBY) 중량물 운송·양중 장비가 없습니다.",
+                        "privacy_boundary_notice": privacy_notice,
+                        "timestamp": now_iso,
+                    }
 
-                partner_id = (chosen or {}).get("partner_id") or "VEND-HANKOOK-TP"
-                partner_name = (chosen or {}).get("partner_name") or "한국중량물운송(주)"
-                veh_code = (
-                    (chosen or {}).get("assigned_vehicle_code")
-                    or (chosen or {}).get("asset_code")
-                    or "VEH-TP-GEOJE-01"
+                required_cap = round((req_weight_ton * 1.05) / 0.9, 1) if req_weight_ton > 0 else 0.0
+                safe_candidates = [
+                    tp for tp in transporters
+                    if float(tp.get("max_load_ton") or 0.0) >= required_cap
+                ]
+                if not safe_candidates:
+                    max_avail = max(float(tp.get("max_load_ton") or 0.0) for tp in transporters)
+                    return {
+                        "a2a_task_status": "completed",
+                        "business_status": "REJECTED",
+                        "negotiation_decision": "REJECTED",
+                        "partner_id": "VEND-HANKOOK-TP",
+                        "partner_name": "한국중량물운송(주)",
+                        "domain": domain,
+                        "assigned_vehicle_code": None,
+                        "summary": (
+                            f"요청 중량({req_weight_ton:g}톤, 필요 정격 {required_cap:g}톤)을 안전율 90% 이내로 "
+                            f"감당할 수 있는 협력사 가용 장비가 없습니다(현재 보유 최대 정격 {max_avail:g}톤)."
+                        ),
+                        "privacy_boundary_notice": privacy_notice,
+                        "timestamp": now_iso,
+                    }
+
+                # 동일 권역 우선, 그 다음 정격하중이 가장 적합한(작은) 장비 선택
+                safe_candidates.sort(
+                    key=lambda tp: (
+                        target_region not in str(tp.get("current_region") or ""),
+                        float(tp.get("max_load_ton") or 9999.0),
+                    )
                 )
-                max_load = float((chosen or {}).get("max_load_ton") or 200.0)
-                veh_branch = str((chosen or {}).get("branch_code") or "BR-GEOJE-01").upper()
+                chosen = dict(safe_candidates[0])
+
+                partner_id = chosen.get("partner_id") or "VEND-HANKOOK-TP"
+                partner_name = chosen.get("partner_name") or "한국중량물운송(주)"
+                veh_code = chosen.get("ext_asset_code") or chosen.get("assigned_vehicle_code") or chosen.get("asset_code")
+                max_load = float(chosen.get("max_load_ton") or 0.0)
+                veh_region = str(chosen.get("current_region") or "").strip()
                 base_rate = int(
                     float(
-                        (chosen or {}).get("trip_rate_krw")
-                        or (chosen or {}).get("unit_price_krw")
-                        or 1800000
+                        chosen.get("hourly_rental_krw")
+                        or chosen.get("trip_rate_krw")
+                        or chosen.get("unit_price_krw")
+                        or 450000
                     )
                 )
 
-                same_region = (
-                    (target_region == "거제" and "GEOJE" in veh_branch)
-                    or (target_region == "울산" and "ULSAN" in veh_branch)
-                )
+                same_region = bool(veh_region and target_region in veh_region)
                 if same_region:
                     eta_h = 1.0 if urgency == "URGENT" else 2.0
                     decision = "ACCEPTED"
                     agreed_rate = base_rate
-                    move_note = f"동일 권역({target_region}) 대기 차량 즉시 투입"
+                    move_note = f"동일 권역({veh_region}) 대기 차량 즉시 투입"
                 else:
                     eta_h = 3.0 if urgency == "URGENT" else 4.0
                     decision = "COUNTER_OFFER"
                     agreed_rate = int(round(base_rate * 1.15))
                     move_note = (
-                        f"현재 차량 위치({veh_branch})에서 {target_branch} 회송 이동 "
+                        f"현재 대기 권역({veh_region or '타 야드'})에서 {target_region}({target_branch}) 회송 이동 "
                         f"{eta_h:g}시간 소요(회송비 15% 포함)"
                     )
 
@@ -607,9 +651,9 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     else 0.0
                 )
                 summary = (
-                    f"{partner_name}: {veh_code}(정격 {max_load:g}톤) 배정 가능"
+                    f"{partner_name}: {chosen.get('asset_name') or veh_code}({veh_code}, 정격 {max_load:g}톤) 배정 가능"
                     + (f" (블록 {req_weight_ton:g}톤 기준 하중률 {load_ratio}% 안전)" if req_weight_ton > 0 else "")
-                    + f". {move_note}, 제안 단가 {agreed_rate:,}원/회."
+                    + f". {move_note}, 제안 단가 {agreed_rate:,}원/시간."
                 )
 
                 return {
@@ -620,6 +664,7 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     "partner_name": partner_name,
                     "domain": domain,
                     "assigned_vehicle_code": veh_code,
+                    "asset_name": chosen.get("asset_name"),
                     "max_load_ton": max_load,
                     "load_ratio_pct": load_ratio,
                     "agreed_eta_hours": eta_h,
@@ -636,7 +681,7 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     "privacy_boundary_notice": privacy_notice,
                     "negotiation_trace": [
                         f"[HQ ➔ Partner RFQ] 대상야드={target_branch}, 블록중량={req_weight_ton:g}톤, 긴급도={urgency}",
-                        f"[Partner 제약 분석] 차량={veh_code}({max_load:g}톤, 위치={veh_branch}), 안전하중률={load_ratio}%",
+                        f"[Partner 제약 분석] 차량={veh_code}({max_load:g}톤, 대기권역={veh_region}), 안전하중률={load_ratio}%",
                         f"[Partner ➔ HQ 응답] 판정={decision} | {summary}",
                     ],
                     "timestamp": now_iso,
@@ -760,7 +805,7 @@ async def a2a_jsonrpc_endpoint(request: Request) -> JSONResponse:
                 {"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32004, "message": "Task not found"}},
                 status_code=404,
             )
-        return JSONResponse({"jsonrpc": "2.0", "id": rpc_id, "result": task})
+        return _safe_json_response({"jsonrpc": "2.0", "id": rpc_id, "result": task})
 
     if method == "tasks/cancel":
         po_no = params.get("po_no")
@@ -812,7 +857,7 @@ async def a2a_jsonrpc_endpoint(request: Request) -> JSONResponse:
     }
     A2A_TASK_STORE[task_id] = task_record
     print(f"🤝 [Partner A2A Task 응답] task_id={task_id}, decision={negotiation_result.get('negotiation_decision')}")
-    return JSONResponse({"jsonrpc": "2.0", "id": rpc_id, "result": task_record})
+    return _safe_json_response({"jsonrpc": "2.0", "id": rpc_id, "result": task_record})
 
 
 if __name__ == "__main__":

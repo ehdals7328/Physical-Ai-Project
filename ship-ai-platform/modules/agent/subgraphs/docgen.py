@@ -6,6 +6,7 @@ Team 3: 거버넌스 게이트키퍼(Supervisor) 기반 용접 작업지시서(W
 """
 
 import json
+import re
 import uuid
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional
@@ -81,32 +82,32 @@ class WorkOrderGenerationOutput(BaseModel):
 
 class HeavyLiftingPlanOutput(BaseModel):
     brief_summary: str = Field(
-        description="채팅창에 표시할 3줄 이내 중량물 취급 작업계획서 핵심 요약 (정격하중률, 투입 장비, 핵심 안전 주의사항)"
+        description="채팅창에 표시할 2~3줄 이내 중량물 취급 작업계획서 핵심 요약 (정격하중률, 투입 장비, 핵심 안전 주의사항)"
     )
     travel_route: str = Field(
-        description="출발 구역에서 목적지까지의 중량물 인양·운반 동선 및 지반/간섭 점검 기준"
+        description="A4 1페이지 양식용 1~2줄 핵심 요약(80자 이내): 출발 구역 ➔ 목적지 동선 및 노면·상부 간섭 점검"
     )
     supervisor_name: str = Field(
-        description="현장 작업지휘자 성명/직책 (ERP 반장 또는 현장지휘자)"
+        description="본사 소속 현장 작업지휘자 성명/직책만 1줄 기입 (예: 최선임(EMP-1002) / 중조립 A동 반장, 외주 용접사 절대 기입 금지)"
     )
     signalman_assignment: str = Field(
-        description="전담 신호수 배치 인원 및 표준 수신호·무전기 통신 방식"
+        description="A4 1페이지 양식용 1줄 요약(60자 이내): 전담 신호수 1인 배치, 표준 수신호·전용 무전 채널 교신"
     )
     rigging_spec: str = Field(
-        description="블록 중량에 적합한 줄걸이 용구(와이어로프 직경·줄수, 샤클 정격톤수, 리프팅 러그 점검 기준)"
+        description="A4 1페이지 양식용 2줄 이내 핵심 규격(90자 이내): 와이어로프(안전율 5 이상) 4줄 걸이, 정격 샤클, 러그 균열 점검"
     )
     sling_angle_and_cog: str = Field(
-        description="줄걸이 체결 각도(60도 이내 준수) 및 무게중심(CoG) 편심 확인(지상 30cm 시험 인양)"
+        description="A4 1페이지 양식용 2줄 이내 핵심 기준(90자 이내): 줄걸이 각도 60° 이내 준수, 지상 30cm 시험 인양으로 무게중심 확인"
     )
     fall_and_tip_prevention: str = Field(
-        description="인양 반경 하부 출입금지 구역 설정, 유도 로프(Tag Line) 사용, 전도·낙하·협착 방지 대책"
+        description="A4 1페이지 양식용 2줄 이내(100자 이내): 하부 출입금지 구역 설정, 유도 로프(Tag Line) 2본 체결, 서행 인양·지지목 고정"
     )
     emergency_procedure: str = Field(
-        description="강풍 돌발, 장비 이상, 줄걸이 손상 시 즉시 하강·비상정지 및 대피 절차"
+        description="A4 1페이지 양식용 2줄 이내(100자 이내): 풍속 10m/s 초과·이상 진동 시 즉시 비상정지 후 저속 하강 및 대피"
     )
     safety_checklist: List[str] = Field(
         default_factory=list,
-        description="작업 착수 전 작업지휘자·운전원·신호수가 확인해야 할 필수 안전 점검 항목 4~5개",
+        description="각 항목 40자 이내의 간결한 1줄 안전 점검 항목 4개만 기입",
     )
 
 
@@ -165,8 +166,8 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         cap_eval = dict(erp_status.get("lifting_capacity_eval") or {})
         a2a_prop = (partner_plan.get("a2a_negotiation") or {}).get("proposal") or {}
 
-        # 사용자가 명시적으로 과하중 장비(예: 15톤 지게차)를 강제 지정한 경우 즉시 차단
-        explicit_overload = bool(params.get("equipment")) and cap_eval.get("status") == "OVERLOAD"
+        # 사용자가 직접 과하중 장비(예: 15톤 지게차)를 강제 지정한 경우에만 즉시 차단
+        explicit_overload = bool(params.get("user_explicit_equipment")) and cap_eval.get("status") == "OVERLOAD"
         a2a_safe_vehicle = (
             not explicit_overload
             and bool(a2a_prop.get("assigned_vehicle_code"))
@@ -192,6 +193,10 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         )
 
         fail_reasons = []
+        if not params.get("block_id"):
+            fail_reasons.append("대상블록미지정(블록 번호 미확인)")
+        if not params.get("weight_ton"):
+            fail_reasons.append("블록중량미확인(정격하중 검토 불가)")
         if missing:
             fail_reasons.append(f"필수제원누락({missing})")
         if not is_capacity_ok:
@@ -216,16 +221,47 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         print(f"   3. 중량물 풍속/기상 판정   : 상태='{weather_status}' | 판정='{safety_status}'")
         print(f"   4. 비전 오류/장애물 여부   : {has_vision_hazard} (상태={vision_status_upper or 'N/A'}, 안전거리={vision_clearance_upper or 'NO_DATA'})")
 
+        # [중량물 분기 내 if fail_reasons: 교체]
         if fail_reasons:
             erp_status["interlock_fail_reasons"] = fail_reasons
+            replan_count = int(state.get("replan_count", 0))
+            auto_assign = bool(state.get("auto_assign_mode", False))
+            # 사용자가 과하중 장비를 강제 지정한 게 아니거나, 자율 편성 모드에서 다른 블록/장비 우회가 가능한 경우 Self-Correction!
+            # 비전 DB 장애나 기상 MCP 통신 실패 같은 시스템 오류는 재편성해도 해결 불가 -> 즉시 차단
+            is_system_error = is_vision_error or (weather_status != "SUCCESS")
+            can_self_correct = (
+                (not is_system_error)
+                and replan_count < 2
+                and (
+                    (not is_capacity_ok and not explicit_overload)
+                    or (auto_assign and (not is_weather_ok or has_vision_hazard))
+                )
+            )
+            if can_self_correct:
+                excl_blocks = list(state.get("excluded_blocks") or [])
+                if auto_assign and (not is_weather_ok or has_vision_hazard) and params.get("block_id"):
+                    excl_blocks.append(str(params["block_id"]).upper())
+                feedback = (
+                    f"중량물 계획서 인터록 차단({', '.join(fail_reasons)}). "
+                    f"외주 중량물 트랜스포터(A2A) 배차 또는 대체 안전 블록/장비로 자율 재편성하세요."
+                )
+                print(f"↩️ [Self-Correction Triggered #{replan_count + 1}]: {feedback}")
+                return {
+                    "next": "__end__",
+                    "replan_needed": True,
+                    "replan_count": replan_count + 1,
+                    "replan_feedback": feedback,
+                    "excluded_blocks": excl_blocks,
+                    "erp_resource_status": erp_status,
+                }
+
             print(f"👉 [최종 결정]: troubleshooter_agent (차단 사유: {', '.join(fail_reasons)})")
             print("=" * 65 + "\n")
-            return {"next": "troubleshooter_agent", "erp_resource_status": erp_status}
+            return {"next": "troubleshooter_agent", "replan_needed": False, "erp_resource_status": erp_status}
 
         print("👉 [최종 결정]: heavy_lifting_plan_writer (모든 중량물 안전 인터록 통과)")
         print("=" * 65 + "\n")
-        return {"next": "heavy_lifting_plan_writer", "erp_resource_status": erp_status}
-
+        return {"next": "heavy_lifting_plan_writer", "replan_needed": False, "erp_resource_status": erp_status}
     # --------------------------------------------------------------------------
     # [분기 2] 선박 블록 용접 작업지시서(WELDING_WORK_ORDER) 거버넌스 인터록
     # --------------------------------------------------------------------------
@@ -384,11 +420,53 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         if not is_worker_valid:
             erp_status["worker_qualified"] = False
 
+        replan_count = int(state.get("replan_count", 0))
+        auto_assign = bool(state.get("auto_assign_mode", False))
+        is_system_error = is_vision_error or (weather_status != "SUCCESS")
+
+        # 복구 가능 조건: 시스템 장애가 아니면서, 작업자 결격 또는 자율 편성 모드에서 타 안전 블록으로 우회 가능할 때
+        worker_only_issue = (
+            (not is_worker_valid or not is_proc_matched or not is_yard_matched)
+            and not is_weather_failed
+            and not has_vision_hazard
+        )
+        auto_block_issue = auto_assign and (is_weather_failed or has_vision_hazard or not params.get("block_id"))
+
+        if (not is_system_error) and replan_count < 2 and (worker_only_issue or auto_block_issue):
+            excl_workers = list(state.get("excluded_workers") or [])
+            excl_blocks = list(state.get("excluded_blocks") or [])
+            if worker_only_issue and worker_qual.get("worker_name"):
+                excl_workers.append(str(worker_qual["worker_name"]))
+            if auto_block_issue and params.get("block_id"):
+                excl_blocks.append(str(params["block_id"]).upper())
+
+            feedback = (
+                f"용접 작업지시서 인터록 차단({', '.join(fail_reasons)}). "
+                + (
+                    f"제외된 작업자({excl_workers}) 대신 블록({params.get('block_id')})의 공정({req_process})·야드에 부합하는 "
+                    f"대기 작업자를 찾거나(사내 없으면 외주 A2A 협의) `tool_sync_erp_plan`으로 교체하세요."
+                    if worker_only_issue
+                    else f"제외된 블록({excl_blocks}) 대신 현재 기상·비전 안전을 충족하는 다른 대기 블록과 적격 작업자를 탐색하세요."
+                )
+            )
+            print(f"↩️ [Self-Correction Triggered #{replan_count + 1}]: {feedback}")
+            print("=" * 65 + "\n")
+            return {
+                "next": "__end__",
+                "replan_needed": True,
+                "replan_count": replan_count + 1,
+                "replan_feedback": feedback,
+                "excluded_workers": excl_workers,
+                "excluded_blocks": excl_blocks,
+                "erp_resource_status": erp_status,
+            }
+
         chosen_node = "troubleshooter_agent"
         print(f"👉 [최종 결정]: {chosen_node} (차단 사유: {', '.join(fail_reasons)})")
         print("=" * 65 + "\n")
         return {
             "next": chosen_node,
+            "replan_needed": False,
             "erp_resource_status": erp_status,
         }
 
@@ -403,8 +481,10 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
 
 def route_from_gatekeeper(
     state: ShipAgentState,
-) -> Literal["troubleshooter_agent", "work_order_writer", "heavy_lifting_plan_writer", "domain_qa_writer"]:
+) -> Literal["troubleshooter_agent", "work_order_writer", "heavy_lifting_plan_writer", "domain_qa_writer", "__end__"]:
     nxt = state.get("next")
+    if nxt == "__end__" and state.get("replan_needed"):
+        return "__end__"
     if nxt in (
         "troubleshooter_agent",
         "work_order_writer",
@@ -431,6 +511,9 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "2. **한눈에 들어오는 스캔형 레이아웃 (긴 줄글 금지)**:\n"
         "   - 인사 전체 명단 조회(`hr_worker_qa`)를 제외한 모든 답변은 맨 위에 **`>` 인용구(1~2줄)**로 질문에 대한 핵심 결론을 먼저 제시하세요.\n"
         "   - 세부 내용은 긴 문단 줄글 대신 **`###` 소제목 + 마크다운 표 또는 굵은 키워드 불릿**으로 정리하고, 같은 내용을 중복 설명하지 마세요.\n\n"
+        "3. **질문 범위 엄수 및 표준 마크다운 표 문법 강제**:\n"
+        "   - 사용자가 작업 대상 블록이나 블록 목록만 물었으면 [본사 SHIP_ERP 자원 현황]의 `available_blocks`를 기준으로 **블록 표(블록ID | 블록명 | 강종/두께 | 공정 | 중량 | 소속 야드)와 착수 가능 안내만** 출력하고, 묻지 않은 자재 재고·장비·인력 명단·현장 체크리스트는 절대 추가하지 마세요.\n"
+        "   - 마크다운 표의 구분선은 콜론(`:`)을 절대 넣지 말고 반드시 `|---|---|---|---|---|---|` 형태로만 작성하며, 표 위·아래에는 빈 줄 1줄을 반드시 넣으세요.\n"
         "[질의 유형별 작성 기준]\n"
         "1. **인사 원장 및 작업자 추천 (`hr_worker_qa`, `hr_safety_qa`)**:\n"
         "   - 전체 인사 원장 마크다운 표는 시스템이 응답 상단에 자동으로 부착하므로, 답변 본문에 전체 표를 절대 다시 작성하지 마세요.\n"
@@ -568,6 +651,22 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     else:
         docs_text = "인출된 사내 규격 문서 없음"
 
+    # 질문 유형에 따라 LLM에 넘길 ERP 컨텍스트 경량화 (토큰 80% 절감 -> 응답 속도 4~6초대 단축)
+    compact_erp = dict(erp_status)
+    if task_type == "erp_resource_qa":
+        compact_erp.pop("available_workers", None)
+        if any(k in user_query for k in ("블록", "BLOCK", "공정")):
+            compact_erp.pop("inventory", None)
+            compact_erp.pop("vehicles_equipment", None)
+    elif task_type == "hr_worker_qa":
+        compact_erp.pop("inventory", None)
+        compact_erp.pop("vehicles_equipment", None)
+        compact_erp.pop("available_blocks", None)
+    elif task_type == "scm_partner_qa":
+        compact_erp.pop("available_workers", None)
+        compact_erp.pop("vehicles_equipment", None)
+        compact_erp.pop("available_blocks", None)
+
     # 3. LLM 응답 생성
     qa_inputs = {
         "messages": messages[-6:] if messages else [],
@@ -576,7 +675,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "query": user_query,
         "worker_table": worker_table_md,
         "vision_status": vision_text,
-        "erp_status": json.dumps(erp_status, ensure_ascii=False, cls=DecimalEncoder),
+        "erp_status": json.dumps(compact_erp, ensure_ascii=False, cls=DecimalEncoder),
         "partner_plan": json.dumps(partner_plan, ensure_ascii=False, cls=DecimalEncoder),
         "docs": docs_text,
         "weather": json.dumps(weather, ensure_ascii=False, cls=DecimalEncoder),
@@ -616,7 +715,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             f"{worker_table_md}\n\n---\n\n{answer}"
         )
 
-    # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 — 도메인별 최소 실행 조건 및 미등록 품목 차단
+    # 5. scm_partner_qa 단독 외주 배차/발주 초안(DRAFT) 생성 — LLM 판정(is_action_requested) 및 등록 품목 토큰 대조
     generated_doc: Optional[Dict[str, Any]] = None
     selected_partner = partner_plan.get("selected_partner") or {}
     is_action_req = bool(state.get("is_action_requested"))
@@ -635,7 +734,7 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         ):
             is_action_req = False
 
-    # 요청 품목명과 실제 DB(사내 ERP + 협력사) 등록 품목 동적 대조
+    # 요청 품목명과 실제 DB(사내 ERP + 협력사) 등록 품목 토큰 단위 대조 (수량/단위 제거)
     req_item_name = str(params.get("requested_item_name") or "").strip()
     is_unregistered_item = False
     if (
@@ -659,11 +758,24 @@ def domain_qa_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             })
 
         if registered_items:
-            req_lower = req_item_name.lower()
-            matched = [
-                it for it in registered_items
-                if req_lower in it["name"].lower() or req_lower in it["code"].lower()
+            cleaned_req = re.sub(
+                r"\d+(?:\.\d+)?\s*(?:kg|g|t|ton|톤|ea|개|장|통|병|sheet)?",
+                "",
+                req_item_name,
+                flags=re.IGNORECASE,
+            ).strip()
+            req_tokens = [
+                tok.lower()
+                for tok in re.split(r"[\s/\-(),]+", cleaned_req)
+                if len(tok) >= 2
             ]
+            matched = []
+            for it in registered_items:
+                haystack = f"{it['name']} {it['code']}".lower()
+                if (cleaned_req and cleaned_req.lower() in haystack) or (
+                    req_tokens and all(t in haystack for t in req_tokens)
+                ):
+                    matched.append(it)
             if not matched:
                 is_unregistered_item = True
                 seen = set()
@@ -1188,6 +1300,14 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         if (is_outsourced and a2a_prop.get("summary"))
         else ""
     )
+    replan_cnt = int(state.get("replan_count", 0))
+    reasoning_note = (state.get("agent_reasoning_summary") or "").strip()
+    agent_note_line = (
+        f"\n- **🤖 AI 자율 편성/복구 근거"
+        f"{f' (자율 재편성 {replan_cnt}회)' if replan_cnt > 0 else ''}**: {reasoning_note}"
+        if reasoning_note
+        else ""
+    )
 
     answer = (
         f"### 📋 공식 작업지시서 발행 브리핑 (`{erp_commit.get('work_order_number')}`)\n"
@@ -1195,6 +1315,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         f"- **투입 인력 / 자재**: {worker_name} (`{worker_id}`) / `{wire_item_code or '-'}` ({req_wire_kg} kg 선점)\n"
         f"- **현장 안전 및 시공 요약**: **{safety_display}** — {wo_out.brief_summary}"
         f"{a2a_line}"
+        f"{agent_note_line}"
     )
 
     if approval_status == "DRAFT":
@@ -1340,10 +1461,6 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
     docs = state.get("retrieved_docs") or []
 
     block_code = params.get("block_id") or "BLK-HEAVY"
-    approval_status = "APPROVED" if state.get("hitl_approved") is True else "DRAFT"
-    prefix_no = "HLP" if approval_status == "APPROVED" else "HLP-DRAFT"
-    plan_no = f"{prefix_no}-{block_code}-{uuid.uuid4().hex[:4].upper()}"
-
     is_outsourced = bool(a2a_prop.get("assigned_vehicle_code")) or bool(cap_eval.get("need_outsourcing"))
     exec_type_str = "OUTSOURCED_B2B" if is_outsourced else "IN_HOUSE"
 
@@ -1354,6 +1471,50 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         or erp_status.get("assigned_vehicle_code")
         or "-"
     )
+    partner_id = (
+        a2a_prop.get("partner_id")
+        or (partner_plan.get("selected_partner") or {}).get("partner_id")
+        or erp_status.get("hq_company_code")
+        or "COMP-HQ"
+    )
+    delivery_zone = (
+        params.get("work_zone")
+        or (erp_status.get("branch_info") or {}).get("default_zone")
+        or state.get("default_workspace")
+        or "ZONE-A-BAY1"
+    )
+
+    if state.get("hitl_approved") is True:
+        erp_commit = commit_erp_work_order.invoke({
+            "block_id": block_code,
+            "material": params.get("material", "AH36"),
+            "allocated_lot_no": "HEAVY-LIFTING",
+            "worker_name": state.get("user_name") or erp_status.get("foreman_name") or "작업지휘자",
+            "worker_id": selected_eq.get("driver_worker_id"),
+            "assigned_vehicle_code": None if vehicle_code == "-" else vehicle_code,
+            "wire_item_code": None,
+            "is_outsourced": is_outsourced,
+            "partner_id": partner_id,
+            "reserve_wire_kg": 0.0,
+            "delivery_yard_zone": delivery_zone,
+        })
+        erp_commit["execution_type"] = exec_type_str
+        approval_status = (
+            "APPROVED"
+            if erp_commit.get("erp_transaction_status") == "COMMITTED"
+            else "DRAFT"
+        )
+        plan_no = erp_commit.get("work_order_number") or f"HLP-{block_code}-{uuid.uuid4().hex[:4].upper()}"
+    else:
+        plan_no = f"HLP-DRAFT-{block_code}-{uuid.uuid4().hex[:4].upper()}"
+        erp_commit = {
+            "work_order_number": plan_no,
+            "erp_transaction_status": "DRAFT",
+            "execution_type": exec_type_str,
+            "partner_id": partner_id,
+            "assigned_vehicle_code": vehicle_code,
+        }
+        approval_status = "DRAFT"
     max_load_ton = a2a_prop.get("max_load_ton") or cap_eval.get("max_load_ton") or "-"
     load_ratio_pct = a2a_prop.get("load_ratio_pct") or cap_eval.get("load_ratio_pct") or "-"
 
@@ -1425,14 +1586,29 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         else f"\n\n> ✅ **[승인 완료]** 중량물 취급 작업계획서(`{plan_no}`)가 최종 승인되었습니다."
     )
 
+    replan_cnt = int(state.get("replan_count", 0))
+    reasoning_note = (state.get("agent_reasoning_summary") or "").strip()
+    agent_note_line = (
+        f"\n- **🤖 AI 자율 편성/복구 근거"
+        f"{f' (자율 재편성 {replan_cnt}회)' if replan_cnt > 0 else ''}**: {reasoning_note}"
+        if reasoning_note
+        else ""
+    )
+
     answer = (
         f"### 🏗️ 중량물 취급 작업계획서 발행 브리핑 (`{plan_no}`)\n"
         f"- **대상 블록 / 총 인양하중**: `{block_code}` ({params.get('weight_ton', '-')} 톤 / 줄걸이 포함 총 {cap_eval.get('total_lifting_ton', '-')} 톤)\n"
         f"- **투입 양중장비 / 하중률**: `{vehicle_code}` (정격 {max_load_ton} 톤 / **하중률 {load_ratio_pct}%**)\n"
         f"- **기상 및 안전 요약**: **{safety_display}** — {hlp_out.brief_summary}"
         f"{a2a_line}"
+        f"{agent_note_line}"
         f"{notice_box}"
     )
+
+    hq_foreman = erp_status.get("foreman_name") or "현장반장(작업지휘자)"
+    lifting_dump = hlp_out.model_dump()
+    if not lifting_dump.get("supervisor_name") or "외주" in str(lifting_dump.get("supervisor_name")):
+        lifting_dump["supervisor_name"] = hq_foreman
 
     generated_doc = {
         "work_id": state.get("work_id"),
@@ -1446,7 +1622,7 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "assigned_vehicle_code": vehicle_code,
         "parameters": params,
         "lifting_capacity_eval": cap_eval,
-        "lifting_plan_json": hlp_out.model_dump(),
+        "lifting_plan_json": lifting_dump,
         "source_refs_json": source_refs_list,
         "partner_erp_plan": partner_plan if is_outsourced else {},
         "erp_resource_status": erp_status,
@@ -1475,12 +1651,7 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "messages": [AIMessage(content=answer)],
         "final_answer": answer,
         "generated_document": generated_doc,
-        "erp_commit_result": {
-            "work_order_number": plan_no,
-            "erp_transaction_status": "COMMITTED" if approval_status == "APPROVED" else "DRAFT",
-            "execution_type": exec_type_str,
-            "assigned_vehicle_code": vehicle_code,
-        },
+        "erp_commit_result": erp_commit,
         "audit_saved": True,
     }
 
@@ -1505,6 +1676,7 @@ builder.add_conditional_edges(
         "troubleshooter_agent": "troubleshooter_agent",
         "work_order_writer": "work_order_writer",
         "heavy_lifting_plan_writer": "heavy_lifting_plan_writer",
+        "__end__": END,
     },
 )
 builder.add_edge("domain_qa_writer", END)
