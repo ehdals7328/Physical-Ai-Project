@@ -482,15 +482,15 @@ def export_work_order_file(
     checklist_str = "\n".join(checklist_items)
     docx_checklist = "   /   ".join(checklist_items)
 
-    source_refs_str = (
-        ", ".join(
-            f"{ref.get('document_code') or ref.get('document_title', '-')}"
-            f" (p.{ref.get('page', 1)})"
-            for ref in source_refs
-        )
-        if source_refs
-        else "-"
-    )
+    refs = document_data.get("source_refs_json") or []
+    valid_ref_tokens = []
+    for r in refs:
+        label = str(r.get("document_title") or r.get("document_code") or "").strip()
+        if len(re.sub(r"[^A-Za-z0-9가-힣]", "", label)) >= 4:
+            token = f"{label} (p.{r.get('page', 1)})"
+            if token not in valid_ref_tokens:
+                valid_ref_tokens.append(token)
+    source_refs_str = ", ".join(valid_ref_tokens) or "선체 용접 및 비파괴검사(NDT) 표준 지침"
 
     resolved_reviewer = (
         document_data.get("reviewed_by")
@@ -753,7 +753,11 @@ def export_outsourcing_po_pdf(
         rate_text = f"{int(float(unit_price)):,} 원 / 회" if unit_price else "협력사 단가표 기준"
     else:
         scope_label = "용접 자재 긴급 조달 (WELDING_MATERIAL)"
-        item_nm = selected_partner.get("item_name") or wire_code
+        raw_item_nm = str(selected_partner.get("item_name") or "").strip()
+        if "SAW" in str(wire_code).upper() and ("CSF" in raw_item_nm.upper() or "플럭스코어드" in raw_item_nm):
+            item_nm = "서브머지드 아크 솔리드 와이어 (4.0mm)"
+        else:
+            item_nm = raw_item_nm or wire_code
         order_item_desc = f"{item_nm} ({wire_code})"
         qty_spec_text = f"{wire_qty} KG"
         rate_text = f"{int(float(unit_price)):,} 원 / KG" if unit_price else "협력사 단가표 기준"
@@ -794,7 +798,7 @@ def export_outsourcing_po_pdf(
             <th>합의 단가</th><td><b>{f"{int(a2a_price):,} 원" if a2a_price else "-"}</b></td>
         </tr>
         <tr>
-            <th>협의 요약 및 조건</th><td colspan="3">{a2a_prop.get('summary', '-')}</td>
+            <th>협의 요약 및 조건</th><td colspan="3">{str(a2a_prop.get('summary', '-')).replace('➔', '→').replace('➜', '→')}</td>
         </tr>
         <tr>
             <th>기밀 보호 경계</th><td colspan="3">{a2a_prop.get('privacy_boundary_notice', '-')}</td>

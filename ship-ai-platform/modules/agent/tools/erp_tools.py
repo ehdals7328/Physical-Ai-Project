@@ -41,13 +41,128 @@ except Exception as e:
 def calculate_required_wire_kg(
     estimated_length_mm: Optional[float] = None,
     weight_ton: Optional[float] = None,
+    plan_wire_kg: Optional[float] = None,
 ) -> float:
-    """비전 계측 용접선 길이(mm) 또는 블록 중량(ton)을 기반으로 필요 와이어 소모량(kg) 산출"""
+    """CAD 공정계획 블록 산출량(kg) > 비전 계측 길이(mm) > 블록 중량(ton) 순으로 필요 와이어 소모량 산출"""
+    if plan_wire_kg and float(plan_wire_kg) > 0:
+        return round(float(plan_wire_kg), 2)
     if estimated_length_mm and float(estimated_length_mm) > 0:
         return round((float(estimated_length_mm) / 1000.0) * 6.25, 2)
     if weight_ton and float(weight_ton) > 0:
         return round(float(weight_ton) * 0.08, 2)
     return 15.0
+
+
+def _get_user_engine() -> Any:
+    try:
+        from modules.agent.tools.vision_tools import user_engine
+        return user_engine
+    except Exception:
+        return None
+
+def _truncate_utf8(val: str, max_bytes: int) -> str:
+    encoded = val.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return val
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").strip()
+
+def _sync_work_plans_to_block_master() -> Dict[str, Dict[str, Any]]:
+    """
+    SHIP_USER.WORK_PLANS의 활성 공정 계획(PENDING/IN_PROGRESS)을 조회해
+    SHIP_ERP.ERP_BLOCK_MASTER에 자동 동기화(MERGE)하고 블록별 계획 메타데이터 맵을 반환합니다.
+    """
+    plan_map: Dict[str, Dict[str, Any]] = {}
+    u_eng = _get_user_engine()
+    if u_eng is None:
+        return plan_map
+
+    try:
+        with u_eng.connect() as u_conn:
+            rows = u_conn.execute(
+                text("""
+                    SELECT wp.PLAN_ID, wp.DRAWING_ID, wp.BRANCH_CODE, wp.WORK_ZONE,
+                           wp.PRIORITY_RANK, wp.BLOCK_CODE, wp.BLOCK_NAME,
+                           wp.MATERIAL_GRADE, wp.THICKNESS_MM, wp.PROCESS_CODE,
+                           wp.JOINT_TYPE, wp.WIRE_MAT_CODE, wp.EST_WELD_LENGTH_MM,
+                           wp.EST_WEIGHT_TON, wp.EST_WIRE_KG, wp.EST_DURATION_DAYS,
+                           wp.PLANNED_START_DATE, wp.PLANNED_END_DATE,
+                           wp.PLAN_STATE, wp.ASSIGNED_WO_NUMBER,
+                           cd.SHIP_CODE
+                    FROM WORK_PLANS wp
+                    LEFT JOIN CAD_DRAWINGS cd ON wp.DRAWING_ID = cd.DRAWING_ID
+                    WHERE wp.PLAN_STATE IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'LOCKED', 'QUEUED')
+                    ORDER BY wp.PRIORITY_RANK ASC, wp.CREATED_AT ASC
+                """)
+            ).mappings().all()
+
+        for r in rows:
+            d = dict(r)
+            b_code = str(d.get("block_code") or "").strip().upper()
+            if not b_code:
+                continue
+            # 동일 블록 코드가 여러 건일 경우 PENDING/IN_PROGRESS 우선 유지
+            if b_code not in plan_map or d.get("plan_state") in ("PENDING", "IN_PROGRESS"):
+                plan_map[b_code] = d
+
+        if erp_engine is not None and plan_map:
+            with erp_engine.begin() as e_conn:
+                for b_code, d in plan_map.items():
+                    if d.get("plan_state") not in ("PENDING", "IN_PROGRESS"):
+                        continue
+                    e_conn.execute(
+                        text("""
+                            MERGE INTO ERP_BLOCK_MASTER dst
+                            USING (
+                                SELECT :block_id AS block_id,
+                                       :ship_code AS ship_code,
+                                       :block_name AS block_name,
+                                       :steel_type AS steel_type,
+                                       :thickness_mm AS thickness_mm,
+                                       :joint_type AS joint_type,
+                                       :process AS process,
+                                       :target_dock AS target_dock,
+                                       :branch_code AS branch_code,
+                                       :weight_ton AS weight_ton
+                                FROM DUAL
+                            ) src
+                            ON (UPPER(TRIM(dst.block_id)) = UPPER(TRIM(src.block_id)))
+                            WHEN MATCHED THEN
+                                UPDATE SET
+                                    dst.ship_code = src.ship_code,
+                                    dst.block_name = src.block_name,
+                                    dst.steel_type = src.steel_type,
+                                    dst.thickness_mm = src.thickness_mm,
+                                    dst.joint_type = src.joint_type,
+                                    dst.process = src.process,
+                                    dst.target_dock = src.target_dock,
+                                    dst.branch_code = src.branch_code,
+                                    dst.weight_ton = CASE WHEN src.weight_ton > 0 THEN src.weight_ton ELSE dst.weight_ton END
+                            WHEN NOT MATCHED THEN
+                                INSERT (
+                                    block_id, ship_code, block_name, steel_type, thickness_mm,
+                                    joint_type, process, target_dock, branch_code, weight_ton
+                                ) VALUES (
+                                    src.block_id, src.ship_code, src.block_name, src.steel_type, src.thickness_mm,
+                                    src.joint_type, src.process, src.target_dock, src.branch_code, src.weight_ton
+                                )
+                        """),
+                        {
+                            "block_id": _truncate_utf8(b_code, 45),
+                            "ship_code": _truncate_utf8(str(d.get("ship_code") or "HN-GUNNERUS-01"), 45),
+                            "block_name": _truncate_utf8(str(d.get("block_name") or b_code), 95),
+                            "steel_type": _truncate_utf8(str(d.get("material_grade") or "AH36"), 45),
+                            "thickness_mm": f"{int(float(d.get('thickness_mm') or 10.0))}T",
+                            "joint_type": _truncate_utf8(str(d.get("joint_type") or "BUTT"), 45),
+                            "process": _truncate_utf8(str(d.get("process_code") or "FCAW"), 45),
+                            "target_dock": _truncate_utf8(str(d.get("work_zone") or "ZONE-A-BAY1"), 45),
+                            "branch_code": _truncate_utf8(str(d.get("branch_code") or "BR-ULSAN-01"), 45),
+                            "weight_ton": float(d.get("est_weight_ton") or 0.0),
+                        },
+                    )
+    except Exception as e:
+        print(f"⚠️ [_sync_work_plans_to_block_master 참고]: {e}")
+
+    return plan_map
 
 
 def evaluate_heavy_lifting_capacity(
@@ -388,6 +503,8 @@ def check_hq_erp_resources(
         result["status"] = "ERROR"
         return result
 
+    plan_map = _sync_work_plans_to_block_master()
+
     try:
         with erp_engine.connect() as conn:
             # 0. 전사 야드(ERP_BRANCHES) 전체 마스터 조회 및 동적 권역(region_name) 매핑
@@ -415,6 +532,7 @@ def check_hq_erp_resources(
                 ).mappings().first()
 
                 if b_row:
+                    p_meta = plan_map.get(norm_block_id) or {}
                     result["block_master"] = {
                         "block_id": b_row["block_id"],
                         "ship_code": b_row["ship_code"],
@@ -427,6 +545,12 @@ def check_hq_erp_resources(
                         "location": b_row["target_dock"],
                         "branch_code": b_row["branch_code"],
                         "weight_ton": float(b_row["weight_ton"]) if b_row["weight_ton"] else 0.0,
+                        "plan_id": p_meta.get("plan_id"),
+                        "priority_rank": p_meta.get("priority_rank"),
+                        "est_wire_kg": float(p_meta["est_wire_kg"]) if p_meta.get("est_wire_kg") is not None else None,
+                        "est_weld_length_mm": float(p_meta["est_weld_length_mm"]) if p_meta.get("est_weld_length_mm") is not None else None,
+                        "planned_start_date": p_meta.get("planned_start_date"),
+                        "planned_end_date": p_meta.get("planned_end_date"),
                     }
 
             # 블록 마스터에 지정된 실제 작업 야드가 있으면 로그인 사용자 기본 야드보다 최우선 적용
@@ -457,8 +581,27 @@ def check_hq_erp_resources(
             avail_blocks = []
             for r in all_block_rows:
                 bd = dict(r)
-                bd["is_active_work"] = str(bd.get("block_id") or "").strip().upper() in active_block_set
+                bid_up = str(bd.get("block_id") or "").strip().upper()
+                p_meta = plan_map.get(bid_up)
+                if p_meta and p_meta.get("plan_state") in ("COMPLETED", "LOCKED", "QUEUED"):
+                    continue
+                bd["is_active_work"] = (bid_up in active_block_set) or (
+                    bool(p_meta) and p_meta.get("plan_state") == "IN_PROGRESS"
+                )
+                if p_meta:
+                    bd["plan_id"] = p_meta.get("plan_id")
+                    bd["priority_rank"] = p_meta.get("priority_rank")
+                    bd["planned_start_date"] = p_meta.get("planned_start_date")
+                    bd["planned_end_date"] = p_meta.get("planned_end_date")
                 avail_blocks.append(bd)
+            avail_blocks.sort(
+                key=lambda x: (
+                    x["is_active_work"],
+                    0 if x.get("priority_rank") else 1,
+                    x.get("priority_rank") or 999,
+                    x["block_id"],
+                )
+            )
             result["available_blocks"] = avail_blocks
 
             # 2. 야드(Branch) 정보 조회
@@ -747,12 +890,15 @@ def check_hq_erp_resources(
             )
             plate_match_score = -1
             wire_match_score = -1
-            selected_wire_avail = None
+            selected_wire_avail = 0.0
 
             for r in inv_rows:
                 total_q = float(r["total_qty"])
                 res_q = float(r["reserved_qty"])
                 avail_q = max(0.0, total_q - res_q)
+                is_same_branch = (
+                    str(r.get("branch_code") or "").upper() == str(target_branch).upper()
+                )
                 item_dict = {
                     "item_code": r["item_code"],
                     "item_name": r["item_name"],
@@ -768,9 +914,6 @@ def check_hq_erp_resources(
                 result["inventory"][r["item_code"]] = item_dict
 
                 item_text_upper = f"{r['item_code']} {r['item_name']}".upper()
-                is_same_branch = (
-                    str(r.get("branch_code") or "").upper() == str(target_branch).upper()
-                )
 
                 if r["material_category"] == "STEEL_PLATE" and avail_q > 0:
                     score = 0
@@ -793,13 +936,18 @@ def check_hq_erp_resources(
                         wire_match_score = score
                         result["selected_wire_code"] = r["item_code"]
                         result["selected_wire_supplier"] = r["supplier_code"]
-                        selected_wire_avail = avail_q
+                        # 대상 야드(target_branch) 실제 보유 재고만 가용량으로 인정 (타 야드 재고 혼용 방지)
+                        selected_wire_avail = avail_q if is_same_branch else 0.0
 
-            if selected_wire_avail is not None and selected_wire_avail < 15.0:
+            req_wire_needed = float(
+                (result["block_master"] or {}).get("est_wire_kg") or 15.0
+            )
+            if result["selected_wire_code"] and selected_wire_avail < req_wire_needed:
                 result["stock_available"] = False
                 result["require_outsourcing"] = True
                 result["outsourcing_reason"] = (
-                    f"사내 용접 와이어({result['selected_wire_code']}) 가용 재고 부족({selected_wire_avail}kg)"
+                    f"대상 야드({target_branch}) 용접 와이어({result['selected_wire_code']}) "
+                    f"가용 재고 부족(보유 {selected_wire_avail}kg < 필요 {req_wire_needed}kg)"
                 )
 
             # 5. 장비 및 운반 차량 배정 - 작업 대상 야드(target_branch) 우선 매칭
@@ -1205,6 +1353,24 @@ def commit_erp_work_order(
             b2b_ack = mcp_order_res["b2b_ack"]
         purchase_status = "CONFIRMED"
 
+    # CAD 공정계획(WORK_PLANS)에서 편성된 블록인 경우 PENDING -> IN_PROGRESS 상태 및 발급 지시서 번호 동기화
+    u_eng = _get_user_engine()
+    if u_eng is not None:
+        try:
+            with u_eng.begin() as u_conn:
+                u_conn.execute(
+                    text("""
+                        UPDATE WORK_PLANS
+                        SET PLAN_STATE = 'IN_PROGRESS',
+                            ASSIGNED_WO_NUMBER = :wo_no
+                        WHERE UPPER(TRIM(BLOCK_CODE)) = UPPER(TRIM(:bid))
+                          AND PLAN_STATE = 'PENDING'
+                    """),
+                    {"wo_no": wo_no, "bid": fk_block_id},
+                )
+        except Exception as wp_err:
+            print(f"⚠️ [WORK_PLANS 상태 동기화 경고]: {wp_err}")
+
     return {
         "erp_transaction_status": "COMMITTED",
         "purchase_status": purchase_status,
@@ -1244,6 +1410,7 @@ def find_pending_blocks(
     if process and str(process).strip().upper() not in valid_procs:
         process = None
 
+    plan_map = _sync_work_plans_to_block_master()
     excluded = {str(b).strip().upper() for b in (exclude_blocks or []) if b}
     try:
         with erp_engine.connect() as conn:
@@ -1285,16 +1452,34 @@ def find_pending_blocks(
                 bid = str(d.get("block_id") or "").strip().upper()
                 if bid in excluded:
                     continue
+                p_meta = plan_map.get(bid)
+                if p_meta and p_meta.get("plan_state") in ("COMPLETED", "LOCKED", "QUEUED"):
+                    continue
                 if branch_code and str(d.get("branch_code") or "").upper() != str(branch_code).upper():
                     continue
                 if process and str(d.get("process") or "").upper() != str(process).upper():
                     continue
                 d["weight_ton"] = float(d["weight_ton"]) if d.get("weight_ton") is not None else 0.0
-                d["is_active_work"] = bid in active_blocks
+                d["is_active_work"] = (bid in active_blocks) or (
+                    bool(p_meta) and p_meta.get("plan_state") == "IN_PROGRESS"
+                )
+                if p_meta:
+                    d["plan_id"] = p_meta.get("plan_id")
+                    d["priority_rank"] = p_meta.get("priority_rank")
+                    d["est_wire_kg"] = float(p_meta["est_wire_kg"]) if p_meta.get("est_wire_kg") is not None else None
+                    d["planned_start_date"] = p_meta.get("planned_start_date")
+                    d["planned_end_date"] = p_meta.get("planned_end_date")
                 candidates.append(d)
 
-            # 아직 작업 배정되지 않은(is_active_work=False) 블록을 우선 정렬
-            candidates.sort(key=lambda x: (x["is_active_work"], x["block_id"]))
+            # 미투입(is_active_work=False) 우선 -> CAD 공정계획 P1~P3 우선순위 순 정렬
+            candidates.sort(
+                key=lambda x: (
+                    x["is_active_work"],
+                    0 if x.get("priority_rank") else 1,
+                    x.get("priority_rank") or 999,
+                    x["block_id"],
+                )
+            )
             return {
                 "status": "SUCCESS",
                 "total_candidates": len(candidates),

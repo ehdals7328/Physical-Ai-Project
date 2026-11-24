@@ -1,6 +1,6 @@
 """
 modules/agent/supervisor.py
-Top-Level Supervisor & Self-Correction Loop Multi-Turn Graph
+Top-Level Supervisor & Self-Correction Loop Multi-Turn Graph (Team 1~4 통합)
 """
 
 from typing import Any, Dict, Literal
@@ -10,6 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from modules.agent.state import ShipAgentState
 from modules.agent.subgraphs.analysis import team1_subgraph
 from modules.agent.subgraphs.docgen import team3_subgraph
+from modules.agent.subgraphs.planning import team4_subgraph
 from modules.agent.subgraphs.search import team2_subgraph
 
 
@@ -36,7 +37,6 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
         if p_wrk and p_wrk not in drafted_workers:
             drafted_workers.append(p_wrk)
 
-        # 이미 초안 발행이 끝난 직전 문서의 블록·작업자·공정 슬롯 비우기 (야드·구역 컨텍스트만 유지)
         for doc_key in (
             "block_id",
             "block_name",
@@ -60,6 +60,7 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
         "vision_data": None,
         "weather_data": None,
         "generated_document": None,
+        "cad_staging_result": None,
         "erp_commit_result": None,
         "erp_resource_status": None,
         "partner_erp_plan": None,
@@ -85,7 +86,7 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
 
 def route_after_team1(
     state: ShipAgentState,
-) -> Literal["team2_search", "team3_docgen", "__end__"]:
+) -> Literal["team2_search", "team3_docgen", "team4_planning", "__end__"]:
     task_type = state.get("task_type")
     is_complete = state.get("is_param_complete", "yes")
     is_outsourcing = state.get("is_outsourcing_required", False)
@@ -99,6 +100,9 @@ def route_after_team1(
 
     if task_type == "chat" or (task_type == "doc_generation" and is_complete == "no"):
         return "__end__"
+
+    if task_type == "cad_planning":
+        return "team4_planning"
 
     # 순수 사내 단건/원장 조회는 빠르게 Team 3 브리핑으로 직행
     if task_type in ("erp_resource_qa", "hr_safety_qa", "hr_worker_qa") and not is_outsourcing:
@@ -129,6 +133,7 @@ builder.add_node("top_supervisor_init", top_supervisor_init_node)
 builder.add_node("team1_analysis", team1_subgraph)
 builder.add_node("team2_search", team2_subgraph)
 builder.add_node("team3_docgen", team3_subgraph)
+builder.add_node("team4_planning", team4_subgraph)
 
 builder.add_edge(START, "top_supervisor_init")
 builder.add_edge("top_supervisor_init", "team1_analysis")
@@ -138,10 +143,12 @@ builder.add_conditional_edges(
     {
         "team2_search": "team2_search",
         "team3_docgen": "team3_docgen",
+        "team4_planning": "team4_planning",
         "__end__": END,
     },
 )
 builder.add_edge("team2_search", "team3_docgen")
+builder.add_edge("team4_planning", END)
 builder.add_conditional_edges(
     "team3_docgen",
     route_after_team3,

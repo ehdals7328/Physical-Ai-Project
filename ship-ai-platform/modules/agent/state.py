@@ -9,6 +9,7 @@ from langgraph.graph.message import add_messages
 
 TaskType = Literal[
     "chat",                  # 일상 대화 및 인사
+    "cad_planning",          # CAD 도면 기반 작업계획 수립·분석, 공정 순서·일정 편성 및 일일 브리핑
     "vision_inspection_qa",  # 현장 비전 탐지 현황, 용접 대기 구역, 결함 및 로봇 관제 상태 조회
     "erp_resource_qa",       # 사내 자재(ERP_BOM_INVENTORY), 강판 Lot, 와이어 잔량, 대기 차량 확인
     "hr_safety_qa",          # 특정 작업자 선급(KR/AWS) 자격증 단건 유효기간 확인
@@ -106,3 +107,8 @@ class ShipAgentState(TypedDict, total=False):
     generated_document: Optional[Dict[str, Any]]
     final_answer: Optional[str]
     audit_saved: bool
+
+    # 7. Team 4 (CAD 공정 계획 수립 & APS 스케줄링) 산출물
+    cad_dxf_path: Optional[str]
+    cad_pdf_path: Optional[str]
+    cad_staging_result: Optional[Dict[str, Any]]
