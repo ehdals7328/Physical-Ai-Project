@@ -44,6 +44,29 @@ class DecimalEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
+def _save_audit_log(session_id: str, query: str, status: str) -> bool:
+    """감사 로그 저장을 PDF 생성과 독립 실행하고, 실제 DB 저장 성공 여부를 반환합니다."""
+    try:
+        res = log_inspection_history.invoke({
+            "session_id": session_id,
+            "query": query,
+            "status": status,
+        })
+        if isinstance(res, bool):
+            return res
+        if isinstance(res, dict):
+            if res.get("saved") is False or res.get("success") is False:
+                return False
+            st = str(res.get("status") or "").upper()
+            return st not in ("ERROR", "FAILED", "FAIL")
+        if isinstance(res, str):
+            upper = res.upper()
+            return not any(tok in upper for tok in ("ERROR", "FAIL", "실패", "예외"))
+        return res is not None
+    except Exception as audit_err:
+        print(f"⚠️ [감사 로그 저장 실패]: {audit_err}")
+        return False
+    
 
 class WorkOrderGenerationOutput(BaseModel):
     brief_summary: str = Field(
@@ -1514,27 +1537,26 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
                 print(f"⚠️ [외주 발주 주문서(PO) PDF 생성 경고]: {po_err}")
 
         generated_doc["files"] = export_meta
-
-        audit_status = safety_eval.get("status", "PASS")
-        full_query_log = (
-            f"[제원: {json.dumps(params, ensure_ascii=False, cls=DecimalEncoder)}] "
-            f"| 발화: {state.get('user_query', '')}"
-        )
-
-        log_inspection_history.invoke({
-            "session_id": erp_commit.get("work_order_number", "DRAFT_SESSION"),
-            "query": full_query_log,
-            "status": audit_status,
-        })
     except Exception as e:
         print(f"⚠️ [Document Tools 오류]: {e}")
+
+    audit_status = safety_eval.get("status", "PASS")
+    full_query_log = (
+        f"[제원: {json.dumps(params, ensure_ascii=False, cls=DecimalEncoder)}] "
+        f"| 발화: {state.get('user_query', '')}"
+    )
+    audit_saved = _save_audit_log(
+        session_id=erp_commit.get("work_order_number", "DRAFT_SESSION"),
+        query=full_query_log,
+        status=audit_status,
+    )
 
     return {
         "messages": [AIMessage(content=full_answer)],
         "final_answer": full_answer,
         "generated_document": generated_doc,
         "erp_commit_result": erp_commit,
-        "audit_saved": True,
+        "audit_saved": audit_saved,
     }
 
 
@@ -1754,20 +1776,21 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "file_prefix": f"heavy_lifting_plan_{block_code}",
         })
         generated_doc["files"] = json.loads(export_raw) if isinstance(export_raw, str) else {}
-        log_inspection_history.invoke({
-            "session_id": plan_no,
-            "query": f"[중량물계획서: {block_code} / {vehicle_code}] {state.get('user_query', '')}",
-            "status": safety_status_str,
-        })
     except Exception as e:
         print(f"⚠️ [Heavy Lifting PDF 생성 오류]: {e}")
+
+    audit_saved = _save_audit_log(
+        session_id=plan_no,
+        query=f"[중량물계획서: {block_code} / {vehicle_code}] {state.get('user_query', '')}",
+        status=safety_status_str,
+    )
 
     return {
         "messages": [AIMessage(content=answer)],
         "final_answer": answer,
         "generated_document": generated_doc,
         "erp_commit_result": erp_commit,
-        "audit_saved": True,
+        "audit_saved": audit_saved,
     }
 
 

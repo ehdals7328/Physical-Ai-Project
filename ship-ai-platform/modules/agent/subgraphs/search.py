@@ -7,6 +7,7 @@ Team 2: LLM bind_tools() 기반 ReAct(Reason-Act-Observe) 자율 탐색·편성 
 """
 
 import json
+import os
 import re
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional
@@ -62,9 +63,116 @@ class Team2ReActState(ShipAgentState, total=False):
     react_done: bool
 
 
-# ==============================================================================
-# 공통 환경·비전 Fail-Closed 안전 판정 헬퍼 (기존 안전 로직 100% 보존)
-# ==============================================================================
+# 비전 계측 이력 미존재(NO_DATA) 시 안전 인터록 정책:
+# - "STOP" (기본값, 엄격 Fail-Closed): 비전 검사 이력 없으면 작업 보류
+# - "CONDITIONAL_PASS": 현장 수동 안전 확인 기록을 전제로 조건부 통과 허용 (자동 PASS는 어떤 경우에도 금지)
+VISION_NO_DATA_POLICY = os.getenv("VISION_NO_DATA_POLICY", "STOP").strip().upper()
+
+PUBLIC_RAG_CATEGORIES = [
+    "manufacturing_tech",
+    "safety_health",
+    "class_rules",
+    "heavy_equipment",
+    "quality_inspection",
+    "work_weather",
+]
+
+
+def _resolve_rag_access_levels(state: Dict[str, Any]) -> set[str]:
+    """
+    Default Deny 원칙 기반 RAG 접근 등급 산정:
+    - 권한 정보 누락 / can_access_internal_rag != 'Y' / EXTERNAL 사용자 ➔ PUBLIC만 허용
+    - INTERNAL 사용자 + can_access_internal_rag == 'Y' ➔ PUBLIC, INTERNAL 허용
+    - MANAGER / ADMIN + can_access_internal_rag == 'Y' ➔ PUBLIC, INTERNAL, CONFIDENTIAL 허용
+    """
+    can_internal_flag = str(state.get("can_access_internal_rag") or "N").strip().upper() == "Y"
+    user_type = str(state.get("user_type") or "EXTERNAL").strip().upper()
+    user_role = str(state.get("user_role") or "WORKER").strip().upper()
+
+    allowed = {"PUBLIC"}
+    if can_internal_flag and user_type != "EXTERNAL":
+        allowed.add("INTERNAL")
+        if user_role in ("MANAGER", "ADMIN"):
+            allowed.add("CONFIDENTIAL")
+    return allowed
+
+
+def _search_rag_with_rbac(
+    state: Dict[str, Any],
+    query: str,
+    categories: Optional[List[str]] = None,
+    top_k: int = 4,
+    seen_doc_ids: Optional[set] = None,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """
+    Team 2 내 모든 RAG 검색 경로(ReAct 도구 호출, finalize 자동 보완)가 공통으로 사용하는 권한 검증 검색 계층.
+    """
+    allowed_levels = _resolve_rag_access_levels(state)
+    can_internal = "INTERNAL" in allowed_levels
+
+    effective_cats = list(categories) if categories else None
+    if not can_internal:
+        if effective_cats is not None:
+            effective_cats = [c for c in effective_cats if str(c).lower() != "internal_docs"]
+            if not effective_cats:
+                return [], []
+        else:
+            effective_cats = list(PUBLIC_RAG_CATEGORIES)
+
+    raw_items = search_knowledge_by_categories(
+        query=query,
+        categories=effective_cats,
+        top_k=top_k,
+    )
+
+    seen = seen_doc_ids if seen_doc_ids is not None else set()
+    docs_to_add: List[Dict[str, Any]] = []
+    previews: List[Dict[str, Any]] = []
+
+    for item in raw_items:
+        raw_level = item.get("access_level") or item.get("collection_type")
+        if raw_level:
+            col_type = str(raw_level).strip().upper()
+        elif str(item.get("category") or "").strip().lower() == "internal_docs":
+            col_type = "INTERNAL"
+        else:
+            # 메타데이터에 등급이 누락된 문서는 보수적으로 INTERNAL 취급 (Default Deny)
+            col_type = "INTERNAL"
+
+        if col_type not in allowed_levels:
+            continue
+
+        cid = item.get("chunk_id") or str(hash(item.get("chunk_text", "")))
+        if cid in seen:
+            continue
+        seen.add(cid)
+
+        doc_obj = {
+            "category": item.get("category", "규격"),
+            "content": item.get("chunk_text", "") or str(item),
+            "metadata": {
+                "document_name": item.get("document_name"),
+                "document_code": item.get("document_code"),
+                "collection_type": col_type,
+                "access_level": col_type,
+                "revision": item.get("revision"),
+                "page": item.get("page_start"),
+                "similarity": item.get("similarity_score"),
+                "source": item.get("source"),
+                "doc_id": cid,
+            },
+        }
+        docs_to_add.append(doc_obj)
+        previews.append({
+            "doc": doc_obj["metadata"].get("document_name"),
+            "access_level": col_type,
+            "page": doc_obj["metadata"].get("page"),
+            "snippet": doc_obj["content"][:280],
+        })
+
+    return docs_to_add, previews
+
+
 def _append_vision_clearance_warning(
     safety_res: Dict[str, Any], vision_info: Dict[str, Any] | None
 ) -> Dict[str, Any]:
@@ -96,10 +204,31 @@ def _append_vision_clearance_warning(
             "is_safe": False,
             "action_message": "비전 안전거리 미확보(간섭물 감지)로 인한 작업 즉시 보류",
         })
-    elif v_status == "NO_DATA" or v_insp == "NO_DATA":
-        prereqs = list(safety_res.get("prerequisites") or [])
-        prereqs.append("비전 실시간 계측 이력 미존재(계측 대기): 작업 착수 전 현장 안전거리 육안 확인 필수")
-        safety_res["prerequisites"] = prereqs
+    elif v_status == "NO_DATA" or v_insp == "NO_DATA" or v_clearance != "Y":
+        # NO_DATA 또는 안전클리어런스 미확정 상태에서는 절대 자동 PASS 불가
+        if VISION_NO_DATA_POLICY == "CONDITIONAL_PASS":
+            rules.append("비전 검사 이력 미존재(NO_DATA): 자동 통과 불가 — 현장 담당자 수동 안전 확인 및 결과 기록 필수")
+            prereqs = list(safety_res.get("prerequisites") or [])
+            prereqs.append("수동 안전 확인 담당자 성명 및 점검 결과 DB 기록 필수")
+            safety_res["mandatory_rules"] = rules
+            safety_res["prerequisites"] = prereqs
+            safety_res["manual_safety_check_required"] = True
+            if safety_res.get("status") == "PASS":
+                safety_res.update({
+                    "status": "CONDITIONAL_PASS",
+                    "safety_level": "CAUTION",
+                    "action_message": "비전 검사 이력 미존재 — 수동 안전 확인 조건부 승인",
+                })
+        else:
+            rules.append("비전 검사 이력 미존재(NO_DATA): 안전 클리어런스 미확인으로 Fail-Closed 작업 보류 (비전 검사 또는 수동 안전 확인 기록 필요)")
+            safety_res.update({
+                "mandatory_rules": rules,
+                "status": "STOP",
+                "safety_level": "FORBIDDEN",
+                "is_safe": False,
+                "manual_safety_check_required": True,
+                "action_message": "비전 검사 이력 미존재(NO_DATA)로 인한 작업 보류",
+            })
 
     return safety_res
 
@@ -118,8 +247,10 @@ def _run_weather_and_vision_check(
     vision_info = None
     if need_vision:
         try:
+            # work_id와 block_id를 혼용하지 않고 각각 명시적으로 전달
             vision_info = get_vision_inspection_status.invoke({
-                "work_id": work_id or block_id,
+                "work_id": work_id,
+                "block_id": block_id,
                 "camera_code": camera_code,
             })
         except Exception as e:
@@ -605,7 +736,6 @@ def react_tool_executor_node(state: Team2ReActState) -> Dict[str, Any]:
     tool_trace = list(state.get("tool_trace") or [])
     excluded_blocks = list(state.get("excluded_blocks") or [])
     excluded_workers = list(state.get("excluded_workers") or [])
-    can_access_internal = state.get("can_access_internal_rag", "Y") != "N"
 
     for tc in tool_calls:
         t_name = tc.get("name", "")
@@ -754,41 +884,19 @@ def react_tool_executor_node(state: Team2ReActState) -> Dict[str, Any]:
             elif t_name == "tool_search_knowledge_rag":
                 q = str(t_args.get("query") or state.get("user_query") or "").strip()
                 cats = t_args.get("categories") or None
-                if not can_access_internal and cats:
-                    cats = [c for c in cats if c != "internal_docs"]
-                raw_items = search_knowledge_by_categories(query=q, categories=cats, top_k=4)
-                added = []
-                for item in raw_items:
-                    col_type = str(item.get("collection_type") or item.get("access_level") or "PUBLIC").upper()
-                    if not can_access_internal and col_type in ("INTERNAL", "CONFIDENTIAL"):
-                        continue
-                    cid = item.get("chunk_id") or str(hash(item.get("chunk_text", "")))
-                    if cid not in seen_doc_ids:
-                        seen_doc_ids.add(cid)
-                        doc_obj = {
-                            "category": item.get("category", "규격"),
-                            "content": item.get("chunk_text", "") or str(item),
-                            "metadata": {
-                                "document_name": item.get("document_name"),
-                                "document_code": item.get("document_code"),
-                                "collection_type": col_type,
-                                "revision": item.get("revision"),
-                                "page": item.get("page_start"),
-                                "similarity": item.get("similarity_score"),
-                                "source": item.get("source"),
-                                "doc_id": cid,
-                            },
-                        }
-                        retrieved_docs.append(doc_obj)
-                        added.append({
-                            "doc": doc_obj["metadata"].get("document_name"),
-                            "page": doc_obj["metadata"].get("page"),
-                            "snippet": doc_obj["content"][:280],
-                        })
+                new_docs, added = _search_rag_with_rbac(
+                    state=state,
+                    query=q,
+                    categories=cats,
+                    top_k=4,
+                    seen_doc_ids=seen_doc_ids,
+                )
+                retrieved_docs.extend(new_docs)
                 search_status = "completed" if retrieved_docs else "empty"
                 doc_grade = "yes" if retrieved_docs else "no"
                 obs = {
                     "query": q,
+                    "allowed_access_levels": sorted(_resolve_rag_access_levels(state)),
                     "newly_found": len(added),
                     "total_docs": len(retrieved_docs),
                     "previews": added,
@@ -976,26 +1084,20 @@ def react_finalize_node(state: Team2ReActState) -> Dict[str, Any]:
                 need_vision=True,
             )
 
-        # 3. RAG 근거 문서 누락 시 1회 자동 검색
+        # 3. RAG 근거 문서 누락 시 1회 자동 검색 (공통 RBAC 권한 계층 경유)
         if not retrieved_docs:
             q = (
                 "중량물 취급 작업계획서 크레인 양중 줄걸이 안전수칙"
                 if params.get("doc_type") == "HEAVY_LIFTING_PLAN"
                 else f"{params.get('process', '')} {params.get('material', '')} {params.get('thickness', '')} WPS 시공 조건 건조 보관 NDT".strip()
             )
-            raw_items = search_knowledge_by_categories(query=q, categories=None, top_k=4)
-            for item in raw_items:
-                retrieved_docs.append({
-                    "category": item.get("category", "규격"),
-                    "content": item.get("chunk_text", "") or str(item),
-                    "metadata": {
-                        "document_name": item.get("document_name"),
-                        "document_code": item.get("document_code"),
-                        "page": item.get("page_start"),
-                        "similarity": item.get("similarity_score"),
-                        "source": item.get("source"),
-                    },
-                })
+            new_docs, _ = _search_rag_with_rbac(
+                state=state,
+                query=q,
+                categories=None,
+                top_k=4,
+            )
+            retrieved_docs.extend(new_docs)
             if retrieved_docs:
                 search_status = "completed"
                 doc_grade = "yes"

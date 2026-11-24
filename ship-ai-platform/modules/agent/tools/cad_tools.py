@@ -426,9 +426,14 @@ def confirm_cad_work_plan(
     if user_engine is None:
         raise ValueError("user_engine이 필요합니다.")
 
+    if not isinstance(confirm_mode, str) or not confirm_mode.strip():
+        raise ValueError("confirm_mode는 비어 있을 수 없습니다. (허용값: ACTIVE, QUEUED, REVISION)")
+
     mode = confirm_mode.strip().upper()
     if mode not in ("ACTIVE", "QUEUED", "REVISION"):
-        mode = "ACTIVE"
+        raise ValueError(
+            f"허용되지 않는 confirm_mode입니다: '{confirm_mode}' (허용값: ACTIVE, QUEUED, REVISION)"
+        )
 
     drawing_id = f"DWG-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     branch_code = drawing_meta.get("branch_code", "BR-ULSAN-01")
@@ -570,6 +575,7 @@ def confirm_cad_work_plan(
                     "status": "SHORTAGE_PO_DRAFTED" if is_shortage else "SUFFICIENT",
                 })
 
+                po_draft = None
                 if is_shortage:
                     shortage_kg = round(max(target_need - avail_qty, req_kg), 1)
                     po_draft = _create_proactive_po_draft(
@@ -582,6 +588,22 @@ def confirm_cad_work_plan(
                         requested_by=uploaded_by,
                     )
                     proactive_po_drafts.append(po_draft)
+
+                mrp_status = "SUFFICIENT"
+                if is_shortage:
+                    mrp_status = (
+                        "SHORTAGE_PO_DRAFTED"
+                        if (po_draft and po_draft.get("quote_status") == "QUOTED")
+                        else "SHORTAGE_QUOTE_REQUIRED"
+                    )
+
+                mrp_diagnostics.append({
+                    "item_code": w_code,
+                    "short_term_req_kg": round(req_kg, 2),
+                    "safety_buffer_kg": safety_buffer_kg,
+                    "current_avail_kg": avail_qty,
+                    "status": mrp_status,
+                })
 
     return {
         "status": "CONFIRMED",
@@ -602,10 +624,11 @@ def _create_proactive_po_draft(
     current_avail_kg: float,
     requested_by: str,
 ) -> Dict[str, Any]:
-    partner_id = "VEND-DAEHAN-MAT"
-    partner_name = "대한특수철강"
-    unit_price = 4500 if "CSF71T" in wire_mat_code else 5200
-    lead_time_hours = 4
+    partner_id: Optional[str] = None
+    partner_name: Optional[str] = None
+    unit_price: Optional[int] = None
+    lead_time_hours: Optional[int] = None
+    lookup_error: Optional[str] = None
 
     try:
         from modules.agent.tools.erp_tools import query_partner_erp_b2b
@@ -615,20 +638,53 @@ def _create_proactive_po_draft(
         })
         if isinstance(b2b_res, dict) and b2b_res.get("status") == "SUCCESS":
             sel = b2b_res.get("selected_partner") or {}
-            partner_id = sel.get("partner_id", partner_id)
-            partner_name = sel.get("partner_name", partner_name)
-            unit_price = int(sel.get("unit_price_krw") or unit_price)
-            lead_time_hours = int(sel.get("lead_time_hours") or lead_time_hours)
-    except Exception:
-        pass
+            partner_id = sel.get("partner_id") or None
+            partner_name = sel.get("partner_name") or partner_id
+            raw_price = sel.get("unit_price_krw")
+            unit_price = int(raw_price) if raw_price is not None and float(raw_price) > 0 else None
+            raw_lt = sel.get("lead_time_hours")
+            lead_time_hours = int(raw_lt) if raw_lt is not None and int(raw_lt) > 0 else 4
+        else:
+            lookup_error = (
+                b2b_res.get("error_message")
+                if isinstance(b2b_res, dict)
+                else "협력사 B2B 응답 형식 오류"
+            ) or "적격 협력사 견적 조회 실패"
+    except Exception as e:
+        lookup_error = f"협력사 B2B 조회 예외: {e}"
 
-    ros_deadline = (datetime.now() + timedelta(hours=max(lead_time_hours, 2))).strftime("%Y-%m-%d %H:00")
     po_draft_no = f"PO-MRP-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+
+    # 협력사 조회 실패 또는 단가 미확정 시 가짜 기본 업체/단가로 견적서 발행 금지
+    if not partner_id or unit_price is None:
+        return {
+            "is_standalone_po": True,
+            "source": "CAD_MRP_PROACTIVE",
+            "quote_status": "PARTNER_LOOKUP_FAILED",
+            "approval_status": "QUOTE_REQUIRED",
+            "drawing_id": drawing_id,
+            "po_number": po_draft_no,
+            "branch_code": branch_code,
+            "partner_id": None,
+            "partner_name": None,
+            "item_code": wire_mat_code,
+            "order_qty_kg": shortage_kg,
+            "current_hq_avail_kg": current_avail_kg,
+            "unit_price_krw": None,
+            "total_amount_krw": None,
+            "required_on_site_at": None,
+            "error": lookup_error or "협력사 단가/견적 정보 미확보로 수동 견적 확인 필요",
+            "db_saved": False,
+            "files": {},
+        }
+
+    ros_deadline = (datetime.now() + timedelta(hours=max(lead_time_hours or 4, 2))).strftime("%Y-%m-%d %H:00")
     total_amount = int(shortage_kg * unit_price)
 
-    po_payload = {
+    po_payload: Dict[str, Any] = {
         "is_standalone_po": True,
         "source": "CAD_MRP_PROACTIVE",
+        "quote_status": "QUOTED",
         "drawing_id": drawing_id,
         "po_number": po_draft_no,
         "branch_code": branch_code,
@@ -641,6 +697,7 @@ def _create_proactive_po_draft(
         "total_amount_krw": total_amount,
         "required_on_site_at": ros_deadline,
         "approval_status": "DRAFT",
+        "db_saved": False,
     }
     try:
         from modules.agent.tools.document_tools import export_outsourcing_po_pdf
@@ -686,7 +743,7 @@ def _create_proactive_po_draft(
         po_payload["download_pdf_url"] = po_meta.get("download_pdf_url")
     except Exception as po_pdf_err:
         print(f"⚠️ [CAD 선제 PO PDF 생성 경고]: {po_pdf_err}")
-        
+
     try:
         with user_engine.begin() as conn:
             conn.execute(
@@ -710,8 +767,9 @@ def _create_proactive_po_draft(
                     "created_by": requested_by,
                 },
             )
-    except Exception:
-        pass
+        po_payload["db_saved"] = True
+    except Exception as po_db_err:
+        print(f"⚠️ [CAD 선제 PO DB 저장 경고]: {po_db_err}")
 
     return po_payload
 

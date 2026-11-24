@@ -216,7 +216,7 @@ def intent_slot_extractor_node(state: ShipAgentState) -> Dict[str, Any]:
     query = state.get("user_query", "").strip()
     messages = state.get("messages", [])
     existing_params = dict(state.get("extracted_params") or {})
-    is_waiting = state.get("is_param_complete") == "no"
+    is_waiting = bool(state.get("prev_turn_waiting_clarification", False))
 
     can_access_erp = state.get("can_access_erp", "Y")
     default_workspace = state.get("default_workspace")

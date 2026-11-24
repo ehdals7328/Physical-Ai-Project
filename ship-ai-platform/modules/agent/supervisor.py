@@ -16,19 +16,42 @@ from modules.agent.subgraphs.search import team2_subgraph
 
 def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
     """
-    새로운 턴 시작 시 직전 턴의 일회성 상태를 초기화합니다.
-    직전 턴에 문서(DRAFT/APPROVED)가 이미 생성된 경우, 해당 블록·작업자를 기발행 이력에 기록하고
-    extracted_params의 이전 문서 전용 슬롯을 비워 다음 턴에서 동일 문서가 중복 발행되지 않도록 합니다.
+    새로운 턴 시작 시 상태를 두 영역으로 명확히 분리하여 초기화합니다.
+    1) 누적 유지 데이터: 기발행 블록·작업자 이력, 직전 역질문 대기 플래그(prev_turn_waiting_clarification),
+       직전 미완료 문서의 누적 extracted_params
+    2) 일회성 실행 데이터: hitl_approved, is_param_complete, missing_params, is_action_requested 등 매 턴 초기화
     """
     prev_commit = state.get("erp_commit_result") or {}
-    was_already_committed = prev_commit.get("erp_transaction_status") == "COMMITTED"
+    prev_commit_status = str(prev_commit.get("erp_transaction_status") or "").upper()
+    was_already_committed = prev_commit_status == "COMMITTED"
 
     drafted_blocks = list(state.get("drafted_blocks_history") or [])
     drafted_workers = list(state.get("drafted_workers_history") or [])
     cleaned_params = dict(state.get("extracted_params") or {})
 
     prev_doc = state.get("generated_document") or {}
-    if prev_doc.get("status") in ("DRAFT", "APPROVED"):
+    prev_doc_status = str(prev_doc.get("status") or "").upper()
+    prev_doc_id = str(prev_doc.get("doc_id") or prev_doc.get("work_no") or "").strip()
+    prev_doc_ver = str(prev_doc.get("version") or "1").strip()
+
+    # 직전 턴 역질문 대기 여부를 별도 필드로 이관한 뒤 현재 턴 상태는 초기화
+    prev_turn_waiting = state.get("is_param_complete") == "no"
+
+    # 일회성 HITL 승인 검증:
+    # 기본값은 매 턴 False이며, 명시적 승인 대상 문서 ID·버전이 직전 미커밋 DRAFT와 일치할 때만 1회 허용
+    req_doc_id = str(state.get("hitl_target_doc_id") or "").strip()
+    req_doc_ver = str(state.get("hitl_target_doc_version") or "1").strip()
+    valid_hitl_approval = (
+        bool(state.get("hitl_approved"))
+        and not was_already_committed
+        and prev_commit_status not in ("FAILED", "ROLLED_BACK", "ERROR")
+        and prev_doc_status == "DRAFT"
+        and bool(prev_doc_id)
+        and req_doc_id == prev_doc_id
+        and req_doc_ver == prev_doc_ver
+    )
+
+    if prev_doc_status in ("DRAFT", "APPROVED") and not valid_hitl_approval:
         prev_params = prev_doc.get("parameters") or {}
         p_blk = str(prev_params.get("block_id") or "").strip().upper()
         p_wrk = str(prev_params.get("worker_name") or "").strip()
@@ -52,36 +75,46 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
         ):
             cleaned_params.pop(doc_key, None)
 
-    init_updates: Dict[str, Any] = {
+    return {
+        # [1] 누적 대화 컨텍스트 (유지 영역)
+        "extracted_params": cleaned_params,
+        "excluded_blocks": list(drafted_blocks),
+        "excluded_workers": list(drafted_workers),
+        "drafted_blocks_history": drafted_blocks,
+        "drafted_workers_history": drafted_workers,
+        "prev_turn_waiting_clarification": prev_turn_waiting,
+
+        # [2] 일회성 실행 상태 (매 턴 초기화 영역)
+        "hitl_approved": valid_hitl_approval,
+        "hitl_target_doc_id": None,
+        "hitl_target_doc_version": None,
+        "is_param_complete": "yes",
+        "missing_params": [],
+        "is_action_requested": False,
+        "is_outsourcing_required": False,
+        "need_weather": False,
+        "search_queries": [],
+        "retry_count": 0,
         "team2_plan": None,
         "next": None,
         "retrieved_docs": [],
         "doc_grade": None,
         "vision_data": None,
         "weather_data": None,
-        "generated_document": None,
+        "generated_document": prev_doc if valid_hitl_approval else None,
         "cad_staging_result": None,
         "erp_commit_result": None,
         "erp_resource_status": None,
         "partner_erp_plan": None,
         "final_answer": None,
         "audit_saved": False,
-        "extracted_params": cleaned_params,
         "auto_assign_mode": False,
         "replan_count": 0,
         "replan_needed": False,
         "replan_feedback": None,
-        "excluded_blocks": list(drafted_blocks),
-        "excluded_workers": list(drafted_workers),
-        "drafted_blocks_history": drafted_blocks,
-        "drafted_workers_history": drafted_workers,
         "agent_reasoning_summary": None,
         "tool_trace": [],
     }
-    if was_already_committed:
-        init_updates["hitl_approved"] = False
-
-    return init_updates
 
 
 def route_after_team1(

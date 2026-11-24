@@ -112,3 +112,7 @@ class ShipAgentState(TypedDict, total=False):
     cad_dxf_path: Optional[str]
     cad_pdf_path: Optional[str]
     cad_staging_result: Optional[Dict[str, Any]]
+
+    prev_turn_waiting_clarification: bool
+    hitl_target_doc_id: Optional[str]
+    hitl_target_doc_version: Optional[str]

@@ -77,7 +77,8 @@ class AiCadAnalysisAndSchedule(BaseModel):
         description="블록 분할 기준 요약: 수밀격벽/기관실 구획 및 야드 크레인 정격하중 안전 한계를 어떻게 반영해 몇 개 블록으로 나눴는지 설명"
     )
     divided_blocks: List[DividedBlockPlan] = Field(
-        description="도면에서 분할된 실제 제작 블록 목록 (도면 규모와 크레인 한계에 따라 3~7개 유동적 분할)"
+        min_length=1,
+        description="도면의 구조 구획·프레임 범위·크레인 정격하중 한계에 따라 1개 이상 유동적으로 분할된 제작 블록 목록 (단일 소규모 도면은 억지 분할 금지)",
     )
 
 
@@ -222,9 +223,9 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
         "2) 실제 조선소 조립·인양 가능한 **블록 단위(N개)**로 자율 분할한 뒤,\n"
         "3) 선박 건조 순서와 자원 제약을 반영한 공정 계획 및 대략적 일정을 수립하십시오.\n\n"
         "[필수 엔지니어링 규칙]\n"
-        "1. **고정 개수·임의 명칭 금지**: 도면에 실제로 존재하는 뷰(`TANKTOP AND SINGLE BOTTOM`, `1-DECK 4200 ABOVE BL`, `DOUBLE BOTTOM` 등)와 "
-        "실제 프레임 번호(`Fr.0~15`, `Fr.15~27` 등)를 기준으로 분할하세요. 크레인 정격하중 안전 한계(예: 50톤 크레인의 90% = 45톤)를 초과하지 않도록 "
-        "대형 데크나 이중저는 기관실 구역·중앙 구역·선수 구역 등으로 합리적인 제작 블록(총 4~6개 내외)으로 나누십시오.\n"
+        "1. **고정 개수·억지 분할 금지**: 도면에 실제로 존재하는 뷰(`TANKTOP AND SINGLE BOTTOM`, `1-DECK 4200 ABOVE BL`, `DOUBLE BOTTOM` 등)와 "
+        "실제 프레임 번호(`Fr.0~15`, `Fr.15~27` 등)를 기준으로 분할하세요. 크레인 정격하중 안전 한계(예: 50톤 크레인의 90% = 45톤)와 실제 구조 구획에 따라 "
+        "단일 소규모 블록이면 1개로 유지하고, 대형 데크나 이중저만 기관실·중앙·선수 구역 등으로 필요한 개수만큼 합리적으로 나누십시오.\n"
         "2. **선박 건조 순서 엄수**: 반드시 하부 구조(`TANKTOP`, `DOUBLE BOTTOM`, `SINGLE BOTTOM`, 기관실 받침대 구역)를 상부 갑판(`1-DECK`, `A-DECK`)보다 먼저(P1, P2...) 배치하십시오.\n"
         "3. **세부 용접 작업(sub_tasks) 도출**: 각 블록마다 도면의 부재 규격(`HP80x6`, `HP140x8`, `W200x8`, `FL150x10` 등)을 반영해 맞대기(`BUTT`/SAW)와 필렛(`FILLET`/FCAW) 세부 작업을 2~3개 도출하고, "
         "취부·용접·정리를 포함한 현실적인 공수(`est_man_hours`)와 가용 작업자 수 기준 소요일수(`est_duration_days`)를 계산하십시오.\n"
@@ -248,25 +249,86 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
     ])
 
     wire_inv = yard_ctx.get("wire_inventory") or {}
+    remaining_wire: Dict[str, float] = {
+        code: float((info or {}).get("available_qty") or 0.0)
+        for code, info in wire_inv.items()
+    }
+    crane_caps = [
+        float(eq.get("max_load_ton") or 0.0)
+        for eq in (yard_ctx.get("lifting_equipment") or [])
+        if eq.get("max_load_ton") is not None
+    ]
+    max_safe_crane_ton = round(max(crane_caps) * 0.9, 2) if crane_caps else None
+
     base_dt_str = yard_ctx.get("base_start_date") or datetime.now().strftime("%Y-%m-%d")
-    has_lead_time_shift = False
+    base_dt = datetime.strptime(base_dt_str, "%Y-%m-%d")
+    material_ready_dt = base_dt + timedelta(days=1)
+
+    lower_keywords = ("TANKTOP", "DOUBLE BOTTOM", "SINGLE BOTTOM", "BOTTOM", "ENGINE")
+    upper_keywords = ("1-DECK", "2-DECK", "A-DECK", "MAIN DECK", "UPPER DECK")
+    lower_latest_end: Optional[datetime] = None
 
     scheduled_packages: List[Dict[str, Any]] = []
     for blk in sorted(analysis_out.divided_blocks, key=lambda x: x.priority_rank):
         pkg = blk.model_dump()
         pkg["plan_state"] = "STAGING"
-        avail_wire = float((wire_inv.get(pkg["wire_mat_code"]) or {}).get("available_qty") or 0.0)
-        if avail_wire < float(pkg.get("est_wire_kg") or 0.0):
+        pkg["estimation_status"] = "AI_ESTIMATED_REVIEW_REQUIRED"
+
+        duration_days = max(1, int(pkg.get("est_duration_days") or 1))
+        try:
+            s_dt = datetime.strptime(str(pkg.get("planned_start_date") or base_dt_str), "%Y-%m-%d")
+        except ValueError:
+            s_dt = base_dt
+        try:
+            e_dt = datetime.strptime(str(pkg.get("planned_end_date") or ""), "%Y-%m-%d")
+            span_days = max(1, (e_dt - s_dt).days)
+        except ValueError:
+            span_days = duration_days
+            e_dt = s_dt + timedelta(days=span_days)
+
+        # 1) 와이어 품목별 누적 재고 차감 및 해당 블록 단독 리드타임 반영
+        w_code = pkg["wire_mat_code"]
+        req_wire = float(pkg.get("est_wire_kg") or 0.0)
+        avail_before = remaining_wire.get(w_code, 0.0)
+
+        if avail_before < req_wire:
             pkg["need_material_po"] = True
-            if pkg.get("planned_start_date") == base_dt_str:
-                has_lead_time_shift = True
-        if has_lead_time_shift:
-            s_dt = datetime.strptime(pkg["planned_start_date"], "%Y-%m-%d") + timedelta(days=1)
-            e_dt = datetime.strptime(pkg["planned_end_date"], "%Y-%m-%d") + timedelta(days=1)
-            pkg["planned_start_date"] = s_dt.strftime("%Y-%m-%d")
-            pkg["planned_end_date"] = e_dt.strftime("%Y-%m-%d")
-            if pkg.get("need_material_po") and "리드타임" not in pkg.get("schedule_rationale", ""):
-                pkg["schedule_rationale"] += f" ({pkg['wire_mat_code']} 가용 {avail_wire}kg 부족으로 조달 리드타임 1일 반영)"
+            if s_dt < material_ready_dt:
+                s_dt = material_ready_dt
+                e_dt = s_dt + timedelta(days=span_days)
+                if "리드타임" not in pkg.get("schedule_rationale", ""):
+                    pkg["schedule_rationale"] = (
+                        f"{pkg.get('schedule_rationale', '').rstrip()} "
+                        f"({w_code} 가용 {round(avail_before, 1)}kg < 소요 {round(req_wire, 1)}kg로 조달 리드타임 1일 반영)"
+                    ).strip()
+        else:
+            pkg["need_material_po"] = False
+
+        remaining_wire[w_code] = max(0.0, avail_before - req_wire)
+
+        # 2) 선후행 구조 제약: 하부 구조 일정이 밀렸을 때 상부 갑판이 하부 완료일보다 먼저 시작되지 않도록 보정
+        deck_upper = str(pkg.get("deck_level") or pkg.get("block_name") or "").upper()
+        is_lower = any(k in deck_upper for k in lower_keywords)
+        is_upper = (not is_lower) and any(k in deck_upper for k in upper_keywords)
+
+        if is_upper and lower_latest_end is not None and s_dt < lower_latest_end:
+            s_dt = lower_latest_end
+            e_dt = s_dt + timedelta(days=span_days)
+            if "하부 구조 완료" not in pkg.get("schedule_rationale", ""):
+                pkg["schedule_rationale"] = (
+                    f"{pkg.get('schedule_rationale', '').rstrip()} "
+                    f"(하부 구조 완료일 {lower_latest_end.strftime('%Y-%m-%d')} 이후 착수로 선후행 보정)"
+                ).strip()
+
+        if is_lower:
+            lower_latest_end = e_dt if (lower_latest_end is None or e_dt > lower_latest_end) else lower_latest_end
+
+        # 3) 야드 크레인 안전 한계(정격 90%) 결정론적 재검증
+        if max_safe_crane_ton is not None:
+            pkg["need_external_lifting"] = float(pkg.get("est_weight_ton") or 0.0) > max_safe_crane_ton
+
+        pkg["planned_start_date"] = s_dt.strftime("%Y-%m-%d")
+        pkg["planned_end_date"] = e_dt.strftime("%Y-%m-%d")
         scheduled_packages.append(pkg)
 
     staging["status"] = "STAGING_SUCCESS"
