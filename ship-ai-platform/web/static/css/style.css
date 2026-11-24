@@ -508,11 +508,11 @@ main {
 /* ---------- Footer ---------- */
 .site-footer {
   flex-shrink: 0;
-  background: #ffffff;
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  padding: 30px 0 26px;
-  font-size: 13px;
+  background: #eaf0f8;
+  border-top: 2px solid #cbd5e1;
+  color: #334155;
+  padding: 34px 0 28px;
+  font-size: 13.5px;
 }
 
 .footer-heading {
@@ -666,4 +666,30 @@ main {
 .v-timeline-detail {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+
+/* ---------- Prevent Horizontal/Vertical Layout Shift on Tab Switch ---------- */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+#workspace-stage {
+  min-height: 520px;
+  transition: opacity 0.18s ease;
+}
+
+#workspace-stage.is-loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+@keyframes stageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.stage-fade-in {
+  animation: stageFadeIn 0.22s ease forwards;
 }
