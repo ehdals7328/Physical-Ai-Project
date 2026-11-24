@@ -1,0 +1,108 @@
+{% extends "layout/base.html" %}
+{% block title %}에이전트 분석 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="surface-card mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold mb-1">
+        작업 준비 분석 {% if block_code %}· {{ block_code }}{% endif %}
+        <span class="badge bg-dark ms-1">{{ '기존 문서 개정(Rev)' if mode == 'REVISE' else '신규 발행' }}</span>
+      </h5>
+      <div class="small text-muted">{{ prompt }}</div>
+    </div>
+    <a href="/service/workspace" class="btn btn-outline-secondary btn-sm">작업 취소</a>
+  </div>
+
+  <!-- 3. 진행 스텝퍼 -->
+  <div class="stepper-bar mb-4">
+    <div class="stepper-node done">1. 요청 / 중복 확인</div>
+    <div class="stepper-node active">2. 에이전트 분석</div>
+    <div class="stepper-node">3. 통합 실행안</div>
+    <div class="stepper-node">4. 승인 / 진행</div>
+  </div>
+
+  <!-- 4. 작업 진행도 -->
+  <div class="mb-2 d-flex justify-content-between small">
+    <span id="step-text" class="fw-semibold">분석을 시작하고 있습니다...</span>
+    <span id="step-pct" class="text-muted">15%</span>
+  </div>
+  <div class="progress mb-4" style="height:10px;">
+    <div id="step-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:15%;"></div>
+  </div>
+
+  <!-- 5. Agent Tool 실행 현황 -->
+  <ul class="list-group small" id="tool-checklist">
+    <li class="list-group-item d-flex justify-content-between" data-step="init">
+      <span>RDB 기존 문서 중복 및 버전 확인</span><span class="badge bg-primary">진행중</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between" data-step="team1">
+      <span>CAD 도면 제원 · ERP 자재/자격/로봇 가용성 진단</span><span class="badge bg-light text-dark border">대기</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between" data-step="team2">
+      <span>RAG 용접 시공 기준 · 기상 · 협력사 조회</span><span class="badge bg-light text-dark border">대기</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between" data-step="team3">
+      <span>안전 기준 검증 및 통합 실행안 초안 조립</span><span class="badge bg-light text-dark border">대기</span>
+    </li>
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PROMPT_TEXT = {{ prompt | tojson }};
+const BRANCH_CODE = {{ branch_code | tojson }};
+const BLOCK_CODE = {{ block_code | tojson }};
+let analyzePoll = null;
+
+function setToolStates(stage) {
+  const order = { RUNNING_AGENT: 0, top_supervisor_init: 0, team1_analysis: 1, team2_search: 2, team2_knowledge: 2, team3_docgen: 3 };
+  const pctMap = { 0: 25, 1: 50, 2: 75, 3: 92 };
+  const idx = order[stage] !== undefined ? order[stage] : 1;
+  $('#step-bar').css('width', pctMap[idx] + '%');
+  $('#step-pct').text(pctMap[idx] + '%');
+
+  $('#tool-checklist li').each(function(i) {
+    const $b = $(this).find('.badge');
+    if (i < idx) $b.attr('class', 'badge bg-success').text('완료');
+    else if (i === idx) $b.attr('class', 'badge bg-primary').text('진행중');
+    else $b.attr('class', 'badge bg-light text-dark border').text('대기');
+  });
+}
+
+$.ajax({
+  url: '/service/api/assistant/ask',
+  method: 'POST',
+  contentType: 'application/json',
+  data: JSON.stringify({
+    question: PROMPT_TEXT,
+    new_session: true,
+    page_context: {
+      page_title: '에이전트 분석',
+      branch_code: BRANCH_CODE,
+      selected_work: { branch_code: BRANCH_CODE, block_id: BLOCK_CODE }
+    }
+  }),
+  success: function(res) {
+    const sid = res.session_id;
+    analyzePoll = setInterval(function() {
+      $.getJSON('/service/api/assistant/status/' + encodeURIComponent(sid), function(st) {
+        if (st.status === 'RUNNING') {
+          $('#step-text').text(st.step_message || '분석 중입니다...');
+          setToolStates(st.current_state || 'RUNNING_AGENT');
+          return;
+        }
+        clearInterval(analyzePoll);
+        $('#step-bar').css('width', '100%');
+        $('#step-pct').text('100%');
+        window.location.href = '/service/agent/plan/' + encodeURIComponent(sid);
+      });
+    }, 1500);
+  },
+  error: function(xhr) {
+    $('#step-text').text((xhr.responseJSON && xhr.responseJSON.message) || '분석 시작 중 오류가 발생했습니다.');
+  }
+});
+</script>
+{% endblock %}

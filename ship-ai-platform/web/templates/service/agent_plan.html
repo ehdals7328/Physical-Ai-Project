@@ -1,0 +1,92 @@
+{% extends "layout/base.html" %}
+{% block title %}에이전트 통합 실행안 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="surface-card mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h5 class="fw-bold mb-1">통합 실행안 검토 {% if doc.get('title') %}· {{ doc.get('title') }}{% endif %}</h5>
+      <div class="small text-muted">최종 승인 전에는 ERP 자재 예약이나 작업지시 확정이 반영되지 않습니다.</div>
+    </div>
+    <a href="/service/workspace" class="btn btn-outline-secondary btn-sm">작업 취소</a>
+  </div>
+
+  <!-- 3. 진행 스텝퍼 -->
+  <div class="stepper-bar mb-4">
+    <div class="stepper-node done">1. 요청 / 중복 확인</div>
+    <div class="stepper-node done">2. 에이전트 분석</div>
+    <div class="stepper-node active">3. 통합 실행안</div>
+    <div class="stepper-node">4. 승인 / 진행</div>
+  </div>
+
+  <!-- 4. 통합 조치 내역 및 착수 조건 -->
+  <div class="border rounded-3 p-3 bg-light mb-3">
+    <div class="fw-bold small mb-2">통합 조치 내역 및 착수 조건</div>
+    <div style="white-space:pre-wrap;line-height:1.65;">{{ answer }}</div>
+  </div>
+
+  {% if sources %}
+  <div class="small text-muted mb-3">
+    <strong>참고 근거:</strong>
+    {% for s in sources %}
+      <span class="badge bg-light text-dark border me-1">{{ s.title }} (p.{{ s.page }})</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- 5. 조건 수정 입력창 (수정 시 계획 재산출) -->
+  <form action="/service/agent/analyze" method="get" class="d-flex gap-2 mb-4">
+    <input type="text" name="prompt" class="form-control form-control-sm"
+           placeholder="조건 수정 요청 입력 (예: 작업자를 변경하고 예열 기준을 다시 확인해줘)" required>
+    <button type="submit" class="btn btn-outline-dark btn-sm text-nowrap px-3">재산출</button>
+  </form>
+
+  <!-- 6. 하단 단일 승인 바 -->
+  <div class="border-top pt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="small text-secondary">
+      한 번의 승인으로 작업지시서 확정, 자원 예약, 문서 발행이 함께 진행됩니다.
+    </div>
+    <div class="d-flex gap-2">
+      {% if doc.get('files', {}).get('download_pdf_url') %}
+        <a href="{{ doc.get('files', {}).get('download_pdf_url') }}" target="_blank" class="btn btn-outline-primary btn-sm">초안 PDF 확인</a>
+      {% endif %}
+      {% if can_approve and doc.get('work_id') %}
+        <button type="button" id="btn-approve-plan" class="btn btn-primary px-4 fw-semibold" onclick="approvePlan()">승인 및 확정</button>
+      {% elif not can_approve %}
+        <span class="badge bg-secondary py-2 px-3">승인 권한은 관리자/팀장에게 있습니다</span>
+      {% else %}
+        <a href="/service/work-status" class="btn btn-dark btn-sm">작업 현황으로 이동</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PLAN_DOC = {{ doc | tojson }};
+function approvePlan() {
+  const $btn = $('#btn-approve-plan');
+  $btn.prop('disabled', true).text('확정 처리 중...');
+  $.ajax({
+    url: '/service/api/assistant/approve',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      action: 'APPROVE',
+      work_id: PLAN_DOC.work_id,
+      instruction_id: PLAN_DOC.instruction_id,
+      doc: PLAN_DOC
+    }),
+    success: function(res) {
+      alert(res.message || '승인 및 확정이 완료되었습니다.');
+      window.location.href = '/service/work-status?work_id=' + encodeURIComponent(PLAN_DOC.work_id || '');
+    },
+    error: function(xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '승인 처리 중 오류가 발생했습니다.');
+      $btn.prop('disabled', false).text('승인 및 확정');
+    }
+  });
+}
+</script>
+{% endblock %}

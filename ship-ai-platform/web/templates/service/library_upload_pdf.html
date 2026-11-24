@@ -1,0 +1,95 @@
+{% extends "layout/base.html" %}
+{% block title %}PDF 문서 등록 | 자료실{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="surface-card">
+      <h5 class="fw-bold mb-1">사내 규범 PDF 등록</h5>
+      <p class="small text-muted mb-4">문서 등록 시 비동기로 텍스트 추출, 청킹, 임베딩, 색인이 자동 진행됩니다.</p>
+
+      <form id="pdf-upload-form">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">문서 제목 (선택)</label>
+          <input type="text" name="document_title" class="form-control" placeholder="미입력 시 파일명 사용">
+        </div>
+        <div class="mb-4">
+          <label class="form-label small fw-semibold">PDF 파일 업로드 *</label>
+          <input type="file" name="pdf_file" accept=".pdf" class="form-control" required>
+        </div>
+
+        <!-- 2. 실시간 문서 적재 단계 표시 -->
+        <div id="ingest-progress-box" class="border rounded-3 p-3 bg-light mb-4" style="display:none;">
+          <div class="d-flex justify-content-between small mb-2">
+            <strong id="ingest-stage-text">문서 적재 준비 중...</strong>
+            <span id="ingest-pct-text">0%</span>
+          </div>
+          <div class="progress" style="height:10px;">
+            <div id="ingest-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%;"></div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <a href="/service/library?tab=internal" class="btn btn-outline-secondary btn-sm">목록으로 돌아가기</a>
+          <div class="d-flex gap-2">
+            <button type="reset" class="btn btn-outline-dark btn-sm">취소</button>
+            <button type="submit" id="btn-start-ingest" class="btn btn-primary btn-sm px-4">문서 적재 시작</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pdfPoll = null;
+
+function pollIngestStatus() {
+  clearInterval(pdfPoll);
+  pdfPoll = setInterval(function() {
+    $.getJSON('/api/admin/rag-pdf/list?page=1', function(res) {
+      const job = res.active_job;
+      if (!job) {
+        clearInterval(pdfPoll);
+        $('#ingest-stage-text').text('문서 적재 및 색인이 완료되었습니다.');
+        $('#ingest-pct-text').text('100%');
+        $('#ingest-bar').removeClass('progress-bar-animated').css('width', '100%');
+        $('#btn-start-ingest').prop('disabled', false);
+        return;
+      }
+      $('#ingest-stage-text').text(job.detail || job.stage || '처리 중...');
+      $('#ingest-pct-text').text((job.progress || 0) + '%');
+      $('#ingest-bar').css('width', (job.progress || 0) + '%');
+    });
+  }, 1200);
+}
+
+$('#pdf-upload-form').on('submit', function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  fd.append('mode', 'ADD');
+  $('#ingest-progress-box').show();
+  $('#btn-start-ingest').prop('disabled', true);
+  $('#ingest-stage-text').text('파일을 업로드하고 있습니다...');
+  $('#ingest-bar').addClass('progress-bar-animated').css('width', '10%');
+
+  $.ajax({
+    url: '/api/admin/rag-pdf/upsert',
+    method: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    success: function(res) {
+      $('#ingest-stage-text').text(res.message || '비동기 적재를 시작했습니다.');
+      pollIngestStatus();
+    },
+    error: function(xhr) {
+      $('#ingest-stage-text').text((xhr.responseJSON && xhr.responseJSON.message) || '업로드에 실패했습니다.');
+      $('#btn-start-ingest').prop('disabled', false);
+    }
+  });
+});
+</script>
+{% endblock %}

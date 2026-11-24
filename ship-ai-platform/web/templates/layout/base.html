@@ -3,227 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}K-SmartShip | 스마트 조선소 통합 운영 플랫폼{% endblock %}</title>
+  <title>{% block title %}K-SmartShip{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block extra_css %}{% endblock %}
 </head>
-<body data-logged-in="{{ 1 if session.get('user_id') else 0 }}">
+<body>
 
 <header class="site-header">
-  <div class="container-enterprise header-bar">
+  <div class="container d-flex align-items-center justify-content-between" style="height:60px;">
     <div class="d-flex align-items-center gap-4">
-      <a class="brand-mark" href="/">
-        <span class="brand-square">KS</span>
-        <span>K-SmartShip</span>
-      </a>
-
-      <ul id="site-header-nav" class="primary-nav">
-        <li>
-          <a href="/service/erp" class="{% if request.path.startswith('/service/erp') %}active{% endif %}">자원관리 (ERP)</a>
-        </li>
-        <li>
-          <a href="/service/yards" class="{% if request.path.startswith('/service/yards') or request.path.startswith('/service/history') %}active{% endif %}">작업현황</a>
-        </li>
-        <li>
-          <a href="/vision/" class="{% if request.path.startswith('/vision') %}active{% endif %}">현장카메라 (Vision)</a>
-        </li>
-        <li>
-          <a href="/mypage/files" class="{% if request.path.startswith('/mypage/files') %}active{% endif %}">자료실 (파일관리)</a>
-        </li>
-      </ul>
+      <a href="/" class="text-decoration-none fw-bold text-dark fs-5">K-SmartShip</a>
+      <nav class="d-flex align-items-center gap-2">
+        <a href="/" class="nav-item-link {% if request.path == '/' %}active{% endif %}">메인</a>
+        <a href="/service/workspace" class="nav-item-link {% if request.path.startswith('/service/workspace') %}active{% endif %}">통합 업무</a>
+        <a href="/vision/" class="nav-item-link {% if request.path.startswith('/vision') %}active{% endif %}">현장 관제</a>
+        <a href="/service/work-status" class="nav-item-link {% if request.path.startswith('/service/work-status') %}active{% endif %}">작업 현황</a>
+        <a href="/service/library" class="nav-item-link {% if request.path.startswith('/service/library') %}active{% endif %}">자료실</a>
+      </nav>
     </div>
 
-    <!-- 우측: 계정(또는 로그인) + 제일 우측 FAQ -->
-    <div class="header-util">
+    <div class="d-flex align-items-center gap-3">
       {% if session.get('user_id') %}
-      <div class="account-menu-wrap">
-        <a href="/mypage" id="btn-account-toggle" class="util-link border">
-          {{ session.get('full_name') or session.get('username') }} ({{ session.get('role', 'WORKER') }}) ▾
-        </a>
-        <div id="account-dropdown-menu" class="account-dropdown">
-          <a href="/mypage">내 정보 및 접근 권한</a>
-          <a href="/mypage#password-section">비밀번호 변경</a>
-          {% if session.get('role') in ('ADMIN', 'MANAGER') %}
-          <a href="/mypage#admin-users-section">직원·협력사 권한 관리</a>
-          {% endif %}
-          <hr class="my-1">
-          <a href="/logout" class="text-danger">로그아웃</a>
-        </div>
-      </div>
+        <a href="/mypage" class="btn btn-outline-dark btn-sm">{{ session.get('display_name') or session.get('full_name') }}</a>
+        <a href="/logout" class="small text-secondary text-decoration-none">로그아웃</a>
       {% else %}
-      <a href="/login" class="btn btn-primary btn-sm px-3 fw-semibold">로그인</a>
+        <a href="/login" class="btn btn-primary btn-sm px-3">로그인</a>
       {% endif %}
-
-      <a href="/service/faq" class="util-link {% if request.path.startswith('/service/faq') %}text-primary{% endif %}">FAQ</a>
-    </div>
-  </div>
-
-  <!-- 마우스 호버 시 전체 업무 하위 메뉴가 한 번에 펼쳐지는 메가메뉴 -->
-  <div id="mega-menu-panel" class="mega-panel">
-    <div class="container-enterprise">
-      <div class="row g-4">
-        <div class="col-md-3">
-          <div class="mega-col-head">자원관리 (ERP)</div>
-          <ul class="mega-list">
-            <li><a href="/service/erp">전사 자원 대시보드</a></li>
-            <li><a href="/service/erp/materials">전체 자재·재고 조회</a></li>
-            <li><a href="/service/erp/workers">사내·외부 작업자 및 자격증</a></li>
-            <li><a href="/service/erp/equipment">로봇·장비·차량 현황</a></li>
-            <li><a href="/service/erp/partners">협력사 B2B 가용 자원</a></li>
-            <li><a href="/service/erp#hitl-section">작업지시서 최종 승인함</a></li>
-          </ul>
-        </div>
-        <div class="col-md-3">
-          <div class="mega-col-head">작업현황</div>
-          <ul class="mega-list">
-            <li><a href="/service/yards">야드·협력사 위치 지도</a></li>
-            <li><a href="/service/yards#active-cad-section">진행 중 선박·블록 CAD 도면</a></li>
-            <li><a href="/service/history?tab=vision">야드별 용접선 탐지 이력</a></li>
-            <li><a href="/service/history?tab=orders">작업지시서 생성·승인 이력</a></li>
-            <li><a href="/service/history?tab=agent">AI 업무 실행 이력</a></li>
-          </ul>
-        </div>
-        <div class="col-md-3">
-          <div class="mega-col-head">현장카메라 (Vision)</div>
-          <ul class="mega-list">
-            {% for nb in nav_branches[:5] %}
-            <li><a href="/vision/?branch={{ nb.branch_code }}">{{ nb.branch_name }} ({{ '운반 중' if nb.stage == 'TRANSPORT' else '작업 중' }})</a></li>
-            {% else %}
-            <li><a href="/vision/">현장카메라 관제 열기</a></li>
-            {% endfor %}
-          </ul>
-        </div>
-        <div class="col-md-3">
-          <div class="mega-col-head">자료실 · FAQ</div>
-          <ul class="mega-list">
-            <li><a href="/mypage/files?tab=pdf">사내 규정 및 기술문서 (PDF)</a></li>
-            <li><a href="/mypage/files?tab=cad">선박 CAD 도면 목록</a></li>
-            <li><a href="/service/faq?tab=inquiry">1:1 공식 문의</a></li>
-            <li><a href="/service/faq?tab=community">현장 커뮤니티 (익명 지원)</a></li>
-          </ul>
-        </div>
-      </div>
+      <a href="/service/faq" class="small text-decoration-none {% if request.path.startswith('/service/faq') %}fw-bold text-primary{% else %}text-secondary{% endif %}">FAQ / QNA</a>
     </div>
   </div>
 </header>
 
-<!-- 전역 선택 선박·블록 유지 바 -->
-<div id="global-context-ribbon" class="context-ribbon" style="display:none;">
-  <div class="container-enterprise d-flex justify-content-between align-items-center">
-    <div>
-      <strong class="me-2">선택된 작업 대상</strong>
-      <span id="ctx-ship-label"></span>
-    </div>
-    <button type="button" id="btn-clear-context" class="btn btn-link btn-sm p-0 text-secondary text-decoration-none">선택 해제</button>
-  </div>
-</div>
-
-<!-- 현재 화면 JSON 컨텍스트 (각 템플릿에서 오버라이드) -->
-<script id="page-ai-context" type="application/json">
-{% block page_context %}{"page_title": "홈", "summary": "스마트 조선소 통합 운영 플랫폼"}{% endblock %}
-</script>
-
 {% block full_width_top %}{% endblock %}
 
-<main class="{% block main_class %}container-enterprise page-shell{% endblock %}">
+<main class="{% block main_class %}container py-4{% endblock %}">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      <div class="mb-4">
-        {% for cat, msg in messages %}
-          <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
-            {{ msg }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        {% endfor %}
-      </div>
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
     {% endif %}
   {% endwith %}
-
   {% block content %}{% endblock %}
 </main>
 
-
-<!-- 대기업 포털 표준 푸터 -->
-<footer class="site-footer">
-  <div class="container-enterprise">
-    <div class="row g-4 pb-4 border-bottom">
-      <div class="col-lg-5">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <span class="brand-square">KS</span>
-          <span class="fw-bold" style="color:#0b1f3a;font-size:16px;">K-SmartShip 통합 운영 플랫폼</span>
-        </div>
-        <p class="text-muted mb-2" style="max-width:440px;line-height:1.65;">
-          선박 CAD 도면 기반 현장 비전(YOLOv11), 전사 자원관리(Oracle ERP), 협력사 B2B(PostgreSQL) 및
-          권한별 기술 기준서(RAG)를 통합 운영하는 스마트 조선소 업무 포털입니다.
-        </p>
-        <div class="small text-muted">운영 부서: K-SmartShip 운영지원팀 · 사내 보안망 전용 시스템</div>
-      </div>
-
-      <div class="col-6 col-md-4 col-lg-2">
-        <div class="footer-heading">핵심 업무</div>
-        <ul class="footer-links">
-          <li><a href="/service/erp">자원관리 (ERP)</a></li>
-          <li><a href="/service/yards">작업현황 · 야드 지도</a></li>
-          <li><a href="/vision/">현장카메라 (Vision)</a></li>
-          <li><a href="/service/history">작업 · 용접 이력</a></li>
-        </ul>
-      </div>
-
-      <div class="col-6 col-md-4 col-lg-2">
-        <div class="footer-heading">자료 · 지원</div>
-        <ul class="footer-links">
-          <li><a href="/mypage/files?tab=pdf">사내 규정 PDF</a></li>
-          <li><a href="/mypage/files?tab=cad">선박 CAD 도면</a></li>
-          <li><a href="/service/faq?tab=inquiry">1:1 공식 문의</a></li>
-          <li><a href="/service/faq?tab=community">현장 커뮤니티</a></li>
-        </ul>
-      </div>
-
-      <div class="col-md-4 col-lg-3">
-        <div class="footer-heading">연동 야드 현황 ({{ nav_branches|length }}개)</div>
-        <ul class="footer-links">
-          {% for nb in nav_branches[:4] %}
-          <li><a href="/vision/?branch={{ nb.branch_code }}">{{ nb.branch_name }}</a></li>
-          {% else %}
-          <li class="text-muted">등록된 야드 정보를 불러오는 중</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 small text-muted">
-      <div>© 2026 K-SmartShip Heavy Industries Co., Ltd. All rights reserved.</div>
-      <div>모든 작업지시 승인 및 ERP 변경 이력은 내부 감사 로그에 자동 기록됩니다.</div>
-    </div>
+<footer class="site-footer py-4 mt-5">
+  <div class="container d-flex justify-content-between flex-wrap gap-2">
+    <div><strong class="text-dark">K-SmartShip</strong> · 선박 제조 공정 통합 운영 플랫폼</div>
+    <div>Vision(YOLOv11) · RAG(BGE-M3 / ChromaDB) · Multi-Agent(LangGraph / MCP) · Oracle &amp; PostgreSQL</div>
   </div>
 </footer>
 
-<!-- 모든 화면 공통: 우측 하단 전역 AI 업무 도우미 -->
-<button type="button" id="ai-launcher-btn">AI 업무 도우미</button>
-
-<aside id="ai-chat-panel" aria-label="AI 업무 도우미">
-  <div class="ai-panel-head">
-    <div>
-      <div class="fw-bold" style="font-size:15px;">AI 업무 도우미</div>
-      <div style="font-size:12px;color:#cbd5e1;">권한별 사내 지식(RAG) · ERP · 작업지시서 지원</div>
-    </div>
-    <div class="d-flex gap-2">
-      <button type="button" id="ai-chat-reset" class="btn btn-outline-light btn-sm py-0 px-2">새 대화</button>
-      <button type="button" id="ai-chat-close" class="btn btn-outline-light btn-sm py-0 px-2">닫기</button>
-    </div>
-  </div>
-  <div id="ai-chat-ctx-text" class="ai-panel-ctx">현재 화면 정보 확인 중...</div>
-  <div id="ai-chat-body" class="ai-panel-body"></div>
-  <div class="ai-panel-foot">
-    <input type="text" id="ai-chat-input" class="form-control form-control-sm" placeholder="현재 화면에 대해 질문하거나 작업을 요청하세요">
-    <button type="button" id="ai-chat-send" class="btn btn-primary btn-sm px-3">전송</button>
-  </div>
-</aside>
-
 <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/app_common.js') }}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

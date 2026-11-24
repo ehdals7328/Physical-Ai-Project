@@ -1,0 +1,350 @@
+{% extends "layout/base.html" %}
+{% block title %}통합 업무 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="surface-card mb-4">
+  <form id="workspace-query-form" class="d-flex gap-2 mb-3">
+    <input type="text" id="ws-input" class="form-control form-control-lg"
+           value="{{ initial_prompt }}" placeholder="{{ sample_placeholder }}" autocomplete="off">
+    <button type="submit" id="ws-send-btn" class="btn btn-primary px-4 fw-semibold text-nowrap">요청 전송</button>
+  </form>
+
+  <div class="d-flex flex-wrap gap-2" id="ws-mode-chips">
+    <button type="button" class="btn btn-sm btn-dark" data-mode="init">초기 안내</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-mode="qa">일반 / RAG 질의</button>
+    {% if can_erp %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-mode="erp">야드 ERP 조회</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-mode="draft">메일 / 문서 초안</button>
+    {% endif %}
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-mode="vision">현장 Vision · 지시</button>
+  </div>
+</div>
+
+<!-- 질의 의도에 따라 하단 영역만 동적 전환 -->
+<div id="workspace-stage"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CAN_ERP = {{ 'true' if can_erp else 'false' }};
+const CAN_INTERNAL_RAG = {{ 'true' if can_internal_rag else 'false' }};
+const CAN_ISSUE_WO = {{ 'true' if can_issue_wo else 'false' }};
+const BRANCH_LIST = [
+  {% for b in branches %}
+  { code: {{ b.branch_code | tojson }}, name: {{ b.branch_name | tojson }} }{% if not loop.last %},{% endif %}
+  {% endfor %}
+];
+let wsPollTimer = null;
+
+function esc(str) {
+  return $('<div>').text(str == null ? '' : String(str)).html();
+}
+
+function setActiveChip(mode) {
+  $('#ws-mode-chips button').removeClass('btn-dark').addClass('btn-outline-secondary');
+  $(`#ws-mode-chips button[data-mode="${mode}"]`).removeClass('btn-outline-secondary').addClass('btn-dark');
+}
+
+/* ---------- W-01a: 초기 진입 안내 + DB 요약 ---------- */
+function renderInitView() {
+  setActiveChip('init');
+  $('#workspace-stage').html('<div class="surface-card text-muted text-center py-4">당일 업무 현황을 불러오는 중입니다...</div>');
+  $.getJSON('/service/api/workspace/summary', function(res) {
+    const queueHtml = (res.active_queue || []).length
+      ? res.active_queue.map(q => `
+          <div class="d-flex justify-content-between align-items-center py-2 border-bottom small">
+            <div>
+              <span class="badge bg-dark me-1">P${esc(q.priority_rank)}</span>
+              <strong>${esc(q.block_code)}</strong> (${esc(q.process_code)})
+              <div class="text-muted">${esc(q.branch_name)}${q.wo_no ? ' · ' + esc(q.wo_no) : ''}</div>
+            </div>
+            <span class="fw-semibold text-primary">${esc(q.progress_pct)}%</span>
+          </div>`).join('')
+      : '<div class="small text-muted py-3">활성화된 공정이 없습니다. 자료실에서 CAD 도면을 등록해 주세요.</div>';
+
+    const erpHtml = !res.can_erp
+      ? '<div class="small text-muted py-3">ERP 조회 권한이 있는 계정에만 표시됩니다.</div>'
+      : [
+          ...(res.low_materials || []).map(m => `<div class="small py-1 text-danger">부족 자재: ${esc(m.item_name)} (${esc(m.branch_name)} ${esc(m.available_qty)}${esc(m.unit)})</div>`),
+          ...(res.expiring_workers || []).map(w => `<div class="small py-1 text-warning-emphasis">면허 만료 임박: ${esc(w.worker_name)} (${esc(w.cert_code)}, D-${esc(w.days_left)})</div>`)
+        ].join('') || '<div class="small text-muted py-3">현재 주의가 필요한 자재나 자격이 없습니다.</div>';
+
+    const docHtml = `
+      <div class="small mb-2">승인 대기 지시서: <strong>${esc(res.pending_approvals)}건</strong></div>
+      ${(res.recent_docs || []).map(d => `
+        <div class="small py-1 border-bottom d-flex justify-content-between align-items-center">
+          <span>${esc(d.work_no)} (${esc(d.ship_code)} / ${esc(d.block_code)})</span>
+          <span class="badge bg-light text-dark border">${esc(d.revision_no)}</span>
+        </div>`).join('')}
+      <div class="mt-3"><a href="/service/work-status" class="btn btn-outline-dark btn-sm">작업 현황 이동 →</a></div>`;
+
+    $('#workspace-stage').html(`
+      <div class="surface-card mb-4">
+        <h6 class="fw-bold mb-2">통합 업무 사용 안내</h6>
+        <ul class="small text-secondary mb-0 ps-3">
+          <li class="mb-1"><strong>일반 / 기술 규정 질의</strong>: 용접 방법이나 안전 기준을 물어보면 근거 문서와 함께 답합니다.</li>
+          <li class="mb-1"><strong>야드 ERP 조회 · 초안</strong>: 부족한 자재와 만료 임박 자격을 확인하고 발주서·안내 메일을 검토 후 보냅니다.</li>
+          <li><strong>현장 Vision · 지시</strong>: 현장 카메라 스냅샷과 당일 기존 지시서 중복 여부를 확인해 신규 생성 또는 개정으로 이동합니다.</li>
+        </ul>
+      </div>
+      <div class="row g-3">
+        <div class="col-lg-4"><div class="surface-card h-100"><h6 class="fw-bold mb-2">당일 활성 공정 큐</h6>${queueHtml}</div></div>
+        <div class="col-lg-4"><div class="surface-card h-100"><h6 class="fw-bold mb-2">야드별 주의 자원</h6>${erpHtml}</div></div>
+        <div class="col-lg-4"><div class="surface-card h-100"><h6 class="fw-bold mb-2">결재 및 문서 현황</h6>${docHtml}</div></div>
+      </div>`);
+  });
+}
+
+/* ---------- W-01b: 일반 / RAG 질의 결과 ---------- */
+function renderQaView(res) {
+  setActiveChip('qa');
+  const sources = res.sources || [];
+  const srcHtml = (sources.length && res.task_type !== 'chat') ? `
+    <div class="surface-card mt-3">
+      <h6 class="fw-bold mb-2">참고 기술문서 (근거 출처)</h6>
+      <ul class="list-unstyled mb-0 small">
+        ${sources.map(s => {
+          const locked = (s.collection_type === 'INTERNAL' && !CAN_INTERNAL_RAG);
+          return `<li class="py-2 border-bottom d-flex justify-content-between align-items-center">
+            <span>[${s.collection_type === 'INTERNAL' ? '사내 규범' : '공통 기술'}] ${esc(s.title)} (p.${esc(s.page)})</span>
+            ${locked ? '<span class="text-muted">열람 권한 필요</span>' : `<a href="/service/library?q=${encodeURIComponent(s.doc_code || s.title)}" class="text-decoration-none">원문 확인</a>`}
+          </li>`;
+        }).join('')}
+      </ul>
+    </div>` : '';
+
+  const genDoc = res.generated_document;
+  const actionBar = (genDoc && genDoc.approval_status === 'DRAFT') ? `
+    <div class="mt-3 pt-3 border-top d-flex justify-content-end gap-2">
+      <a href="/service/agent/plan/${encodeURIComponent(res.session_id)}" class="btn btn-primary btn-sm">통합 실행안 검토 및 승인 이동 →</a>
+    </div>` : '';
+
+  $('#workspace-stage').html(`
+    <div class="surface-card">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">AI 분석 결과</h6>
+        <span class="badge bg-light text-dark border">${esc(res.task_type || 'knowledge_qa')}</span>
+      </div>
+      <div style="white-space:pre-wrap;line-height:1.7;">${esc(res.answer || '')}</div>
+      ${actionBar}
+    </div>
+    ${srcHtml}`);
+}
+
+/* ---------- W-01c: 야드 ERP 조회 & 메일/발주 초안 (HITL) ---------- */
+function renderErpView(branchCode = '', highlightDraft = false) {
+  if (!CAN_ERP) {
+    $('#workspace-stage').html('<div class="alert alert-warning">ERP 자원 조회 권한이 없는 계정입니다.</div>');
+    return;
+  }
+  setActiveChip(highlightDraft ? 'draft' : 'erp');
+  $.getJSON('/service/api/workspace/erp-yard', { branch_code: branchCode }, function(res) {
+    const matRows = (res.materials || []).map(m => `
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">
+        <div>
+          <strong>${esc(m.item_name)}</strong> (${esc(m.item_code)}) · 가용 ${esc(m.available_qty)}${esc(m.unit)}
+          ${m.is_low ? '<span class="badge bg-danger ms-1">부족</span>' : ''}
+          ${m.has_open_po ? '<span class="badge bg-warning text-dark ms-1">진행 중 발주 있음</span>' : ''}
+        </div>
+        <button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap"
+          onclick='fillDraft("PO", "자재 협력사 담당자", "[발주 요청] " + ${JSON.stringify(m.item_name)}, ${JSON.stringify(res.branch_name + " 공정용 " + m.item_name + "(" + m.item_code + ") 재고가 부족하여 긴급 납품을 요청드립니다.")})'>
+          발주 초안
+        </button>
+      </div>`).join('') || '<div class="small text-muted py-2">등록된 자재가 없습니다.</div>';
+
+    const wrkRows = (res.workers || []).map(w => `
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">
+        <div>
+          <strong>${esc(w.worker_name)}</strong> (${esc(w.cert_code)} · ${esc(w.weld_process)})
+          ${w.is_expiring ? `<span class="badge bg-warning text-dark ms-1">D-${esc(w.days_left)}</span>` : ''}
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm py-0 text-nowrap"
+          onclick='fillDraft("EMAIL", ${JSON.stringify(w.worker_name)}, "[자격 갱신 안내] " + ${JSON.stringify(w.cert_code)}, ${JSON.stringify(w.worker_name + "님 보유 자격(" + w.cert_code + ") 만료일(" + w.cert_expiry_date + ")이 임박하여 갱신 일정을 안내드립니다.")})'>
+          갱신 메일
+        </button>
+      </div>`).join('') || '<div class="small text-muted py-2">등록된 인력이 없습니다.</div>';
+
+    $('#workspace-stage').html(`
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="surface-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold mb-0">${esc(res.branch_name)} 자원 현황</h6>
+              <select class="form-select form-select-sm w-auto" onchange="renderErpView(this.value)">
+                ${BRANCH_LIST.map(b => `<option value="${esc(b.code)}" ${b.code === res.branch_code ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}
+              </select>
+            </div>
+            <div class="small fw-bold text-muted mb-1">자재 재고</div>
+            <div class="mb-3">${matRows}</div>
+            <div class="small fw-bold text-muted mb-1">자격 인력</div>
+            <div>${wrkRows}</div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="surface-card h-100">
+            <h6 class="fw-bold mb-3">이메일 / 발주계획서 초안 미리보기</h6>
+            <input type="hidden" id="draft-type" value="EMAIL">
+            <div class="mb-2">
+              <label class="form-label small mb-1">수신</label>
+              <input id="draft-recipient" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+              <label class="form-label small mb-1">제목</label>
+              <input id="draft-subject" class="form-control form-control-sm">
+            </div>
+            <div class="mb-3">
+              <label class="form-label small mb-1">본문 (직접 수정 가능)</label>
+              <textarea id="draft-body" rows="6" class="form-control form-control-sm"></textarea>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearDraft()">취소</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="submitDraft()">승인 후 발송</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+  });
+}
+
+function fillDraft(type, recipient, subject, body) {
+  $('#draft-type').val(type);
+  $('#draft-recipient').val(recipient);
+  $('#draft-subject').val(subject);
+  $('#draft-body').val(body);
+}
+function clearDraft() { $('#draft-recipient, #draft-subject, #draft-body').val(''); }
+function submitDraft() {
+  $.ajax({
+    url: '/service/api/workspace/send-draft',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      draft_type: $('#draft-type').val(),
+      recipient: $('#draft-recipient').val(),
+      subject: $('#draft-subject').val(),
+      body: $('#draft-body').val()
+    }),
+    success: res => { alert(res.message); clearDraft(); },
+    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '발송 요청에 실패했습니다.')
+  });
+}
+
+/* ---------- W-01d: 현장 Vision 스냅샷 & 당일 문서 중복 검증 ---------- */
+function renderVisionCheckView(branchCode = '', blockCode = '') {
+  setActiveChip('vision');
+  $.ajax({
+    url: '/service/api/workspace/check-duplicate',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ branch_code: branchCode, block_code: blockCode }),
+    success: function(res) {
+      if (!res.block) {
+        $('#workspace-stage').html('<div class="surface-card text-muted">등록된 블록 데이터가 없습니다.</div>');
+        return;
+      }
+      const b = res.block;
+      const v = res.vision;
+      const wo = res.existing_wo;
+      const opts = (res.block_options || []).map(o =>
+        `<option value="${esc(o.block_id)}" data-branch="${esc(o.branch_code)}" ${o.block_id === b.block_id ? 'selected' : ''}>${esc(o.ship_code)} / ${esc(o.block_id)} (${esc(o.block_name)})</option>`
+      ).join('');
+
+      const dupHtml = res.exists ? `
+        <div class="alert alert-warning small">당일 이미 발급된 작업지시서가 있어 중복 생성을 차단했습니다.</div>
+        <div class="small mb-1"><strong>지시 번호:</strong> ${esc(wo.work_no)} (${esc(wo.revision_no)})</div>
+        <div class="small mb-1"><strong>진행 상태:</strong> ${esc(wo.status_code)} · 진척률 ${esc(wo.progress_pct)}%</div>
+        <div class="small mb-3"><strong>선박 중량물 계획:</strong> ${res.ship_plan_exists ? esc(b.ship_code) + ' 기존 계획 준용 가능' : '신규 작성 필요'}</div>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="/service/work-status?work_id=${esc(wo.work_id)}" class="btn btn-outline-dark btn-sm">기존 지시서 열람</a>
+          ${CAN_ISSUE_WO ? `<a href="/service/agent/analyze?mode=REVISE&branch_code=${encodeURIComponent(res.branch.branch_code)}&block_code=${encodeURIComponent(b.block_id)}&work_id=${esc(wo.work_id)}" class="btn btn-primary btn-sm">일정 / 조건 개정</a>` : ''}
+        </div>` : `
+        <div class="alert alert-success small">당일 중복된 작업지시서가 없습니다. 신규 생성이 가능합니다.</div>
+        <div class="small mb-3"><strong>선박 중량물 계획:</strong> ${res.ship_plan_exists ? esc(b.ship_code) + ' 기존 계획 확인됨' : '신규 검토 대상'}</div>
+        ${CAN_ISSUE_WO ? `<a href="/service/agent/analyze?mode=NEW&branch_code=${encodeURIComponent(res.branch.branch_code)}&block_code=${encodeURIComponent(b.block_id)}" class="btn btn-primary btn-sm">+ 신규 작업지시 생성</a>` : '<div class="small text-muted">작업지시 생성은 담당자 권한이 필요합니다.</div>'}`;
+
+      $('#workspace-stage').html(`
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="surface-card h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <select class="form-select form-select-sm w-auto" onchange="onChangeVisionBlock(this)">${opts}</select>
+                <a href="/vision/?branch=${encodeURIComponent(res.branch.branch_code)}" class="small text-decoration-none">실시간 현장 관제 →</a>
+              </div>
+              <div class="bg-dark text-white rounded p-3 text-center mb-3">
+                ${v && v.image_uri ? `<img src="${esc(v.image_uri)}" class="img-fluid rounded" style="max-height:280px;">` : '<div class="py-5 text-secondary small">저장된 현장 스냅샷이 없습니다.</div>'}
+              </div>
+              <div class="small">
+                <strong>위치:</strong> ${esc(res.branch.branch_name)} ·
+                <strong>OCR 인식:</strong> ${v && v.ocr_text ? esc(v.ocr_text) : '-'} ·
+                <strong>탐지 객체:</strong> ${v && v.detected_objects && v.detected_objects.length ? esc(v.detected_objects.join(', ')) : '없음'}
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-5">
+            <div class="surface-card h-100">
+              <h6 class="fw-bold mb-2">당일 문서 중복 검증 결과</h6>
+              <div class="small text-muted mb-3">${esc(b.ship_code)} · ${esc(b.block_name)} (${esc(b.steel_type)} / ${esc(b.thickness_mm)} · ${esc(b.process)})</div>
+              ${dupHtml}
+            </div>
+          </div>
+        </div>`);
+    }
+  });
+}
+
+function onChangeVisionBlock(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  renderVisionCheckView(opt.getAttribute('data-branch') || '', sel.value);
+}
+
+/* ---------- 자연어 질의 실행 (기존 LangGraph Agent 연동) ---------- */
+function submitWorkspaceQuery(qText) {
+  const q = $.trim(qText);
+  if (!q) return;
+  $('#workspace-stage').html('<div class="surface-card text-muted py-4">요청 내용을 분석하고 필요한 도구를 실행 중입니다...</div>');
+  $.ajax({
+    url: '/service/api/assistant/ask',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ question: q, page_context: { page_title: '통합 업무' } }),
+    success: function(res) {
+      clearInterval(wsPollTimer);
+      wsPollTimer = setInterval(function() {
+        $.getJSON('/service/api/assistant/status/' + encodeURIComponent(res.session_id), function(st) {
+          if (st.status === 'RUNNING') {
+            $('#workspace-stage').html(`<div class="surface-card text-muted py-4">${esc(st.step_message || '분석 중입니다...')}</div>`);
+            return;
+          }
+          clearInterval(wsPollTimer);
+          renderQaView(st);
+        });
+      }, 1500);
+    },
+    error: xhr => $('#workspace-stage').html(`<div class="alert alert-danger">${esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 중 오류가 발생했습니다.')}</div>`)
+  });
+}
+
+$('#workspace-query-form').on('submit', function(e) {
+  e.preventDefault();
+  submitWorkspaceQuery($('#ws-input').val());
+});
+
+$('#ws-mode-chips').on('click', 'button', function() {
+  const mode = $(this).data('mode');
+  if (mode === 'init') renderInitView();
+  else if (mode === 'erp') renderErpView('', false);
+  else if (mode === 'draft') renderErpView('', true);
+  else if (mode === 'vision') renderVisionCheckView();
+  else if (mode === 'qa') {
+    setActiveChip('qa');
+    $('#ws-input').focus();
+  }
+});
+
+if ($.trim($('#ws-input').val())) {
+  submitWorkspaceQuery($('#ws-input').val());
+} else {
+  renderInitView();
+}
+</script>
+{% endblock %}

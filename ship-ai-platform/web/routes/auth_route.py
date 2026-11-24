@@ -843,83 +843,7 @@ def mypage():
 # ---------------------------------------------------------------------
 @auth_bp.route("/mypage/files")
 def mypage_files():
-    if "user_id" not in session:
-        flash("로그인이 필요한 서비스입니다.", "warning")
-        return redirect(url_for("auth.login", next=request.full_path))
-
-    current_user = User.query.get_or_404(session["user_id"])
-    is_admin_or_mgr = current_user.role in ("ADMIN", "MANAGER")
-    can_internal = (current_user.can_access_internal_rag == "Y") or is_admin_or_mgr
-
-    tab = (request.args.get("tab") or "pdf").strip().lower()
-    if tab not in ("pdf", "cad", "admin"):
-        tab = "pdf"
-    if tab == "admin" and not is_admin_or_mgr:
-        tab = "pdf"
-
-    q = (request.args.get("q") or "").strip()
-    cat = (request.args.get("category") or "ALL").strip()
-    page = max(1, request.args.get("page", 1, type=int))
-    per_page = 10
-
-    doc_q = DocumentMetadata.query.filter(DocumentMetadata.is_active == "Y")
-    if not can_internal:
-        doc_q = doc_q.filter(DocumentMetadata.collection_type == "PUBLIC")
-
-    if tab == "cad":
-        doc_q = doc_q.filter(DocumentMetadata.category_code == "CAD_DRAWING")
-    else:
-        doc_q = doc_q.filter(DocumentMetadata.category_code != "CAD_DRAWING")
-        if cat != "ALL":
-            doc_q = doc_q.filter(DocumentMetadata.category_code == cat)
-
-    if q:
-        like_q = f"%{q}%"
-        doc_q = doc_q.filter(or_(
-            DocumentMetadata.document_title.ilike(like_q),
-            DocumentMetadata.original_file_name.ilike(like_q),
-            DocumentMetadata.document_code.ilike(like_q),
-        ))
-
-    total_docs = doc_q.count()
-    total_pages = max(1, (total_docs + per_page - 1) // per_page)
-    page = min(page, total_pages)
-    docs_list = (
-        doc_q.order_by(DocumentMetadata.document_id.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
-    docs_serialized = [_serialize_doc_row(d) for d in docs_list]
-
-    base_cnt_q = DocumentMetadata.query.filter(DocumentMetadata.is_active == "Y")
-    if not can_internal:
-        base_cnt_q = base_cnt_q.filter(DocumentMetadata.collection_type == "PUBLIC")
-    pdf_total_count = base_cnt_q.filter(DocumentMetadata.category_code != "CAD_DRAWING").count()
-    cad_total_count = base_cnt_q.filter(DocumentMetadata.category_code == "CAD_DRAWING").count()
-
-    internal_docs_data = _query_internal_docs_paginated(page=1, per_page=DOCS_PER_PAGE) if is_admin_or_mgr else {"items": [], "active_job": None, "total_count": 0}
-    vision_files_data = _query_vision_files_paginated(page=1, per_page=VISION_PER_PAGE, filter_type="ALL") if is_admin_or_mgr else {"items": [], "total_count": 0}
-
-    return render_template(
-        "auth/mypage_files.html",
-        me=current_user,
-        is_admin_or_mgr=is_admin_or_mgr,
-        can_internal=can_internal,
-        tab=tab,
-        q=q,
-        category=cat,
-        docs=docs_serialized,
-        page=page,
-        total_pages=total_pages,
-        total_docs=total_docs,
-        page_items=_build_page_items(page, total_pages),
-        pdf_total_count=pdf_total_count,
-        cad_total_count=cad_total_count,
-        internal_docs_data=internal_docs_data,
-        vision_files_data=vision_files_data,
-        max_pdf_pages=MAX_PDF_PAGES,
-    )
+    return redirect(url_for("service.library_page"))
 
 
 # ---------------------------------------------------------------------
@@ -1056,7 +980,7 @@ def admin_rag_pdf_sync_folder():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN) 권한이 필요합니다."}), 403
 
     active_job = _get_active_job_snapshot()
@@ -1144,7 +1068,7 @@ def admin_rag_pdf_upsert():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN)만 사내 규범 PDF를 변경할 수 있습니다."}), 403
 
     active_job = _get_active_job_snapshot()
@@ -1324,7 +1248,7 @@ def admin_rag_pdf_remove_rag_file():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN) 권한이 필요합니다."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1374,7 +1298,7 @@ def admin_rag_pdf_purge_history_row():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN) 권한이 필요합니다."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1401,7 +1325,7 @@ def admin_rag_pdf_toggle_active():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN) 권한이 필요합니다."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1545,7 +1469,7 @@ def admin_vision_files_purge_row():
         return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
 
     actor = User.query.get(session["user_id"])
-    if not actor or actor.role != "ADMIN":
+    if not actor or actor.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "ERROR", "message": "시스템 관리자(ADMIN) 권한이 필요합니다."}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1575,3 +1499,40 @@ def admin_vision_files_purge_row():
         "message": f"비전 테스트 이력 #{analysis_id} 레코드가 DB에서 완전히 삭제되었습니다.",
         **updated,
     })
+
+
+# ---------------------------------------------------------------------
+# 9. 자료실 원본 문서 열람 (권한 차등 검증)
+# ---------------------------------------------------------------------
+@auth_bp.route("/api/document/file/<int:doc_id>", methods=["GET"])
+def view_document_file(doc_id: int):
+    from flask import abort, send_file
+
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    user = User.query.get_or_404(session["user_id"])
+    doc = DocumentMetadata.query.get_or_404(doc_id)
+
+    is_admin = user.role in ("ADMIN", "MANAGER")
+    can_internal = (user.can_access_internal_rag == "Y") or is_admin
+
+    if doc.category_code in ("CAD_DRAWING", "SECURITY") and not is_admin:
+        abort(403)
+    if doc.collection_type == "INTERNAL" and not can_internal:
+        abort(403)
+
+    uri = (doc.storage_uri or "").strip()
+    if not uri or uri == ARCHIVED_URI_MARKER:
+        abort(404)
+    p = Path(uri)
+    abs_p = p if p.is_absolute() else (PROJECT_ROOT / uri)
+    try:
+        resolved = abs_p.resolve()
+        if PROJECT_ROOT.resolve() not in resolved.parents or not resolved.is_file():
+            abort(404)
+    except Exception:
+        abort(404)
+
+    as_dl = request.args.get("download", "0") == "1"
+    return send_file(resolved, as_attachment=as_dl, download_name=doc.original_file_name)

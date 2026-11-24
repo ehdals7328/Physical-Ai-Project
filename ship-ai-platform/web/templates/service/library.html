@@ -1,0 +1,129 @@
+{% extends "layout/base.html" %}
+{% block title %}자료실 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <div class="btn-group btn-group-sm">
+    {% if 'public' in allowed_tabs %}
+      <a href="/service/library?tab=public" class="btn {% if tab == 'public' %}btn-dark{% else %}btn-outline-dark{% endif %}">공통 기술문서</a>
+    {% endif %}
+    {% if 'internal' in allowed_tabs %}
+      <a href="/service/library?tab=internal" class="btn {% if tab == 'internal' %}btn-dark{% else %}btn-outline-dark{% endif %}">사내 규범</a>
+    {% endif %}
+    {% if 'security' in allowed_tabs %}
+      <a href="/service/library?tab=security" class="btn {% if tab == 'security' %}btn-dark{% else %}btn-outline-dark{% endif %}">사내 보안</a>
+    {% endif %}
+    {% if 'cad' in allowed_tabs %}
+      <a href="/service/library?tab=cad" class="btn {% if tab == 'cad' %}btn-dark{% else %}btn-outline-dark{% endif %}">CAD</a>
+    {% endif %}
+  </div>
+
+  {% if is_admin %}
+  <div class="d-flex gap-2">
+    <a href="/service/library/upload-pdf" class="btn btn-outline-primary btn-sm">PDF 문서 등록</a>
+    <a href="/service/library/upload-cad" class="btn btn-primary btn-sm">CAD 도면 등록</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="surface-card">
+  <form method="get" action="/service/library" class="d-flex gap-2 mb-3" style="max-width:420px;">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="문서명, 문서코드, 파일명 검색">
+    <button type="submit" class="btn btn-outline-dark btn-sm text-nowrap">검색</button>
+  </form>
+
+  <div class="table-responsive mb-3">
+    <table class="table table-clean mb-0 small">
+      <thead>
+        <tr>
+          <th>문서명</th>
+          <th>분류</th>
+          <th>접근 범위</th>
+          <th>색인 상태</th>
+          <th>원본</th>
+          {% if is_admin %}<th>관리</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in docs %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ d.document_title }}</div>
+            <div class="text-muted">{{ d.document_code }}</div>
+          </td>
+          <td>{{ d.category_code }}</td>
+          <td>{{ '공통' if d.collection_type == 'PUBLIC' else '사내' }}</td>
+          <td>
+            <span class="badge {% if d.ingest_status == 'COMPLETED' %}bg-success{% else %}bg-secondary{% endif %}">{{ d.ingest_status }}</span>
+            {% if d.is_active != 'Y' %}<span class="badge bg-warning text-dark">비활성</span>{% endif %}
+          </td>
+          <td>
+            <a href="/api/document/file/{{ d.document_id }}" target="_blank" class="btn btn-outline-secondary btn-sm py-0">열람</a>
+          </td>
+          {% if is_admin %}
+          <td class="text-nowrap">
+            {% if d.collection_type == 'INTERNAL' %}
+              <button type="button" class="btn btn-outline-dark btn-sm py-0" onclick="toggleDocActive({{ d.document_id }})">
+                {{ '비활성화' if d.is_active == 'Y' else '활성화' }}
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm py-0" onclick="removeDoc({{ d.document_id }})">삭제</button>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 6 if is_admin else 5 }}" class="text-center text-muted py-4">등록된 문서가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <ul class="pagination pagination-sm justify-content-center mb-0">
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a>
+    </li>
+    {% for it in page_items %}
+      {% if it == '...' %}
+        <li class="page-item disabled"><span class="page-link">...</span></li>
+      {% else %}
+        <li class="page-item {% if it == page %}active{% endif %}">
+          <a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+      <a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a>
+    </li>
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDocActive(docId) {
+  $.ajax({
+    url: '/api/admin/rag-pdf/toggle-active',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ document_id: docId, page: {{ page }} }),
+    success: res => { alert(res.message || '변경되었습니다.'); location.reload(); },
+    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '처리에 실패했습니다.')
+  });
+}
+
+function removeDoc(docId) {
+  if (!confirm('이 문서를 RAG 검색 대상에서 삭제하시겠습니까?')) return;
+  $.ajax({
+    url: '/api/admin/rag-pdf/remove-rag-file',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ document_id: docId, page: {{ page }} }),
+    success: res => { alert(res.message || '삭제되었습니다.'); location.reload(); },
+    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '삭제에 실패했습니다.')
+  });
+}
+</script>
+{% endblock %}

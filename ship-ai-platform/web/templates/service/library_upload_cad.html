@@ -1,0 +1,195 @@
+{% extends "layout/base.html" %}
+{% block title %}CAD 도면 및 공정 큐 등록 | 자료실{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">CAD 도면 · 블록 공정 큐 등록</h5>
+  <a href="/service/library?tab=cad" class="btn btn-outline-secondary btn-sm">목록으로 돌아가기</a>
+</div>
+
+<!-- 1. CAD 도면 파일 업로드 (Gate 1 파싱) -->
+<div class="surface-card mb-3">
+  <h6 class="fw-bold mb-3">1. CAD 도면 파일 업로드 (DXF / PDF)</h6>
+  <form id="cad-parse-form" class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label small fw-semibold">DXF 도면 파일 *</label>
+      <input type="file" name="dxf_file" accept=".dxf" class="form-control form-control-sm" required>
+    </div>
+    <div class="col-md-5">
+      <label class="form-label small fw-semibold">도면 PDF 파일 (선택)</label>
+      <input type="file" name="pdf_file" accept=".pdf" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" id="btn-parse-cad" class="btn btn-dark btn-sm w-100">도면 파싱</button>
+    </div>
+  </form>
+</div>
+
+<!-- 2. 도면 메타 및 야드 배치 설정 (CAD_DRAWINGS) -->
+<div class="surface-card mb-3">
+  <h6 class="fw-bold mb-3">2. 도면 정보 및 야드 배치 설정</h6>
+  <input type="hidden" id="cad-dxf-path">
+  <input type="hidden" id="cad-pdf-path">
+  <input type="hidden" id="cad-sha256">
+  <div class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">선박 호선 *</label>
+      <input type="text" id="cad-ship-code" class="form-control form-control-sm" placeholder="예: HN-GUNNERUS-01">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">도면명</label>
+      <input type="text" id="cad-title" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">배치 야드 *</label>
+      <select id="cad-branch-code" class="form-select form-select-sm">
+        {% for b in branches %}
+        <option value="{{ b.branch_code }}">{{ b.branch_name }} ({{ b.branch_code }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">작업 구역</label>
+      <input type="text" id="cad-work-zone" class="form-control form-control-sm" value="ZONE-A-BAY1">
+    </div>
+  </div>
+</div>
+
+<!-- 3. DXF 파싱 블록 작업 패키지 큐 검토 (WORK_PLANS) -->
+<div class="surface-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-bold mb-0">3. 블록 작업 패키지 큐 검토 (STAGING)</h6>
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPlanRow()">+ 블록 행 추가</button>
+  </div>
+
+  <div class="table-responsive mb-3">
+    <table class="table table-sm table-clean mb-0 small" id="cad-plans-table">
+      <thead>
+        <tr>
+          <th style="width:70px;">순위</th>
+          <th>블록코드</th>
+          <th style="width:90px;">강종</th>
+          <th style="width:80px;">두께(mm)</th>
+          <th style="width:90px;">공정</th>
+          <th style="width:110px;">용접장(mm)</th>
+          <th style="width:100px;">예상와이어(kg)</th>
+          <th style="width:70px;">소요일</th>
+          <th style="width:50px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr id="cad-empty-row"><td colspan="9" class="text-center text-muted py-4">DXF 파일을 파싱하거나 행을 추가해 블록 작업 큐를 구성해 주세요.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 4. 임시 저장(STAGING) / 공정 큐 확정(ACTIVE) -->
+  <div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-outline-dark btn-sm px-3" onclick="saveCadPlans(false)">임시 저장 (STAGING)</button>
+    <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" onclick="saveCadPlans(true)">공정 큐 확정 (ACTIVE)</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addPlanRow(item) {
+  $('#cad-empty-row').remove();
+  const idx = $('#cad-plans-table tbody tr').length + 1;
+  const r = item || {
+    priority_rank: idx, block_code: '', material_grade: 'AH36', thickness_mm: 12,
+    process_code: 'FCAW', est_weld_length_mm: 10000, est_wire_kg: 30, est_duration_days: 1
+  };
+  $('#cad-plans-table tbody').append(`
+    <tr>
+      <td><input type="number" class="form-control form-control-sm p-rank" value="${r.priority_rank}" min="1"></td>
+      <td><input type="text" class="form-control form-control-sm p-blk" value="${$('<div>').text(r.block_code || '').html()}"></td>
+      <td><input type="text" class="form-control form-control-sm p-mat" value="${$('<div>').text(r.material_grade || 'AH36').html()}"></td>
+      <td><input type="number" step="0.5" class="form-control form-control-sm p-thk" value="${r.thickness_mm}"></td>
+      <td>
+        <select class="form-select form-select-sm p-proc">
+          <option value="FCAW" ${r.process_code === 'FCAW' ? 'selected' : ''}>FCAW</option>
+          <option value="SAW" ${r.process_code === 'SAW' ? 'selected' : ''}>SAW</option>
+          <option value="GMAW" ${r.process_code === 'GMAW' ? 'selected' : ''}>GMAW</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.1" class="form-control form-control-sm p-len" value="${r.est_weld_length_mm}"></td>
+      <td><input type="number" step="0.1" class="form-control form-control-sm p-wire" value="${r.est_wire_kg}"></td>
+      <td><input type="number" class="form-control form-control-sm p-days" value="${r.est_duration_days}" min="1"></td>
+      <td><button type="button" class="btn btn-link btn-sm text-danger p-0" onclick="$(this).closest('tr').remove()">삭제</button></td>
+    </tr>`);
+}
+
+$('#cad-parse-form').on('submit', function(e) {
+  e.preventDefault();
+  const fd = new FormData(this);
+  $('#btn-parse-cad').prop('disabled', true).text('파싱 중...');
+  $.ajax({
+    url: '/service/api/library/cad-parse',
+    method: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    success: function(res) {
+      $('#cad-dxf-path').val(res.dxf_file_path || '');
+      $('#cad-pdf-path').val(res.pdf_file_path || '');
+      $('#cad-sha256').val(res.file_sha256 || '');
+      $('#cad-title').val(res.drawing_title || '');
+      if (!$('#cad-ship-code').val() && res.drawing_title) {
+        $('#cad-ship-code').val('HN-' + res.drawing_title.slice(0, 14).toUpperCase());
+      }
+      $('#cad-plans-table tbody').empty();
+      (res.plans || []).forEach(p => addPlanRow(p));
+      $('#btn-parse-cad').prop('disabled', false).text('도면 파싱');
+    },
+    error: function(xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '도면 파싱에 실패했습니다.');
+      $('#btn-parse-cad').prop('disabled', false).text('도면 파싱');
+    }
+  });
+});
+
+function saveCadPlans(confirmActive) {
+  const plans = [];
+  $('#cad-plans-table tbody tr').each(function() {
+    if (this.id === 'cad-empty-row') return;
+    const proc = $(this).find('.p-proc').val();
+    plans.push({
+      priority_rank: parseInt($(this).find('.p-rank').val() || '1', 10),
+      block_code: $.trim($(this).find('.p-blk').val()),
+      material_grade: $.trim($(this).find('.p-mat').val()),
+      thickness_mm: parseFloat($(this).find('.p-thk').val() || '12'),
+      process_code: proc,
+      joint_type: 'BUTT',
+      wire_mat_code: proc === 'SAW' ? 'WIRE-SAW-4.0' : 'WIRE-CSF71T',
+      est_weld_length_mm: parseFloat($(this).find('.p-len').val() || '10000'),
+      est_weight_ton: 15.0,
+      est_wire_kg: parseFloat($(this).find('.p-wire').val() || '30'),
+      est_duration_days: parseInt($(this).find('.p-days').val() || '1', 10)
+    });
+  });
+
+  $.ajax({
+    url: '/service/api/library/cad-save',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      confirm: confirmActive,
+      ship_code: $.trim($('#cad-ship-code').val()),
+      drawing_title: $.trim($('#cad-title').val()),
+      branch_code: $('#cad-branch-code').val(),
+      work_zone: $.trim($('#cad-work-zone').val()),
+      dxf_file_path: $('#cad-dxf-path').val(),
+      pdf_file_path: $('#cad-pdf-path').val(),
+      file_sha256: $('#cad-sha256').val(),
+      plans: plans
+    }),
+    success: function(res) {
+      alert(res.message);
+      window.location.href = '/service/workspace';
+    },
+    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '저장에 실패했습니다.')
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "layout/base.html" %}
+{% block title %}작업 현황 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h5 class="fw-bold mb-0">작업 현황</h5>
+  <a href="/service/work-status" class="btn btn-outline-secondary btn-sm">새로고침</a>
+</div>
+
+<div class="row g-3">
+  <!-- 1. 작업 목록 (WORK_ORDERS) + 대기 큐 (WORK_PLANS) -->
+  <div class="col-lg-4">
+    <div class="surface-card p-3">
+      <div class="small fw-bold text-muted mb-2">작업 목록</div>
+      <div class="list-group list-group-flush mb-3">
+        {% for item in orders %}
+        <a href="/service/work-status?work_id={{ item.wo.work_id }}"
+           class="list-group-item list-group-item-action {% if selected and selected.wo.work_id == item.wo.work_id %}active{% endif %}">
+          <div class="d-flex justify-content-between small fw-bold">
+            <span>{{ item.wo.work_no }}</span>
+            <span>{{ item.progress_pct }}%</span>
+          </div>
+          <div class="small">{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>
+        </a>
+        {% else %}
+        <div class="small text-muted py-3">조회된 작업이 없습니다.</div>
+        {% endfor %}
+      </div>
+
+      {% if queued_plans %}
+      <div class="small fw-bold text-muted border-top pt-2 mb-2">대기 공정 큐 (완료 시 자동 활성)</div>
+      {% for qp in queued_plans %}
+      <div class="small py-1 text-secondary">
+        [P{{ qp.priority_rank }}] {{ qp.block_code }} ({{ qp.process_code }})
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 2~4. 다일 공정 진척률 · 자원/문서 · 협력사 납기 및 타임라인 -->
+  <div class="col-lg-8">
+    {% if selected %}
+    <div class="surface-card mb-3">
+      <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+          <h6 class="fw-bold mb-1">{{ selected.wo.work_no }} · {{ selected.wo.block_code }} ({{ selected.wo.ship_code }})</h6>
+          <div class="small text-muted">
+            {{ selected.branch_name }} · {{ selected.wo.material_grade }} {{ selected.wo.thickness_mm }}mm · {{ selected.wo.process_code }} · 상태: {{ selected.wo.status_code }}
+          </div>
+        </div>
+        <span class="badge bg-dark">{{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }}</span>
+      </div>
+
+      <div class="progress mb-3" style="height:10px;">
+        <div class="progress-bar" style="width:{{ selected.progress_pct }}%;"></div>
+      </div>
+
+      {% if is_manager %}
+      <div class="d-flex align-items-center gap-2 flex-wrap border-top pt-3">
+        <label class="small fw-semibold mb-0">현재 진척률(%)</label>
+        <input type="number" id="wo-progress-input" class="form-control form-control-sm" style="width:88px;" min="0" max="100" value="{{ selected.progress_pct }}">
+        <button type="button" class="btn btn-dark btn-sm" onclick="saveProgress({{ selected.wo.work_id }})">진척 저장</button>
+        <a href="/service/agent/analyze?mode=REVISE&branch_code={{ selected.wo.work_region }}&block_code={{ selected.wo.block_code }}&work_id={{ selected.wo.work_id }}" class="btn btn-outline-warning btn-sm">지연 발생 → 문서 개정</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveProgress({{ selected.wo.work_id }}, 100)">조기 / 작업 완료 (100%)</button>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="surface-card mb-3">
+      <h6 class="fw-bold mb-2">자재 · 인력 · 로봇 확보 상태 및 최신 문서</h6>
+      <div class="small mb-3">
+        배정 작업자: <strong>{{ dispatch_info.worker_name if dispatch_info else '배정 대기' }}</strong> ·
+        자재 Lot: <strong>{{ dispatch_info.allocated_lot_no if dispatch_info else '-' }}</strong> ·
+        로봇: <strong>{{ robot_info.robot_name ~ ' (' ~ robot_info.robot_status ~ ')' if robot_info else '대기' }}</strong>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        {% if selected.pdf_url %}
+          <a href="{{ selected.pdf_url }}" target="_blank" class="btn btn-outline-primary btn-sm">작업지시서 ({{ selected.latest_inst.revision_no }})</a>
+        {% endif %}
+        {% if selected.po_pdf_url %}
+          <a href="{{ selected.po_pdf_url }}" target="_blank" class="btn btn-outline-secondary btn-sm">발주 계획서</a>
+        {% endif %}
+        {% if cad_doc_id %}
+          <a href="/service/api/cad/file/{{ cad_doc_id }}" target="_blank" class="btn btn-outline-dark btn-sm">CAD 도면</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="surface-card">
+      <h6 class="fw-bold mb-2">협력사 자재 납기 추적 및 작업 타임라인</h6>
+      {% for po in b2b_deliveries %}
+      <div class="small py-2 border-bottom">
+        [협력사 발주 {{ po.b2b_order_no }}] {{ po.ordered_ref_code }} ({{ po.order_qty }}) · 상태: <strong>{{ po.order_status }}</strong>
+      </div>
+      {% endfor %}
+      {% for rev in selected.revisions %}
+      <div class="small py-2 border-bottom text-secondary">
+        {{ rev.created_at.strftime('%Y-%m-%d %H:%M') if rev.created_at else '-' }} · {{ rev.revision_no }} · {{ rev.approval_status }}
+      </div>
+      {% else %}
+      <div class="small text-muted py-2">기록된 이력이 없습니다.</div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="surface-card text-center text-muted py-5">선택된 작업이 없습니다.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function saveProgress(workId, forcedVal) {
+  const val = forcedVal !== undefined ? forcedVal : parseInt($('#wo-progress-input').val() || '0', 10);
+  $.ajax({
+    url: '/service/api/work-status/progress',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ work_id: workId, progress_pct: val }),
+    success: function(res) {
+      let msg = `진척률 ${res.progress_pct}%가 저장되었습니다.`;
+      if (res.activated_next_block) msg += `
+다음 순위 블록(${res.activated_next_block}) 공정이 자동 활성화되었습니다.`;
+      alert(msg);
+      location.reload();
+    },
+    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '저장에 실패했습니다.')
+  });
+}
+</script>
+{% endblock %}

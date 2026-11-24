@@ -344,3 +344,52 @@ class ErpBranch(db.Model):
     longitude = db.Column("LONGITUDE", db.Numeric(10, 6))
     camera_code = db.Column("CAMERA_CODE", db.String(50))
     default_video = db.Column("DEFAULT_VIDEO", db.String(100))
+
+# =====================================================================
+# [바인딩 1 확장] CAD 도면 마스터 & 블록 공정 큐 (CAD DB넣기.txt 반영)
+# =====================================================================
+class CadDrawing(db.Model):
+    __tablename__ = "CAD_DRAWINGS"
+
+    drawing_id = db.Column("DRAWING_ID", db.String(40), primary_key=True)
+    ship_code = db.Column("SHIP_CODE", db.String(30), nullable=False)
+    drawing_title = db.Column("DRAWING_TITLE", db.String(200), nullable=False)
+    dxf_file_path = db.Column("DXF_FILE_PATH", db.String(500), nullable=False)
+    pdf_file_path = db.Column("PDF_FILE_PATH", db.String(500))
+    file_sha256 = db.Column("FILE_SHA256", db.String(64), nullable=False)
+    revision_no = db.Column("REVISION_NO", db.Integer, default=0)
+    branch_code = db.Column("BRANCH_CODE", db.String(30), nullable=False)
+    work_zone = db.Column("WORK_ZONE", db.String(50), nullable=False)
+    drawing_scale = db.Column("DRAWING_SCALE", db.Numeric(6, 2), default=50.0)
+    plan_status = db.Column("PLAN_STATUS", db.String(20), default="STAGING")
+    uploaded_by = db.Column("UPLOADED_BY", db.String(30), nullable=False)
+    created_at = db.Column("CREATED_AT", db.DateTime, default=datetime.utcnow)
+
+
+class WorkPlan(db.Model):
+    __tablename__ = "WORK_PLANS"
+
+    plan_id = db.Column("PLAN_ID", db.String(40), primary_key=True)
+    drawing_id = db.Column("DRAWING_ID", db.String(40), db.ForeignKey("CAD_DRAWINGS.DRAWING_ID"), nullable=False)
+    branch_code = db.Column("BRANCH_CODE", db.String(30), nullable=False)
+    work_zone = db.Column("WORK_ZONE", db.String(50), nullable=False)
+    priority_rank = db.Column("PRIORITY_RANK", db.Integer, nullable=False)
+    block_code = db.Column("BLOCK_CODE", db.String(40), nullable=False)
+    block_name = db.Column("BLOCK_NAME", db.String(150), nullable=False)
+    deck_level = db.Column("DECK_LEVEL", db.String(80))
+    material_grade = db.Column("MATERIAL_GRADE", db.String(20), nullable=False)
+    thickness_mm = db.Column("THICKNESS_MM", db.Numeric(5, 1), nullable=False)
+    process_code = db.Column("PROCESS_CODE", db.String(20), nullable=False)
+    joint_type = db.Column("JOINT_TYPE", db.String(20), nullable=False)
+    wire_mat_code = db.Column("WIRE_MAT_CODE", db.String(40), nullable=False)
+    est_weld_length_mm = db.Column("EST_WELD_LENGTH_MM", db.Numeric(10, 1), nullable=False)
+    est_weight_ton = db.Column("EST_WEIGHT_TON", db.Numeric(8, 2), nullable=False)
+    est_wire_kg = db.Column("EST_WIRE_KG", db.Numeric(8, 2), nullable=False)
+    est_duration_days = db.Column("EST_DURATION_DAYS", db.Integer, default=1)
+    progress_pct = db.Column("PROGRESS_PCT", db.Integer, default=0)
+    plan_state = db.Column("PLAN_STATE", db.String(20), default="STAGING")
+    assigned_wo_number = db.Column("ASSIGNED_WO_NUMBER", db.String(50))
+    planned_start_date = db.Column("PLANNED_START_DATE", db.String(20))
+    planned_end_date = db.Column("PLANNED_END_DATE", db.String(20))
+    plan_rationale = db.Column("PLAN_RATIONALE", db.String(500))
+    created_at = db.Column("CREATED_AT", db.DateTime, default=datetime.utcnow)
