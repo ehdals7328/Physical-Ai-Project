@@ -117,5 +117,22 @@
 <script src="{{ url_for('static', filename='js/markdown_render.js') }}"></script>
 <script src="{{ url_for('static', filename='js/cad_viewer.js') }}"></script>
 {% block extra_js %}{% endblock %}
+<script>
+// Prevent Bootstrap 5 Modal._adjustDialog / ScrollBarHelper from adding padding-right on open/close
+document.addEventListener('show.bs.modal', function () {
+  document.body.style.paddingRight = '0px';
+  var hdr = document.querySelector('.site-header');
+  if (hdr) hdr.style.paddingRight = '0px';
+});
+document.addEventListener('shown.bs.modal', function () {
+  document.body.style.paddingRight = '0px';
+});
+document.addEventListener('hidden.bs.modal', function () {
+  document.body.style.paddingRight = '';
+  document.body.style.overflow = '';
+  var hdr = document.querySelector('.site-header');
+  if (hdr) hdr.style.paddingRight = '';
+});
+</script>
 </body>
 </html>

@@ -58,6 +58,7 @@
             </span>
           </div>
           <div class="small text-secondary">{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>
+          <div class="text-muted mt-1" style="font-size:11.5px;">지시: {{ item.issued_at_kst }}</div>
         </a>
         {% else %}
         <div class="small text-muted py-4 text-center">조회된 작업이 없습니다.</div>
@@ -70,7 +71,7 @@
         {% for qp in queued_plans %}
         <div class="small py-1 d-flex justify-content-between border-bottom">
           <span><span class="badge bg-secondary me-1">순서 {{ qp.priority_rank }}</span>{{ qp.block_code }}</span>
-          <span class="text-muted">{{ qp.process_code }} · {{ qp.est_duration_days }}일</span>
+          <span class="text-muted">{{ qp.process_code }} · {{ qp.planned_start_date or (qp.est_duration_days ~ '일') }}</span>
         </div>
         {% endfor %}
       </div>
@@ -81,7 +82,7 @@
   <!-- 우측: 선택 작업 상세 -->
   <div class="col-lg-8">
     {% if selected %}
-    <!-- 1. 기본 작업 및 배정 자원 요약 -->
+    <!-- 1. 기본 작업 · 작업 지시 시간 · 예상(완료) 납기 시간 -->
     <div class="panel-card">
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
         <div>
@@ -96,14 +97,29 @@
         </div>
       </div>
 
-      <div class="row g-2 small">
+      <div class="row g-2 small mb-2">
         <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">배정 작업자</div><strong class="fs-6">{{ dispatch_info.worker_name if dispatch_info else '배정 대기' }}</strong></div></div>
         <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">배정 자재 Lot</div><strong class="fs-6">{{ dispatch_info.allocated_lot_no if dispatch_info else '-' }}</strong></div></div>
         <div class="col-12 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">용접 로봇 상태</div><strong class="fs-6">{{ '대기' if not robot_info else robot_info.robot_status }}</strong></div></div>
       </div>
+
+      <div class="row g-2 small">
+        <div class="col-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="text-muted">작업 지시 시간 (KST)</div>
+            <strong class="text-dark">{{ selected.issued_at_kst }}</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="text-muted">{{ '완료(납기) 시간 (KST)' if selected.wo.status_code == 'COMPLETED' else '예상 납기 시간 (KST)' }}</div>
+            <strong class="{{ 'text-success' if selected.wo.status_code == 'COMPLETED' else 'text-primary' }}">{{ selected.expected_due_kst }}</strong>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- 2. 관련 최신 문서 (최신 작업지시서 + 선박 도면 3D/PDF 바로보기 + 해당 야드 전체 발주 계획서 기록) -->
+    <!-- 2. 관련 최신 문서 (항상 클릭 가능한 작업지시서 뷰 + 실제 선박 CAD 도면 + 발주 계획서) -->
     <div class="panel-card">
       <div class="section-bar">
         <h3 class="panel-title">관련 최신 문서</h3>
@@ -113,8 +129,8 @@
       <div class="d-flex flex-wrap gap-2 mb-3">
         {% if selected.pdf_url %}
           <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;"
-                  onclick="openInlinePdfModal({{ selected.pdf_url | tojson }}, '작업지시서 ({{ selected.latest_inst.revision_no }})')">
-            최신 작업지시서 보기 ({{ selected.latest_inst.revision_no }})
+                  onclick="openInlinePdfModal({{ selected.pdf_url | tojson }}, '작업지시서 ({{ selected.latest_inst.revision_no if selected.latest_inst else "Rev.1" }})')">
+            최신 작업지시서 보기 ({{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }})
           </button>
         {% endif %}
         {% if cad_doc_info %}
@@ -128,7 +144,7 @@
         {% endif %}
       </div>
 
-      <!-- 해당 야드로 발주된 발주 계획서 전체 기록 -->
+      <!-- 해당 야드로 발주된 실제 발주 계획서 기록 -->
       <div class="border-top pt-3">
         <div class="small fw-bold text-secondary mb-2">{{ selected.branch_name }} 발주 계획서 기록 ({{ yard_po_docs|length }}건)</div>
         {% if yard_po_docs %}
@@ -153,7 +169,41 @@
       </div>
     </div>
 
-    <!-- 3. 협력사 발주 납기 및 처리 이력 (회사별 클릭 전환 + 세로 시간 추적 타임라인) -->
+    <!-- 3. 발주 배송 거리 기반 예상 도착(네비 ETA) 현황 -->
+    {% if partner_nav_cards %}
+    <div class="panel-card">
+      <div class="section-bar">
+        <h3 class="panel-title">발주 배송 예상 도착 안내 (출발지–야드 거리 계산)</h3>
+        <span class="small text-muted">DB 좌표 기반 도로거리 · 화물 이동시간 자동 산출</span>
+      </div>
+      <div class="d-flex flex-column gap-2">
+        {% for nav in partner_nav_cards %}
+        <div class="border rounded p-3 bg-light small">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+            <div>
+              <span class="badge bg-dark me-1">{{ nav.type_ko }}</span>
+              <strong>{{ nav.partner_name }}</strong>
+              <span class="text-muted ms-1">({{ nav.ref_code }} · {{ nav.qty }})</span>
+            </div>
+            <span class="status-chip {{ 'status-ok' if nav.is_done else 'status-info' }}">
+              {{ '도착 완료' if nav.is_done else '예상 도착 ' ~ nav.eta_str }}
+            </span>
+          </div>
+          <div class="text-secondary">
+            출발: <strong>{{ nav.origin_addr }}</strong> → 도착: <strong>{{ nav.dest_addr }}</strong>
+          </div>
+          <div class="text-muted mt-1">
+            발주 접수: {{ nav.ordered_at_kst }}
+            {% if nav.road_km %} · 예상 주행거리 <strong>{{ nav.road_km }}km</strong>{% endif %}
+            · 예상 이동시간 <strong>{{ nav.drive_label }}</strong>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. 협력사 발주 납기 및 처리 이력 (회사별 클릭 전환 + 세로 시간 추적 타임라인) -->
     <div class="panel-card mb-0">
       <div class="section-bar">
         <h3 class="panel-title">협력사 발주 납기 및 처리 이력</h3>
@@ -209,6 +259,10 @@ var PARTNER_MAP = {
   {% endfor %}
 };
 
+function getWorkDocModal() {
+  return bootstrap.Modal.getOrCreateInstance(document.getElementById('workDocPreviewModal'));
+}
+
 function renderVerticalTimeline(events) {
   var $box = $('#partner-timeline-body');
   if (!events || !events.length) {
@@ -244,14 +298,14 @@ function openInlinePdfModal(pdfUrl, title) {
   $('#wdp-newtab').attr('href', pdfUrl).show();
   $('#wdp-download').hide();
   $('#wdp-body').html('<iframe src="' + pdfUrl + '" style="width:100%;height:72vh;border:0;"></iframe>');
-  new bootstrap.Modal(document.getElementById('workDocPreviewModal')).show();
+  getWorkDocModal().show();
 }
 
 function openWorkCadPreview(docId) {
   $('#wdp-title').text('선박 도면 불러오는 중...');
   $('#wdp-newtab, #wdp-download').hide();
   $('#wdp-body').html('<div class="p-5 text-center text-muted">선박 도면을 화면에 준비하고 있습니다...</div>');
-  new bootstrap.Modal(document.getElementById('workDocPreviewModal')).show();
+  getWorkDocModal().show();
 
   $.getJSON('/service/api/cad/preview/' + docId, function (res) {
     $('#wdp-title').text(res.title || res.file_name || '선박 도면 보기');

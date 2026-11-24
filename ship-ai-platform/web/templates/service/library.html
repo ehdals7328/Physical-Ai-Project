@@ -193,14 +193,14 @@ function openPdfModal(docId, title) {
   $('#preview-newtab-link').attr('href', url).show();
   $('#preview-download-link').attr('href', url + '?download=1').show();
   $('#preview-modal-body').html('<iframe src="' + url + '" style="width:100%;height:72vh;border:0;"></iframe>');
-  new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('docPreviewModal')).show();
 }
 
 function openCadPreview(docId) {
   $('#preview-modal-title').text('선박 도면 불러오는 중...');
   $('#preview-newtab-link, #preview-download-link').hide();
   $('#preview-modal-body').html('<div class="p-5 text-center text-muted">도면 미리보기를 준비하고 있습니다...</div>');
-  new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
+  bootstrap.Modal.getOrCreateInstance(document.getElementById('docPreviewModal')).show();
 
   $.getJSON('/service/api/cad/preview/' + docId, function (res) {
     $('#preview-modal-title').text(res.title || res.file_name || '도면 미리보기');

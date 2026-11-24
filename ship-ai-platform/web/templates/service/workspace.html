@@ -6,40 +6,42 @@
   <div>
     <h1 class="page-title">통합 업무</h1>
   </div>
-  <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold px-3" id="btn-ws-sync">새로고침</button>
+  <div class="d-flex gap-2">
+    <button type="button" class="btn btn-primary btn-sm fw-semibold px-3" id="btn-open-qa" style="background:#0052cc;border-color:#0052cc;">AI 업무 질문</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold px-3" id="btn-ws-sync">새로고침</button>
+  </div>
 </div>
 
-<!-- 상단 통합 명령 입력창 + 5개 업무 탭 + 실행 중인 명령 배지 -->
-<div class="panel-card">
-  <form id="workspace-query-form" class="row g-2 align-items-end mb-3">
-    <div class="col-12 col-md">
-      <textarea id="ws-input" rows="1" class="form-control cmd-textarea"
-                placeholder="{{ sample_placeholder }}">{{ initial_prompt }}</textarea>
-    </div>
-    <div class="col-12 col-md-auto">
-      <button type="submit" id="ws-send-btn" class="btn btn-primary fw-semibold px-4 w-100"
-              style="height:44px;background:#0052cc;border-color:#0052cc;">요청 전송</button>
-    </div>
-  </form>
-
-  <div class="d-flex align-items-center flex-wrap gap-2">
+<!-- 상단 4개 핵심 업무 탭 (불필요한 메일 탭 삭제 · 상단 대화창은 질문 탭에서만 표시) -->
+<div class="panel-card py-3 mb-3">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div class="d-flex flex-wrap gap-1" id="ws-mode-chips">
       <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" data-mode="init">종합 현황</button>
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="qa">업무 질문 · 기준서</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="vision">현장 확인 · 작업 지시</button>
       {% if can_erp %}
       <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="erp">자재 · 인력 · 장비</button>
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="draft">발주 · 안내 메일</button>
       {% endif %}
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="vision">현장 확인 · 작업 지시</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="qa">AI 업무 질문 · 기준서</button>
     </div>
 
-    <!-- 입력한 명령이 업무 탭 바로 옆에 표시 -->
     <div id="ws-active-cmd" class="active-cmd-pill" style="display:none;">
       <span class="fw-bold">실행 요청</span>
       <span class="cmd-text" id="ws-active-cmd-text"></span>
       <button type="button" class="btn-close" style="font-size:9px;" id="btn-clear-cmd"></button>
     </div>
   </div>
+
+  <!-- AI 질문 입력창 (AI 업무 질문 · 기준서 탭 선택 시에만 깔끔하게 노출) -->
+  <form id="workspace-query-form" class="row g-2 align-items-end mt-3 pt-3 border-top" style="display:none;">
+    <div class="col-12 col-md">
+      <textarea id="ws-input" rows="1" class="form-control cmd-textarea"
+                placeholder="{{ sample_placeholder }}">{{ initial_prompt }}</textarea>
+    </div>
+    <div class="col-12 col-md-auto">
+      <button type="submit" id="ws-send-btn" class="btn btn-primary fw-semibold px-4 w-100"
+              style="height:44px;background:#0052cc;border-color:#0052cc;">질문 전송</button>
+    </div>
+  </form>
 </div>
 
 <!-- 동적 업무 영역 -->
@@ -57,6 +59,36 @@
         </div>
       </div>
       <div class="modal-body p-0" id="ws-pdf-body" style="min-height:520px;background:#f8fafc;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 고정 표준 양식 1회 확인 후 즉시 발송 모달 -->
+<div class="modal fade" id="fixedMailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-3">
+        <h6 class="modal-title fw-bold">표준 양식 확인 후 즉시 발송</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info small py-2 mb-3">
+          DB 조회 결과로 자동 작성된 고정 표준 양식입니다. 내용 확인 후 아래 <strong>[확인 및 즉시 발송]</strong>을 누르면 바로 전송됩니다.
+        </div>
+        <table class="table table-bordered table-sm small mb-0">
+          <tbody>
+            <tr><th style="width:120px;background:#f8fafc;">발송 구분</th><td id="fm-type-label">-</td></tr>
+            <tr><th style="background:#f8fafc;">수신처</th><td id="fm-recipient">-</td></tr>
+            <tr><th style="background:#f8fafc;">제목</th><td id="fm-subject" class="fw-semibold">-</td></tr>
+            <tr><th style="background:#f8fafc;">내용</th><td id="fm-body" style="white-space:pre-line;">-</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" id="btn-fixed-mail-send"
+                style="background:#0052cc;border-color:#0052cc;">확인 및 즉시 발송</button>
+      </div>
     </div>
   </div>
 </div>
@@ -106,7 +138,7 @@
   var currentErpSubtab = 'materials';
   var erpSearchQuery = '';
   var lastQaResult = null;
-  var pendingDraftPrefill = null;
+  var activeFixedDraft = null;
   var wsPollTimer = null;
 
   var summaryCache = null;
@@ -153,6 +185,11 @@
     currentMode = mode;
     $('#ws-mode-chips button').removeClass('btn-primary').addClass('btn-outline-secondary');
     $('#ws-mode-chips button[data-mode="' + mode + '"]').removeClass('btn-outline-secondary').addClass('btn-primary');
+    if (mode === 'qa') {
+      $('#workspace-query-form').slideDown(140);
+    } else {
+      $('#workspace-query-form').hide();
+    }
   }
 
   function showActiveCmd(text) {
@@ -171,25 +208,41 @@
     el.style.height = Math.min(120, Math.max(44, el.scrollHeight)) + 'px';
   }
 
-  function extractMailDraftFromAnswer(text) {
-    if (!text) return null;
-    var subjMatch = text.match(/제목\s*:\s*(.+)/);
-    var recMatch = text.match(/수신\s*:\s*(.+)/);
-    if (!subjMatch && !recMatch) return null;
-    var bodyIdx = text.search(/본문\s*:/);
-    var bodyText = bodyIdx >= 0 ? text.slice(bodyIdx).replace(/^본문\s*:\s*/, '').trim() : text;
-    return {
-      type: 'EMAIL',
-      recipient: recMatch ? recMatch[1].trim() : '대상 작업자',
-      subject: subjMatch ? subjMatch[1].trim() : '[안내] 업무 요청 알림',
-      body: bodyText
+  /* 고정 표준 양식 1회 확인 모달 -> 바로 발송 */
+  function openFixedMailConfirmModal(type, recipient, subject, body) {
+    activeFixedDraft = {
+      draft_type: type || 'EMAIL',
+      recipient: recipient || '',
+      subject: subject || '',
+      body: body || ''
     };
+    $('#fm-type-label').text(type === 'PO' ? '협력사 긴급 자재 발주' : '자격 갱신 · 업무 안내');
+    $('#fm-recipient').text(activeFixedDraft.recipient);
+    $('#fm-subject').text(activeFixedDraft.subject);
+    $('#fm-body').text(activeFixedDraft.body);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('fixedMailModal')).show();
   }
 
-  function openDraftWithPrefill(type, recipient, subject, body) {
-    pendingDraftPrefill = { type: type, recipient: recipient, subject: subject, body: body };
-    renderDraftCenterView();
-  }
+  $('#btn-fixed-mail-send').on('click', function () {
+    if (!activeFixedDraft) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('발송 중...');
+    $.ajax({
+      url: '/service/api/workspace/send-draft',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify(activeFixedDraft),
+      success: function (r) {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('fixedMailModal')).hide();
+        alert(r.message || '발송이 완료되었습니다.');
+        $btn.prop('disabled', false).text('확인 및 즉시 발송');
+      },
+      error: function (xhr) {
+        alert((xhr.responseJSON && xhr.responseJSON.message) || '발송 처리에 실패했습니다.');
+        $btn.prop('disabled', false).text('확인 및 즉시 발송');
+      }
+    });
+  });
 
   function buildContextSummary() {
     if (!summaryCache) return '통합 업무 화면';
@@ -200,7 +253,7 @@
       }).join(', '));
     }
     if (summaryCache.active_queue && summaryCache.active_queue.length) {
-      parts.push('진행블록=' + summaryCache.active_queue.slice(0, 3).map(function (q) {
+      parts.push('오늘블록=' + summaryCache.active_queue.slice(0, 3).map(function (q) {
         return q.block_code + '(' + q.branch_code + ')';
       }).join(', '));
     }
@@ -208,7 +261,41 @@
   }
 
   /* =========================================================================
-     1. 종합 현황 (W-01a)
+     승인 대기 지시서 전용 목록 화면 (KPI 클릭 시 직결)
+     ========================================================================= */
+  function renderPendingApprovalsView(pendingDocs) {
+    resetDynamicActions();
+    var backAct = registerAction(function () { renderInitView(); });
+    var rowsHtml = (pendingDocs && pendingDocs.length)
+      ? pendingDocs.map(function (d) {
+          return (
+            '<div class="border rounded p-3 mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2 bg-white">' +
+              '<div>' +
+                '<span class="status-chip status-warn me-2">승인 대기</span>' +
+                '<strong>' + esc(d.work_no) + '</strong> <span class="badge bg-dark ms-1">' + esc(d.revision_no) + '</span>' +
+                '<div class="small text-secondary mt-1">' + esc(d.ship_code) + ' / ' + esc(d.block_code) + ' · ' + esc(d.branch_name) + ' · 기안 ' + esc(d.created_at_kst) + '</div>' +
+              '</div>' +
+              '<div class="d-flex gap-2">' +
+                '<a href="' + esc(d.review_url) + '" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;">결재 검토 및 승인 →</a>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('')
+      : '<div class="text-center text-muted py-5 small">현재 승인 대기 중인 작업지시서가 없습니다.</div>';
+
+    setStageHtml(
+      '<div class="panel-card">' +
+        '<div class="section-bar">' +
+          '<h2 class="panel-title">승인 대기 작업지시서 (' + (pendingDocs ? pendingDocs.length : 0) + '건)</h2>' +
+          '<button type="button" class="btn btn-outline-secondary btn-sm" data-act-id="' + backAct + '">← 종합 현황으로</button>' +
+        '</div>' +
+        rowsHtml +
+      '</div>'
+    );
+  }
+
+  /* =========================================================================
+     1. 종합 현황 (W-01a — 들어오자마자 해야 할 일이 한눈에 보이는 구조)
      ========================================================================= */
   function renderInitView() {
     setActiveChip('init');
@@ -219,14 +306,27 @@
       summaryCache = res;
       var k = res.kpi || {};
       var alertTotal = (k.low_materials_cnt || 0) + (k.expiring_workers_cnt || 0);
+      var todayStr = res.today_kst || '';
 
       var kpiAct1 = registerAction(function () { location.href = '/service/work-status'; });
       var kpiAct2 = registerAction(function () { renderVisionCheckView(); });
       var kpiAct3 = registerAction(function () { if (res.can_erp) renderErpView('ALL', 'materials'); });
-      var kpiAct4 = registerAction(function () {
-        if (res.can_erp) renderDraftCenterView();
-        else location.href = '/service/work-status';
-      });
+      var kpiAct4 = registerAction(function () { renderPendingApprovalsView(res.pending_docs || []); });
+
+      // 첫 진입 시 무엇을 해야 할지 한눈에 안내하는 오늘의 업무 가이드
+      var guideHtml =
+        '<div class="panel-card py-3 mb-3" style="background:#f8fafc;border-left:4px solid #0052cc;">' +
+          '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+            '<div class="small">' +
+              '<strong style="color:#0b1f3a;">오늘의 업무 순서 (' + esc(todayStr) + ' KST)</strong>' +
+              '<span class="text-secondary ms-2">① 오늘 작업 예정 블록 확인 (' + esc(k.active_queue_cnt || 0) + '건) → ② 승인 대기 지시서 결재 (' + esc(k.pending_approvals || 0) + '건) → ③ 부족 자재 · 만료 자격 즉시 발송 (' + esc(alertTotal) + '건)</span>' +
+            '</div>' +
+            '<div class="d-flex gap-1">' +
+              '<button type="button" class="btn btn-outline-primary btn-sm py-0" data-act-id="' + kpiAct2 + '">① 현장·지시</button>' +
+              '<button type="button" class="btn btn-outline-warning btn-sm py-0 text-dark" data-act-id="' + kpiAct4 + '">② 결재 (' + esc(k.pending_approvals || 0) + ')</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
 
       var kpiHtml =
         '<div class="row g-3 mb-4">' +
@@ -241,7 +341,7 @@
             '<div class="kpi-tile kpi-ok clickable" data-act-id="' + kpiAct2 + '">' +
               '<div class="kpi-label">오늘 작업 예정 블록</div>' +
               '<div class="kpi-value">' + esc(k.active_queue_cnt || 0) + '<span class="fs-6 fw-normal text-muted ms-1">블록</span></div>' +
-              '<div class="kpi-sub">대기 용접로봇 ' + esc(k.robots_cnt || 0) + '대</div>' +
+              '<div class="kpi-sub">' + esc(todayStr) + ' 계획 기준 · 로봇 ' + esc(k.robots_cnt || 0) + '대</div>' +
             '</div>' +
           '</div>' +
           '<div class="col-6 col-lg-3">' +
@@ -255,29 +355,12 @@
             '<div class="kpi-tile ' + ((k.pending_approvals || 0) > 0 ? 'kpi-warn' : '') + ' clickable" data-act-id="' + kpiAct4 + '">' +
               '<div class="kpi-label">승인 대기 지시서</div>' +
               '<div class="kpi-value">' + esc(k.pending_approvals || 0) + '<span class="fs-6 fw-normal text-muted ms-1">건</span></div>' +
-              '<div class="kpi-sub">담당자 검토 후 확정</div>' +
+              '<div class="kpi-sub">클릭 시 결재 목록으로 바로 이동</div>' +
             '</div>' +
           '</div>' +
         '</div>';
 
-      // 자주 쓰는 업무 — 제일 상단, 한 줄에 모두 보이도록 간결하게 배치
-      var quickHtml = '';
-      if (res.quick_prompts && res.quick_prompts.length) {
-        var qBtns = res.quick_prompts.map(function (item) {
-          var label = (typeof item === 'string') ? item : (item.label || item.prompt);
-          var promptStr = (typeof item === 'string') ? item : (item.prompt || item.label);
-          var actId = registerAction(function () { submitWorkspaceQuery(promptStr); });
-          return '<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 text-nowrap" data-act-id="' + actId + '">' + esc(label) + '</button>';
-        }).join('');
-        quickHtml =
-          '<div class="panel-card py-2 px-3 mb-3">' +
-            '<div class="d-flex align-items-center gap-2 overflow-auto flex-nowrap py-1">' +
-              '<span class="small fw-bold text-secondary text-nowrap me-1">자주 쓰는 업무</span>' + qBtns +
-            '</div>' +
-          '</div>';
-      }
-
-      // 오늘 작업 예정 블록
+      // 오늘 작업 예정 블록 (KST 오늘 날짜 기준)
       var queueHtml = '';
       if (res.active_queue && res.active_queue.length) {
         queueHtml = res.active_queue.map(function (q) {
@@ -289,21 +372,25 @@
                   '<span class="badge bg-dark me-1">순서 ' + esc(q.priority_rank) + '</span>' +
                   '<strong>' + esc(q.block_code) + '</strong>' +
                   '<span class="text-muted small ms-2">' + esc(q.material_grade || '') + (q.thickness_mm ? ' ' + esc(q.thickness_mm) + 'mm' : '') + ' · ' + esc(q.process_code) + '</span>' +
-                  '<div class="text-secondary small mt-1">' + esc(q.branch_name) + (q.wo_no ? ' · ' + esc(q.wo_no) : '') + '</div>' +
+                  '<div class="text-secondary small mt-1">' + esc(q.branch_name) + ' · 계획일 ' + esc(q.planned_start_date || todayStr) + (q.wo_no ? ' · ' + esc(q.wo_no) : '') + '</div>' +
                 '</div>' +
                 '<div class="text-end">' +
                   '<span class="status-chip ' + (q.state === 'IN_PROGRESS' ? 'status-info' : 'status-muted') + '">' + esc(koStatus(q.state)) + '</span>' +
-                  '</div>' +
+                '</div>' +
               '</div>' +
               '<div class="d-flex justify-content-end gap-2">' +
-                '<button type="button" class="btn btn-outline-secondary btn-sm py-0" data-act-id="' + vAct + '">현장 · 중복 확인</button>' +
+                '<button type="button" class="btn btn-outline-secondary btn-sm py-0" data-act-id="' + vAct + '">현장 · 작업지시</button>' +
                 (q.work_id ? '<a href="/service/work-status?work_id=' + esc(q.work_id) + '" class="btn btn-dark btn-sm py-0">작업 보기</a>' : '') +
               '</div>' +
             '</div>'
           );
         }).join('');
       } else {
-        queueHtml = '<div class="text-muted small py-4 text-center">등록된 예정 공정이 없습니다. 자료실에서 선박 도면을 올려 공정을 시작해 주세요.</div>';
+        queueHtml =
+          '<div class="text-muted small py-4 text-center">' +
+            '오늘(' + esc(todayStr) + ') 예정된 작업 블록이 없습니다.' +
+            (res.other_date_plans_cnt > 0 ? '<div class="mt-1">(다른 일자 예정 계획 ' + esc(res.other_date_plans_cnt) + '건이 DB에 등록되어 있습니다)</div>' : '') +
+          '</div>';
       }
 
       // 운영 야드 카드
@@ -340,16 +427,16 @@
         yardHtml = '<div class="text-muted small py-3 text-center">등록된 야드가 없습니다.</div>';
       }
 
-      // 확인 필요 자원 (부족 자재 + 만료 임박 자격)
+      // 확인 필요 자원 -> 클릭 시 고정 표준 양식 1회 확인 후 즉시 발송
       var urgentHtml = '';
       if (!res.can_erp) {
         urgentHtml = '<div class="small text-muted py-3">자재·인력 조회 권한이 있는 담당자에게만 표시됩니다.</div>';
       } else {
         var mItems = (res.low_materials || []).map(function (m) {
           var actId = registerAction(function () {
-            openDraftWithPrefill(
+            openFixedMailConfirmModal(
               'PO',
-              '자재 공급사 담당자',
+              (m.supplier_name || '자재 공급사') + ' 영업담당자',
               '[긴급 발주] ' + m.item_name + ' (' + m.item_code + ')',
               m.branch_name + ' 공정용 ' + m.item_name + '(' + m.item_code + ') 가용 재고가 ' + m.available_qty + m.unit + '으로 부족하여 긴급 납품을 요청드립니다.'
             );
@@ -361,14 +448,14 @@
                 '<strong>' + esc(m.item_name) + '</strong>' +
                 '<div class="text-muted">' + esc(m.branch_name) + ' · 가용 ' + esc(m.available_qty) + esc(m.unit) + '</div>' +
               '</div>' +
-              '<button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + actId + '">발주 메일</button>' +
+              '<button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + actId + '">즉시 발주</button>' +
             '</div>'
           );
         }).join('');
 
         var wItems = (res.expiring_workers || []).map(function (w) {
           var actId = registerAction(function () {
-            openDraftWithPrefill(
+            openFixedMailConfirmModal(
               'EMAIL',
               w.worker_name + ' (' + w.worker_id + ')',
               '[필수] 용접 자격 갱신 안내 (' + w.cert_code + ')',
@@ -382,7 +469,7 @@
                 '<strong>' + esc(w.worker_name) + '</strong> (' + esc(w.cert_code) + ')' +
                 '<div class="text-muted">' + esc(w.branch_name) + ' · 만료일 ' + esc(w.cert_expiry_date) + '</div>' +
               '</div>' +
-              '<button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + actId + '">갱신 메일</button>' +
+              '<button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + actId + '">갱신 안내</button>' +
             '</div>'
           );
         }).join('');
@@ -390,33 +477,32 @@
         urgentHtml = (mItems + wItems) || '<div class="small text-muted py-3 text-center">현재 부족한 자재나 만료 임박 자격이 없습니다.</div>';
       }
 
-      // 최근 작업지시서
+      // 최근 작업지시서 (DRAFT는 바로 결재 화면으로, APPROVED는 작업 현황으로)
       var docsHtml = (res.recent_docs && res.recent_docs.length)
         ? res.recent_docs.map(function (d) {
+            var isDraft = d.approval_status === 'DRAFT';
             return (
               '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
                 '<div>' +
                   '<strong>' + esc(d.work_no) + '</strong> <span class="badge bg-light text-dark border ms-1">' + esc(d.revision_no) + '</span>' +
-                  '<div class="text-muted">' + esc(d.ship_code) + ' / ' + esc(d.block_code) + ' · ' + esc(d.branch_name) + '</div>' +
+                  '<div class="text-muted">' + esc(d.ship_code) + ' / ' + esc(d.block_code) + ' · ' + esc(d.branch_name) + ' · ' + esc(d.requested_at_kst || '') + '</div>' +
                 '</div>' +
                 '<div class="text-end text-nowrap">' +
-                  '<span class="status-chip ' + (d.approval_status === 'APPROVED' ? 'status-ok' : 'status-warn') + '">' + esc(koStatus(d.approval_status)) + '</span>' +
-                  '<a href="/service/work-status?work_id=' + esc(d.work_id) + '" class="btn btn-outline-dark btn-sm py-0 ms-1">보기</a>' +
+                  '<span class="status-chip ' + (isDraft ? 'status-warn' : 'status-ok') + '">' + esc(koStatus(d.approval_status)) + '</span>' +
+                  '<a href="' + esc(d.review_url) + '" class="btn ' + (isDraft ? 'btn-primary' : 'btn-outline-dark') + ' btn-sm py-0 ms-1">' + (isDraft ? '승인 검토' : '보기') + '</a>' +
                 '</div>' +
               '</div>'
             );
           }).join('')
         : '<div class="small text-muted py-3 text-center">생성된 작업지시서가 없습니다.</div>';
 
-      var goDraftAct = registerAction(function () { renderDraftCenterView(); });
-
       setStageHtml(
-        quickHtml +
+        guideHtml +
         kpiHtml +
         '<div class="row g-3">' +
           '<div class="col-lg-7">' +
             '<div class="panel-card">' +
-              '<div class="section-bar"><h2 class="panel-title">오늘 작업 예정 블록</h2><a href="/service/library/upload-cad" class="small fw-semibold text-decoration-none">+ 선박 도면 등록</a></div>' +
+              '<div class="section-bar"><h2 class="panel-title">오늘 작업 예정 블록 (' + esc(todayStr) + ')</h2><a href="/service/library/upload-cad" class="small fw-semibold text-decoration-none">+ 선박 도면 등록</a></div>' +
               queueHtml +
             '</div>' +
             '<div class="panel-card mb-0">' +
@@ -426,7 +512,7 @@
           '</div>' +
           '<div class="col-lg-5">' +
             '<div class="panel-card">' +
-              '<div class="section-bar"><h2 class="panel-title">확인이 필요한 자원</h2>' + (res.can_erp ? '<button type="button" class="btn btn-link btn-sm p-0 fw-semibold text-decoration-none" data-act-id="' + goDraftAct + '">메일 작성 →</button>' : '') + '</div>' +
+              '<div class="section-bar"><h2 class="panel-title">확인이 필요한 자원</h2><span class="small text-muted">1회 확인 즉시 발송</span></div>' +
               urgentHtml +
             '</div>' +
             '<div class="panel-card mb-0">' +
@@ -442,7 +528,7 @@
   }
 
   /* =========================================================================
-     2. 업무 질문 · 기준서 (W-01b — 최근 질의 이력 완전 제거, 깔끔한 단일 집중 화면)
+     2. AI 업무 질문 · 기준서 (W-01b)
      ========================================================================= */
   function renderQaTabView(explicitResult) {
     setActiveChip('qa');
@@ -451,6 +537,15 @@
 
     if (!lastQaResult) {
       $.getJSON('/service/api/workspace/qa-context', function (ctx) {
+        var quickHtml = '';
+        if (summaryCache && summaryCache.quick_prompts && summaryCache.quick_prompts.length) {
+          var qBtns = summaryCache.quick_prompts.map(function (item) {
+            var actId = registerAction(function () { submitWorkspaceQuery(item.prompt || item.label); });
+            return '<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 text-nowrap" data-act-id="' + actId + '">' + esc(item.label) + '</button>';
+          }).join('');
+          quickHtml = '<div class="d-flex align-items-center flex-wrap gap-2 mb-4"><span class="small fw-bold text-secondary">빠른 질문:</span>' + qBtns + '</div>';
+        }
+
         function buildDocCards(list, badgeText) {
           if (!list || !list.length) return '<div class="col-12 text-muted small py-2">등록된 문서가 없습니다.</div>';
           return list.map(function (d) {
@@ -489,8 +584,8 @@
 
         setStageHtml(
           '<div class="panel-card">' +
-            '<div class="section-bar"><h2 class="panel-title">업무 질문 · 용접 기준서 안내</h2><a href="/service/library" class="small fw-semibold text-decoration-none">자료실 전체 보기 →</a></div>' +
-            '<p class="text-secondary small mb-4">상단 입력창에 용접 조건, 안전 수칙, 야드 자재·인력, 메일 작성, 오늘 업무를 자유롭게 입력해 주세요.</p>' +
+            '<div class="section-bar"><h2 class="panel-title">AI 업무 질문 · 용접 기준서 안내</h2><a href="/service/library" class="small fw-semibold text-decoration-none">자료실 전체 보기 →</a></div>' +
+            quickHtml +
             sections +
           '</div>'
         );
@@ -500,7 +595,6 @@
 
     var activeRes = lastQaResult;
     var label = TASK_LABEL_MAP[activeRes.task_type] || 'AI 분석 결과';
-    var mailCandidate = CAN_ERP ? extractMailDraftFromAnswer(activeRes.answer) : null;
     var sources = activeRes.sources || [];
 
     var srcHtml = '';
@@ -528,12 +622,6 @@
     if (activeRes.generated_document && activeRes.generated_document.approval_status === 'DRAFT' && activeRes.session_id) {
       actionHtml += '<a href="/service/agent/plan/' + encodeURIComponent(activeRes.session_id) + '" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">실행안 검토 및 승인 →</a>';
     }
-    if (mailCandidate) {
-      var mailAct = registerAction(function () {
-        openDraftWithPrefill(mailCandidate.type, mailCandidate.recipient, mailCandidate.subject, mailCandidate.body);
-      });
-      actionHtml += '<button type="button" class="btn btn-outline-primary btn-sm px-3" data-act-id="' + mailAct + '">이 내용으로 메일 작성 →</button>';
-    }
 
     setStageHtml(
       '<div class="panel-card">' +
@@ -548,7 +636,7 @@
   }
 
   /* =========================================================================
-     3. 자재 · 인력 · 장비 조회 (W-01c — 깔끔한 사내 자원 대시보드)
+     3. 자재 · 인력 · 장비 조회 (W-01c — 발주중 자재의 네비 ETA 표시 + 즉시 발송)
      ========================================================================= */
   function renderErpView(branchCode, subtab) {
     if (!CAN_ERP) {
@@ -618,23 +706,28 @@
       });
       var rows = list.map(function (m) {
         var poAct = registerAction(function () {
-          openDraftWithPrefill(
+          openFixedMailConfirmModal(
             'PO',
             m.supplier_name + ' 담당자',
             '[발주 요청] ' + m.item_name + ' (' + m.item_code + ')',
             m.branch_name + ' 공정용 ' + m.item_name + '(' + m.item_code + ') 현재 가용량 ' + m.available_qty + m.unit + '으로 긴급 납품을 요청드립니다.'
           );
         });
+        var etaInfo = '';
+        if (m.has_open_po && m.open_po_eta) {
+          var kmTxt = m.open_po_eta.road_km ? (' · ' + m.open_po_eta.road_km + 'km / ' + m.open_po_eta.drive_label) : '';
+          etaInfo = '<div class="small text-primary mt-1">도착 예정: <strong>' + esc(m.open_po_eta.eta_str) + '</strong>' + esc(kmTxt) + '</div>';
+        }
         return (
           '<tr>' +
             '<td><strong>' + esc(m.item_code) + '</strong></td>' +
-            '<td><div class="fw-semibold">' + esc(m.item_name) + '</div><div class="small text-muted">' + esc(m.supplier_name) + ' · Lot ' + esc(m.lot_no) + '</div></td>' +
+            '<td><div class="fw-semibold">' + esc(m.item_name) + '</div><div class="small text-muted">' + esc(m.supplier_name) + ' · Lot ' + esc(m.lot_no) + '</div>' + etaInfo + '</td>' +
             '<td>' + esc(m.branch_name) + '</td>' +
             '<td class="text-end">' + esc(m.total_qty) + ' ' + esc(m.unit) + '</td>' +
             '<td class="text-end text-muted">' + esc(m.reserved_qty) + ' ' + esc(m.unit) + '</td>' +
             '<td class="text-end fw-bold ' + (m.is_low ? 'text-danger' : 'text-dark') + '">' + esc(m.available_qty) + ' ' + esc(m.unit) + '</td>' +
             '<td>' + (m.is_low ? '<span class="status-chip status-danger">부족</span>' : '<span class="status-chip status-ok">정상</span>') + (m.has_open_po ? ' <span class="status-chip status-warn">발주중</span>' : '') + '</td>' +
-            '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + poAct + '">발주 메일</button></td>' +
+            '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + poAct + '">즉시 발주</button></td>' +
           '</tr>'
         );
       }).join('') || '<tr><td colspan="8" class="text-center text-muted py-4">조회된 자재가 없습니다.</td></tr>';
@@ -642,18 +735,32 @@
       $box.html(
         '<div class="section-bar"><h3 class="panel-title">야드 자재 재고 목록</h3><input type="text" id="erp-filter-input" class="form-control form-control-sm w-auto" style="min-width:210px;" value="' + esc(erpSearchQuery) + '" placeholder="품번 · 품목명 · 야드 검색"></div>' +
         '<div class="table-responsive"><table class="table table-enterprise">' +
-          '<thead><tr><th>품번</th><th>품목명 / 공급사</th><th>야드</th><th class="text-end">보유량</th><th class="text-end">예약</th><th class="text-end">가용량</th><th>상태</th><th class="text-end">조치</th></tr></thead>' +
+          '<thead><tr><th>품번</th><th>품목명 / 공급사 / 도착예정</th><th>야드</th><th class="text-end">보유량</th><th class="text-end">예약</th><th class="text-end">가용량</th><th>상태</th><th class="text-end">조치</th></tr></thead>' +
           '<tbody>' + rows + '</tbody></table></div>'
       );
     } else if (subtab === 'workers') {
       var wList = (res.workers || []).filter(function (w) {
         return !qLow || (w.worker_name + ' ' + w.worker_id + ' ' + w.cert_code + ' ' + w.branch_name).toLowerCase().indexOf(qLow) >= 0;
       });
-      var bulkAct = registerAction(function () { renderDraftCenterView(); });
+      var alertList = wList.filter(function (w) { return w.level === 'EXPIRED' || w.level === 'EXPIRING'; });
+      var bulkBtnHtml = '';
+      if (alertList.length) {
+        var bulkAct = registerAction(function () {
+          var recips = alertList.map(function (w) { return w.worker_name + '(' + w.worker_id + ')'; }).join(', ');
+          var lines = alertList.map(function (w) { return '- ' + w.worker_name + ' (' + w.cert_code + ' / 만료일 ' + w.cert_expiry_date + ', ' + w.dday_label + ')'; }).join('\n');
+          openFixedMailConfirmModal(
+            'EMAIL',
+            recips,
+            '[일괄 안내] 용접 자격 만료 및 갱신 요청 (' + alertList.length + '명)',
+            '아래 대상자의 용접 자격 만료일이 도래하거나 경과하여 갱신 절차를 안내드립니다.\n\n' + lines
+          );
+        });
+        bulkBtnHtml = '<button type="button" class="btn btn-outline-danger btn-sm text-nowrap" data-act-id="' + bulkAct + '">만료 · 임박자 일괄 안내</button>';
+      }
       var wRows = wList.map(function (w) {
         var pillCls = w.level === 'EXPIRED' ? 'status-danger' : (w.level === 'EXPIRING' ? 'status-warn' : 'status-ok');
         var mAct = registerAction(function () {
-          openDraftWithPrefill(
+          openFixedMailConfirmModal(
             'EMAIL',
             w.worker_name + ' (' + w.worker_id + ')',
             '[자격 갱신 안내] ' + w.cert_code,
@@ -667,7 +774,7 @@
             '<td><strong>' + esc(w.cert_code) + '</strong> <span class="badge bg-light text-dark border">' + esc(w.weld_process) + '</span></td>' +
             '<td>' + esc(w.cert_expiry_date) + '</td>' +
             '<td><span class="status-chip ' + pillCls + '">' + esc(w.dday_label) + '</span></td>' +
-            '<td class="text-end"><button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + mAct + '">갱신 메일</button></td>' +
+            '<td class="text-end"><button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + mAct + '">갱신 안내</button></td>' +
           '</tr>'
         );
       }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">조회된 작업자가 없습니다.</td></tr>';
@@ -676,7 +783,7 @@
         '<div class="section-bar"><h3 class="panel-title">작업자 및 용접 자격 현황</h3>' +
           '<div class="d-flex flex-wrap gap-2">' +
             '<input type="text" id="erp-filter-input" class="form-control form-control-sm w-auto" style="min-width:190px;" value="' + esc(erpSearchQuery) + '" placeholder="이름 · 사번 · 자격 검색">' +
-            '<button type="button" class="btn btn-outline-danger btn-sm text-nowrap" data-act-id="' + bulkAct + '">만료 · 임박자 일괄 메일 →</button>' +
+            bulkBtnHtml +
           '</div>' +
         '</div>' +
         '<div class="table-responsive"><table class="table table-enterprise">' +
@@ -707,7 +814,7 @@
     } else {
       var b2b = res.b2b || {};
       var mHtml = (b2b.materials || []).map(function (m) {
-        return '<div class="d-flex justify-content-between py-2 border-bottom small"><span><strong>' + esc(m.item_name) + '</strong> (' + esc(m.partner_name) + ') · ' + esc(m.available_qty) + esc(m.unit) + '</span><span class="text-muted">납기 ' + esc(m.lead_time_hours) + '시간</span></div>';
+        return '<div class="d-flex justify-content-between py-2 border-bottom small"><span><strong>' + esc(m.item_name) + '</strong> (' + esc(m.partner_name) + ') · ' + esc(m.available_qty) + esc(m.unit) + '</span><span class="text-muted">준비 ' + esc(m.lead_time_hours) + '시간</span></div>';
       }).join('') || '<div class="small text-muted py-2">등록 자재 없음</div>';
 
       var wHtml = (b2b.workers || []).map(function (w) {
@@ -737,169 +844,7 @@
   }
 
   /* =========================================================================
-     4. 발주 · 안내 메일 (W-01d — 독립된 초안 작성 및 검토 발송 화면)
-     ========================================================================= */
-  function fillDraftEditor(type, recipient, subject, body) {
-    $('#draft-type').val(type || 'EMAIL');
-    $('#draft-recipient').val(recipient || '');
-    $('#draft-subject').val(subject || '');
-    $('#draft-body').val(body || '');
-  }
-
-  function renderDraftCenterView() {
-    if (!CAN_ERP) {
-      setStageHtml('<div class="panel-card text-center py-5"><h5 class="fw-bold mb-2">발주 · 메일 발송 권한이 필요합니다</h5><p class="text-muted small mb-0">담당자에게 권한 부여를 요청해 주세요.</p></div>');
-      return;
-    }
-    setActiveChip('draft');
-    resetDynamicActions();
-    setStageLoading();
-
-    $.getJSON('/service/api/workspace/draft-center', function (res) {
-      var bulkBtn = '';
-      if (res.alert_workers && res.alert_workers.length) {
-        var bAct = registerAction(function () {
-          var list = res.alert_workers || [];
-          var recipients = list.map(function (w) { return w.worker_name + '(' + w.worker_id + ')'; }).join(', ');
-          var lines = list.map(function (w) {
-            return '- ' + w.worker_name + ' (' + w.cert_code + ' / ' + w.weld_process + ', 만료일 ' + w.cert_expiry_date + ', ' + w.dday_label + ')';
-          }).join('\n');
-          fillDraftEditor(
-            'EMAIL',
-            recipients,
-            '[일괄 안내] 용접 자격 만료 및 갱신 요청 (' + list.length + '명)',
-            '안녕하세요. 운영지원팀입니다.\n아래 대상자분들의 용접 자격 만료일이 도래하거나 경과하여 일괄 갱신 안내를 드립니다.\n\n' + lines + '\n\n갱신 완료 후 자격증 사본을 담당 팀장에게 제출해 주시기 바랍니다.'
-          );
-        });
-        bulkBtn = '<button type="button" class="btn btn-dark btn-sm py-0" data-act-id="' + bAct + '">전체 일괄 작성</button>';
-      }
-
-      var alertWorkersHtml = (res.alert_workers && res.alert_workers.length)
-        ? res.alert_workers.map(function (w) {
-            var act = registerAction(function () {
-              fillDraftEditor(
-                'EMAIL',
-                w.worker_name + ' (' + w.worker_id + ')',
-                '[필수] 용접 자격 갱신 안내 (' + w.cert_code + ')',
-                '안녕하세요, ' + w.worker_name + '님.\n보유 중인 용접 자격(' + w.cert_code + ', ' + w.weld_process + ')의 만료일(' + w.cert_expiry_date + ')이 도래/경과하여 갱신 절차를 안내드립니다.'
-              );
-            });
-            return (
-              '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
-                '<div>' +
-                  '<span class="status-chip ' + (w.level === 'EXPIRED' ? 'status-danger' : 'status-warn') + ' me-1">' + esc(w.dday_label) + '</span>' +
-                  '<strong>' + esc(w.worker_name) + '</strong> (' + esc(w.cert_code) + ')' +
-                  '<div class="text-muted">' + esc(w.company_name) + ' · ' + esc(w.branch_name) + '</div>' +
-                '</div>' +
-                '<button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + act + '">초안 채우기</button>' +
-              '</div>'
-            );
-          }).join('')
-        : '<div class="small text-muted py-2">만료 또는 임박한 자격 대상자가 없습니다.</div>';
-
-      var lowMatHtml = (res.low_materials && res.low_materials.length)
-        ? res.low_materials.map(function (m) {
-            var act = registerAction(function () {
-              fillDraftEditor(
-                'PO',
-                m.supplier_name + ' 영업담당자',
-                '[긴급 발주] ' + m.item_name + ' (' + m.item_code + ')',
-                m.branch_name + ' 현장 공정용 ' + m.item_name + '(' + m.item_code + ') 재고가 부족(가용 ' + m.available_qty + m.unit + ')하여 긴급 납품을 요청드립니다.'
-              );
-            });
-            return (
-              '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
-                '<div>' +
-                  '<span class="status-chip status-danger me-1">부족</span>' +
-                  '<strong>' + esc(m.item_name) + '</strong> (가용 ' + esc(m.available_qty) + esc(m.unit) + ')' +
-                  '<div class="text-muted">' + esc(m.branch_name) + ' · ' + esc(m.supplier_name) + '</div>' +
-                '</div>' +
-                '<button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + act + '">발주 초안</button>' +
-              '</div>'
-            );
-          }).join('')
-        : '<div class="small text-muted py-2">발주가 필요한 부족 자재가 없습니다.</div>';
-
-      var pendingHtml = (res.pending_docs && res.pending_docs.length)
-        ? res.pending_docs.map(function (d) {
-            var link = d.session_id
-              ? '<a href="/service/agent/plan/' + encodeURIComponent(d.session_id) + '" class="btn btn-primary btn-sm py-0 text-nowrap">승인 검토</a>'
-              : '<a href="/service/work-status?work_id=' + esc(d.work_id) + '" class="btn btn-outline-dark btn-sm py-0 text-nowrap">열람</a>';
-            return (
-              '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
-                '<div><strong>' + esc(d.work_no) + '</strong> <span class="status-chip status-warn ms-1">승인 대기</span><div class="text-muted">' + esc(d.ship_code) + ' / ' + esc(d.block_code) + '</div></div>' +
-                link +
-              '</div>'
-            );
-          }).join('')
-        : '<div class="small text-muted py-2">승인 대기 중인 작업지시서가 없습니다.</div>';
-
-      var histHtml = (res.sent_history && res.sent_history.length)
-        ? res.sent_history.map(function (h) {
-            return (
-              '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
-                '<span class="text-truncate"><span class="badge bg-light text-dark border me-1">' + (h.draft_type === 'PO' ? '발주서' : '안내메일') + '</span><strong>' + esc(h.subject) + '</strong> (' + esc(h.recipient) + ')</span>' +
-                '<span class="text-muted text-nowrap">' + esc(h.created_at) + '</span>' +
-              '</div>'
-            );
-          }).join('')
-        : '<div class="small text-muted py-2">최근 발송 이력이 없습니다.</div>';
-
-      var clearAct = registerAction(function () { $('#draft-recipient, #draft-subject, #draft-body').val(''); });
-      var sendAct = registerAction(function () {
-        $.ajax({
-          url: '/service/api/workspace/send-draft',
-          method: 'POST',
-          contentType: 'application/json',
-          data: JSON.stringify({
-            draft_type: $('#draft-type').val(),
-            recipient: $('#draft-recipient').val(),
-            subject: $('#draft-subject').val(),
-            body: $('#draft-body').val()
-          }),
-          success: function (r) { alert(r.message); renderDraftCenterView(); },
-          error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '발송 처리에 실패했습니다.'); }
-        });
-      });
-
-      setStageHtml(
-        '<div class="row g-3">' +
-          '<div class="col-lg-5">' +
-            '<div class="panel-card"><div class="section-bar"><h3 class="panel-title">자격 갱신 안내 대상</h3>' + bulkBtn + '</div>' + alertWorkersHtml + '</div>' +
-            '<div class="panel-card"><div class="section-bar"><h3 class="panel-title">부족 자재 발주 대상</h3></div>' + lowMatHtml + '</div>' +
-            '<div class="panel-card mb-0"><div class="section-bar"><h3 class="panel-title">승인 대기 작업지시서</h3></div>' + pendingHtml + '</div>' +
-          '</div>' +
-          '<div class="col-lg-7">' +
-            '<div class="panel-card">' +
-              '<div class="section-bar">' +
-                '<h3 class="panel-title">메일 · 발주서 초안 작성 및 발송</h3>' +
-                '<select id="draft-type" class="form-select form-select-sm w-auto"><option value="EMAIL">자격 갱신 / 안내 메일</option><option value="PO">협력사 자재 발주서</option></select>' +
-              '</div>' +
-              '<div class="mb-2"><label class="form-label small fw-semibold mb-1">수신자</label><input id="draft-recipient" class="form-control form-control-sm" placeholder="좌측 항목을 클릭하거나 수신자를 입력하세요"></div>' +
-              '<div class="mb-2"><label class="form-label small fw-semibold mb-1">제목</label><input id="draft-subject" class="form-control form-control-sm"></div>' +
-              '<div class="mb-3"><label class="form-label small fw-semibold mb-1">본문 (발송 전 자유롭게 수정 가능)</label><textarea id="draft-body" rows="8" class="form-control form-control-sm"></textarea></div>' +
-              '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-                '<span class="small text-muted">승인 후 발송 버튼을 누르기 전에는 발송되지 않습니다.</span>' +
-                '<div class="d-flex gap-2">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm" data-act-id="' + clearAct + '">초기화</button>' +
-                  '<button type="button" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;" data-act-id="' + sendAct + '">승인 후 발송</button>' +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div class="panel-card mb-0"><div class="section-bar"><h3 class="panel-title">최근 발송 기록</h3></div>' + histHtml + '</div>' +
-          '</div>' +
-        '</div>'
-      );
-
-      if (pendingDraftPrefill) {
-        fillDraftEditor(pendingDraftPrefill.type, pendingDraftPrefill.recipient, pendingDraftPrefill.subject, pendingDraftPrefill.body);
-        pendingDraftPrefill = null;
-      }
-    });
-  }
-
-  /* =========================================================================
-     5. 현장 확인 · 작업 지시 (W-01e)
+     4. 현장 확인 · 작업 지시 (W-01e — DB 작업 계획(WORK_PLANS) 기준 블록만 조회)
      ========================================================================= */
   function renderVisionCheckView(branchCode, blockCode) {
     setActiveChip('vision');
@@ -913,23 +858,26 @@
       data: JSON.stringify({ branch_code: branchCode || '', block_code: blockCode || '' }),
       success: function (res) {
         if (!res.block) {
-          setStageHtml('<div class="panel-card text-muted text-center py-5">등록된 블록 데이터가 없습니다.</div>');
+          setStageHtml('<div class="panel-card text-muted text-center py-5">DB 작업 계획에 등록된 대상 블록이 없습니다.</div>');
           return;
         }
         var b = res.block;
         var v = res.vision;
         var wo = res.existing_wo;
         var opts = (res.block_options || []).map(function (o) {
-          return '<option value="' + esc(o.block_id) + '" data-branch="' + esc(o.branch_code) + '"' + (o.block_id === b.block_id ? ' selected' : '') + '>' + esc(o.ship_code) + ' / ' + esc(o.block_id) + ' (' + esc(o.block_name) + ')</option>';
+          var dateTag = o.planned_date ? (' [' + o.planned_date + ']') : '';
+          return '<option value="' + esc(o.block_id) + '" data-branch="' + esc(o.branch_code) + '"' + (o.block_id === b.block_id ? ' selected' : '') + '>' + esc(o.ship_code) + ' / ' + esc(o.block_id) + ' (' + esc(o.block_name) + ')' + esc(dateTag) + '</option>';
         }).join('');
 
         var dupHtml = '';
         if (res.exists) {
           dupHtml =
-            '<div class="alert alert-warning small mb-3">오늘 이미 발급된 작업지시서가 있어 중복 생성을 막았습니다.</div>' +
+            '<div class="alert alert-warning small mb-3">' +
+              (wo.is_today_kst ? '오늘(' + esc(res.today_kst) + ') 이미 발급된 작업지시서가 있습니다.' : '현재 진행/대기 중인 기존 작업지시서(' + esc(wo.requested_at_kst) + ')가 있습니다.') +
+            '</div>' +
             '<div class="border rounded p-3 bg-light mb-3 small">' +
               '<div class="mb-1"><strong>지시 번호:</strong> ' + esc(wo.work_no) + ' <span class="badge bg-dark ms-1">' + esc(wo.revision_no) + '</span></div>' +
-              '<div class="mb-1"><strong>현재 상태:</strong> ' + esc(koStatus(wo.status_code)) + ' · 진척률 ' + esc(wo.progress_pct) + '%</div>' +
+              '<div class="mb-1"><strong>현재 상태:</strong> ' + esc(koStatus(wo.status_code)) + ' · 지시일시 ' + esc(wo.requested_at_kst) + '</div>' +
               '<div><strong>선박 중량물 계획:</strong> ' + (res.ship_plan_exists ? esc(b.ship_code) + ' 기존 계획 적용 중' : '신규 검토 필요') + '</div>' +
             '</div>' +
             '<div class="d-flex flex-wrap gap-2">' +
@@ -950,7 +898,10 @@
             '<div class="col-lg-7">' +
               '<div class="panel-card h-100 mb-0">' +
                 '<div class="section-bar">' +
-                  '<select id="vision-block-select" class="form-select form-select-sm w-auto fw-semibold">' + opts + '</select>' +
+                  '<div>' +
+                    '<select id="vision-block-select" class="form-select form-select-sm w-auto fw-semibold">' + opts + '</select>' +
+                    '<div class="text-muted mt-1" style="font-size:11.5px;">' + (res.plan_based ? 'DB 작업 계획(WORK_PLANS)에 등록된 대상 블록만 표시됩니다.' : '활성 작업 기준 대상 블록이 표시됩니다.') + '</div>' +
+                  '</div>' +
                   '<a href="/vision/?branch=' + encodeURIComponent(res.branch.branch_code) + '" class="btn btn-outline-primary btn-sm">실시간 현장 관제 →</a>' +
                 '</div>' +
                 '<div class="bg-dark text-white rounded p-3 text-center mb-3">' +
@@ -965,7 +916,7 @@
             '</div>' +
             '<div class="col-lg-5">' +
               '<div class="panel-card h-100 mb-0">' +
-                '<div class="section-bar"><h3 class="panel-title">오늘 작업지시 중복 확인</h3></div>' +
+                '<div class="section-bar"><h3 class="panel-title">작업지시 중복 확인 (' + esc(res.today_kst) + ')</h3></div>' +
                 '<div class="row g-2 mb-3 small">' +
                   '<div class="col-6"><div class="border rounded p-2"><span class="text-muted d-block">선박 / 블록</span><strong>' + esc(b.ship_code) + ' · ' + esc(b.block_id) + '</strong></div></div>' +
                   '<div class="col-6"><div class="border rounded p-2"><span class="text-muted d-block">강종 / 두께 / 공정</span><strong>' + esc(b.steel_type) + ' · ' + esc(b.thickness_mm) + ' · ' + esc(b.process) + '</strong></div></div>' +
@@ -985,58 +936,16 @@
   }
 
   /* =========================================================================
-     자연어 요청 전송 (Enter 전송 · Shift+Enter 줄바꿈 · 즉시 비움 + 탭 옆 배지 표시)
+     자연어 요청 전송 및 모달
      ========================================================================= */
   function openWsPdfModal(docId, title) {
     var url = '/api/document/file/' + docId;
     $('#ws-pdf-title').text(title || '문서 보기');
     $('#ws-pdf-newtab').attr('href', url);
     $('#ws-pdf-body').html('<iframe src="' + url + '" style="width:100%;height:72vh;border:0;"></iframe>');
-    new bootstrap.Modal(document.getElementById('wsPdfModal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('wsPdfModal')).show();
   }
 
-  /* 요청에 맞춘 단독 메일/발주 미리보기 + 발송 버튼 화면 */
-  function renderFocusedMailDraft(draft) {
-    setActiveChip('draft');
-    resetDynamicActions();
-    var sendAct = registerAction(function () {
-      $.ajax({
-        url: '/service/api/workspace/send-draft',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-          draft_type: $('#focus-draft-type').val(),
-          recipient: $('#focus-draft-recipient').val(),
-          subject: $('#focus-draft-subject').val(),
-          body: $('#focus-draft-body').val()
-        }),
-        success: function (r) { alert(r.message); renderInitView(); },
-        error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '발송 처리에 실패했습니다.'); }
-      });
-    });
-    var cancelAct = registerAction(function () { renderInitView(); });
-
-    setStageHtml(
-      '<div class="panel-card">' +
-        '<div class="section-bar">' +
-          '<h2 class="panel-title">' + (draft.type === 'PO' ? '발주 메일 미리보기 (수정 후 발송)' : '안내 메일 미리보기 (수정 후 발송)') + '</h2>' +
-          '<select id="focus-draft-type" class="form-select form-select-sm w-auto">' +
-            '<option value="EMAIL"' + (draft.type !== 'PO' ? ' selected' : '') + '>업무 · 자격 안내 메일</option>' +
-            '<option value="PO"' + (draft.type === 'PO' ? ' selected' : '') + '>협력사 자재 발주 메일</option>' +
-          '</select>' +
-        '</div>' +
-        '<div class="mb-2"><label class="form-label small fw-semibold mb-1">수신자</label><input id="focus-draft-recipient" class="form-control form-control-sm" value="' + esc(draft.recipient || '') + '"></div>' +
-        '<div class="mb-2"><label class="form-label small fw-semibold mb-1">제목</label><input id="focus-draft-subject" class="form-control form-control-sm" value="' + esc(draft.subject || '') + '"></div>' +
-        '<div class="mb-3"><label class="form-label small fw-semibold mb-1">본문 (직접 수정 가능)</label><textarea id="focus-draft-body" rows="8" class="form-control form-control-sm">' + esc(draft.body || '') + '</textarea></div>' +
-        '<div class="d-flex justify-content-end gap-2">' +
-          '<button type="button" class="btn btn-outline-secondary btn-sm px-3" data-act-id="' + cancelAct + '">취소</button>' +
-          '<button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" style="background:#0052cc;border-color:#0052cc;" data-act-id="' + sendAct + '">보내기</button>' +
-        '</div>' +
-      '</div>'
-    );
-  }
-
-  /* 오늘 업무 조회 결과 (없으면 새 작업지시 생성 안내) */
   function renderTodayWorkView(res) {
     setActiveChip('init');
     resetDynamicActions();
@@ -1087,7 +996,6 @@
     autoResizeTextarea($ta[0]);
     showActiveCmd(q);
 
-    // 1단계: 스마트 명령 라우터로 야드 ERP / 메일 초안 / 오늘 업무 즉시 처리
     $.ajax({
       url: '/service/api/workspace/route-command',
       method: 'POST',
@@ -1103,7 +1011,12 @@
           return;
         }
         if (routeRes.action === 'SHOW_DRAFT' && routeRes.draft) {
-          renderFocusedMailDraft(routeRes.draft);
+          openFixedMailConfirmModal(
+            routeRes.draft.type,
+            routeRes.draft.recipient,
+            routeRes.draft.subject,
+            routeRes.draft.body
+          );
           return;
         }
         if (routeRes.action === 'SHOW_TODAY_WORK') {
@@ -1111,7 +1024,6 @@
           return;
         }
 
-        // 2단계: 전문 질의 / 규격 검색 / 작업지시서 생성 -> 기존 LangGraph Agent 호출
         setActiveChip('qa');
         setStageHtml(
           '<div class="panel-card py-4">' +
@@ -1170,11 +1082,15 @@
   });
   $('#btn-clear-cmd').on('click', clearActiveCmd);
 
+  $('#btn-open-qa').on('click', function () {
+    renderQaTabView();
+    setTimeout(function () { $('#ws-input').focus(); }, 180);
+  });
+
   $('#btn-ws-sync').on('click', function () {
     if (currentMode === 'init') renderInitView();
     else if (currentMode === 'qa') renderQaTabView();
     else if (currentMode === 'erp') renderErpView(currentErpBranch, currentErpSubtab);
-    else if (currentMode === 'draft') renderDraftCenterView();
     else if (currentMode === 'vision') renderVisionCheckView();
   });
 
@@ -1183,7 +1099,6 @@
     if (mode === 'init') renderInitView();
     else if (mode === 'qa') renderQaTabView();
     else if (mode === 'erp') renderErpView(currentErpBranch, currentErpSubtab);
-    else if (mode === 'draft') renderDraftCenterView();
     else if (mode === 'vision') renderVisionCheckView();
   });
 
