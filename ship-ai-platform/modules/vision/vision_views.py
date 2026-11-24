@@ -3,10 +3,16 @@ import os
 import threading
 import time
 import requests
+from pathlib import Path
 from dotenv import load_dotenv
 from flask import Blueprint, Response, jsonify, render_template, request
 
-load_dotenv()
+env_path = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(dotenv_path=env_path, override=True)
+
+RUNPOD_ENDPOINT_ID = os.getenv("RUNPOD_ENDPOINT_ID", "olau5y89ddpw64").strip()
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY", "").strip()
+print(f"[DEBUG] 로드된 ENDPOINT: {RUNPOD_ENDPOINT_ID}, API_KEY 앞자리: {RUNPOD_API_KEY[:8]}...")
 
 bp = Blueprint("vision", __name__, url_prefix="/vision")
 
