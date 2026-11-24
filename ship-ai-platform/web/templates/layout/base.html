@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}K-SmartShip{% endblock %}</title>
+  <title>{% block title %}K-SmartShip | 스마트 조선소 통합 운영 플랫폼{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   {% block extra_css %}{% endblock %}
@@ -11,55 +11,111 @@
 <body>
 
 <header class="site-header">
-  <div class="container d-flex align-items-center justify-content-between" style="height:60px;">
-    <div class="d-flex align-items-center gap-4">
-      <a href="/" class="text-decoration-none fw-bold text-dark fs-5">K-SmartShip</a>
-      <nav class="d-flex align-items-center gap-2">
-        <a href="/" class="nav-item-link {% if request.path == '/' %}active{% endif %}">메인</a>
-        <a href="/service/workspace" class="nav-item-link {% if request.path.startswith('/service/workspace') %}active{% endif %}">통합 업무</a>
-        <a href="/vision/" class="nav-item-link {% if request.path.startswith('/vision') %}active{% endif %}">현장 관제</a>
-        <a href="/service/work-status" class="nav-item-link {% if request.path.startswith('/service/work-status') %}active{% endif %}">작업 현황</a>
-        <a href="/service/library" class="nav-item-link {% if request.path.startswith('/service/library') %}active{% endif %}">자료실</a>
-      </nav>
-    </div>
+  <nav class="navbar navbar-expand-lg navbar-light">
+    <div class="container-enterprise d-flex align-items-center justify-content-between flex-wrap">
+      <!-- 로고 클릭 시 메인 홈('/')으로 이동 -->
+      <a class="brand-mark" href="/">
+        <span class="brand-square">KS</span>
+        <span>K-SmartShip</span>
+      </a>
 
-    <div class="d-flex align-items-center gap-3">
-      {% if session.get('user_id') %}
-        <a href="/mypage" class="btn btn-outline-dark btn-sm">{{ session.get('display_name') or session.get('full_name') }}</a>
-        <a href="/logout" class="small text-secondary text-decoration-none">로그아웃</a>
-      {% else %}
-        <a href="/login" class="btn btn-primary btn-sm px-3">로그인</a>
-      {% endif %}
-      <a href="/service/faq" class="small text-decoration-none {% if request.path.startswith('/service/faq') %}fw-bold text-primary{% else %}text-secondary{% endif %}">FAQ / QNA</a>
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#portalNavbar"
+              aria-controls="portalNavbar" aria-expanded="false" aria-label="메뉴 열기">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-between mt-2 mt-lg-0 ms-lg-4" id="portalNavbar">
+        <ul class="navbar-nav align-items-lg-center gap-1">
+          <li class="nav-item">
+            <a href="/service/workspace" class="primary-nav-link {% if request.path.startswith('/service/workspace') %}active{% endif %}">통합 업무</a>
+          </li>
+          <li class="nav-item">
+            <a href="/vision/" class="primary-nav-link {% if request.path.startswith('/vision') %}active{% endif %}">현장 관제</a>
+          </li>
+          <li class="nav-item">
+            <a href="/service/work-status" class="primary-nav-link {% if request.path.startswith('/service/work-status') %}active{% endif %}">작업 현황</a>
+          </li>
+          <li class="nav-item">
+            <a href="/service/library" class="primary-nav-link {% if request.path.startswith('/service/library') %}active{% endif %}">자료실</a>
+          </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-2 mt-2 mt-lg-0 pt-2 pt-lg-0 border-top border-lg-0">
+          {% if session.get('user_id') %}
+            <a href="/mypage" class="util-link border">
+              {{ session.get('full_name') or session.get('username') }} ({{ session.get('role', 'WORKER') }})
+            </a>
+            <a href="/logout" class="util-link text-danger">로그아웃</a>
+          {% else %}
+            <a href="/login" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;">로그인</a>
+          {% endif %}
+          <a href="/service/faq" class="util-link {% if request.path.startswith('/service/faq') %}text-primary{% endif %}">FAQ / QNA</a>
+        </div>
+      </div>
     </div>
-  </div>
+  </nav>
 </header>
 
 {% block full_width_top %}{% endblock %}
 
-<main class="{% block main_class %}container py-4{% endblock %}">
+<main class="{% block main_class %}container-enterprise page-shell{% endblock %}">
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-      {% for cat, msg in messages %}
-        <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
-          {{ msg }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-      {% endfor %}
+      <div class="mb-3">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ cat }} alert-dismissible fade show py-2 small" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
     {% endif %}
   {% endwith %}
+
   {% block content %}{% endblock %}
 </main>
 
-<footer class="site-footer py-4 mt-5">
-  <div class="container d-flex justify-content-between flex-wrap gap-2">
-    <div><strong class="text-dark">K-SmartShip</strong> · 선박 제조 공정 통합 운영 플랫폼</div>
-    <div>Vision(YOLOv11) · RAG(BGE-M3 / ChromaDB) · Multi-Agent(LangGraph / MCP) · Oracle &amp; PostgreSQL</div>
+<footer class="site-footer">
+  <div class="container-enterprise">
+    <div class="row g-4 pb-3 border-bottom">
+      <div class="col-lg-6">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="brand-square" style="width:24px;height:24px;font-size:11px;">KS</span>
+          <span class="fw-bold" style="color:#0b1f3a;font-size:15px;">K-SmartShip 통합 운영 플랫폼</span>
+        </div>
+        <p class="text-muted mb-1" style="max-width:460px;">
+          선박 도면, 현장 카메라, 용접 기준서, 야드 자재·인력 관리를 하나로 연결해 누구나 쉽게 조선소 공정을 운영할 수 있는 스마트 플랫폼입니다.
+        </p>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="footer-heading">주요 업무</div>
+        <ul class="footer-links">
+          <li><a href="/service/workspace">통합 업무</a></li>
+          <li><a href="/vision/">현장 관제</a></li>
+          <li><a href="/service/work-status">작업 현황</a></li>
+          <li><a href="/service/library">자료실</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="footer-heading">고객지원</div>
+        <ul class="footer-links">
+          <li><a href="/service/faq?tab=faq">자주 묻는 질문 (FAQ)</a></li>
+          <li><a href="/service/faq?tab=qna">문의 게시판 (QNA)</a></li>
+          <li><a href="/mypage">내 정보 및 권한</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 small text-muted">
+      <div>© 2026 K-SmartShip Heavy Industries. All rights reserved.</div>
+      <div>모든 작업지시 승인 및 변경 내역은 사내 시스템에 안전하게 기록됩니다.</div>
+    </div>
   </div>
 </footer>
 
 <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/markdown_render.js') }}"></script>
+<script src="{{ url_for('static', filename='js/cad_viewer.js') }}"></script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -2,20 +2,18 @@
 {% block title %}{{ post.title }} | {{ 'FAQ' if is_faq else 'QNA' }}{% endblock %}
 
 {% block content %}
-<div class="surface-card mb-4">
-  <div class="d-flex justify-content-between align-items-start pb-3 mb-3 border-bottom gap-3">
+<div class="panel-card">
+  <div class="d-flex justify-content-between align-items-start pb-3 mb-3 border-bottom flex-wrap gap-2">
     <div>
-      <span class="badge bg-light text-dark border mb-2">{{ post.category }}</span>
-      <h4 class="fw-bold mb-1">{{ post.title }}</h4>
+      <span class="status-chip status-info mb-2">{{ post.category }}</span>
+      <h2 class="fw-bold mb-1" style="font-size:20px;color:#0b1f3a;">{{ post.title }}</h2>
       <div class="small text-muted">
         등록일: {{ post.created_at.strftime('%Y-%m-%d %H:%M') if post.created_at else '-' }}
-        {% if not is_faq %} · 작성자: {{ post.writer_display }} · 조회 {{ post.view_count }}{% endif %}
+        {% if not is_faq %} · 작성자: <strong class="text-dark">{{ post.writer_display }}</strong> · 조회 {{ post.view_count }}{% endif %}
       </div>
     </div>
     <div class="d-flex gap-2">
-      {% if can_edit %}
-        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="$('#edit-box').toggle()">수정</button>
-      {% endif %}
+      {% if can_edit %}<button type="button" class="btn btn-outline-secondary btn-sm" onclick="$('#edit-box').toggle()">수정</button>{% endif %}
       {% if can_delete %}
         <form method="post" action="/service/faq/delete/{{ post.board_id }}" onsubmit="return confirm('삭제하시겠습니까?');">
           <button type="submit" class="btn btn-outline-danger btn-sm">삭제</button>
@@ -24,7 +22,7 @@
     </div>
   </div>
 
-  <div style="white-space:pre-wrap;min-height:120px;">{{ post.content }}</div>
+  <div style="white-space:pre-wrap;min-height:140px;">{{ post.content }}</div>
 
   {% if can_edit %}
   <form id="edit-box" method="post" action="/service/faq/edit/{{ post.board_id }}" class="border-top mt-4 pt-3" style="display:none;">
@@ -36,10 +34,10 @@
 </div>
 
 {% if not is_faq %}
-<div class="surface-card mb-4">
-  <h6 class="fw-bold mb-3">답변 ({{ replies|length }})</h6>
+<div class="panel-card">
+  <h3 class="panel-title mb-3">답변 ({{ replies|length }})</h3>
   {% for r in replies %}
-  <div class="border rounded p-3 mb-2 bg-light">
+  <div class="p-3 border rounded bg-light mb-2">
     <div class="d-flex justify-content-between align-items-center mb-1 small text-muted">
       <span><strong class="text-dark">{{ r.writer_display }}</strong> · {{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '' }}</span>
       {% if me.role == 'ADMIN' or r.writer_id == me.user_id %}
@@ -51,13 +49,13 @@
     <div style="white-space:pre-wrap;">{{ r.content }}</div>
   </div>
   {% else %}
-  <div class="small text-muted mb-3">등록된 답변이 없습니다.</div>
+  <div class="small text-muted mb-2">등록된 답변이 없습니다.</div>
   {% endfor %}
 
   {% if can_reply %}
   <form method="post" action="/service/faq/reply/{{ post.board_id }}" class="mt-3">
     <textarea name="reply_content" rows="3" class="form-control mb-2" placeholder="답변 내용을 입력해 주세요." required></textarea>
-    <div class="text-end"><button type="submit" class="btn btn-primary btn-sm px-3">답변 등록</button></div>
+    <div class="text-end"><button type="submit" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">답변 등록</button></div>
   </form>
   {% endif %}
 </div>

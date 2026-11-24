@@ -6,130 +6,185 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h5 class="fw-bold mb-0">{{ current_card.branch_name if current_card else '현장 관제' }}</h5>
-  <div class="d-flex gap-2">
-    <div class="btn-group btn-group-sm">
-      <button type="button" class="btn btn-dark" id="btn-cam-cctv" onclick="switchCam('cctv')">CCTV</button>
-      <button type="button" class="btn btn-outline-dark" id="btn-cam-robot" onclick="switchCam('robot')">ROBOTCAM</button>
-    </div>
-    <button type="button" class="btn btn-outline-primary btn-sm" id="btn-toggle-map">지도 열기</button>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">{{ current_card.branch_name if current_card else '현장 관제' }}</h1>
+    {% if current_card %}
+    {% else %}
+    {% endif %}
+  </div>
+
+  <div class="btn-group btn-group-sm">
+    <button type="button" class="btn btn-primary px-3 fw-semibold" id="btn-cam-cctv" onclick="switchCam('cctv')">CCTV</button>
+    <button type="button" class="btn btn-outline-secondary px-3 fw-semibold" id="btn-cam-robot" onclick="switchCam('robot')">로봇 카메라</button>
   </div>
 </div>
 
-<!-- SV-01b: 지도 펼침 영역 (기본 숨김) -->
-<div id="map-panel" class="surface-card mb-3 p-3" style="display:none;">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <span class="small fw-semibold">야드(파란 핀) 클릭 시 카메라 전환 · 협력사(주황 핀) 클릭 시 업체 정보 표시</span>
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-close-map">지도 접기</button>
+<!-- 1~2. 대형 실시간 영상 (9칸) + 현재 화면 탐지 객체 (3칸) -->
+<div class="row g-3 mb-3">
+  <div class="col-lg-9">
+    <div class="bg-dark rounded overflow-hidden text-center" style="min-height:480px;display:flex;align-items:center;justify-content:center;">
+      <img id="live-feed" src="/vision/video_feed" class="img-fluid w-100" alt="현장 카메라 영상">
+    </div>
   </div>
-  <div class="row g-3">
-    <div class="col-lg-8"><div id="yard-leaflet-map" style="height:300px;border-radius:8px;"></div></div>
-    <div class="col-lg-4">
-      <div id="partner-info-box" class="border rounded p-3 h-100 bg-light small text-muted">
-        지도에서 야드 또는 협력사 핀을 선택해 주세요.
+  <div class="col-lg-3">
+    <div class="panel-card h-100 mb-0 d-flex flex-column justify-content-between">
+      <div>
+        <div class="section-bar">
+          <h2 class="panel-title">탐지 객체</h2>
+          <span class="status-chip status-ok">실시간</span>
+        </div>
+        <div class="border rounded p-2 px-3 bg-light mb-3">
+          <div class="small text-muted">선박 · 블록 번호</div>
+          <div id="live-ocr" class="fw-bold text-primary fs-6">확인 중...</div>
+        </div>
+        <ul id="live-det-list" class="list-unstyled small mb-0 text-secondary">
+          <li class="py-1">실시간 탐지 정보를 불러오는 중...</li>
+        </ul>
+      </div>
+      {% if current_card %}
+      <div class="border-top pt-2 mt-3 small text-muted">{{ current_card.address or '-' }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- 3. 영상 아래: 칸 전체 클릭으로 지도 펼침/접힘 (별도 버튼 제거) -->
+<div class="panel-card map-toggle-bar" id="map-toggle-card" onclick="toggleYardMap()">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <strong style="color:#0b1f3a;">야드 선택 · 협력사 위치 지도</strong>
+      <span class="small text-muted ms-2">이 영역을 클릭하면 지도가 열리고 닫힙니다. 야드(파란 핀) 클릭 시 카메라 전환, 협력사(주황 핀) 클릭 시 정보 표시</span>
+    </div>
+    <span id="map-toggle-arrow" class="fw-bold text-primary small">지도 펼치기 ▾</span>
+  </div>
+
+  <div id="map-panel" class="mt-3 pt-3 border-top" style="display:none;" onclick="event.stopPropagation()">
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div id="yard-leaflet-map" style="height:360px;border-radius:8px;border:1px solid #dde3ec;"></div>
+      </div>
+      <div class="col-lg-4">
+        <div id="partner-info-box" class="border rounded p-3 h-100 bg-light small text-muted">
+          지도에서 야드(파란 핀) 또는 협력사(주황 핀)를 선택해 주세요.
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- SV-01a: CCTV / ROBOTCAM 영상 + 현재 화면 탐지 객체 + 작업지시 입력 -->
-<div class="row g-3">
-  <div class="col-lg-8">
-    <div class="bg-dark rounded-3 overflow-hidden text-center" style="min-height:420px;">
-      <img id="live-feed" src="/vision/video_feed" class="img-fluid w-100" alt="현장 카메라 영상">
-    </div>
+<!-- 4. 지도 아래(최하단): 현장 작업 지시 (업무 무관 내용 입력 시 현장 관제로 자동 복귀) -->
+{% if me.role in ('ADMIN', 'MANAGER') %}
+<div class="panel-card mb-0">
+  <div class="section-bar mb-2 pb-2">
+    <h2 class="panel-title">현장 작업 지시</h2>
+    <span class="small text-muted">현재 화면의 블록·용접 관련 작업 지시만 입력해 주세요.</span>
   </div>
-
-  <div class="col-lg-4 d-flex flex-column gap-3">
-    <div class="surface-card p-3 flex-grow-1">
-      <h6 class="fw-bold mb-2">현재 화면 탐지 객체</h6>
-      <div id="live-ocr" class="small text-primary fw-semibold mb-2">선박/블록 OCR: 확인 중</div>
-      <ul id="live-det-list" class="list-unstyled small mb-0 text-secondary">
-        <li>실시간 객체 정보를 수신 중입니다...</li>
-      </ul>
+  <form id="vision-order-form" action="/service/agent/analyze" method="get" class="row g-2 align-items-end">
+    <input type="hidden" name="from" value="vision">
+    <input type="hidden" name="branch_code" value="{{ selected_branch }}">
+    <input type="hidden" name="block_code" value="{{ current_card.primary_block if current_card else '' }}">
+    <div class="col-12 col-md">
+      <textarea id="vision-prompt-input" name="prompt" rows="2" class="form-control cmd-textarea"
+                placeholder="예: 현재 화면 블록의 용접 작업 준비와 작업지시서 발행을 진행해줘 (Enter 전송 · Shift+Enter 줄바꿈)" required></textarea>
     </div>
-
-    {% if me.role in ('ADMIN', 'MANAGER') %}
-    <div class="surface-card p-3">
-      <h6 class="fw-bold mb-2">작업 지시</h6>
-      <form action="/service/agent/analyze" method="get">
-        <input type="hidden" name="branch_code" value="{{ selected_branch }}">
-        <input type="hidden" name="block_code" value="{{ current_card.primary_block if current_card else '' }}">
-        <textarea name="prompt" rows="3" class="form-control form-control-sm mb-2"
-                  placeholder="예: 현재 화면 블록의 작업 준비와 작업지시서 발행을 진행해줘" required></textarea>
-        <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">작업 지시 내리기</button>
-      </form>
+    <div class="col-12 col-md-auto">
+      <button type="submit" class="btn btn-primary fw-semibold px-4 w-100"
+              style="height:54px;background:#0052cc;border-color:#0052cc;">작업 지시 내리기</button>
     </div>
-    {% endif %}
-  </div>
+  </form>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const CCTV_VIDEO = {{ (current_card.cctv_video if current_card else '') | tojson }};
-const ROBOT_VIDEO = {{ (current_card.robot_video if current_card else '') | tojson }};
-let leafletMap = null;
+var CCTV_VIDEO = {{ (current_card.cctv_video if current_card else '') | tojson }};
+var ROBOT_VIDEO = {{ (current_card.robot_video if current_card else '') | tojson }};
+var leafletMap = null;
+var mapOpen = false;
+var esc = window.KSmartMd.esc;
 
 function switchCam(mode) {
-  const target = (mode === 'robot') ? ROBOT_VIDEO : CCTV_VIDEO;
+  var target = (mode === 'robot') ? ROBOT_VIDEO : CCTV_VIDEO;
   if (!target) return;
-  $('#btn-cam-cctv').toggleClass('btn-dark', mode === 'cctv').toggleClass('btn-outline-dark', mode !== 'cctv');
-  $('#btn-cam-robot').toggleClass('btn-dark', mode === 'robot').toggleClass('btn-outline-dark', mode !== 'robot');
+  $('#btn-cam-cctv').toggleClass('btn-primary', mode === 'cctv').toggleClass('btn-outline-secondary', mode !== 'cctv');
+  $('#btn-cam-robot').toggleClass('btn-primary', mode === 'robot').toggleClass('btn-outline-secondary', mode !== 'robot');
   $.get('/vision/change_video/' + encodeURIComponent(target));
 }
 
+function toggleYardMap() {
+  mapOpen = !mapOpen;
+  if (mapOpen) {
+    $('#map-panel').slideDown(160, function () { initOrResizeMap(); });
+    $('#map-toggle-arrow').text('지도 접기 ▴');
+  } else {
+    $('#map-panel').slideUp(140);
+    $('#map-toggle-arrow').text('지도 펼치기 ▾');
+  }
+}
+
+function initOrResizeMap() {
+  if (!leafletMap) {
+    leafletMap = L.map('yard-leaflet-map').setView([35.2, 129.0], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(leafletMap);
+    $.getJSON('/vision/api/map-markers', function (res) {
+      var bounds = [];
+      (res.hq_branches || []).forEach(function (b) {
+        bounds.push([b.lat, b.lng]);
+        L.circleMarker([b.lat, b.lng], { color: '#0052cc', radius: 9, fillOpacity: 0.85 })
+          .addTo(leafletMap)
+          .bindTooltip(b.branch_name + ' (클릭 시 카메라 전환)')
+          .on('click', function () { window.location.href = '/vision/?branch=' + encodeURIComponent(b.branch_code); });
+      });
+      (res.partners || []).forEach(function (p) {
+        bounds.push([p.lat, p.lng]);
+        L.circleMarker([p.lat, p.lng], { color: '#ea580c', radius: 8, fillOpacity: 0.85 })
+          .addTo(leafletMap)
+          .bindTooltip(p.company_name)
+          .on('click', function () {
+            $('#partner-info-box').html(
+              '<div class="fw-bold text-dark fs-6 mb-2">' + esc(p.company_name) + '</div>' +
+              '<div class="mb-1"><strong>분야:</strong> ' + esc(p.company_type) + '</div>' +
+              '<div class="mb-1"><strong>대표 / 연락처:</strong> ' + esc(p.representative) + ' · ' + esc(p.phone) + '</div>' +
+              '<div class="mb-1"><strong>계약기간:</strong> ' + esc(p.contract_period) + '</div>' +
+              '<div class="mb-2"><strong>주소:</strong> ' + esc(p.address) + '</div>' +
+              '<div class="p-2 rounded bg-white border text-primary fw-semibold">' + esc(p.shared_b2b_resources) + '</div>'
+            );
+          });
+      });
+      if (bounds.length) leafletMap.fitBounds(bounds, { padding: [30, 30] });
+    });
+  } else {
+    leafletMap.invalidateSize();
+  }
+}
+
 function pollDetections() {
-  $.getJSON('/vision/detections', function(res) {
-    const preds = res.predictions || [];
-    const ocrItem = preds.find(p => p.ocr_text);
-    $('#live-ocr').text('선박/블록 OCR: ' + (ocrItem ? ocrItem.ocr_text : '미감지'));
+  $.getJSON('/vision/detections', function (res) {
+    var preds = res.predictions || [];
+    var ocrItem = preds.find(function (p) { return p.ocr_text; });
+    $('#live-ocr').text(ocrItem ? ocrItem.ocr_text : '미감지');
     $('#live-det-list').html(
       preds.length
-        ? preds.map(p => `<li class="py-1 border-bottom">${$('<div>').text(p.class || p.class_name || '객체').html()} (${Math.round((p.confidence || 0)*100)}%)</li>`).join('')
-        : '<li class="text-muted">탐지된 객체가 없습니다.</li>'
+        ? preds.map(function (p) {
+            return '<li class="py-2 border-bottom d-flex justify-content-between align-items-center">' +
+              '<span class="fw-semibold text-dark">' + esc(p.class || p.class_name || '객체') + '</span>' +
+              '<span class="status-chip status-muted">' + Math.round((p.confidence || 0) * 100) + '%</span></li>';
+          }).join('')
+        : '<li class="text-muted py-2">탐지된 객체가 없습니다.</li>'
     );
   });
 }
 setInterval(pollDetections, 2000);
 pollDetections();
 
-$('#btn-toggle-map').on('click', function() {
-  $('#map-panel').show();
-  if (!leafletMap) {
-    leafletMap = L.map('yard-leaflet-map').setView([35.2, 129.0], 8);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(leafletMap);
-    $.getJSON('/vision/api/map-markers', function(res) {
-      const bounds = [];
-      (res.hq_branches || []).forEach(b => {
-        bounds.push([b.lat, b.lng]);
-        L.circleMarker([b.lat, b.lng], { color: '#2563eb', radius: 9, fillOpacity: 0.85 })
-          .addTo(leafletMap)
-          .bindTooltip(b.branch_name)
-          .on('click', () => { window.location.href = '/vision/?branch=' + encodeURIComponent(b.branch_code); });
-      });
-      (res.partners || []).forEach(p => {
-        bounds.push([p.lat, p.lng]);
-        L.circleMarker([p.lat, p.lng], { color: '#ea580c', radius: 8, fillOpacity: 0.85 })
-          .addTo(leafletMap)
-          .bindTooltip(p.company_name)
-          .on('click', () => {
-            $('#partner-info-box').html(`
-              <div class="fw-bold text-dark mb-1">${$('<div>').text(p.company_name).html()}</div>
-              <div>분야: ${$('<div>').text(p.company_type).html()}</div>
-              <div>대표: ${$('<div>').text(p.representative).html()} · ${$('<div>').text(p.phone).html()}</div>
-              <div>계약: ${$('<div>').text(p.contract_period).html()}</div>
-              <div class="mt-2 text-primary">${$('<div>').text(p.shared_b2b_resources).html()}</div>`);
-          });
-      });
-      if (bounds.length) leafletMap.fitBounds(bounds, { padding: [30, 30] });
-    });
-  } else {
-    setTimeout(() => leafletMap.invalidateSize(), 150);
+$('#vision-prompt-input').on('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    if ($.trim($(this).val())) $('#vision-order-form').submit();
   }
 });
-$('#btn-close-map').on('click', () => $('#map-panel').hide());
 </script>
 {% endblock %}

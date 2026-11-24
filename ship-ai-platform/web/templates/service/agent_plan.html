@@ -1,72 +1,168 @@
 {% extends "layout/base.html" %}
-{% block title %}에이전트 통합 실행안 | K-SmartShip{% endblock %}
+{% block title %}통합 실행안 검토 | K-SmartShip{% endblock %}
 
 {% block content %}
-<div class="surface-card mb-3">
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+{% set has_draft = (doc and doc.get('work_id')) %}
+{% set params = (doc.get('parameters') if doc else {}) or {} %}
+
+<!-- 상단 네이비 브리핑 배너 (보기 좋게 강조) -->
+<div class="rounded-3 text-white p-4 mb-3" style="background:linear-gradient(135deg, #0b1f3a 0%, #153663 100%);">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
     <div>
-      <h5 class="fw-bold mb-1">통합 실행안 검토 {% if doc.get('title') %}· {{ doc.get('title') }}{% endif %}</h5>
-      <div class="small text-muted">최종 승인 전에는 ERP 자재 예약이나 작업지시 확정이 반영되지 않습니다.</div>
+      <span class="badge bg-light text-dark mb-2">{{ '승인 대기 실행안' if has_draft else '추가 조건 확인 필요' }}</span>
+      <h2 class="fw-bold mb-1" style="font-size:21px;">
+        {{ doc.get('title') if (doc and doc.get('title')) else '작업 준비 분석 및 조건 확인' }}
+      </h2>
+      <div class="small" style="color:#cbd5e1;">
+        {{ '내용을 검토하신 뒤 하단의 승인 버튼 한 번으로 작업지시서와 자원 배정을 확정할 수 있습니다.' if has_draft else '아래 안내된 누락 항목(작업자 또는 블록)을 선택하거나 입력하면 즉시 실행안을 완성합니다.' }}
+      </div>
     </div>
-    <a href="/service/workspace" class="btn btn-outline-secondary btn-sm">작업 취소</a>
+    <a href="{{ cancel_url }}" class="btn btn-outline-light btn-sm px-3">취소하고 돌아가기</a>
   </div>
+</div>
 
-  <!-- 3. 진행 스텝퍼 -->
-  <div class="stepper-bar mb-4">
-    <div class="stepper-node done">1. 요청 / 중복 확인</div>
-    <div class="stepper-node done">2. 에이전트 분석</div>
-    <div class="stepper-node active">3. 통합 실행안</div>
-    <div class="stepper-node">4. 승인 / 진행</div>
+<!-- 4단계 진행 표시 -->
+<div class="panel-card py-3 mb-3">
+  <div class="stepper-bar">
+    <div class="stepper-node done">1. 요청 확인</div>
+    <div class="stepper-node done">2. AI 자동 분석</div>
+    <div class="stepper-node active">3. 통합 실행안 검토</div>
+    <div class="stepper-node">4. 승인 · 착수</div>
   </div>
+</div>
 
-  <!-- 4. 통합 조치 내역 및 착수 조건 -->
-  <div class="border rounded-3 p-3 bg-light mb-3">
-    <div class="fw-bold small mb-2">통합 조치 내역 및 착수 조건</div>
-    <div style="white-space:pre-wrap;line-height:1.65;">{{ answer }}</div>
-  </div>
-
-  {% if sources %}
-  <div class="small text-muted mb-3">
-    <strong>참고 근거:</strong>
-    {% for s in sources %}
-      <span class="badge bg-light text-dark border me-1">{{ s.title }} (p.{{ s.page }})</span>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  <!-- 5. 조건 수정 입력창 (수정 시 계획 재산출) -->
-  <form action="/service/agent/analyze" method="get" class="d-flex gap-2 mb-4">
-    <input type="text" name="prompt" class="form-control form-control-sm"
-           placeholder="조건 수정 요청 입력 (예: 작업자를 변경하고 예열 기준을 다시 확인해줘)" required>
-    <button type="submit" class="btn btn-outline-dark btn-sm text-nowrap px-3">재산출</button>
-  </form>
-
-  <!-- 6. 하단 단일 승인 바 -->
-  <div class="border-top pt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <div class="small text-secondary">
-      한 번의 승인으로 작업지시서 확정, 자원 예약, 문서 발행이 함께 진행됩니다.
+<!-- 초안이 생성된 경우: 핵심 조건 4카드 요약 -->
+{% if has_draft %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-blue">
+      <div class="kpi-label">대상 선박 · 블록</div>
+      <div class="fw-bold fs-6">{{ params.get('block_id') or '-' }}</div>
+      <div class="kpi-sub">{{ params.get('ship_code') or '-' }}</div>
     </div>
-    <div class="d-flex gap-2">
-      {% if doc.get('files', {}).get('download_pdf_url') %}
-        <a href="{{ doc.get('files', {}).get('download_pdf_url') }}" target="_blank" class="btn btn-outline-primary btn-sm">초안 PDF 확인</a>
-      {% endif %}
-      {% if can_approve and doc.get('work_id') %}
-        <button type="button" id="btn-approve-plan" class="btn btn-primary px-4 fw-semibold" onclick="approvePlan()">승인 및 확정</button>
-      {% elif not can_approve %}
-        <span class="badge bg-secondary py-2 px-3">승인 권한은 관리자/팀장에게 있습니다</span>
-      {% else %}
-        <a href="/service/work-status" class="btn btn-dark btn-sm">작업 현황으로 이동</a>
-      {% endif %}
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile">
+      <div class="kpi-label">강종 · 두께 · 공정</div>
+      <div class="fw-bold fs-6">{{ params.get('material') or '-' }} / {{ params.get('thickness') or '-' }}</div>
+      <div class="kpi-sub">{{ params.get('process') or '-' }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-ok">
+      <div class="kpi-label">배정 작업자</div>
+      <div class="fw-bold fs-6">{{ params.get('worker_name') or '자동 배정' }}</div>
+      <div class="kpi-sub">{{ '자체 수행' if doc.get('execution_type') != 'OUTSOURCED_B2B' else '협력사 연계' }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-warn">
+      <div class="kpi-label">문서 상태</div>
+      <div class="fw-bold fs-6">승인 대기 (초안)</div>
+      <div class="kpi-sub">{{ doc.get('work_order_number') or '확정 시 번호 부여' }}</div>
     </div>
   </div>
 </div>
+{% endif %}
+
+<!-- 통합 조치 내역 및 착수 조건 본문 -->
+<div class="panel-card">
+  <div class="section-bar">
+    <h3 class="panel-title">{{ '통합 조치 내역 및 착수 조건' if has_draft else '확인 필요한 항목 및 추천 목록' }}</h3>
+    {% if doc and doc.get('files', {}).get('download_pdf_url') %}
+      <a href="{{ doc.get('files', {}).get('download_pdf_url') }}" target="_blank" class="btn btn-outline-primary btn-sm">작업지시서 초안 PDF 미리보기</a>
+    {% endif %}
+  </div>
+  <div id="plan-md-body"></div>
+
+  {% if sources %}
+  <div class="border-top mt-3 pt-3 small">
+    <strong class="text-secondary me-2">참고 기준서:</strong>
+    {% for s in sources %}
+      <span class="status-chip status-muted me-1">{{ s.title }} (p.{{ s.page }})</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- 빠른 선택 보완 + 조건 수정 재산출 카드 -->
+<div class="panel-card">
+  <div class="section-bar mb-3 pb-2">
+    <h3 class="panel-title">{{ '조건 수정 및 계획 재산출' if has_draft else '빠른 선택으로 바로 실행안 완성하기' }}</h3>
+    <span class="small text-muted">버튼을 누르거나 원하는 조건을 직접 입력해 다시 분석할 수 있습니다.</span>
+  </div>
+
+  {% if not has_draft and (quick_workers or quick_blocks) %}
+  <div class="row g-3 mb-3">
+    {% if quick_workers %}
+    <div class="col-md-6">
+      <div class="small fw-semibold text-muted mb-2">투입 가능 작업자 빠른 선택</div>
+      <div class="d-flex flex-wrap gap-1">
+        {% for w in quick_workers %}
+        <button type="button" class="btn btn-outline-primary btn-sm"
+                onclick="applyQuickChoice('투입 작업자: {{ w.worker_name }}({{ w.weld_process }})으로 작업지시서 초안을 완성해줘')">
+          {{ w.worker_name }} ({{ w.weld_process }})
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+    {% if quick_blocks %}
+    <div class="col-md-6">
+      <div class="small fw-semibold text-muted mb-2">대상 블록 빠른 선택</div>
+      <div class="d-flex flex-wrap gap-1">
+        {% for b in quick_blocks %}
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                onclick="applyQuickChoice('{{ b.block_id }}({{ b.steel_type }} {{ b.thickness_mm }} {{ b.process }}) 블록 작업지시서 초안을 준비해줘')">
+          {{ b.block_id }} ({{ b.process }})
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <form id="replan-form" action="/service/agent/analyze" method="get" class="d-flex gap-2">
+    <input type="text" id="replan-input" name="prompt" class="form-control"
+           placeholder="{{ '예: 작업자를 변경하고 예열 기준을 다시 확인해줘' if has_draft else '예: 투입 작업자 성명: 장반장으로 작업지시서 초안 만들어줘' }}" required>
+    <button type="submit" class="btn btn-dark px-4 text-nowrap fw-semibold">{{ '계획 재산출' if has_draft else '입력 후 계속' }}</button>
+  </form>
+</div>
+
+<!-- 하단 단일 승인 바 (초안이 준비되었을 때만 활성화) -->
+{% if has_draft %}
+<div class="panel-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background:#f8fafc;">
+  <div class="small text-secondary">
+    <strong class="text-dark">최종 승인 안내:</strong> 승인 버튼 한 번으로 작업지시서 확정, 자재 예약, 문서 발행이 함께 완료됩니다.
+  </div>
+  <div class="d-flex gap-2">
+    {% if can_approve %}
+      <button type="button" id="btn-approve-plan" class="btn btn-primary px-4 fw-bold"
+              style="background:#0052cc;border-color:#0052cc;" onclick="approvePlan()">승인 및 작업 확정</button>
+    {% else %}
+      <span class="status-chip status-muted">승인 권한은 관리자/팀장에게 있습니다</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const PLAN_DOC = {{ doc | tojson }};
+var PLAN_DOC = {{ doc | tojson }};
+var RAW_ANSWER = {{ answer | tojson }};
+
+$('#plan-md-body').html(window.KSmartMd.render(RAW_ANSWER));
+
+function applyQuickChoice(text) {
+  var cur = $.trim($('#replan-input').val());
+  var nextVal = cur ? (cur + ' / ' + text) : text;
+  $('#replan-input').val(nextVal).focus();
+}
+
 function approvePlan() {
-  const $btn = $('#btn-approve-plan');
+  var $btn = $('#btn-approve-plan');
   $btn.prop('disabled', true).text('확정 처리 중...');
   $.ajax({
     url: '/service/api/assistant/approve',
@@ -78,13 +174,13 @@ function approvePlan() {
       instruction_id: PLAN_DOC.instruction_id,
       doc: PLAN_DOC
     }),
-    success: function(res) {
+    success: function (res) {
       alert(res.message || '승인 및 확정이 완료되었습니다.');
       window.location.href = '/service/work-status?work_id=' + encodeURIComponent(PLAN_DOC.work_id || '');
     },
-    error: function(xhr) {
+    error: function (xhr) {
       alert((xhr.responseJSON && xhr.responseJSON.message) || '승인 처리 중 오류가 발생했습니다.');
-      $btn.prop('disabled', false).text('승인 및 확정');
+      $btn.prop('disabled', false).text('승인 및 작업 확정');
     }
   });
 }

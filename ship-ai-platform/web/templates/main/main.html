@@ -1,149 +1,339 @@
 {% extends "layout/base.html" %}
-{% block title %}K-SmartShip | 선박 제조 공정 통합 운영{% endblock %}
+{% block title %}K-SmartShip{% endblock %}
 
-{% block full_width_top %}
-<div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
-  <div class="carousel-indicators">
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
-  </div>
-  <div class="carousel-inner">
-    <div class="carousel-item active">
-      <div class="hero-slide-box">
-        <div class="container">
-          <div class="small text-info fw-semibold mb-2">SMART-VISION</div>
-          <h1 class="fw-bold mb-3">현장 카메라로 선박 번호와 작업 상태를 바로 확인</h1>
-          <p class="text-light opacity-75 mb-4" style="max-width:600px;">
-            야드 CCTV와 로봇 카메라가 블록 번호(OCR), 작업자, 크레인, 용접선을 인식해 현장 상황을 한눈에 보여줍니다.
-          </p>
-          <a href="/vision/{% if primary_vision_branch %}?branch={{ primary_vision_branch }}{% endif %}" class="btn btn-primary px-4">현장 관제 바로가기</a>
-        </div>
-      </div>
-    </div>
-    <div class="carousel-item">
-      <div class="hero-slide-box">
-        <div class="container">
-          <div class="small text-info fw-semibold mb-2">SMART-AGENT</div>
-          <h1 class="fw-bold mb-3">도면·규정·자재를 묶어 작업지시서를 자동 준비</h1>
-          <p class="text-light opacity-75 mb-4" style="max-width:600px;">
-            CAD 도면 제원과 용접 기준서(RAG), 야드 재고·작업자 자격을 한 번에 확인하고 필요한 문서 초안을 만듭니다.
-          </p>
-          <a href="/service/workspace" class="btn btn-primary px-4">통합 업무 바로가기</a>
-        </div>
-      </div>
-    </div>
-    <div class="carousel-item">
-      <div class="hero-slide-box">
-        <div class="container">
-          <div class="small text-info fw-semibold mb-2">SMART-WORKFLOW</div>
-          <h1 class="fw-bold mb-3">단일 승인으로 확정하고 다일 공정 진척을 관리</h1>
-          <p class="text-light opacity-75 mb-4" style="max-width:600px;">
-            중복 문서 생성을 막고, 지연 시 개정(Rev)과 완료 시 다음 블록 자동 활성화까지 공정 흐름을 이어갑니다.
-          </p>
-          <a href="/service/work-status" class="btn btn-primary px-4">작업 현황 바로가기</a>
-        </div>
-      </div>
-    </div>
-  </div>
-  <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon"></span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon"></span>
-  </button>
-</div>
+{% block extra_css %}
+<style>
+  #mainScrollBar {
+    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    background: linear-gradient(90deg, #0052cc, #38bdf8);
+    z-index: 2000; transition: width 0.08s linear;
+  }
+  .main-wide-shell {
+    max-width: 1440px; margin: 0 auto;
+    padding: 0 clamp(20px, 4vw, 56px);
+  }
+  .main-hero-wrap {
+    position: relative;
+    background: linear-gradient(135deg, #0f294d 0%, #1d4ed8 100%);
+    color: #fff; overflow: hidden;
+  }
+  .main-hero-slide {
+    min-height: clamp(460px, 72vh, 660px);
+    display: flex; align-items: center; padding: 64px 0 76px;
+  }
+  .main-hero-badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28);
+    font-size: 13px; font-weight: 600; margin-bottom: 20px;
+  }
+  .main-hero-title {
+    font-size: clamp(30px, 4vw, 52px); font-weight: 800;
+    line-height: 1.24; letter-spacing: -0.02em; margin-bottom: 18px;
+  }
+  .main-hero-desc {
+    font-size: clamp(15px, 1.3vw, 19px); color: rgba(255,255,255,0.88);
+    max-width: 680px; line-height: 1.7; margin-bottom: 30px;
+  }
+  .main-scroll-cue {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: rgba(255,255,255,0.75); letter-spacing: 0.06em;
+  }
+
+  /* 스크롤텔링 섹션 공통 */
+  .st-section { padding: clamp(64px, 8vw, 108px) 0; }
+  .st-section-alt { background: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+
+  /* 챕터 3: 짙은 남색 대신 부드러운 연한 블루 톤 */
+  .st-section-soft {
+    background: linear-gradient(180deg, #eef4ff 0%, #f8fafc 100%);
+    border-top: 1px solid #dbeafe;
+  }
+
+  .st-eyebrow {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.08em;
+    color: #0052cc; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .st-heading {
+    font-size: clamp(24px, 2.8vw, 38px); font-weight: 800;
+    color: #0f172a; line-height: 1.3; letter-spacing: -0.02em; margin-bottom: 16px;
+  }
+  .st-lead {
+    font-size: clamp(15px, 1.15vw, 17px); color: #475569;
+    line-height: 1.75; margin-bottom: 24px;
+  }
+
+  .st-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 32px; height: 100%;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .st-card:hover {
+    transform: translateY(-4px); border-color: #93c5fd;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.07);
+  }
+  .st-visual-box {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 18px;
+    padding: 32px; min-height: 300px;
+    display: flex; flex-direction: column; justify-content: center;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  }
+  .st-step-card {
+    background: #fff; border: 1px solid #dbeafe; border-radius: 14px;
+    padding: 20px 24px; display: flex; align-items: flex-start; gap: 16px;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.05);
+  }
+  .st-step-num {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background: #0052cc; color: #fff; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* 양방향 스크롤텔링 애니메이션 */
+  .st-reveal { opacity: 0; transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); will-change: opacity, transform; }
+  .st-up { transform: translateY(36px); }
+  .st-left { transform: translateX(-40px); }
+  .st-right { transform: translateX(40px); }
+  .st-scale { transform: scale(0.95); }
+  .st-reveal.is-visible { opacity: 1; transform: none; }
+  .st-delay-1 { transition-delay: 0.08s; }
+  .st-delay-2 { transition-delay: 0.18s; }
+  .st-delay-3 { transition-delay: 0.28s; }
+</style>
 {% endblock %}
 
+{% block main_class %}p-0{% endblock %}
+
 {% block content %}
-<!-- M-01a: 기능설명 카드 3개 -->
-<section class="row g-3 mb-5">
-  <div class="col-md-4">
-    <div class="surface-card h-100 d-flex flex-column justify-content-between">
-      <div>
-        <h5 class="fw-bold mb-2">통합 업무</h5>
-        <p class="text-secondary small mb-3">용접 규정 질의, 야드 자재·인력 조회, 메일·발주 초안 작성, 작업지시 중복 확인을 한 화면에서 처리합니다.</p>
-      </div>
-      <a href="/service/workspace" class="btn btn-outline-dark btn-sm align-self-start">바로가기</a>
+<div id="mainScrollBar"></div>
+
+<!-- 1. 상단 자동 캐러셀 히어로 -->
+<section class="main-hero-wrap">
+  <div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active"></button>
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1"></button>
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2"></button>
     </div>
-  </div>
-  <div class="col-md-4">
-    <div class="surface-card h-100 d-flex flex-column justify-content-between">
-      <div>
-        <h5 class="fw-bold mb-2">현장 관제</h5>
-        <p class="text-secondary small mb-3">야드별 CCTV와 로봇 카메라 영상을 확인하고, 지도를 펼쳐 야드 전환 및 협력사 정보를 확인합니다.</p>
+
+    <div class="carousel-inner">
+      <div class="carousel-item active">
+        <div class="main-hero-slide">
+          <div class="main-wide-shell w-100">
+            <span class="main-hero-badge">[수정 - 슬라이드 1 배지]</span>
+            <h1 class="main-hero-title">[수정 - 슬라이드 1 메인 제목]</h1>
+            <p class="main-hero-desc">[수정 - 슬라이드 1 상세 설명 문구]</p>
+            <div class="d-flex gap-3 flex-wrap">
+              <a href="/service/workspace" class="btn btn-light btn-lg fw-semibold px-4 text-primary">[수정 - 메인 버튼 1] →</a>
+              <a href="/vision/" class="btn btn-outline-light btn-lg px-4">[수정 - 보조 버튼 1]</a>
+            </div>
+          </div>
+        </div>
       </div>
-      <a href="/vision/{% if primary_vision_branch %}?branch={{ primary_vision_branch }}{% endif %}" class="btn btn-outline-dark btn-sm align-self-start">바로가기</a>
+
+      <div class="carousel-item">
+        <div class="main-hero-slide">
+          <div class="main-wide-shell w-100">
+            <span class="main-hero-badge">[수정 - 슬라이드 2 배지]</span>
+            <h1 class="main-hero-title">[수정 - 슬라이드 2 메인 제목]</h1>
+            <p class="main-hero-desc">[수정 - 슬라이드 2 상세 설명 문구]</p>
+            <a href="/vision/" class="btn btn-light btn-lg fw-semibold px-4 text-primary">[수정 - 메인 버튼 2] →</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="carousel-item">
+        <div class="main-hero-slide">
+          <div class="main-wide-shell w-100">
+            <span class="main-hero-badge">[수정 - 슬라이드 3 배지]</span>
+            <h1 class="main-hero-title">[수정 - 슬라이드 3 메인 제목]</h1>
+            <p class="main-hero-desc">[수정 - 슬라이드 3 상세 설명 문구]</p>
+            <a href="/service/work-status" class="btn btn-light btn-lg fw-semibold px-4 text-primary">[수정 - 메인 버튼 3] →</a>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <button class="carousel-control-prev" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
   </div>
-  <div class="col-md-4">
-    <div class="surface-card h-100 d-flex flex-column justify-content-between">
-      <div>
-        <h5 class="fw-bold mb-2">작업 현황 · 자료실</h5>
-        <p class="text-secondary small mb-3">다일 공정 진척률과 문서 개정을 관리하고, CAD 도면과 기술 기준 PDF를 등록·운영합니다.</p>
+  <div class="main-scroll-cue">SCROLL ↓</div>
+</section>
+
+<!-- 2. 핵심 기능 3카드 -->
+<section class="st-section">
+  <div class="main-wide-shell">
+    <div class="text-center mb-5 st-reveal st-up">
+      <div class="st-eyebrow">[수정 - 섹션 1 소제목]</div>
+      <h2 class="st-heading">[수정 - 섹션 1 큰 제목]</h2>
+      <p class="st-lead mx-auto" style="max-width:680px;">[수정 - 섹션 1 요약 설명]</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-4 st-reveal st-scale st-delay-1">
+        <div class="st-card d-flex flex-column justify-content-between">
+          <div>
+            <div class="st-eyebrow">[수정 - 카드 1 분류]</div>
+            <h4 class="fw-bold mb-3">[수정 - 카드 1 제목]</h4>
+            <p class="text-secondary mb-4">[수정 - 카드 1 기능 설명]</p>
+          </div>
+          <a href="/service/workspace" class="btn btn-outline-primary fw-semibold">[수정 - 카드 1 바로가기] →</a>
+        </div>
       </div>
-      <div class="d-flex gap-2">
-        <a href="/service/work-status" class="btn btn-outline-dark btn-sm">작업 현황</a>
-        <a href="/service/library" class="btn btn-outline-secondary btn-sm">자료실</a>
+
+      <div class="col-lg-4 st-reveal st-scale st-delay-2">
+        <div class="st-card d-flex flex-column justify-content-between">
+          <div>
+            <div class="st-eyebrow">[수정 - 카드 2 분류]</div>
+            <h4 class="fw-bold mb-3">[수정 - 카드 2 제목]</h4>
+            <p class="text-secondary mb-4">[수정 - 카드 2 기능 설명]</p>
+          </div>
+          <a href="/vision/" class="btn btn-outline-primary fw-semibold">[수정 - 카드 2 바로가기] →</a>
+        </div>
+      </div>
+
+      <div class="col-lg-4 st-reveal st-scale st-delay-3">
+        <div class="st-card d-flex flex-column justify-content-between">
+          <div>
+            <div class="st-eyebrow">[수정 - 카드 3 분류]</div>
+            <h4 class="fw-bold mb-3">[수정 - 카드 3 제목]</h4>
+            <p class="text-secondary mb-4">[수정 - 카드 3 기능 설명]</p>
+          </div>
+          <a href="/service/work-status" class="btn btn-outline-primary fw-semibold">[수정 - 카드 3 바로가기] →</a>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- M-01b: smart-vision / smart-agent / smart-workflow 소개 -->
-<section class="d-flex flex-column gap-4">
-  <div class="surface-card">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-7">
-        <div class="small fw-bold text-primary mb-1">smart - vision</div>
-        <h4 class="fw-bold mb-2">선박 번호 인식과 현장 안전 확인</h4>
-        <p class="text-secondary mb-0">
-          야드 카메라가 블록에 적힌 번호(OCR)와 주변 작업자·크레인·용접선을 감지합니다.
-          현장 화면을 보면서 바로 작업 준비를 요청할 수 있습니다.
-        </p>
+<!-- 3. Chapter 01 · smart - vision -->
+<section class="st-section st-section-alt">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6 st-reveal st-left">
+        <div class="st-eyebrow">CHAPTER 01 · SMART - VISION</div>
+        <h2 class="st-heading">[수정 - 비전 챕터 제목]</h2>
+        <p class="st-lead">[수정 - 비전 챕터 설명 문구]</p>
+        <ul class="text-secondary ps-3 mb-4" style="line-height:1.9;">
+          <li>[수정 - 비전 핵심 포인트 1]</li>
+          <li>[수정 - 비전 핵심 포인트 2]</li>
+          <li>[수정 - 비전 핵심 포인트 3]</li>
+        </ul>
+        <a href="/vision/" class="btn btn-primary px-4">[수정 - 비전 이동 버튼] →</a>
       </div>
-      <div class="col-lg-5">
-        <div class="border rounded-3 bg-light p-4 text-center text-secondary small">
-          CCTV / ROBOTCAM 실시간 탐지 및 OCR 식별 연계
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="surface-card">
-    <div class="row align-items-center g-4 flex-lg-row-reverse">
-      <div class="col-lg-7">
-        <div class="small fw-bold text-primary mb-1">smart - agent</div>
-        <h4 class="fw-bold mb-2">규격 검색부터 자재·인력 점검까지 자동 분석</h4>
-        <p class="text-secondary mb-0">
-          CAD 도면의 강종·두께를 기준으로 사내 용접 기준서와 안전 지침(RAG)을 찾고,
-          부족 자재와 자격 만료 인력을 점검해 통합 실행안을 작성합니다.
-        </p>
-      </div>
-      <div class="col-lg-5">
-        <div class="border rounded-3 bg-light p-4 text-center text-secondary small">
-          CAD · RAG · 사내 ERP · 협력사 B2B · 기상 통합 조회
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="surface-card">
-    <div class="row align-items-center g-4">
-      <div class="col-lg-7">
-        <div class="small fw-bold text-primary mb-1">smart - workflow</div>
-        <h4 class="fw-bold mb-2">단일 승인과 다일 공정 자동 전환</h4>
-        <p class="text-secondary mb-0">
-          담당자의 한 번 승인으로 작업지시서 확정과 자원 배정이 완료됩니다.
-          작업 지연 시 기존 문서를 개정하고, 완료(100%) 시 다음 순위 블록 공정이 자동 활성화됩니다.
-        </p>
-      </div>
-      <div class="col-lg-5">
-        <div class="border rounded-3 bg-light p-4 text-center text-secondary small">
-          CAD 공정 큐 확정 → 단일 승인 → 진척·개정 관리 → 로봇 실행 연계
+      <div class="col-lg-6 st-reveal st-right">
+        <div class="st-visual-box text-center text-muted">
+          <div class="fw-semibold mb-2">[수정 - 비전 예시 이미지 또는 요약 영역]</div>
+          <div class="small">[수정 - 이미지/캡처 삽입 위치]</div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
+<!-- 4. Chapter 02 · smart - agent -->
+<section class="st-section">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5 flex-lg-row-reverse">
+      <div class="col-lg-6 st-reveal st-right">
+        <div class="st-eyebrow">CHAPTER 02 · SMART - AGENT</div>
+        <h2 class="st-heading">[수정 - 에이전트 챕터 제목]</h2>
+        <p class="st-lead">[수정 - 에이전트 챕터 설명 문구]</p>
+        <ul class="text-secondary ps-3 mb-4" style="line-height:1.9;">
+          <li>[수정 - 에이전트 핵심 포인트 1]</li>
+          <li>[수정 - 에이전트 핵심 포인트 2]</li>
+          <li>[수정 - 에이전트 핵심 포인트 3]</li>
+        </ul>
+        <a href="/service/workspace" class="btn btn-primary px-4">[수정 - 에이전트 이동 버튼] →</a>
+      </div>
+      <div class="col-lg-6 st-reveal st-left">
+        <div class="st-visual-box text-center text-muted">
+          <div class="fw-semibold mb-2">[수정 - 에이전트 예시 이미지 또는 요약 영역]</div>
+          <div class="small">[수정 - 이미지/캡처 삽입 위치]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Chapter 03 · smart - workflow (부드러운 밝은 블루 톤으로 완화) -->
+<section class="st-section st-section-soft">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5 st-reveal st-left">
+        <div class="st-eyebrow">CHAPTER 03 · SMART - WORKFLOW</div>
+        <h2 class="st-heading">[수정 - 워크플로우 챕터 제목]</h2>
+        <p class="st-lead">[수정 - 워크플로우 챕터 설명 문구]</p>
+        <div class="d-flex gap-3 flex-wrap">
+          <a href="/service/workspace" class="btn btn-primary px-4">[수정 - 시작 버튼] →</a>
+          <a href="/service/work-status" class="btn btn-outline-primary px-4">[수정 - 보조 버튼]</a>
+        </div>
+      </div>
+
+      <div class="col-lg-7 st-reveal st-right">
+        <div class="d-flex flex-column gap-3">
+          <div class="st-step-card">
+            <div class="st-step-num">1</div>
+            <div>
+              <div class="fw-bold text-dark mb-1">[수정 - 1단계 제목]</div>
+              <div class="small text-secondary">[수정 - 1단계 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-card">
+            <div class="st-step-num">2</div>
+            <div>
+              <div class="fw-bold text-dark mb-1">[수정 - 2단계 제목]</div>
+              <div class="small text-secondary">[수정 - 2단계 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-card">
+            <div class="st-step-num">3</div>
+            <div>
+              <div class="fw-bold text-dark mb-1">[수정 - 3단계 제목]</div>
+              <div class="small text-secondary">[수정 - 3단계 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-card">
+            <div class="st-step-num">4</div>
+            <div>
+              <div class="fw-bold text-dark mb-1">[수정 - 4단계 제목]</div>
+              <div class="small text-secondary">[수정 - 4단계 설명]</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const bar = document.getElementById('mainScrollBar');
+  window.addEventListener('scroll', function() {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    if (bar && h > 0) bar.style.width = ((window.scrollY / h) * 100) + '%';
+  }, { passive: true });
+
+  const targets = document.querySelectorAll('.st-reveal');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+        } else {
+          entry.target.classList.remove('is-visible');
+        }
+      });
+    }, { threshold: 0.15 });
+    targets.forEach(el => io.observe(el));
+  } else {
+    targets.forEach(el => el.classList.add('is-visible'));
+  }
+})();
+</script>
 {% endblock %}

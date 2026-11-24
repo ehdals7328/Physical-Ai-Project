@@ -1,84 +1,422 @@
-/* K-SmartShip Clean Enterprise Stylesheet */
+/* ==========================================================================
+   K-SmartShip Corporate Portal Stylesheet (Original Refined Scale + Mobile Ready)
+   ========================================================================== */
 :root {
-  --ink: #0f172a;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --bg: #f8fafc;
-  --card: #ffffff;
-  --accent: #2563eb;
-  --accent-dark: #1d4ed8;
+  --brand-navy: #0b1f3a;
+  --brand-blue: #0052cc;
+  --brand-blue-dark: #003e9e;
+  --surface-bg: #f4f6f9;
+  --surface-card: #ffffff;
+  --border-subtle: #dde3ec;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --status-ok: #0f766e;
+  --status-warn: #b45309;
+  --status-danger: #b91c1c;
 }
 
 html, body {
-  background-color: var(--bg);
-  color: var(--ink);
+  background-color: var(--surface-bg);
+  color: var(--text-primary);
   font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
   font-size: 14.5px;
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
 }
 
 main {
   flex: 1 0 auto;
 }
 
+/* Balanced Corporate Container — matches original login portal scale (1140px max) */
+.container-enterprise {
+  width: 100%;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* ---------- Header (Clean Single-Row Responsive Navbar, No Mega-Menu) ---------- */
 .site-header {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-subtle);
   position: sticky;
   top: 0;
   z-index: 1030;
 }
 
-.site-header .nav-item-link {
-  color: #475569;
+.site-header .navbar {
+  min-height: 66px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--brand-navy) !important;
+  font-weight: 800;
+  font-size: 17.5px;
+  letter-spacing: -0.02em;
+}
+
+.brand-square {
+  width: 28px;
+  height: 28px;
+  background: var(--brand-navy);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+}
+
+.primary-nav-link {
+  display: block;
+  padding: 10px 14px;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 600;
   font-size: 14.5px;
-  padding: 18px 10px;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  border-radius: 6px;
+  transition: color 0.15s, background-color 0.15s;
 }
 
-.site-header .nav-item-link:hover,
-.site-header .nav-item-link.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+.primary-nav-link:hover {
+  color: var(--brand-blue);
+  background: #f1f5f9;
 }
 
-.surface-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+.primary-nav-link.active {
+  color: var(--brand-blue);
+  background: #eff6ff;
+  font-weight: 700;
+}
+
+.util-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.util-link:hover {
+  background: #eef2f7;
+  color: var(--brand-navy);
+}
+
+/* ---------- Page Shell, Headers, Cards, KPI Tiles ---------- */
+.page-shell {
+  padding-top: 28px;
+  padding-bottom: 64px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand-navy);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+
+.page-desc {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.panel-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 10px;
-  padding: 24px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
 }
 
-.hero-slide-box {
-  background: #0f172a;
-  color: #ffffff;
-  min-height: 360px;
-  display: flex;
-  align-items: center;
-  padding: 56px 0;
+.panel-title {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--brand-navy);
+  margin: 0;
 }
 
-.stepper-bar {
+.section-bar {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.kpi-tile {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--brand-navy);
+  border-radius: 10px;
+  padding: 16px 18px;
+  height: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.kpi-tile.kpi-blue { border-top-color: var(--brand-blue); }
+.kpi-tile.kpi-ok { border-top-color: var(--status-ok); }
+.kpi-tile.kpi-warn { border-top-color: #d97706; }
+.kpi-tile.kpi-danger { border-top-color: var(--status-danger); }
+
+.kpi-tile.clickable { cursor: pointer; }
+.kpi-tile.clickable:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 4px 14px rgba(11, 31, 58, 0.06);
+}
+
+.kpi-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.kpi-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--brand-navy);
+  line-height: 1.15;
+}
+
+.kpi-sub {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+/* ---------- Tables & Status Chips ---------- */
+.table-enterprise {
+  margin-bottom: 0;
+  font-size: 13.5px;
+}
+
+.table-enterprise thead th {
+  background: #f8fafc;
+  color: #374151;
+  font-weight: 700;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 11px 12px;
+  white-space: nowrap;
+}
+
+.table-enterprise tbody td {
+  padding: 11px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.table-enterprise tbody tr:hover {
+  background: #fafcff;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-ok { background: #ecfdf5; color: var(--status-ok); }
+.status-ok::before { background: var(--status-ok); }
+.status-warn { background: #fffbeb; color: var(--status-warn); }
+.status-warn::before { background: var(--status-warn); }
+.status-danger { background: #fef2f2; color: var(--status-danger); }
+.status-danger::before { background: var(--status-danger); }
+.status-info { background: #eff6ff; color: var(--brand-blue); }
+.status-info::before { background: var(--brand-blue); }
+.status-muted { background: #f3f4f6; color: #4b5563; }
+.status-muted::before { background: #9ca3af; }
+
+/* ---------- Workspace Command Bar & Active Command Pill ---------- */
+.cmd-textarea {
+  resize: none;
+  min-height: 44px;
+  max-height: 120px;
+  overflow-y: auto;
+  line-height: 1.5;
+  font-size: 14.5px;
+  padding: 9px 14px;
+  border-radius: 8px;
+}
+
+.active-cmd-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  max-width: 100%;
+}
+
+.active-cmd-pill .cmd-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+
+/* ---------- Cards inside Dashboard ---------- */
+.yard-tile {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.yard-tile:hover {
+  border-color: var(--brand-blue);
+  background: #ffffff;
+}
+
+.queue-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+/* ---------- Main Home Carousel & Story Bands ---------- */
+.hero-slide {
+  min-height: 390px;
+  background: var(--brand-navy);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  padding: 52px 0;
+}
+
+.story-section {
+  padding: 60px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: #ffffff;
+}
+
+.story-section.alt {
+  background: #f8fafc;
+}
+
+/* ---------- Original Login Portal Card (image_858e0d.png exact feel) ---------- */
+.auth-portal-wrap {
+  max-width: 980px;
+  margin: 16px auto 32px;
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(11, 31, 58, 0.08);
+}
+
+.auth-portal-topbar {
+  padding: 13px 26px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.auth-left-pane {
+  background: linear-gradient(160deg, #0b1f3a 0%, #102e57 100%);
+  color: #ffffff;
+  padding: 44px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 490px;
+}
+
+.auth-badge {
+  display: inline-block;
+  background: #ffffff;
+  color: #0b1f3a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin-bottom: 18px;
+}
+
+.auth-right-pane {
+  padding: 44px 40px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.auth-quick-box {
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 22px;
+}
+
+/* ---------- Stepper ---------- */
+.stepper-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .stepper-node {
-  flex: 1;
-  min-width: 140px;
-  padding: 10px 14px;
-  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  background: #f1f5f9;
-  color: var(--muted);
+  background: #f8fafc;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 600;
   text-align: center;
@@ -87,33 +425,245 @@ main {
 .stepper-node.done {
   background: #eff6ff;
   border-color: #bfdbfe;
-  color: var(--accent-dark);
+  color: var(--brand-blue);
 }
 
 .stepper-node.active {
-  background: var(--ink);
-  border-color: var(--ink);
+  background: var(--brand-navy);
+  border-color: var(--brand-navy);
   color: #ffffff;
 }
 
+/* ---------- Rich Markdown Renderer ---------- */
+.md-render {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+
+.md-render h1, .md-render h2, .md-render h3, .md-render h4 {
+  font-weight: 800;
+  color: var(--brand-navy);
+  margin-top: 16px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.md-render h2 { font-size: 17px; }
+.md-render h3 { font-size: 15.5px; }
+.md-render h4 { font-size: 14.5px; }
+.md-render p { margin-bottom: 8px; }
+.md-render ul, .md-render ol { padding-left: 20px; margin-bottom: 10px; }
+.md-render li { margin-bottom: 4px; }
+.md-render hr { margin: 14px 0; border-color: var(--border-subtle); }
+
+.md-render blockquote {
+  border-left: 3px solid var(--brand-blue);
+  background: #f8fafc;
+  padding: 10px 14px;
+  margin: 10px 0;
+  border-radius: 0 8px 8px 0;
+  color: var(--text-secondary);
+}
+
+.md-render code {
+  background: #f1f5f9;
+  color: var(--brand-navy);
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 12.5px;
+}
+
+.md-render .md-table-wrap {
+  overflow-x: auto;
+  margin: 12px 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.md-render table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 0;
+}
+
+.md-render table thead th {
+  background: #f8fafc;
+  color: #1e293b;
+  font-weight: 700;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.md-render table tbody td {
+  padding: 8px 11px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+/* ---------- Footer ---------- */
 .site-footer {
   flex-shrink: 0;
-  background: var(--card);
-  border-top: 1px solid var(--border);
-  color: var(--muted);
+  background: #ffffff;
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 30px 0 26px;
   font-size: 13px;
 }
 
-.table-clean thead th {
-  background: #f8fafc;
-  color: #334155;
+.footer-heading {
+  font-size: 13px;
   font-weight: 700;
-  font-size: 13px;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+  color: var(--brand-navy);
+  margin-bottom: 8px;
 }
 
-.table-clean tbody td {
-  vertical-align: middle;
-  border-bottom: 1px solid #f1f5f9;
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links li { margin-bottom: 5px; }
+.footer-links a { color: var(--text-secondary); text-decoration: none; }
+.footer-links a:hover { color: var(--brand-blue); text-decoration: underline; }
+
+/* ---------- Mobile Responsive ---------- */
+@media (max-width: 991.98px) {
+  .auth-left-pane { min-height: auto; padding: 30px 24px; }
+  .auth-right-pane { padding: 30px 24px; }
+  .stepper-bar { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 575.98px) {
+  .container-enterprise { padding-left: 14px; padding-right: 14px; }
+  .panel-card { padding: 16px; }
+  .hero-slide { min-height: 320px; padding: 36px 0; }
+  .stepper-bar { grid-template-columns: 1fr; }
+  .active-cmd-pill .cmd-text { max-width: 180px; }
+}
+
+
+/* ---------- Tabs: Active Tab Lights Up in Brand Blue (image_86128a fix) ---------- */
+.nav-tabs {
+  border-bottom: 1.5px solid var(--border-subtle);
+}
+
+.nav-tabs .nav-link {
+  color: #64748b;
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-bottom: none;
+  padding: 9px 18px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--brand-blue);
+  border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--brand-blue) !important;
+  background-color: #ffffff !important;
+  border-color: var(--border-subtle) var(--border-subtle) #ffffff !important;
+  border-top: 2.5px solid var(--brand-blue) !important;
+  font-weight: 700;
+}
+
+/* Clickable Map Toggle Header Bar (No redundant button) */
+.map-toggle-bar {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.map-toggle-bar:hover {
+  background-color: #f8fafc;
+  border-color: var(--brand-blue);
+}
+
+
+/* ---------- Main Page Bidirectional Scroll-Telling Animation ---------- */
+.story-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  will-change: opacity, transform;
+}
+
+.story-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* ---------- Vertical Time-Tracking Timeline (image_87ef46.png) ---------- */
+.v-timeline {
+  position: relative;
+  padding-left: 28px;
+  margin: 4px 0 0 6px;
+}
+
+.v-timeline::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 8px;
+  bottom: 10px;
+  width: 2px;
+  background: #cbd5e1;
+}
+
+.v-timeline-item {
+  position: relative;
+  padding-bottom: 18px;
+}
+
+.v-timeline-item:last-child {
+  padding-bottom: 2px;
+}
+
+.v-timeline-dot {
+  position: absolute;
+  left: -28px;
+  top: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid #94a3b8;
+  z-index: 1;
+}
+
+.v-timeline-item.state-done .v-timeline-dot {
+  border-color: var(--brand-blue);
+  background: var(--brand-blue);
+}
+
+.v-timeline-item.state-active .v-timeline-dot {
+  border-color: var(--brand-blue);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 82, 204, 0.18);
+}
+
+.v-timeline-time {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--brand-blue);
+}
+
+.v-timeline-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-navy);
+}
+
+.v-timeline-detail {
+  font-size: 13px;
+  color: var(--text-secondary);
 }

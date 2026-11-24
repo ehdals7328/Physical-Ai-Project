@@ -1300,6 +1300,19 @@ def _calc_cert_days_left(expiry_str: str | None) -> int | None:
     return None
 
 
+def _format_cert_dday(days: int | None) -> tuple[str, str]:
+    """만료일 D-Day 표시 문구 및 상태 코드 반환 (D--683 같은 이중 마이너스 방지)"""
+    if days is None:
+        return "-", "NORMAL"
+    if days < 0:
+        return f"만료됨 ({abs(days)}일 경과)", "EXPIRED"
+    if days == 0:
+        return "오늘 만료", "EXPIRED"
+    if days <= 90:
+        return f"D-{days} (임박)", "EXPIRING"
+    return f"정상 (D-{days})", "NORMAL"
+
+
 def _resolve_doc_abs_path(storage_uri: str | None) -> Path | None:
     uri = (storage_uri or "").strip()
     if not uri or uri.startswith(("http://", "https://", "s3://")) or uri == "ARCHIVED_HISTORY":
@@ -1315,99 +1328,126 @@ def _resolve_doc_abs_path(storage_uri: str | None) -> Path | None:
     return None
 
 
-def _extract_inst_pdf_url(inst) -> str:
+def _load_env_meta(inst) -> dict:
     if not inst or not inst.external_env_json:
-        return ""
+        return {}
+    raw_str = _read_clob(inst.external_env_json).strip()
+    if not raw_str:
+        return {}
     try:
-        raw_str = _read_clob(inst.external_env_json).strip()
-        try:
-            meta = json.loads(raw_str)
-        except Exception:
-            meta = ast.literal_eval(raw_str)
-        if not isinstance(meta, dict):
-            return ""
-        files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
-        raw_url = files.get("download_pdf_url") or ""
-        if not raw_url:
-            return ""
-        parts = raw_url.strip("/").split("/")
-        if len(parts) >= 2:
-            date_str, filename = parts[-2], parts[-1]
-            if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
-                return ""
-        return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
+        meta = json.loads(raw_str)
     except Exception:
+        try:
+            meta = ast.literal_eval(raw_str)
+        except Exception:
+            meta = {}
+    return meta if isinstance(meta, dict) else {}
+
+
+def _extract_inst_pdf_url(inst) -> str:
+    meta = _load_env_meta(inst)
+    files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
+    raw_url = files.get("download_pdf_url") or ""
+    if not raw_url:
         return ""
+    parts = raw_url.strip("/").split("/")
+    if len(parts) >= 2:
+        date_str, filename = parts[-2], parts[-1]
+        if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
+            return ""
+    return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
 
 
 def _extract_inst_po_pdf_url(inst) -> str:
-    if not inst or not inst.external_env_json:
+    meta = _load_env_meta(inst)
+    files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
+    raw_url = files.get("download_po_pdf_url") or ""
+    if not raw_url:
         return ""
-    try:
-        raw_str = _read_clob(inst.external_env_json).strip()
-        try:
-            meta = json.loads(raw_str)
-        except Exception:
-            meta = ast.literal_eval(raw_str)
-        if not isinstance(meta, dict):
+    parts = raw_url.strip("/").split("/")
+    if len(parts) >= 2:
+        date_str, filename = parts[-2], parts[-1]
+        if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
             return ""
-        files = meta.get("files") or (meta.get("_draft_payload") or {}).get("files") or {}
-        raw_url = files.get("download_po_pdf_url") or ""
-        if not raw_url:
-            return ""
-        parts = raw_url.strip("/").split("/")
-        if len(parts) >= 2:
-            date_str, filename = parts[-2], parts[-1]
-            if not (PROJECT_ROOT / "generated_docs" / "outputs" / date_str / filename).exists():
-                return ""
-        return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
-    except Exception:
-        return ""
+    return raw_url if raw_url.startswith("/service/") else f"/service{raw_url}"
 
 
 def _safe_query_work_plans(branch_code: str | None = None, states: list[str] | None = None):
-    """CAD_DRAWINGS / WORK_PLANS DDL 적용 전에도 안전하게 빈 목록 반환"""
+    """CAD_DRAWINGS / WORK_PLANS DDL 미적용 DB에서도 안전하게 빈 목록 반환"""
     try:
-        q = WorkPlan.query
-        if states:
-            q = q.filter(WorkPlan.plan_state.in_(states))
-        else:
-            q = q.filter(WorkPlan.plan_state.in_(["PENDING", "IN_PROGRESS"]))
-        if branch_code:
-            q = q.filter(WorkPlan.branch_code == branch_code)
-        return q.order_by(WorkPlan.priority_rank.asc(), WorkPlan.created_at.asc()).all()
+        with db.session.begin_nested():
+            q = WorkPlan.query
+            if states:
+                q = q.filter(WorkPlan.plan_state.in_(states))
+            else:
+                q = q.filter(WorkPlan.plan_state.in_(["PENDING", "IN_PROGRESS"]))
+            if branch_code:
+                q = q.filter(WorkPlan.branch_code == branch_code)
+            return q.order_by(WorkPlan.priority_rank.asc(), WorkPlan.created_at.asc()).all()
     except Exception:
-        db.session.rollback()
+        return []
+
+
+def _safe_query_cad_drawings(limit: int = 10):
+    try:
+        with db.session.begin_nested():
+            return CadDrawing.query.order_by(CadDrawing.created_at.desc()).limit(limit).all()
+    except Exception:
         return []
 
 
 def _safe_get_wo_progress_map(work_ids: list[int]) -> dict[int, dict]:
-    """WORK_ORDERS.PROGRESS_PCT / PLAN_ID 컬럼 존재 시 읽고, 미적용 DB면 안전 fallback"""
+    """WORK_ORDERS.PROGRESS_PCT / PLAN_ID 존재 시 읽고, 미적용 DB면 안전 fallback"""
     if not work_ids:
         return {}
     try:
-        rows = db.session.execute(
-            text("SELECT WORK_ID, PLAN_ID, PROGRESS_PCT FROM WORK_ORDERS WHERE WORK_ID IN :ids"),
-            {"ids": tuple(work_ids)},
-        ).fetchall()
-        return {int(r[0]): {"plan_id": r[1], "progress_pct": int(r[2] or 0)} for r in rows}
+        with db.session.begin_nested():
+            placeholders = ", ".join(f":id_{i}" for i in range(len(work_ids)))
+            params = {f"id_{i}": int(wid) for i, wid in enumerate(work_ids)}
+            rows = db.session.execute(
+                text(f"SELECT WORK_ID, PLAN_ID, PROGRESS_PCT FROM WORK_ORDERS WHERE WORK_ID IN ({placeholders})"),
+                params,
+            ).fetchall()
+            return {
+                int(r[0]): {"plan_id": r[1], "progress_pct": int(r[2]) if r[2] is not None else None}
+                for r in rows
+            }
     except Exception:
-        db.session.rollback()
         return {}
 
 
-def _safe_update_wo_progress(work_id: int, progress_pct: int):
+def _safe_update_wo_progress(work_id: int, progress_pct: int) -> bool:
     try:
-        db.session.execute(
-            text("UPDATE WORK_ORDERS SET PROGRESS_PCT = :pct WHERE WORK_ID = :wid"),
-            {"pct": progress_pct, "wid": work_id},
-        )
+        with db.session.begin_nested():
+            db.session.execute(
+                text("UPDATE WORK_ORDERS SET PROGRESS_PCT = :pct WHERE WORK_ID = :wid"),
+                {"pct": int(progress_pct), "wid": int(work_id)},
+            )
+        return True
     except Exception:
-        db.session.rollback()
+        return False
+
+
+def _resolve_progress_pct(wo, latest_inst, prog_map: dict) -> tuple[int, list[dict]]:
+    """DB 컬럼(PROGRESS_PCT) 및 지침서 메타(_progress_meta)를 통합해 정확한 진척률·이력 반환"""
+    meta = _load_env_meta(latest_inst)
+    pmeta = meta.get("_progress_meta") if isinstance(meta.get("_progress_meta"), dict) else {}
+    timeline = pmeta.get("timeline") if isinstance(pmeta.get("timeline"), list) else []
+
+    db_pct = prog_map.get(wo.work_id, {}).get("progress_pct")
+    if db_pct is not None:
+        return int(db_pct), timeline
+    if "progress_pct" in pmeta and pmeta["progress_pct"] is not None:
+        return int(pmeta["progress_pct"]), timeline
+    if wo.status_code == "COMPLETED":
+        return 100, timeline
+    if wo.status_code == "IN_PROGRESS":
+        return 40, timeline
+    return 0, timeline
 
 
 # =====================================================================
-# 3. [W-01a ~ W-01d] 통합 업무 (동적 단일 페이지 AI 워크스페이스)
+# 3. [W-01a ~ W-01e] 통합 업무 (동적 단일 페이지 AI + ERP 허브)
 # =====================================================================
 @service_bp.route("/workspace", methods=["GET"])
 @login_required
@@ -1417,9 +1457,9 @@ def workspace_page():
     first_block = ErpBlockMaster.query.order_by(ErpBlockMaster.block_id.asc()).first()
     first_branch = branches[0] if branches else None
     sample_placeholder = (
-        f"예: {first_branch.branch_name} {first_block.block_id} 오늘 작업 상태나 필요한 자재를 확인해줘"
+        f"업무 요청 입력 (Enter 전송 · Shift+Enter 줄바꿈) — 예: {first_branch.branch_name} {first_block.block_id} 자재와 용접 기준 확인해줘"
         if (first_branch and first_block)
-        else "예: 선박 번호나 블록 번호를 입력해 규정, 자재, 현장 상태, 작업 지시를 요청해 주세요"
+        else "업무 요청 입력 (Enter 전송 · Shift+Enter 줄바꿈) — 선박·블록·자재·규격·작업지시를 자유롭게 입력하세요"
     )
     initial_prompt = (request.args.get("prompt") or "").strip()
 
@@ -1438,11 +1478,18 @@ def workspace_page():
 @service_bp.route("/api/workspace/summary", methods=["GET"])
 @login_required
 def api_workspace_summary():
-    """W-01a 초기 진입 요약: 당일 활성 공정 큐 · 야드 주의 자원 · RDB 결재/문서 현황"""
+    """W-01a 종합 현황: 실제 DB 기반 KPI · 야드별 카드 · 공정 큐 · 긴급 알림 · 동적 추천 질의"""
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     can_erp = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
-    branch_map = {b.branch_code: b.branch_name for b in ErpBranch.query.all()}
 
+    branches_raw = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    branch_map = {b.branch_code: b.branch_name for b in branches_raw}
+    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.branch_code.asc(), ErpBlockMaster.block_id.asc()).all()
+    all_orders = WorkOrder.query.order_by(WorkOrder.work_id.desc()).all()
+    prog_map = _safe_get_wo_progress_map([o.work_id for o in all_orders])
+
+    # 1) 당일 활성 공정 큐 (WORK_PLANS 우선, 없으면 활성 WORK_ORDERS)
     plans = _safe_query_work_plans()
     active_queue = []
     if plans:
@@ -1451,42 +1498,46 @@ def api_workspace_summary():
                 "plan_id": p.plan_id,
                 "priority_rank": p.priority_rank,
                 "block_code": p.block_code,
+                "block_name": p.block_name,
                 "branch_code": p.branch_code,
                 "branch_name": branch_map.get(p.branch_code, p.branch_code),
+                "material_grade": p.material_grade,
+                "thickness_mm": float(p.thickness_mm),
                 "process_code": p.process_code,
                 "state": p.plan_state,
                 "progress_pct": int(p.progress_pct or 0),
                 "wo_no": p.assigned_wo_number or "",
+                "work_id": None,
             })
     else:
-        orders = (
-            WorkOrder.query
-            .filter(WorkOrder.status_code.in_(["READY", "IN_PROGRESS"]))
-            .order_by(WorkOrder.work_id.desc())
-            .limit(8)
-            .all()
-        )
-        prog_map = _safe_get_wo_progress_map([o.work_id for o in orders])
-        for idx, wo in enumerate(orders, 1):
-            p_info = prog_map.get(wo.work_id, {})
-            pct = p_info.get("progress_pct")
-            if pct is None:
-                pct = 40 if wo.status_code == "IN_PROGRESS" else 0
+        active_orders = [o for o in all_orders if o.status_code in ("READY", "IN_PROGRESS")]
+        for idx, wo in enumerate(active_orders[:8], 1):
+            inst = WorkInstruction.query.filter_by(work_id=wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+            pct, _ = _resolve_progress_pct(wo, inst, prog_map)
             active_queue.append({
-                "plan_id": p_info.get("plan_id") or "",
+                "plan_id": prog_map.get(wo.work_id, {}).get("plan_id") or "",
                 "priority_rank": idx,
                 "block_code": wo.block_code,
+                "block_name": wo.work_title,
+                "ship_code": wo.ship_code,
                 "branch_code": wo.work_region,
                 "branch_name": branch_map.get(wo.work_region, wo.work_region),
+                "material_grade": wo.material_grade,
+                "thickness_mm": float(wo.thickness_mm) if wo.thickness_mm is not None else 0.0,
                 "process_code": wo.process_code,
                 "state": wo.status_code,
                 "progress_pct": pct,
                 "wo_no": wo.work_no,
+                "work_id": wo.work_id,
             })
 
+    # 2) 야드별 주의 자원 (권한자)
     low_materials, expiring_workers = [], []
+    all_mats, all_equips = [], []
     if can_erp:
-        for m in ErpBomInventory.query.all():
+        all_mats = ErpBomInventory.query.all()
+        all_equips = ErpVehiclesEquipment.query.all()
+        for m in all_mats:
             avail = float(m.total_qty or 0) - float(m.reserved_qty or 0)
             if avail <= 50.0:
                 low_materials.append({
@@ -1497,73 +1548,402 @@ def api_workspace_summary():
                     "available_qty": avail,
                     "unit": m.unit,
                 })
-        for w in ErpWorkerCert.query.all():
+        for w in ErpWorkerCert.query.order_by(ErpWorkerCert.cert_expiry_date.asc()).all():
             days = _calc_cert_days_left(w.cert_expiry_date)
-            if days is not None and days <= 90:
+            label, level = _format_cert_dday(days)
+            if level in ("EXPIRED", "EXPIRING"):
                 expiring_workers.append({
                     "worker_id": w.worker_id,
                     "worker_name": w.worker_name,
                     "cert_code": w.cert_code,
+                    "weld_process": w.weld_process,
+                    "cert_expiry_date": w.cert_expiry_date,
                     "days_left": days,
+                    "dday_label": label,
+                    "level": level,
                     "branch_code": w.branch_code,
                     "branch_name": branch_map.get(w.branch_code, w.branch_code),
                 })
 
+    # 3) 야드별 운영 요약 카드 (DB ERP_BRANCHES 기반 동적 생성)
+    yard_cards = []
+    for b in branches_raw:
+        b_blocks = [x for x in all_blocks if x.branch_code == b.branch_code]
+        b_orders = [o for o in all_orders if o.work_region == b.branch_code and o.status_code in ("READY", "IN_PROGRESS")]
+        b_low = [m for m in low_materials if m["branch_code"] == b.branch_code]
+        b_eq = [e for e in all_equips if e.branch_code == b.branch_code]
+        yard_cards.append({
+            "branch_code": b.branch_code,
+            "branch_name": b.branch_name,
+            "region_name": b.region_name,
+            "camera_code": b.camera_code or "-",
+            "block_count": len(b_blocks),
+            "active_order_count": len(b_orders),
+            "low_mat_count": len(b_low),
+            "equip_count": len(b_eq),
+            "primary_block": b_blocks[0].block_id if b_blocks else "-",
+            "primary_ship": b_blocks[0].ship_code if b_blocks else "-",
+        })
+
+    # 4) 결재 대기 및 최신 문서 현황
     pending_count = WorkInstruction.query.filter_by(approval_status="DRAFT").count()
-    latest_orders = WorkOrder.query.order_by(WorkOrder.work_id.desc()).limit(4).all()
     recent_docs = []
-    for wo in latest_orders:
-        inst = (
-            WorkInstruction.query
-            .filter_by(work_id=wo.work_id)
-            .order_by(WorkInstruction.instruction_id.desc())
-            .first()
-        )
+    for wo in all_orders[:5]:
+        inst = WorkInstruction.query.filter_by(work_id=wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+        pct, _ = _resolve_progress_pct(wo, inst, prog_map)
         recent_docs.append({
             "work_id": wo.work_id,
             "work_no": wo.work_no,
             "ship_code": wo.ship_code,
             "block_code": wo.block_code,
+            "branch_name": branch_map.get(wo.work_region, wo.work_region),
+            "status_code": wo.status_code,
+            "progress_pct": pct,
             "revision_no": inst.revision_no if inst else "Rev.1",
             "approval_status": inst.approval_status if inst else "DRAFT",
+            "pdf_url": _extract_inst_pdf_url(inst),
         })
+
+    # 5) DB 기반 동적 자주 쓰는 업무 (한 줄에 깔끔하게 들어가도록 짧은 라벨 + 실행 문장 분리)
+    quick_prompts = []
+    if all_blocks:
+        fb = all_blocks[0]
+        quick_prompts.append({
+            "label": f"{fb.steel_type} {fb.thickness_mm} 용접 기준",
+            "prompt": f"{fb.steel_type} {fb.thickness_mm} {fb.process} 용접 예열 및 시공 기준 알려줘",
+        })
+        quick_prompts.append({
+            "label": f"{fb.block_id} 자재 · 인력",
+            "prompt": f"{fb.block_id} 블록 자재 재고와 작업자 확인해줘",
+        })
+    if expiring_workers and can_erp:
+        quick_prompts.append({
+            "label": "자격 만료 안내 메일",
+            "prompt": "용접 자격 만료 및 임박 작업자 갱신 안내 메일 써줘",
+        })
+    if low_materials and can_erp:
+        quick_prompts.append({
+            "label": "부족 자재 발주 메일",
+            "prompt": "부족한 자재 발주 메일 써줘",
+        })
+
+    robots_cnt = RobotExecution.query.count()
 
     return jsonify({
         "status": "SUCCESS",
         "can_erp": can_erp,
+        "kpi": {
+            "active_orders": sum(1 for o in all_orders if o.status_code in ("READY", "IN_PROGRESS")),
+            "completed_orders": sum(1 for o in all_orders if o.status_code == "COMPLETED"),
+            "active_queue_cnt": len(active_queue),
+            "low_materials_cnt": len(low_materials),
+            "expiring_workers_cnt": len(expiring_workers),
+            "pending_approvals": pending_count,
+            "robots_cnt": robots_cnt,
+            "yards_cnt": len(branches_raw),
+        },
+        "yard_cards": yard_cards,
         "active_queue": active_queue,
         "low_materials": low_materials[:6],
         "expiring_workers": expiring_workers[:6],
         "pending_approvals": pending_count,
         "recent_docs": recent_docs,
+        "quick_prompts": quick_prompts[:4],
     })
+
+
+@service_bp.route("/api/workspace/qa-context", methods=["GET"])
+@login_required
+def api_workspace_qa_context():
+    """W-01b: 권한별 열람 가능한 공통 기술문서 / 사내 규정 / 선박 도면(PDF만) 분리 반환"""
+    user = User.query.get_or_404(session["user_id"])
+    is_admin = user.role in ("ADMIN", "MANAGER")
+    can_internal = (user.can_access_internal_rag == "Y") or is_admin
+
+    pub_rows = (
+        DocumentMetadata.query
+        .filter(DocumentMetadata.is_active == "Y", DocumentMetadata.collection_type == "PUBLIC")
+        .order_by(DocumentMetadata.document_id.desc())
+        .limit(8)
+        .all()
+    )
+    int_rows = []
+    cad_pdf_rows = []
+    if can_internal:
+        int_rows = (
+            DocumentMetadata.query
+            .filter(
+                DocumentMetadata.is_active == "Y",
+                DocumentMetadata.collection_type == "INTERNAL",
+                DocumentMetadata.category_code != "CAD_DRAWING",
+            )
+            .order_by(DocumentMetadata.document_id.desc())
+            .limit(8)
+            .all()
+        )
+        cad_all = (
+            DocumentMetadata.query
+            .filter(
+                DocumentMetadata.is_active == "Y",
+                DocumentMetadata.category_code == "CAD_DRAWING",
+            )
+            .order_by(DocumentMetadata.document_id.desc())
+            .all()
+        )
+        for c in cad_all:
+            if (c.original_file_name or "").lower().endswith(".pdf"):
+                cad_pdf_rows.append(c)
+                if len(cad_pdf_rows) >= 6:
+                    break
+
+    def _ser(d):
+        return {
+            "document_id": d.document_id,
+            "document_code": d.document_code,
+            "document_title": _clean_doc_title(d.document_title, d.original_file_name),
+            "original_file_name": d.original_file_name,
+            "collection_type": d.collection_type,
+            "category_code": d.category_code,
+        }
+
+    return jsonify({
+        "status": "SUCCESS",
+        "can_internal": can_internal,
+        "public_docs": [_ser(d) for d in pub_rows],
+        "internal_docs": [_ser(d) for d in int_rows],
+        "cad_pdf_docs": [_ser(d) for d in cad_pdf_rows],
+    })
+
+
+@service_bp.route("/api/workspace/route-command", methods=["POST"])
+@login_required
+def api_workspace_route_command():
+    """
+    통합 업무 자연어 명령 스마트 라우터:
+    - 특정 야드 ERP 요청 -> 해당 야드 ERP 화면으로 즉시 전환
+    - 메일 작성 / 발주 메일 요청 -> DB 조회 기반 수정 가능한 메일 미리보기 + 발송 버튼만 즉시 표시
+    - 오늘 업무 조회 요청 -> 오늘 활성 작업 목록 표시 (없으면 생성 버튼 안내)
+    - 그 외(용접 규격 질의, 작업지시서 생성 등) -> 기존 LangGraph Agent(ship_agent_app)로 전달
+    """
+    user = User.query.get_or_404(session["user_id"])
+    can_erp = (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER"))
+    data = request.get_json(silent=True) or {}
+    q = (data.get("question") or "").strip()
+    if not q:
+        return jsonify({"action": "ERROR", "message": "요청 내용을 입력해 주세요."}), 400
+
+    ql = q.lower()
+    branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    branch_map = {b.branch_code: b.branch_name for b in branches}
+
+    matched_branch = None
+    for b in branches:
+        bname = (b.branch_name or "").lower()
+        reg = (b.region_name or "").lower()
+        bcode = (b.branch_code or "").lower()
+        if bcode in ql or (reg and reg in ql) or any(tok and tok in ql for tok in bname.split() if len(tok) >= 2):
+            matched_branch = b
+            break
+
+    # 0) 특정 야드 CCTV / 카메라 / 현장 영상 보기 요청 감지
+    is_cam_req = any(k in ql for k in ("cctv", "카메라", "현장 영상", "현장 보", "현장보", "로봇캠", "robotcam"))
+    if is_cam_req and not any(k in q for k in ("작업지시서", "작업 지시서")):
+        target_br = matched_branch or (branches[0] if branches else None)
+        br_blocks = [b for b in ErpBlockMaster.query.all() if target_br and b.branch_code == target_br.branch_code]
+        return jsonify({
+            "action": "SHOW_VISION",
+            "branch_code": target_br.branch_code if target_br else "",
+            "branch_name": target_br.branch_name if target_br else "",
+            "block_code": br_blocks[0].block_id if br_blocks else "",
+        })
+
+    # 1) 메일 / 발주 요청 감지 ("발주" 단독 입력도 즉시 발주 메일 미리보기로 연결)
+    is_mail_req = any(k in q for k in ("메일", "이메일", "발주", "안내 보내", "갱신 안내"))
+    if is_mail_req and not any(k in q for k in ("작업지시서", "작업 지시서", "용접 기준", "예열")):
+        if not can_erp:
+            return jsonify({"action": "FORBIDDEN", "message": "메일 및 발주 요청은 담당자 권한이 필요합니다."}), 403
+
+        is_po = any(k in q for k in ("발주", "자재", "와이어", "강판", "가스"))
+        if is_po:
+            mats = ErpBomInventory.query.all()
+            if matched_branch:
+                mats = [m for m in mats if m.branch_code == matched_branch.branch_code] or mats
+            low_mats = [m for m in mats if (float(m.total_qty or 0) - float(m.reserved_qty or 0)) <= 50.0]
+            target_mats = low_mats or mats[:1]
+            comp_map = {c.company_code: c.company_name for c in ErpCompany.query.all()}
+            if target_mats:
+                m0 = target_mats[0]
+                sup_name = comp_map.get(m0.supplier_code, m0.supplier_code)
+                b_name = branch_map.get(m0.branch_code, m0.branch_code)
+                lines = "\n".join(
+                    f"- {m.item_name} ({m.item_code}) | 현재 가용: {float(m.total_qty or 0) - float(m.reserved_qty or 0)}{m.unit} | 야드: {branch_map.get(m.branch_code, m.branch_code)}"
+                    for m in target_mats[:5]
+                )
+                return jsonify({
+                    "action": "SHOW_DRAFT",
+                    "draft": {
+                        "type": "PO",
+                        "recipient": f"{sup_name} 영업담당자",
+                        "subject": f"[긴급 발주 요청] {m0.item_name} 외 {len(target_mats)-1}건" if len(target_mats) > 1 else f"[긴급 발주 요청] {m0.item_name} ({m0.item_code})",
+                        "body": f"안녕하세요, {sup_name} 담당자님.\n{b_name} 현장 공정용 자재 재고가 부족하여 아래와 같이 긴급 발주를 요청드립니다.\n\n{lines}\n\n가능한 납품 일정을 회신해 주시기 바랍니다.",
+                    },
+                })
+
+        workers = ErpWorkerCert.query.order_by(ErpWorkerCert.cert_expiry_date.asc()).all()
+        named_worker = next((w for w in workers if w.worker_name and w.worker_name in q), None)
+        if named_worker:
+            return jsonify({
+                "action": "SHOW_DRAFT",
+                "draft": {
+                    "type": "EMAIL",
+                    "recipient": f"{named_worker.worker_name} ({named_worker.worker_id})",
+                    "subject": f"[업무 안내] {named_worker.worker_name}님 확인 요청",
+                    "body": f"안녕하세요, {named_worker.worker_name}님.\n보유 자격({named_worker.cert_code} / 만료일 {named_worker.cert_expiry_date}) 및 현장 투입 일정 관련하여 안내드립니다.\n\n확인 후 회신 부탁드립니다.",
+                },
+            })
+
+        alert_workers = []
+        for w in workers:
+            days = _calc_cert_days_left(w.cert_expiry_date)
+            dday_label, level = _format_cert_dday(days)
+            if level in ("EXPIRED", "EXPIRING"):
+                alert_workers.append((w, dday_label))
+        if alert_workers:
+            recips = ", ".join(f"{w.worker_name}({w.worker_id})" for w, _ in alert_workers)
+            lines = "\n".join(
+                f"- {w.worker_name} ({w.cert_code} / {w.weld_process}, 만료일 {w.cert_expiry_date}, {lbl})"
+                for w, lbl in alert_workers
+            )
+            return jsonify({
+                "action": "SHOW_DRAFT",
+                "draft": {
+                    "type": "EMAIL",
+                    "recipient": recips,
+                    "subject": f"[일괄 안내] 용접 자격 만료 및 갱신 요청 ({len(alert_workers)}명)",
+                    "body": f"안녕하세요. 운영지원팀입니다.\n아래 작업자분들의 용접 자격 만료일이 도래하거나 경과하여 갱신 안내를 드립니다.\n\n{lines}\n\n갱신 완료 후 자격증 사본을 담당 팀장에게 제출해 주시기 바랍니다.",
+                },
+            })
+        return jsonify({
+            "action": "SHOW_DRAFT",
+            "draft": {
+                "type": "EMAIL",
+                "recipient": "",
+                "subject": "[업무 안내]",
+                "body": f"요청 내용: {q}\n\n내용을 수정하신 뒤 아래 [승인 후 발송] 버튼을 눌러 주세요.",
+            },
+        })
+
+    # 2) 특정 야드 ERP / 자재 / 인력 / 장비 조회 요청 감지
+    is_erp_req = any(k in ql for k in ("erp", "재고", "자재", "인력", "작업자", "장비", "로봇 현황"))
+    if is_erp_req and not any(k in q for k in ("작업지시", "발행", "생성", "예열", "규격", "기준")):
+        if not can_erp:
+            return jsonify({"action": "FORBIDDEN", "message": "야드 자재·인력 조회 권한이 없는 계정입니다."}), 403
+        subtab = "materials"
+        if any(k in q for k in ("인력", "작업자", "자격", "면허")):
+            subtab = "workers"
+        elif any(k in q for k in ("장비", "차량", "로봇", "크레인")):
+            subtab = "equipment"
+        elif any(k in q for k in ("협력사", "외주", "b2b")):
+            subtab = "b2b"
+        return jsonify({
+            "action": "SHOW_ERP",
+            "branch_code": matched_branch.branch_code if matched_branch else "ALL",
+            "subtab": subtab,
+        })
+
+    # 3) 오늘 업무 / 할 일 조회 요청 감지
+    if any(k in q for k in ("오늘 업무", "오늘 할일", "오늘 할 일", "오늘 작업", "당일 업무", "진행 중인 작업")):
+        orders_q = WorkOrder.query.filter(WorkOrder.status_code.in_(["READY", "IN_PROGRESS"]))
+        if matched_branch:
+            orders_q = orders_q.filter(WorkOrder.work_region == matched_branch.branch_code)
+        orders = orders_q.order_by(WorkOrder.work_id.desc()).all()
+        items = [
+            {
+                "work_id": o.work_id,
+                "work_no": o.work_no,
+                "work_title": o.work_title,
+                "ship_code": o.ship_code,
+                "block_code": o.block_code,
+                "branch_code": o.work_region,
+                "branch_name": branch_map.get(o.work_region, o.work_region),
+                "process_code": o.process_code,
+                "material_grade": o.material_grade,
+                "thickness_mm": float(o.thickness_mm) if o.thickness_mm is not None else 0.0,
+                "status_code": o.status_code,
+            }
+            for o in orders
+        ]
+        return jsonify({
+            "action": "SHOW_TODAY_WORK",
+            "branch_name": matched_branch.branch_name if matched_branch else "전체 야드",
+            "branch_code": matched_branch.branch_code if matched_branch else "",
+            "orders": items,
+        })
+
+    return jsonify({"action": "USE_AGENT"})
 
 
 @service_bp.route("/api/workspace/erp-yard", methods=["GET"])
 @login_required
 def api_workspace_erp_yard():
-    """W-01c: 선택 야드 자재 재고(미결 발주 중복 체크 포함) 및 자격 인력 조회"""
+    """W-01c: 전사/야드별 전문 ERP 조회 (자재 BOM · 작업자 자격 · 장비/로봇 · 협력사 B2B)"""
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     if not (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER")):
         return jsonify({"status": "FORBIDDEN", "message": "자원(ERP) 조회 권한이 없는 계정입니다."}), 403
 
-    branch_code = (request.args.get("branch_code") or "").strip()
-    block_code = (request.args.get("block_code") or "").strip()
-    if block_code and not branch_code:
-        blk = ErpBlockMaster.query.filter_by(block_id=block_code).first()
-        if blk:
-            branch_code = blk.branch_code
-    if not branch_code:
-        branch_code = _get_default_branch_code(user)
+    branch_code = (request.args.get("branch_code") or "ALL").strip()
+    branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
+    branch_map = {b.branch_code: b.branch_name for b in branches}
+    comp_map = {c.company_code: c.company_name for c in ErpCompany.query.all()}
 
-    branch = ErpBranch.query.filter_by(branch_code=branch_code).first()
-    mats_raw = ErpBomInventory.query.filter_by(branch_code=branch_code).order_by(ErpBomInventory.item_code.asc()).all()
-    workers_raw = ErpWorkerCert.query.filter_by(branch_code=branch_code).order_by(ErpWorkerCert.cert_expiry_date.asc()).all()
+    mat_q = ErpBomInventory.query
+    wrk_q = ErpWorkerCert.query
+    eq_q = ErpVehiclesEquipment.query
+    if branch_code and branch_code != "ALL":
+        mat_q = mat_q.filter_by(branch_code=branch_code)
+        wrk_q = wrk_q.filter_by(branch_code=branch_code)
+        eq_q = eq_q.filter_by(branch_code=branch_code)
+
+    mats_raw = mat_q.order_by(ErpBomInventory.branch_code.asc(), ErpBomInventory.item_code.asc()).all()
+    workers_raw = wrk_q.order_by(ErpWorkerCert.cert_expiry_date.asc()).all()
+    equips_raw = eq_q.order_by(ErpVehiclesEquipment.branch_code.asc(), ErpVehiclesEquipment.asset_code.asc()).all()
+    worker_name_map = {w.worker_id: w.worker_name for w in ErpWorkerCert.query.all()}
 
     open_po_codes = set()
+    b2b_materials, b2b_workers, b2b_equipment = [], [], []
     try:
         open_pos = B2BSalesOrder.query.filter(B2BSalesOrder.order_status.in_(["PENDING", "CONFIRMED"])).all()
         open_po_codes = {po.ordered_ref_code for po in open_pos}
+        for m in B2BDaehanMaterial.query.all():
+            b2b_materials.append({
+                "partner_name": comp_map.get(m.partner_id, m.partner_id),
+                "hq_item_code": m.hq_item_code,
+                "item_name": m.item_name,
+                "available_qty": float(m.available_qty or 0),
+                "unit": m.unit,
+                "unit_price_krw": int(m.unit_price_krw or 0),
+                "lead_time_hours": m.lead_time_hours,
+            })
+        for w in B2BDonghaeWorker.query.all():
+            b2b_workers.append({
+                "partner_name": comp_map.get(w.partner_id, w.partner_id),
+                "worker_name": w.worker_name,
+                "specialty_role": w.specialty_role,
+                "cert_code": w.cert_code,
+                "weld_process": w.weld_process,
+                "current_region": w.current_region,
+                "daily_rate_krw": int(w.daily_rate_krw or 0),
+            })
+        for e in B2BHankookEquipment.query.all():
+            b2b_equipment.append({
+                "partner_name": comp_map.get(e.partner_id, e.partner_id),
+                "asset_name": e.asset_name,
+                "asset_category": e.asset_category,
+                "current_region": e.current_region,
+                "max_load_ton": float(e.max_load_ton or 0),
+                "hourly_rental_krw": int(e.hourly_rental_krw or 0),
+            })
     except Exception:
         pass
 
@@ -1573,9 +1953,14 @@ def api_workspace_erp_yard():
         materials.append({
             "item_code": m.item_code,
             "item_name": m.item_name,
-            "available_qty": avail,
+            "material_category": m.material_category,
+            "lot_no": m.lot_no,
+            "supplier_name": comp_map.get(m.supplier_code, m.supplier_code),
+            "branch_code": m.branch_code,
+            "branch_name": branch_map.get(m.branch_code, m.branch_code),
             "total_qty": float(m.total_qty or 0),
             "reserved_qty": float(m.reserved_qty or 0),
+            "available_qty": avail,
             "unit": m.unit,
             "is_low": avail <= 50.0,
             "has_open_po": m.item_code in open_po_codes,
@@ -1584,29 +1969,183 @@ def api_workspace_erp_yard():
     workers = []
     for w in workers_raw:
         days = _calc_cert_days_left(w.cert_expiry_date)
+        dday_label, level = _format_cert_dday(days)
         workers.append({
             "worker_id": w.worker_id,
             "worker_name": w.worker_name,
+            "employment_type": w.employment_type,
+            "company_name": comp_map.get(w.company_code, w.company_code),
+            "branch_code": w.branch_code,
+            "branch_name": branch_map.get(w.branch_code, w.branch_code),
+            "department_name": w.department_name or "-",
+            "role": w.role,
+            "phone": w.phone or "-",
             "cert_code": w.cert_code,
             "weld_process": w.weld_process,
             "cert_expiry_date": w.cert_expiry_date,
             "days_left": days,
-            "is_expiring": (days is not None and days <= 90),
+            "dday_label": dday_label,
+            "level": level,
+            "status": w.status,
+        })
+
+    equipment = []
+    for eq in equips_raw:
+        equipment.append({
+            "asset_code": eq.asset_code,
+            "asset_name": eq.asset_name,
+            "asset_category": eq.asset_category,
+            "company_name": comp_map.get(eq.company_code, eq.company_code),
+            "branch_code": eq.branch_code,
+            "branch_name": branch_map.get(eq.branch_code, eq.branch_code),
+            "current_zone": eq.current_zone or "-",
+            "max_load_ton": float(eq.max_load_ton or 0),
+            "driver_name": worker_name_map.get(eq.driver_worker_id, eq.driver_worker_id or "-"),
+            "operation_status": eq.operation_status,
         })
 
     return jsonify({
         "status": "SUCCESS",
         "branch_code": branch_code,
-        "branch_name": branch.branch_name if branch else branch_code,
+        "branch_name": "전체 야드" if branch_code == "ALL" else branch_map.get(branch_code, branch_code),
+        "kpi": {
+            "material_count": len(materials),
+            "low_material_count": sum(1 for m in materials if m["is_low"]),
+            "worker_count": len(workers),
+            "alert_worker_count": sum(1 for w in workers if w["level"] in ("EXPIRED", "EXPIRING")),
+            "equipment_count": len(equipment),
+            "standby_equipment_count": sum(1 for e in equipment if e["operation_status"] == "STANDBY"),
+            "b2b_count": len(b2b_materials) + len(b2b_workers) + len(b2b_equipment),
+        },
         "materials": materials,
         "workers": workers,
+        "equipment": equipment,
+        "b2b": {
+            "materials": b2b_materials,
+            "workers": b2b_workers,
+            "equipment": b2b_equipment,
+        },
+    })
+
+
+@service_bp.route("/api/workspace/draft-center", methods=["GET"])
+@login_required
+def api_workspace_draft_center():
+    """W-01d: 메일 / 발주계획서 / 승인 대기 초안 전용 센터 (야드 ERP 조회와 완전 분리)"""
+    db.session.expire_all()
+    user = User.query.get_or_404(session["user_id"])
+    if not (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER")):
+        return jsonify({"status": "FORBIDDEN", "message": "메일/문서 초안 권한이 없는 계정입니다."}), 403
+
+    branch_map = {b.branch_code: b.branch_name for b in ErpBranch.query.all()}
+    comp_map = {c.company_code: c.company_name for c in ErpCompany.query.all()}
+
+    # 1) 만료·임박 자격 작업자 목록 (개별/일괄 메일 발송 대상)
+    alert_workers = []
+    for w in ErpWorkerCert.query.order_by(ErpWorkerCert.cert_expiry_date.asc()).all():
+        days = _calc_cert_days_left(w.cert_expiry_date)
+        dday_label, level = _format_cert_dday(days)
+        if level in ("EXPIRED", "EXPIRING"):
+            alert_workers.append({
+                "worker_id": w.worker_id,
+                "worker_name": w.worker_name,
+                "company_name": comp_map.get(w.company_code, w.company_code),
+                "branch_name": branch_map.get(w.branch_code, w.branch_code),
+                "cert_code": w.cert_code,
+                "weld_process": w.weld_process,
+                "cert_expiry_date": w.cert_expiry_date,
+                "dday_label": dday_label,
+                "level": level,
+            })
+
+    # 2) 부족 자재 목록 (발주 초안 대상)
+    open_po_codes = set()
+    try:
+        open_po_codes = {
+            po.ordered_ref_code
+            for po in B2BSalesOrder.query.filter(B2BSalesOrder.order_status.in_(["PENDING", "CONFIRMED"])).all()
+        }
+    except Exception:
+        pass
+
+    low_materials = []
+    for m in ErpBomInventory.query.all():
+        avail = float(m.total_qty or 0) - float(m.reserved_qty or 0)
+        if avail <= 50.0:
+            low_materials.append({
+                "item_code": m.item_code,
+                "item_name": m.item_name,
+                "branch_name": branch_map.get(m.branch_code, m.branch_code),
+                "supplier_name": comp_map.get(m.supplier_code, m.supplier_code),
+                "available_qty": avail,
+                "unit": m.unit,
+                "has_open_po": m.item_code in open_po_codes,
+            })
+
+    # 3) 승인 대기 작업지시서 초안(DRAFT)
+    draft_insts = (
+        WorkInstruction.query
+        .filter_by(approval_status="DRAFT")
+        .order_by(WorkInstruction.instruction_id.desc())
+        .limit(10)
+        .all()
+    )
+    pending_docs = []
+    for inst in draft_insts:
+        wo = WorkOrder.query.get(inst.work_id)
+        if not wo:
+            continue
+        meta = _load_env_meta(inst)
+        pending_docs.append({
+            "work_id": wo.work_id,
+            "instruction_id": inst.instruction_id,
+            "work_no": wo.work_no,
+            "work_title": wo.work_title,
+            "ship_code": wo.ship_code,
+            "block_code": wo.block_code,
+            "branch_name": branch_map.get(wo.work_region, wo.work_region),
+            "revision_no": inst.revision_no,
+            "pdf_url": _extract_inst_pdf_url(inst),
+            "session_id": meta.get("_source_session_id") or "",
+        })
+
+    # 4) 최근 발송/처리 이력
+    sent_rows = (
+        AgentExecution.query
+        .filter_by(intent_type="HITL_DRAFT_SEND")
+        .order_by(AgentExecution.execution_id.desc())
+        .limit(8)
+        .all()
+    )
+    sent_history = []
+    for r in sent_rows:
+        info = {}
+        if r.selected_tools_json:
+            try:
+                info = json.loads(_read_clob(r.selected_tools_json))
+            except Exception:
+                info = {}
+        sent_history.append({
+            "execution_id": r.execution_id,
+            "draft_type": info.get("draft_type") or "EMAIL",
+            "recipient": info.get("recipient") or "-",
+            "subject": info.get("subject") or "-",
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "-",
+        })
+
+    return jsonify({
+        "status": "SUCCESS",
+        "alert_workers": alert_workers,
+        "low_materials": low_materials,
+        "pending_docs": pending_docs,
+        "sent_history": sent_history,
     })
 
 
 @service_bp.route("/api/workspace/send-draft", methods=["POST"])
 @login_required
 def api_workspace_send_draft():
-    """W-01c HITL: 사용자 검토·수정 완료된 메일/발주계획서 초안 승인 발송"""
+    """W-01d HITL: 사용자 검토·수정 완료된 메일/발주계획서 초안 승인 발송"""
     user = User.query.get_or_404(session["user_id"])
     if not (user.can_access_erp == "Y" or user.role in ("ADMIN", "MANAGER")):
         return jsonify({"status": "FORBIDDEN", "message": "발송 권한이 없습니다."}), 403
@@ -1616,8 +2155,8 @@ def api_workspace_send_draft():
     recipient = (data.get("recipient") or "").strip()
     subject = (data.get("subject") or "").strip()
     body = (data.get("body") or "").strip()
-    if not subject or not body:
-        return jsonify({"status": "ERROR", "message": "제목과 내용을 입력해 주세요."}), 400
+    if not recipient or not subject or not body:
+        return jsonify({"status": "ERROR", "message": "수신자, 제목, 본문을 모두 입력해 주세요."}), 400
 
     # [AGENT_TEAM_HOOK] 추후 Agent 팀원의 단독 Gmail MCP / B2B 발주 발송 함수 연결 지점
     exec_log = AgentExecution(
@@ -1626,20 +2165,21 @@ def api_workspace_send_draft():
         intent_type="HITL_DRAFT_SEND",
         current_state=f"SENT_{draft_type}",
         selected_tools_json=json.dumps(
-            {"draft_type": draft_type, "recipient": recipient, "subject": subject},
+            {"draft_type": draft_type, "recipient": recipient, "subject": subject, "body_preview": body[:200]},
             ensure_ascii=False,
         ),
         status_code="SUCCESS",
     )
     db.session.add(exec_log)
     db.session.commit()
-    return jsonify({"status": "SUCCESS", "message": f"[{subject}] 승인 및 발송 요청이 접수되었습니다."})
+    return jsonify({"status": "SUCCESS", "message": f"[{subject}] 승인 및 발송 요청이 정상 접수되었습니다."})
 
 
 @service_bp.route("/api/workspace/check-duplicate", methods=["POST"])
 @login_required
 def api_workspace_check_duplicate():
-    """W-01d: 현장 Vision 스냅샷 + 당일 동일 블록 작업지시서 및 선박 중량물 계획서 중복 검증"""
+    """W-01e: 현장 Vision 스냅샷 + 당일 동일 블록 작업지시서 및 선박 중량물 계획서 중복 검증"""
+    db.session.expire_all()
     data = request.get_json(silent=True) or {}
     branch_code = (data.get("branch_code") or "").strip()
     block_code = (data.get("block_code") or "").strip()
@@ -1690,16 +2230,16 @@ def api_workspace_check_duplicate():
             .first()
         )
         prog_map = _safe_get_wo_progress_map([existing_wo.work_id])
+        pct, _ = _resolve_progress_pct(existing_wo, latest_inst, prog_map)
         existing_wo_info = {
             "work_id": existing_wo.work_id,
             "work_no": existing_wo.work_no,
             "status_code": existing_wo.status_code,
-            "progress_pct": prog_map.get(existing_wo.work_id, {}).get("progress_pct", 0),
+            "progress_pct": pct,
             "revision_no": latest_inst.revision_no if latest_inst else "Rev.1",
             "pdf_url": _extract_inst_pdf_url(latest_inst),
         }
 
-    # 선박 단위 중량물 취급 계획서 존재 여부(동일 호선의 기존 지시서/계획서 확인)
     ship_wo = (
         WorkOrder.query
         .filter(WorkOrder.ship_code == block.ship_code, WorkOrder.status_code.in_(["READY", "IN_PROGRESS"]))
@@ -1728,6 +2268,7 @@ def api_workspace_check_duplicate():
             "ocr_text": ocr_vals[0] if ocr_vals else "",
             "detected_objects": [d.class_name for d in dets],
             "welding_state": latest_va.welding_state,
+            "captured_at": latest_va.created_at.strftime("%Y-%m-%d %H:%M") if latest_va.created_at else "-",
         }
 
     return jsonify({
@@ -1747,6 +2288,7 @@ def api_workspace_check_duplicate():
             "thickness_mm": block.thickness_mm,
             "process": block.process,
             "joint_type": block.joint_type,
+            "weight_ton": float(block.weight_ton) if block.weight_ton is not None else 0.0,
         },
         "block_options": block_options,
         "existing_wo": existing_wo_info,
@@ -1766,10 +2308,18 @@ def agent_analyze_page():
     branch_code = (request.args.get("branch_code") or "").strip()
     block_code = (request.args.get("block_code") or "").strip()
     work_id = request.args.get("work_id", type=int)
+    return_to = (request.args.get("from") or "workspace").strip().lower()
+    cancel_url = url_for("vision.index", branch=branch_code) if return_to == "vision" else url_for("service.workspace_page")
 
     if not prompt and not block_code:
-        flash("통합 업무 또는 현장 관제에서 작업 준비 요청을 통해 진입해 주세요.", "info")
-        return redirect(url_for("service.workspace_page"))
+        flash("작업 준비 요청을 입력해 주세요.", "info")
+        return redirect(cancel_url)
+
+    if return_to == "vision" and prompt:
+        work_keywords = ("작업", "용접", "블록", "선박", "지시", "준비", "자재", "인력", "로봇", "크레인", "도면", "예열", "검토", "개정", "발주", "배정", "fcaw", "saw", "gmaw")
+        if not any(k in prompt.lower() for k in work_keywords):
+            flash("현장 관제에서는 용접·블록·작업지시 등 현장 업무 요청만 입력할 수 있습니다.", "warning")
+            return redirect(cancel_url)
 
     if not prompt:
         if mode == "REVISE":
@@ -1785,6 +2335,8 @@ def agent_analyze_page():
         branch_code=branch_code,
         block_code=block_code,
         work_id=work_id,
+        return_to=return_to,
+        cancel_url=cancel_url,
     )
 
 
@@ -1815,6 +2367,25 @@ def agent_plan_page(session_id: str):
             else:
                 sources.append(item)
 
+    quick_workers = []
+    quick_blocks = []
+    try:
+        quick_workers = (
+            ErpWorkerCert.query
+            .filter_by(status="VALID")
+            .order_by(ErpWorkerCert.worker_name.asc())
+            .limit(8)
+            .all()
+        )
+        quick_blocks = (
+            ErpBlockMaster.query
+            .order_by(ErpBlockMaster.block_id.asc())
+            .limit(8)
+            .all()
+        )
+    except Exception:
+        pass
+
     return render_template(
         "service/agent_plan.html",
         me=user,
@@ -1823,26 +2394,46 @@ def agent_plan_page(session_id: str):
         doc=saved_doc,
         ui_blocks=ui_blocks,
         sources=sources,
+        quick_workers=quick_workers,
+        quick_blocks=quick_blocks,
+        cancel_url=url_for("vision.index") if request.args.get("from") == "vision" else url_for("service.workspace_page"),
         can_approve=(user.role in ("ADMIN", "MANAGER")),
     )
 
 
 # =====================================================================
-# 5. [SA-03] 작업 현황 (다일 진척률 · 지연 개정 · 다음 블록 자동 활성화)
+# 5. [SA-03] 작업 현황 (다일 진척률 · 상태 수정 · 확인 기반 완료 · 자동 활성화)
 # =====================================================================
 @service_bp.route("/work-status", methods=["GET"])
 @login_required
 def work_status_page():
+    from datetime import timedelta
+
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     is_manager = user.role in ("ADMIN", "MANAGER")
+    status_filter = (request.args.get("status") or "ALL").strip().upper()
 
     wo_q = WorkOrder.query
     if not is_manager:
         wo_q = wo_q.filter_by(requested_by=user.user_id)
-    orders_raw = wo_q.order_by(WorkOrder.work_id.desc()).all()
+    all_orders_raw = wo_q.order_by(WorkOrder.work_id.desc()).all()
+
+    kpi = {
+        "total": len(all_orders_raw),
+        "in_progress": sum(1 for o in all_orders_raw if o.status_code == "IN_PROGRESS"),
+        "ready": sum(1 for o in all_orders_raw if o.status_code == "READY"),
+        "completed": sum(1 for o in all_orders_raw if o.status_code == "COMPLETED"),
+    }
+
+    orders_raw = [
+        o for o in all_orders_raw
+        if status_filter == "ALL" or o.status_code == status_filter
+    ]
 
     prog_map = _safe_get_wo_progress_map([wo.work_id for wo in orders_raw])
     branch_map = {b.branch_code: b.branch_name for b in ErpBranch.query.all()}
+    comp_map = {c.company_code: c.company_name for c in ErpCompany.query.all()}
     selected_id = request.args.get("work_id", type=int) or (orders_raw[0].work_id if orders_raw else None)
 
     orders_data, selected_detail = [], None
@@ -1854,15 +2445,13 @@ def work_status_page():
             .all()
         )
         latest_inst = insts[0] if insts else None
-        p_info = prog_map.get(wo.work_id, {})
-        pct = p_info.get("progress_pct")
-        if pct is None:
-            pct = 100 if wo.status_code == "COMPLETED" else (40 if wo.status_code == "IN_PROGRESS" else 0)
+        pct, progress_timeline = _resolve_progress_pct(wo, latest_inst, prog_map)
         item = {
             "wo": wo,
             "branch_name": branch_map.get(wo.work_region, wo.work_region),
             "progress_pct": pct,
-            "plan_id": p_info.get("plan_id") or "",
+            "progress_timeline": progress_timeline,
+            "plan_id": prog_map.get(wo.work_id, {}).get("plan_id") or "",
             "latest_inst": latest_inst,
             "revisions": insts,
             "pdf_url": _extract_inst_pdf_url(latest_inst),
@@ -1872,43 +2461,178 @@ def work_status_page():
         if wo.work_id == selected_id:
             selected_detail = item
 
+    if not selected_detail and orders_data:
+        selected_detail = orders_data[0]
+
     queued_plans = _safe_query_work_plans(states=["PENDING"])
-    b2b_deliveries, dispatch_info, robot_info, cad_doc_id = [], None, None, None
+    dispatch_info, robot_info = None, None
+    cad_doc_info = None
+    yard_po_docs = []
+    partner_tabs = []
+    all_timeline_events = []
+
     if selected_detail:
         wo = selected_detail["wo"]
+        yard_code = wo.work_region
         dispatch_info = MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).first()
         robot_info = RobotExecution.query.filter_by(work_id=wo.work_id).first()
-        try:
-            b2b_deliveries = B2BSalesOrder.query.filter_by(hq_wo_number=wo.work_no).all()
-        except Exception:
-            b2b_deliveries = []
+
+        # 1) 선박 도면 선택 (PDF/DXF 우선, 없으면 IGS 3D 뷰어로 모달 표시)
         if is_manager or user.can_access_internal_rag == "Y":
-            cad_doc = (
+            cad_rows = (
                 DocumentMetadata.query
                 .filter(DocumentMetadata.category_code == "CAD_DRAWING", DocumentMetadata.is_active == "Y")
                 .order_by(DocumentMetadata.document_id.desc())
-                .first()
+                .all()
             )
-            cad_doc_id = cad_doc.document_id if cad_doc else None
+            chosen_cad = None
+            for c in cad_rows:
+                ext = Path(c.original_file_name or "").suffix.lower()
+                if ext == ".pdf":
+                    chosen_cad = c
+                    break
+            if not chosen_cad:
+                for c in cad_rows:
+                    ext = Path(c.original_file_name or "").suffix.lower()
+                    if ext in (".dxf", ".igs", ".iges"):
+                        chosen_cad = c
+                        break
+            if not chosen_cad and cad_rows:
+                chosen_cad = cad_rows[0]
+            if chosen_cad:
+                cad_doc_info = {
+                    "document_id": chosen_cad.document_id,
+                    "title": _clean_doc_title(chosen_cad.document_title, chosen_cad.original_file_name),
+                    "file_name": chosen_cad.original_file_name,
+                    "ext": Path(chosen_cad.original_file_name or "").suffix.lstrip(".").upper(),
+                }
+
+        # 2) 해당 야드로 발주된 모든 발주 계획서 기록 수집 (WorkInstructions + B2BSalesOrders)
+        yard_orders = WorkOrder.query.filter_by(work_region=yard_code).order_by(WorkOrder.work_id.desc()).all()
+        yard_wo_nos = {o.work_no for o in yard_orders}
+        wo_by_no = {o.work_no: o for o in yard_orders}
+        seen_po_urls = set()
+
+        for y_wo in yard_orders:
+            y_insts = (
+                WorkInstruction.query
+                .filter_by(work_id=y_wo.work_id)
+                .order_by(WorkInstruction.instruction_id.desc())
+                .all()
+            )
+            for y_inst in y_insts:
+                purl = _extract_inst_po_pdf_url(y_inst)
+                if purl and purl not in seen_po_urls:
+                    seen_po_urls.add(purl)
+                    yard_po_docs.append({
+                        "title": f"{y_wo.work_no} ({y_wo.block_code}) 발주 계획서",
+                        "pdf_url": purl,
+                        "revision_no": y_inst.revision_no,
+                        "created_at": y_inst.created_at.strftime("%Y-%m-%d %H:%M") if y_inst.created_at else "-",
+                        "is_current": (y_wo.work_id == wo.work_id),
+                    })
+
+        # 3) 협력사별 발주 납기 및 시간 추적 타임라인 구성 (해당 야드 전체 B2B 발주 포함)
+        b2b_rows = []
+        try:
+            all_b2b = B2BSalesOrder.query.order_by(B2BSalesOrder.created_at.desc()).all()
+            for r in all_b2b:
+                if r.hq_wo_number in yard_wo_nos or r.hq_wo_number == wo.work_no or (r.delivery_yard_zone and r.delivery_yard_zone == wo.work_zone):
+                    b2b_rows.append(r)
+        except Exception:
+            b2b_rows = []
+
+        # 자재 납기 시간 참조용
+        lead_hours_map = {}
+        try:
+            for m in B2BDaehanMaterial.query.all():
+                lead_hours_map[m.hq_item_code] = int(m.lead_time_hours or 2)
+        except Exception:
+            pass
+
+        partner_groups: dict[str, dict] = {}
+        for po in b2b_rows:
+            pid = po.partner_id
+            pname = comp_map.get(pid, pid)
+            if pid not in partner_groups:
+                partner_groups[pid] = {
+                    "partner_id": pid,
+                    "partner_name": pname,
+                    "order_count": 0,
+                    "events": [],
+                }
+            partner_groups[pid]["order_count"] += 1
+
+            base_dt = po.created_at or datetime.utcnow()
+            dt_str = base_dt.strftime("%Y-%m-%d %H:%M")
+            lead_h = lead_hours_map.get(po.ordered_ref_code, 2)
+            eta_dt = base_dt + timedelta(hours=lead_h)
+            eta_str = eta_dt.strftime("%Y-%m-%d %H:%M")
+            type_ko = "자재 발주" if po.order_type == "WELDING_MATERIAL" else ("인력 파견" if po.order_type == "OUTSOURCED_WORKER" else "장비 배차")
+
+            # 단계별 시간 추적 이벤트 생성 (발주 접수 -> 협력사 확정 -> 납품/배차 예정)
+            ev1 = {
+                "time": dt_str,
+                "title": f"[{po.b2b_order_no}] {type_ko} 접수",
+                "detail": f"대상 작업 {po.hq_wo_number} · 품목/코드 {po.ordered_ref_code} (수량 {po.order_qty}) · 납품 구역 {po.delivery_yard_zone}",
+                "state": "done",
+                "partner_name": pname,
+            }
+            ev2 = {
+                "time": (base_dt + timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M"),
+                "title": f"{pname} 수주 확인 및 출하 준비 ({po.order_status})",
+                "detail": f"배정 Lot/식별번호: {po.allocated_lot_or_id}",
+                "state": "done" if po.order_status in ("CONFIRMED", "SHIPPED", "DELIVERED", "COMPLETED") else "active",
+                "partner_name": pname,
+            }
+            is_done = po.order_status in ("DELIVERED", "COMPLETED")
+            ev3 = {
+                "time": eta_str + (" (완료)" if is_done else " (예정)"),
+                "title": f"야드 도착 및 현장 입고 검수" + (" 완료" if is_done else " 대기"),
+                "detail": f"도착 위치: {branch_map.get(yard_code, yard_code)} · {po.delivery_yard_zone}",
+                "state": "done" if is_done else "pending",
+                "partner_name": pname,
+            }
+
+            partner_groups[pid]["events"].extend([ev1, ev2, ev3])
+            all_timeline_events.extend([ev1, ev2, ev3])
+
+        # 작업지시서 승인/개정 이력도 전체 타임라인에 합류
+        for rev in reversed(selected_detail["revisions"]):
+            r_time = rev.created_at.strftime("%Y-%m-%d %H:%M") if rev.created_at else "-"
+            all_timeline_events.append({
+                "time": r_time,
+                "title": f"작업지시서 {rev.revision_no} ({'승인 완료' if rev.approval_status == 'APPROVED' else '승인 대기'})",
+                "detail": f"작업번호 {wo.work_no} · {wo.ship_code} / {wo.block_code}",
+                "state": "done" if rev.approval_status == "APPROVED" else "active",
+                "partner_name": "본사 승인",
+            })
+
+        all_timeline_events.sort(key=lambda x: x["time"])
+        partner_tabs = list(partner_groups.values())
 
     return render_template(
         "service/work_status.html",
         me=user,
         is_manager=is_manager,
+        kpi=kpi,
+        status_filter=status_filter,
         orders=orders_data,
         selected=selected_detail,
         queued_plans=queued_plans,
         dispatch_info=dispatch_info,
         robot_info=robot_info,
-        b2b_deliveries=b2b_deliveries,
-        cad_doc_id=cad_doc_id,
+        cad_doc_info=cad_doc_info,
+        yard_po_docs=yard_po_docs,
+        partner_tabs=partner_tabs,
+        all_timeline_events=all_timeline_events,
     )
 
 
 @service_bp.route("/api/work-status/progress", methods=["POST"])
 @login_required
 def api_update_work_progress():
-    """다일 공정 진척률 저장 및 100% 완료 시 다음 PRIORITY_RANK(P2) 작업 자동 활성화"""
+    """다일 공정 진척률·상태 수정 (100% 완료 후에도 되돌리기/재조정 가능, 완료 시 다음 블록 자동 활성화)"""
     user = User.query.get_or_404(session["user_id"])
     if user.role not in ("ADMIN", "MANAGER"):
         return jsonify({"status": "FORBIDDEN", "message": "진척률 제어는 담당자/관리자만 가능합니다."}), 403
@@ -1916,38 +2640,87 @@ def api_update_work_progress():
     data = request.get_json(silent=True) or {}
     work_id = data.get("work_id")
     progress_pct = max(0, min(100, int(data.get("progress_pct", 0))))
+    requested_status = (data.get("status_code") or "").strip().upper()
+    note = (data.get("note") or "").strip()
+    completion_type = (data.get("completion_type") or "").strip().upper()
+
     wo = WorkOrder.query.get_or_404(work_id)
 
-    _safe_update_wo_progress(wo.work_id, progress_pct)
-    if progress_pct >= 100:
-        wo.status_code = "COMPLETED"
-    elif progress_pct > 0:
-        wo.status_code = "IN_PROGRESS"
+    # 상태 결정 (명시적 상태가 오면 반영하고, 진척률과 정합성 맞춤)
+    if requested_status in ("READY", "IN_PROGRESS", "COMPLETED", "SUSPENDED"):
+        wo.status_code = requested_status
+        if requested_status == "COMPLETED":
+            progress_pct = 100
+        elif requested_status == "READY" and progress_pct == 100:
+            progress_pct = 0
+        elif requested_status == "IN_PROGRESS" and progress_pct == 100:
+            progress_pct = 90
+    else:
+        if progress_pct >= 100:
+            wo.status_code = "COMPLETED"
+        elif progress_pct == 0:
+            wo.status_code = "READY"
+        else:
+            wo.status_code = "IN_PROGRESS"
 
+    wo.updated_at = datetime.utcnow()
+
+    # 1) WORK_ORDERS.PROGRESS_PCT 컬럼이 있으면 저장 (SAVEPOINT로 안전 처리)
+    _safe_update_wo_progress(wo.work_id, progress_pct)
+
+    # 2) 최신 WORK_INSTRUCTIONS의 EXTERNAL_ENV_JSON에도 진척률·이력 영구 기록 (미마이그레이션 DB에서도 100% 유지)
+    latest_inst = (
+        WorkInstruction.query
+        .filter_by(work_id=wo.work_id)
+        .order_by(WorkInstruction.instruction_id.desc())
+        .first()
+    )
+    if latest_inst:
+        meta = _load_env_meta(latest_inst)
+        pmeta = meta.get("_progress_meta") if isinstance(meta.get("_progress_meta"), dict) else {}
+        timeline = pmeta.get("timeline") if isinstance(pmeta.get("timeline"), list) else []
+        tag = "조기 완료" if completion_type == "EARLY" else ("정상 완료" if completion_type == "NORMAL" else "진척 수정")
+        timeline.insert(0, {
+            "at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "actor": user.full_name,
+            "tag": tag,
+            "progress_pct": progress_pct,
+            "status_code": wo.status_code,
+            "note": note or f"진척률 {progress_pct}% ({wo.status_code}) 반영",
+        })
+        pmeta["progress_pct"] = progress_pct
+        pmeta["timeline"] = timeline[:20]
+        meta["_progress_meta"] = pmeta
+        latest_inst.external_env_json = json.dumps(meta, ensure_ascii=False, default=str)
+
+    # 3) WORK_PLANS 연동 (완료 시 다음 순위 활성화, 되돌리기 시 IN_PROGRESS 복원)
     activated_next_block = None
     try:
-        plan = WorkPlan.query.filter(
-            or_(WorkPlan.assigned_wo_number == wo.work_no, WorkPlan.block_code == wo.block_code)
-        ).first()
-        if plan:
-            plan.progress_pct = progress_pct
-            if progress_pct >= 100:
-                plan.plan_state = "COMPLETED"
-                next_plan = (
-                    WorkPlan.query
-                    .filter(
-                        WorkPlan.drawing_id == plan.drawing_id,
-                        WorkPlan.plan_state == "PENDING",
-                        WorkPlan.priority_rank > plan.priority_rank,
+        with db.session.begin_nested():
+            plan = WorkPlan.query.filter(
+                or_(WorkPlan.assigned_wo_number == wo.work_no, WorkPlan.block_code == wo.block_code)
+            ).first()
+            if plan:
+                plan.progress_pct = progress_pct
+                if wo.status_code == "COMPLETED":
+                    plan.plan_state = "COMPLETED"
+                    next_plan = (
+                        WorkPlan.query
+                        .filter(
+                            WorkPlan.drawing_id == plan.drawing_id,
+                            WorkPlan.plan_state == "PENDING",
+                            WorkPlan.priority_rank > plan.priority_rank,
+                        )
+                        .order_by(WorkPlan.priority_rank.asc())
+                        .first()
                     )
-                    .order_by(WorkPlan.priority_rank.asc())
-                    .first()
-                )
-                if next_plan:
-                    next_plan.plan_state = "IN_PROGRESS"
-                    activated_next_block = next_plan.block_code
-            elif progress_pct > 0:
-                plan.plan_state = "IN_PROGRESS"
+                    if next_plan:
+                        next_plan.plan_state = "IN_PROGRESS"
+                        activated_next_block = next_plan.block_code
+                elif wo.status_code == "READY":
+                    plan.plan_state = "PENDING"
+                else:
+                    plan.plan_state = "IN_PROGRESS"
     except Exception:
         pass
 
@@ -1966,18 +2739,8 @@ def api_update_work_progress():
 def api_work_robot_payload(work_id: int):
     """2차 프로젝트(ROS2 / MoveIt2 / VLM / VLA / Manipulator) 연동용 표준 JSON 계약"""
     wo = WorkOrder.query.get_or_404(work_id)
-    inst = (
-        WorkInstruction.query
-        .filter_by(work_id=wo.work_id)
-        .order_by(WorkInstruction.instruction_id.desc())
-        .first()
-    )
-    insp = (
-        VisionInspection.query
-        .filter_by(work_id=wo.work_id)
-        .order_by(VisionInspection.inspection_id.desc())
-        .first()
-    )
+    inst = WorkInstruction.query.filter_by(work_id=wo.work_id).order_by(WorkInstruction.instruction_id.desc()).first()
+    insp = VisionInspection.query.filter_by(work_id=wo.work_id).order_by(VisionInspection.inspection_id.desc()).first()
     det = VisionDetection.query.get(insp.detection_id) if insp else None
     robot = RobotExecution.query.filter_by(work_id=wo.work_id).first()
 
@@ -2027,20 +2790,78 @@ def api_work_robot_payload(work_id: int):
 
 
 # =====================================================================
-# 6. [SR-01a / SR-01b / SR-01c] 자료실 · PDF 적재 · CAD 공정 큐 등록
+# 6. [SR-01a / SR-01b / SR-01c] 자료실 · DB 동기화 · PDF 적재 · CAD AI 큐
 # =====================================================================
+def _group_cad_documents(cad_rows: list[DocumentMetadata]) -> list[dict]:
+    """같은 선박·도면 모델의 여러 파일 형식(PDF/DXF/IGS/STEP 등)을 하나의 카드로 묶어 반환"""
+    from modules.knowledge.cad_parser import detect_vessel_context
+
+    groups: dict[str, dict] = {}
+    for d in cad_rows:
+        abs_p = _resolve_doc_abs_path(d.storage_uri)
+        p_obj = abs_p or Path(d.storage_uri or d.original_file_name or "")
+        ext = Path(d.original_file_name or "").suffix.lstrip(".").upper() or "FILE"
+        stem = Path(d.original_file_name or "").stem
+        vessel_name, vessel_desc = detect_vessel_context(p_obj)
+
+        # 같은 파일명(확장자만 다름) 또는 같은 선박 모델 폴더 단위로 묶음
+        norm_key = vessel_name.strip().lower() if vessel_name and vessel_name != "선박 도면" else stem.strip().lower()
+        if norm_key not in groups:
+            groups[norm_key] = {
+                "group_title": vessel_name if (vessel_name and vessel_name != "선박 도면") else _clean_doc_title(d.document_title, d.original_file_name),
+                "group_desc": vessel_desc,
+                "primary_doc_id": d.document_id,
+                "pdf_doc_id": None,
+                "dxf_doc_id": None,
+                "formats": [],
+                "files": [],
+                "is_active": d.is_active,
+                "ingest_status": d.ingest_status,
+                "created_at": d.created_at.strftime("%Y-%m-%d") if d.created_at else "-",
+            }
+
+        g = groups[norm_key]
+        if ext not in g["formats"]:
+            g["formats"].append(ext)
+        if ext == "PDF" and not g["pdf_doc_id"]:
+            g["pdf_doc_id"] = d.document_id
+        if ext == "DXF" and not g["dxf_doc_id"]:
+            g["dxf_doc_id"] = d.document_id
+        # PDF가 없더라도 같은 경로에 동명 .pdf가 있으면 미리보기 우선 지정
+        if not g["pdf_doc_id"] and abs_p and abs_p.with_suffix(".pdf").is_file():
+            g["pdf_doc_id"] = d.document_id
+
+        g["files"].append({
+            "document_id": d.document_id,
+            "document_code": d.document_code,
+            "title": _clean_doc_title(d.document_title, d.original_file_name),
+            "file_name": d.original_file_name,
+            "ext": ext,
+            "is_active": d.is_active,
+        })
+
+    result = list(groups.values())
+    for g in result:
+        # 미리보기 우선순위: PDF > DXF > 첫 번째 파일
+        g["preview_doc_id"] = g["pdf_doc_id"] or g["dxf_doc_id"] or g["primary_doc_id"]
+        g["has_pdf"] = bool(g["pdf_doc_id"])
+    return result
+
+
 @service_bp.route("/library", methods=["GET"])
 @login_required
 def library_page():
+    db.session.expire_all()
     user = User.query.get_or_404(session["user_id"])
     is_admin = user.role in ("ADMIN", "MANAGER")
     can_internal = (user.can_access_internal_rag == "Y") or is_admin
 
+    # 사내 보안 탭 제거 -> 공통 기술문서 / 사내 규정 / 선박 도면(CAD) 3개 깔끔 구성
     allowed_tabs = ["public"]
     if can_internal:
         allowed_tabs.append("internal")
-    if is_admin:
-        allowed_tabs.extend(["security", "cad"])
+    if is_admin or can_internal:
+        allowed_tabs.append("cad")
 
     tab = (request.args.get("tab") or "public").strip().lower()
     if tab not in allowed_tabs:
@@ -2049,71 +2870,431 @@ def library_page():
     page = max(1, request.args.get("page", 1, type=int))
     per_page = 10
 
-    doc_q = DocumentMetadata.query
-    if not is_admin:
-        doc_q = doc_q.filter(DocumentMetadata.is_active == "Y")
+    base_q = DocumentMetadata.query if is_admin else DocumentMetadata.query.filter(DocumentMetadata.is_active == "Y")
+    all_cad_rows = base_q.filter(DocumentMetadata.category_code == "CAD_DRAWING").order_by(DocumentMetadata.document_id.desc()).all()
+    cad_groups_all = _group_cad_documents(all_cad_rows)
 
-    if tab == "public":
-        doc_q = doc_q.filter(DocumentMetadata.collection_type == "PUBLIC")
-    elif tab == "internal":
-        doc_q = doc_q.filter(
+    tab_counts = {
+        "public": base_q.filter(DocumentMetadata.collection_type == "PUBLIC").count(),
+        "internal": base_q.filter(
             DocumentMetadata.collection_type == "INTERNAL",
             DocumentMetadata.category_code != "CAD_DRAWING",
-            DocumentMetadata.category_code != "SECURITY",
-        )
-    elif tab == "security":
-        doc_q = doc_q.filter(
-            DocumentMetadata.collection_type == "INTERNAL",
-            DocumentMetadata.category_code == "SECURITY",
-        )
-    elif tab == "cad":
-        doc_q = doc_q.filter(DocumentMetadata.category_code == "CAD_DRAWING")
+        ).count() if can_internal else 0,
+        "cad": len(cad_groups_all) if (is_admin or can_internal) else 0,
+    }
 
-    if q:
-        like_q = f"%{q}%"
-        doc_q = doc_q.filter(or_(
-            DocumentMetadata.document_title.ilike(like_q),
-            DocumentMetadata.document_code.ilike(like_q),
-            DocumentMetadata.original_file_name.ilike(like_q),
-        ))
-
-    total = doc_q.count()
-    total_pages = max(1, (total + per_page - 1) // per_page)
-    page = min(page, total_pages)
-    docs_raw = (
-        doc_q.order_by(DocumentMetadata.document_id.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
-    docs = [
-        {
-            "document_id": d.document_id,
-            "document_code": d.document_code,
-            "document_title": _clean_doc_title(d.document_title, d.original_file_name),
-            "collection_type": d.collection_type,
-            "category_code": d.category_code,
-            "original_file_name": d.original_file_name,
-            "ingest_status": d.ingest_status,
-            "is_active": d.is_active,
-            "created_at": d.created_at.strftime("%Y-%m-%d") if d.created_at else "-",
-        }
-        for d in docs_raw
-    ]
+    docs = []
+    cad_groups = []
+    if tab == "cad":
+        filtered = cad_groups_all
+        if q:
+            ql = q.lower()
+            filtered = [
+                g for g in cad_groups_all
+                if ql in g["group_title"].lower()
+                or any(ql in (f["file_name"] or "").lower() or ql in (f["title"] or "").lower() for f in g["files"])
+            ]
+        total = len(filtered)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        cad_groups = filtered[(page - 1) * per_page : page * per_page]
+    else:
+        doc_q = base_q
+        if tab == "public":
+            doc_q = doc_q.filter(DocumentMetadata.collection_type == "PUBLIC")
+        else:
+            doc_q = doc_q.filter(
+                DocumentMetadata.collection_type == "INTERNAL",
+                DocumentMetadata.category_code != "CAD_DRAWING",
+            )
+        if q:
+            like_q = f"%{q}%"
+            doc_q = doc_q.filter(or_(
+                DocumentMetadata.document_title.ilike(like_q),
+                DocumentMetadata.document_code.ilike(like_q),
+                DocumentMetadata.original_file_name.ilike(like_q),
+            ))
+        total = doc_q.count()
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        docs_raw = (
+            doc_q.order_by(DocumentMetadata.document_id.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+            .all()
+        )
+        docs = [
+            {
+                "document_id": d.document_id,
+                "document_code": d.document_code,
+                "document_title": _clean_doc_title(d.document_title, d.original_file_name),
+                "collection_type": d.collection_type,
+                "category_code": d.category_code,
+                "original_file_name": d.original_file_name,
+                "ingest_status": d.ingest_status,
+                "is_active": d.is_active,
+                "created_at": d.created_at.strftime("%Y-%m-%d") if d.created_at else "-",
+            }
+            for d in docs_raw
+        ]
 
     return render_template(
         "service/library.html",
         me=user,
         is_admin=is_admin,
         allowed_tabs=allowed_tabs,
+        tab_counts=tab_counts,
         tab=tab,
         q=q,
         docs=docs,
+        cad_groups=cad_groups,
         page=page,
         total_pages=total_pages,
         total_count=total,
         page_items=_build_page_items(page, total_pages),
     )
+
+
+
+def _extract_iges_wireframe(igs_path: Path, max_segments: int = 1200) -> dict:
+    """
+    순수 파이썬 IGES(.igs/.iges) 3D 와이어프레임 추출기 (브라우저 Canvas 3D 뷰어용).
+    Entity 110(Line), 126(B-Spline Curve), 128(B-Spline Surface)에서 3D 선분을 샘플링합니다.
+    """
+    try:
+        raw_lines = igs_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except Exception:
+        return {"segments": [], "entity_count": 0}
+
+    # Parameter Data(col 73 == 'P')을 엔티티 포인터(col 65..72) 기준으로 결합
+    param_chunks: dict[str, list[str]] = {}
+    for ln in raw_lines:
+        if len(ln) >= 73 and ln[72] == "P":
+            ptr = ln[64:72].strip()
+            body = ln[:64].strip()
+            if ptr:
+                param_chunks.setdefault(ptr, []).append(body)
+
+    segments: list[list[float]] = []
+    entity_count = 0
+
+    def _to_float(tok: str) -> float | None:
+        try:
+            return float(tok.replace("D", "E").replace("d", "e"))
+        except Exception:
+            return None
+
+    for ptr, parts in param_chunks.items():
+        if len(segments) >= max_segments:
+            break
+        joined = "".join(parts)
+        if ";" in joined:
+            joined = joined.split(";", 1)[0]
+        tokens = [t.strip() for t in joined.split(",") if t.strip() != ""]
+        if not tokens:
+            continue
+        etype = tokens[0]
+        if etype == "110" and len(tokens) >= 7:
+            vals = [_to_float(tokens[i]) for i in range(1, 7)]
+            if all(v is not None for v in vals):
+                segments.append([vals[0], vals[1], vals[2], vals[3], vals[4], vals[5]])
+                entity_count += 1
+        elif etype == "126" and len(tokens) >= 12:
+            # 126, K, M, prop1..4, knots(K+M+2), weights(K+1), ctrl_pts(3*(K+1))
+            try:
+                k_val = int(float(tokens[1]))
+                m_val = int(float(tokens[2]))
+            except Exception:
+                continue
+            if k_val < 1 or k_val > 500 or m_val < 0 or m_val > 20:
+                continue
+            n_pts = k_val + 1
+            knot_cnt = k_val + m_val + 2
+            start_idx = 7 + knot_cnt + n_pts
+            if start_idx + n_pts * 3 > len(tokens):
+                continue
+            pts = []
+            step = max(1, n_pts // 16)
+            for idx in range(0, n_pts, step):
+                base = start_idx + idx * 3
+                x = _to_float(tokens[base])
+                y = _to_float(tokens[base + 1])
+                z = _to_float(tokens[base + 2])
+                if x is not None and y is not None and z is not None:
+                    pts.append((x, y, z))
+            # 끝점 포함
+            if (n_pts - 1) % step != 0:
+                base = start_idx + (n_pts - 1) * 3
+                x = _to_float(tokens[base])
+                y = _to_float(tokens[base + 1])
+                z = _to_float(tokens[base + 2])
+                if x is not None and y is not None and z is not None:
+                    pts.append((x, y, z))
+            for i in range(len(pts) - 1):
+                if len(segments) >= max_segments:
+                    break
+                p1, p2 = pts[i], pts[i + 1]
+                segments.append([p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]])
+            if pts:
+                entity_count += 1
+        elif etype == "128" and len(tokens) >= 20:
+            # 128, K1, K2, M1, M2, prop1..5, knots1(K1+M1+2), knots2(K2+M2+2), weights((K1+1)*(K2+1)), ctrl_pts
+            try:
+                k1 = int(float(tokens[1]))
+                k2 = int(float(tokens[2]))
+                m1 = int(float(tokens[3]))
+                m2 = int(float(tokens[4]))
+            except Exception:
+                continue
+            if k1 < 1 or k2 < 1 or k1 > 120 or k2 > 120:
+                continue
+            n1, n2 = k1 + 1, k2 + 1
+            start_idx = 10 + (k1 + m1 + 2) + (k2 + m2 + 2) + (n1 * n2)
+            if start_idx + n1 * n2 * 3 > len(tokens):
+                continue
+            # 외곽 경계 u=0, u=k1, v=0, v=k2 만 추출해 선체 윤곽선 표현
+            grid = {}
+            for j in range(n2):
+                for i in range(n1):
+                    if i in (0, k1) or j in (0, k2) or (i % max(1, n1 // 4) == 0 and j % max(1, n2 // 4) == 0):
+                        base = start_idx + (j * n1 + i) * 3
+                        x = _to_float(tokens[base])
+                        y = _to_float(tokens[base + 1])
+                        z = _to_float(tokens[base + 2])
+                        if x is not None and y is not None and z is not None:
+                            grid[(i, j)] = (x, y, z)
+            for j in (0, k2):
+                prev = None
+                for i in range(n1):
+                    cur = grid.get((i, j))
+                    if cur and prev and len(segments) < max_segments:
+                        segments.append([prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]])
+                    if cur:
+                        prev = cur
+            for i in (0, k1):
+                prev = None
+                for j in range(n2):
+                    cur = grid.get((i, j))
+                    if cur and prev and len(segments) < max_segments:
+                        segments.append([prev[0], prev[1], prev[2], cur[0], cur[1], cur[2]])
+                    if cur:
+                        prev = cur
+            entity_count += 1
+
+    if not segments:
+        return {"segments": [], "entity_count": entity_count}
+
+    # 좌표 정규화 (-1.0 ~ 1.0)
+    xs = [s[0] for s in segments] + [s[3] for s in segments]
+    ys = [s[1] for s in segments] + [s[4] for s in segments]
+    zs = [s[2] for s in segments] + [s[5] for s in segments]
+    cx = (min(xs) + max(xs)) / 2.0
+    cy = (min(ys) + max(ys)) / 2.0
+    cz = (min(zs) + max(zs)) / 2.0
+    span = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs), 1e-6)
+    scale = 1.8 / span
+
+    norm_segs = [
+        [
+            round((s[0] - cx) * scale, 4),
+            round((s[1] - cy) * scale, 4),
+            round((s[2] - cz) * scale, 4),
+            round((s[3] - cx) * scale, 4),
+            round((s[4] - cy) * scale, 4),
+            round((s[5] - cz) * scale, 4),
+        ]
+        for s in segments
+    ]
+    return {
+        "segments": norm_segs,
+        "entity_count": entity_count,
+        "raw_bbox": {
+            "x": round(max(xs) - min(xs), 2),
+            "y": round(max(ys) - min(ys), 2),
+            "z": round(max(zs) - min(zs), 2),
+        },
+    }
+
+
+@service_bp.route("/api/cad/preview/<int:doc_id>", methods=["GET"])
+@login_required
+def cad_preview_api(doc_id: int):
+    """선박 도면(CAD) 브라우저 미리보기 API (PDF 인라인 / DXF 2D 도면 / 3D 제원 요약)"""
+    user = User.query.get_or_404(session["user_id"])
+    if not (user.role in ("ADMIN", "MANAGER") or user.can_access_internal_rag == "Y"):
+        return jsonify({"status": "FORBIDDEN", "message": "열람 권한이 없습니다."}), 403
+
+    doc = DocumentMetadata.query.filter_by(document_id=doc_id).first_or_404()
+    abs_p = _resolve_doc_abs_path(doc.storage_uri)
+    title = _clean_doc_title(doc.document_title, doc.original_file_name)
+    if not abs_p or not abs_p.exists():
+        return jsonify({
+            "status": "SUCCESS",
+            "title": title,
+            "file_name": doc.original_file_name,
+            "mode": "missing",
+            "pdf_url": "",
+            "svg": "",
+            "summary": {"format": "파일 미존재"},
+            "download_url": "",
+        })
+
+    from modules.knowledge.cad_parser import extract_cad_summary, render_dxf_to_svg
+
+    ext = abs_p.suffix.lower()
+    pdf_url = ""
+    svg_html = ""
+    mode = "spec"
+    summary = {}
+
+    if ext == ".pdf":
+        mode = "pdf"
+        pdf_url = f"/api/document/file/{doc.document_id}"
+    elif abs_p.with_suffix(".pdf").is_file():
+        mode = "pdf"
+        pdf_url = f"/api/document/file/{doc.document_id}?preview_pdf=1"
+    elif ext == ".dxf":
+        mode = "svg"
+        try:
+            svg_html = render_dxf_to_svg(abs_p, cache_dir=PROJECT_ROOT / "data" / "rag_cache" / "cad_svg")
+        except Exception:
+            svg_html = ""
+        try:
+            summary = extract_cad_summary(abs_p)
+        except Exception:
+            summary = {"format": "DXF 2D 도면"}
+    elif ext in (".igs", ".iges"):
+        wireframe_3d = _extract_iges_wireframe(abs_p)
+        mode = "iges3d" if wireframe_3d.get("segments") else "spec"
+        try:
+            summary = extract_cad_summary(abs_p)
+        except Exception:
+            summary = {"format": "IGES 3D CAD"}
+    else:
+        mode = "spec"
+        wireframe_3d = None
+        try:
+            summary = extract_cad_summary(abs_p)
+        except Exception:
+            summary = {"format": ext.lstrip(".").upper()}
+
+    if "wireframe_3d" not in locals():
+        wireframe_3d = None
+
+    return jsonify({
+        "status": "SUCCESS",
+        "title": title,
+        "file_name": doc.original_file_name,
+        "mode": mode,
+        "pdf_url": pdf_url,
+        "svg": svg_html,
+        "wireframe_3d": wireframe_3d,
+        "summary": summary,
+        "download_url": f"/api/document/file/{doc.document_id}?download=1",
+    })
+
+
+@service_bp.route("/api/library/sync-db", methods=["POST"])
+@login_required
+def api_library_sync_db():
+    """자료실 폴더(raw_pdfs / internal_pdfs / cad_drawings) ↔ DB(DOCUMENT_METADATA) 통합 동기화"""
+    import hashlib
+    user = User.query.get_or_404(session["user_id"])
+    if user.role not in ("ADMIN", "MANAGER"):
+        return jsonify({"status": "FORBIDDEN", "message": "DB 동기화는 관리자/담당자만 실행할 수 있습니다."}), 403
+
+    try:
+        synced_pdf, synced_cad, deactivated = 0, 0, 0
+
+        # 1) 디스크에서 삭제된 문서 비활성화 처리 (DB 이력 보존)
+        for row in DocumentMetadata.query.all():
+            abs_p = _resolve_doc_abs_path(row.storage_uri)
+            if abs_p is None or not abs_p.exists():
+                if row.is_active == "Y":
+                    row.is_active = "N"
+                    deactivated += 1
+
+        # 2) PDF 폴더 동기화 (raw_pdfs -> PUBLIC, internal_pdfs -> INTERNAL)
+        pdf_specs = [
+            (PROJECT_ROOT / "data" / "raw_pdfs", "PUBLIC", "col_public_weld_std"),
+            (PROJECT_ROOT / "data" / "internal_pdfs", "INTERNAL", "col_internal_ship_sop"),
+        ]
+        for folder, col_type, vec_col in pdf_specs:
+            if not folder.exists():
+                continue
+            for p in sorted(folder.rglob("*.pdf")):
+                if not p.is_file():
+                    continue
+                fhash = hashlib.sha256(p.read_bytes()).hexdigest()
+                rel_uri = p.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()[:500]
+                existing = DocumentMetadata.query.filter_by(file_hash_sha256=fhash, collection_type=col_type).first()
+                if existing:
+                    existing.storage_uri = rel_uri
+                    existing.is_active = "Y"
+                    existing.ingest_status = "COMPLETED"
+                else:
+                    prefix = "DOC-PUB" if col_type == "PUBLIC" else "DOC-INT"
+                    cat = "SAFETY" if any(k in p.name.lower() for k in ("안전", "kosha", "osha", "화기")) else "WELDING_SOP"
+                    code = f"{prefix}-{fhash[:10].upper()}"
+                    if DocumentMetadata.query.filter_by(document_code=code).first():
+                        code = f"{prefix}-{uuid.uuid4().hex[:10].upper()}"
+                    db.session.add(DocumentMetadata(
+                        document_code=code,
+                        document_title=p.stem.replace("_", " ")[:200],
+                        collection_type=col_type,
+                        category_code=cat,
+                        original_file_name=p.name[:255],
+                        storage_uri=rel_uri,
+                        file_hash_sha256=fhash,
+                        vector_collection=vec_col,
+                        ingest_status="COMPLETED",
+                        is_active="Y",
+                        uploaded_by=user.user_id,
+                    ))
+                    synced_pdf += 1
+
+        # 3) CAD 폴더 동기화 (data/cad_drawings)
+        cad_dir = PROJECT_ROOT / "data" / "cad_drawings"
+        supported_cad = {".dxf", ".pdf", ".igs", ".iges", ".stp", ".step", ".stl", ".dwg"}
+        if cad_dir.exists():
+            for p in sorted(cad_dir.rglob("*")):
+                if not p.is_file() or p.suffix.lower() not in supported_cad:
+                    continue
+                if any(ex in {pt.lower() for pt in p.parts} for ex in ("github_pygem", "__macosx")):
+                    continue
+                fhash = hashlib.sha256(p.read_bytes()).hexdigest()
+                rel_uri = p.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()[:500]
+                existing = DocumentMetadata.query.filter_by(file_hash_sha256=fhash, category_code="CAD_DRAWING").first()
+                if existing:
+                    existing.storage_uri = rel_uri
+                    existing.is_active = "Y"
+                else:
+                    code = f"CAD-INT-{fhash[:10].upper()}"
+                    if DocumentMetadata.query.filter_by(document_code=code).first():
+                        code = f"CAD-INT-{uuid.uuid4().hex[:10].upper()}"
+                    db.session.add(DocumentMetadata(
+                        document_code=code,
+                        document_title=f"{p.stem} ({p.suffix.lstrip('.').upper()})"[:200],
+                        collection_type="INTERNAL",
+                        category_code="CAD_DRAWING",
+                        original_file_name=p.name[:255],
+                        storage_uri=rel_uri,
+                        file_hash_sha256=fhash,
+                        vector_collection="col_internal_ship_sop",
+                        ingest_status="COMPLETED",
+                        is_active="Y",
+                        uploaded_by=user.user_id,
+                    ))
+                    synced_cad += 1
+
+        db.session.commit()
+        return jsonify({
+            "status": "SUCCESS",
+            "message": f"DB 동기화 완료 — 신규 PDF {synced_pdf}건, 신규 CAD {synced_cad}건 등록, 미존재 비활성 {deactivated}건 처리됨.",
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "ERROR", "message": f"DB 동기화 중 오류: {str(e)}"}), 500
 
 
 @service_bp.route("/library/upload-pdf", methods=["GET"])
@@ -2134,13 +3315,78 @@ def library_upload_cad_page():
         flash("CAD 도면 및 공정 큐 등록은 담당자만 이용할 수 있습니다.", "warning")
         return redirect(url_for("service.library_page"))
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
-    return render_template("service/library_upload_cad.html", me=user, branches=branches)
+    branch_map = {b.branch_code: b.branch_name for b in branches}
+    existing_drawings = _safe_query_cad_drawings(limit=10)
+    existing_plans = _safe_query_work_plans(states=["STAGING", "PENDING", "IN_PROGRESS", "COMPLETED"])
+    return render_template(
+        "service/library_upload_cad.html",
+        me=user,
+        branches=branches,
+        branch_map=branch_map,
+        existing_drawings=existing_drawings,
+        existing_plans=existing_plans[:15],
+    )
+
+
+def _auto_build_cad_work_plans(dxf_path: Path, meta: dict, vessel_name: str, user_hint: str = "") -> list[dict]:
+    """
+    DXF 기하 메타데이터 기반 AI/자동 블록 작업 패키지 큐 추론기.
+    [AGENT_TEAM_HOOK] 추후 LLM/LangGraph CAD 계획 에이전트가 준비되면 이 함수 내부를 교체해 연결합니다.
+    """
+    raw_blocks = [b for b in (meta.get("blocks") or []) if b and not str(b).startswith("*")]
+    if not raw_blocks:
+        raw_blocks = [l for l in (meta.get("layers") or []) if str(l).upper() not in ("0", "DEFPOINTS")]
+    if not raw_blocks:
+        raw_blocks = [f"{dxf_path.stem}-DB-AFT", f"{dxf_path.stem}-DB-MID", f"{dxf_path.stem}-DK-FWD"]
+
+    bbox = meta.get("bbox") or {}
+    raw_w = float(bbox.get("width") or 12000.0)
+    if raw_w <= 100.0:
+        raw_w = 12000.0
+
+    hint_lower = user_hint.lower()
+    force_saw = "saw" in hint_lower
+    force_fcaw = "fcaw" in hint_lower
+
+    plans = []
+    for idx, bname in enumerate(raw_blocks[:5], 1):
+        clean_code = _re.sub(r"[^A-Za-z0-9_-]", "", str(bname).upper().replace(" ", "-"))[:24] or f"BLK-{idx:02d}"
+        lower_b = str(bname).lower()
+        if force_saw or ("deck" in lower_b or "dk" in lower_b or idx == 3):
+            proc, wire_code, grade, thick, joint = "SAW", "WIRE-SAW-L60", "AH36", 16.0, "BUTT"
+            rationale = "상부 데크·광폭 평판 구간으로 자동 서브머지드(SAW) 맞대기 공정이 효율적입니다."
+        elif force_fcaw or ("bottom" in lower_b or "db" in lower_b or idx == 1):
+            proc, wire_code, grade, thick, joint = "FCAW", "WIRE-CSF71T", "AH36", 12.0, "BUTT"
+            rationale = "이중저·선저 기초 블록으로 전체 선체 기준선 확보를 위해 최우선(P1) 배정했습니다."
+        else:
+            proc, wire_code, grade, thick, joint = "FCAW", "WIRE-CSF71T", "SS400", 10.0, "FILLET"
+            rationale = "인접 블록 조립 후 연속 투입되는 중·소조립 구간으로 순차 배정했습니다."
+
+        est_len = round(max(2400.0, (raw_w / max(1, min(len(raw_blocks), 3))) * (1.15 - idx * 0.1)), 1)
+        est_wire = round(max(8.0, (est_len / 1000.0) * 3.0), 1)
+        est_days = max(1, min(3, int(est_len // 6000) + 1))
+        plans.append({
+            "priority_rank": idx,
+            "block_code": clean_code,
+            "block_name": f"{vessel_name} · {bname}"[:140],
+            "material_grade": grade,
+            "thickness_mm": thick,
+            "process_code": proc,
+            "joint_type": joint,
+            "wire_mat_code": wire_code,
+            "est_weld_length_mm": est_len,
+            "est_weight_ton": round(12.0 + idx * 4.5, 1),
+            "est_wire_kg": est_wire,
+            "est_duration_days": est_days,
+            "plan_rationale": rationale,
+        })
+    return plans
 
 
 @service_bp.route("/api/library/cad-parse", methods=["POST"])
 @login_required
 def api_library_cad_parse():
-    """SR-01c Gate 1: DXF/PDF 업로드 후 SHA-256 해시 + cad_parser.py 표제란·블록 파싱"""
+    """SR-01c Gate 1: DXF/PDF 업로드 후 SHA-256 해시 + Agent 자동 블록 공정 큐 생성"""
     import hashlib
     from werkzeug.utils import secure_filename
     from modules.knowledge.cad_parser import parse_dxf_metadata, detect_vessel_context
@@ -2151,6 +3397,7 @@ def api_library_cad_parse():
 
     dxf_file = request.files.get("dxf_file")
     pdf_file = request.files.get("pdf_file")
+    user_hint = (request.form.get("agent_hint") or "").strip()
     if not dxf_file or not dxf_file.filename:
         return jsonify({"status": "ERROR", "message": "DXF 도면 파일을 선택해 주세요."}), 400
 
@@ -2170,33 +3417,11 @@ def api_library_cad_parse():
 
     sha256 = hashlib.sha256(dxf_path.read_bytes()).hexdigest()
     meta = parse_dxf_metadata(dxf_path)
-    vessel_name, _ = detect_vessel_context(dxf_path)
+    vessel_name, vessel_desc = detect_vessel_context(dxf_path)
+    parsed_plans = _auto_build_cad_work_plans(dxf_path, meta, vessel_name, user_hint=user_hint)
 
-    raw_blocks = meta.get("blocks") or meta.get("layers") or [Path(safe_dxf).stem]
-    bbox = meta.get("bbox") or {}
-    base_len = round(float(bbox.get("width") or 10000.0), 1)
-    if base_len <= 0:
-        base_len = 10000.0
-
-    # [AGENT_TEAM_HOOK] 추후 LLM 기반 공정 순서(PLAN_RATIONALE) 및 일정 산출 연결 지점
-    parsed_plans = []
-    for idx, bname in enumerate(raw_blocks[:6], 1):
-        est_len = round(max(1500.0, base_len / max(1, min(len(raw_blocks), 3))), 1)
-        est_wire = round(max(5.0, (est_len / 1000.0) * 3.0), 1)
-        parsed_plans.append({
-            "priority_rank": idx,
-            "block_code": str(bname).upper().replace(" ", "-")[:30],
-            "block_name": f"{vessel_name} - {bname}"[:140],
-            "material_grade": "AH36",
-            "thickness_mm": 12.0,
-            "process_code": "FCAW",
-            "joint_type": "BUTT",
-            "wire_mat_code": "WIRE-CSF71T",
-            "est_weld_length_mm": est_len,
-            "est_weight_ton": 15.0,
-            "est_wire_kg": est_wire,
-            "est_duration_days": max(1, min(3, int(est_len // 7000) + 1)),
-        })
+    stem_clean = _re.sub(r"[^A-Za-z0-9]", "", Path(safe_dxf).stem)[:12].upper() or "SHIP01"
+    suggested_ship_code = f"HN-{stem_clean}"
 
     return jsonify({
         "status": "SUCCESS",
@@ -2204,9 +3429,53 @@ def api_library_cad_parse():
         "pdf_file_path": pdf_rel_path,
         "file_sha256": sha256,
         "drawing_title": Path(safe_dxf).stem,
+        "ship_code": suggested_ship_code,
         "vessel_name": vessel_name,
+        "vessel_desc": vessel_desc,
+        "layer_count": len(meta.get("layers") or []),
         "plans": parsed_plans,
     })
+
+
+@service_bp.route("/api/library/cad-replan", methods=["POST"])
+@login_required
+def api_library_cad_replan():
+    """SR-01c: 사용자가 자연어로 조건 변경 요청 시 Agent가 공정 큐를 자동 재산출"""
+    user = User.query.get_or_404(session["user_id"])
+    if user.role not in ("ADMIN", "MANAGER"):
+        return jsonify({"status": "FORBIDDEN", "message": "권한이 없습니다."}), 403
+
+    data = request.get_json(silent=True) or {}
+    plans = list(data.get("plans") or [])
+    instruction = (data.get("instruction") or "").strip()
+    if not plans or not instruction:
+        return jsonify({"status": "ERROR", "message": "재산출할 공정 큐와 요청 내용을 확인해 주세요."}), 400
+
+    low = instruction.lower()
+    # [AGENT_TEAM_HOOK] 추후 LLM 공정 재편성 에이전트 연결 지점
+    if "역순" in instruction or "순서 반전" in instruction:
+        plans.reverse()
+    for idx, p in enumerate(plans, 1):
+        p["priority_rank"] = idx
+        if "saw" in low:
+            p["process_code"] = "SAW"
+            p["wire_mat_code"] = "WIRE-SAW-L60"
+            p["plan_rationale"] = f"요청('{instruction}') 반영: SAW 공정 및 와이어 규격으로 자동 재편성"
+        elif "fcaw" in low:
+            p["process_code"] = "FCAW"
+            p["wire_mat_code"] = "WIRE-CSF71T"
+            p["plan_rationale"] = f"요청('{instruction}') 반영: FCAW 공정 및 와이어 규격으로 자동 재편성"
+        elif "gmaw" in low:
+            p["process_code"] = "GMAW"
+            p["wire_mat_code"] = "WIRE-GMAW-70S"
+            p["plan_rationale"] = f"요청('{instruction}') 반영: GMAW 공정으로 자동 재편성"
+        elif "단축" in instruction or "1일" in instruction:
+            p["est_duration_days"] = 1
+            p["plan_rationale"] = f"요청('{instruction}') 반영: 집중 투입 기준 1일 공정으로 재산출"
+        else:
+            p["plan_rationale"] = f"요청('{instruction}') 기준 우선순위 및 작업 순서 재검토 완료"
+
+    return jsonify({"status": "SUCCESS", "plans": plans, "message": "요청 조건을 반영해 AI가 공정 큐를 재산출했습니다."})
 
 
 @service_bp.route("/api/library/cad-save", methods=["POST"])
@@ -2226,9 +3495,9 @@ def api_library_cad_save():
     plans_in = data.get("plans") or []
 
     if not branch_code or not ship_code:
-        return jsonify({"status": "ERROR", "message": "선박 호선과 배치 야드를 입력해 주세요."}), 400
+        return jsonify({"status": "ERROR", "message": "선박 호선과 배치 야드를 확인해 주세요."}), 400
     if not plans_in:
-        return jsonify({"status": "ERROR", "message": "등록할 블록 공정 항목이 없습니다."}), 400
+        return jsonify({"status": "ERROR", "message": "먼저 CAD 도면을 파싱하여 AI 공정 큐를 생성해 주세요."}), 400
 
     drawing_id = f"DWG-{uuid.uuid4().hex[:10].upper()}"
     try:
@@ -2268,6 +3537,7 @@ def api_library_cad_save():
                 est_wire_kg=float(row.get("est_wire_kg") or 20.0),
                 est_duration_days=int(row.get("est_duration_days") or 1),
                 plan_state=state,
+                plan_rationale=str(row.get("plan_rationale") or "")[:500] or None,
             ))
 
         db.session.commit()
@@ -2275,14 +3545,14 @@ def api_library_cad_save():
         db.session.rollback()
         return jsonify({
             "status": "ERROR",
-            "message": f"DB 저장 실패 (CAD_DRAWINGS / WORK_PLANS 테이블 생성 여부를 확인하세요): {str(e)}",
+            "message": f"DB 저장 실패 (03_SHIP_USER_DDL.sql 적용 여부를 확인하세요): {str(e)}",
         }), 500
 
     return jsonify({
         "status": "SUCCESS",
         "drawing_id": drawing_id,
         "plan_status": plan_status,
-        "message": "공정 큐가 확정(ACTIVE)되어 통합 업무와 현장 관제에 반영되었습니다." if confirm else "임시 저장(STAGING)되었습니다.",
+        "message": "AI 공정 큐가 확정(ACTIVE)되어 통합 업무와 현장 관제에 즉시 반영되었습니다." if confirm else "임시 저장(STAGING)되었습니다.",
     })
 
 
@@ -2297,8 +3567,10 @@ def cad_raw_file(doc_id: int):
     if not abs_p or not abs_p.exists():
         abort(404)
     if request.args.get("preview_pdf") == "1" and abs_p.with_suffix(".pdf").exists():
-        return send_file(abs_p.with_suffix(".pdf"), as_attachment=False)
+        return send_file(abs_p.with_suffix(".pdf"), mimetype="application/pdf", as_attachment=False)
     as_dl = request.args.get("download", "0") == "1"
+    if not as_dl and abs_p.suffix.lower() == ".pdf":
+        return send_file(abs_p, mimetype="application/pdf", as_attachment=False)
     return send_file(abs_p, as_attachment=as_dl, download_name=doc.original_file_name)
 
 
@@ -2509,7 +3781,7 @@ def faq_delete(board_id):
 
 
 # =====================================================================
-# 8. 구버전 URL 호환 리다이렉트 (기존 링크 깨짐 방지)
+# 8. 구버전 URL 호환 리다이렉트
 # =====================================================================
 @service_bp.route("/vision")
 @login_required

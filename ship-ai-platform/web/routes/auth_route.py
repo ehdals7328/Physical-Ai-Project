@@ -1535,4 +1535,8 @@ def view_document_file(doc_id: int):
         abort(404)
 
     as_dl = request.args.get("download", "0") == "1"
+    if not as_dl and request.args.get("preview_pdf") == "1" and resolved.with_suffix(".pdf").is_file():
+        return send_file(resolved.with_suffix(".pdf"), mimetype="application/pdf", as_attachment=False)
+    if not as_dl and resolved.suffix.lower() == ".pdf":
+        return send_file(resolved, mimetype="application/pdf", as_attachment=False)
     return send_file(resolved, as_attachment=as_dl, download_name=doc.original_file_name)

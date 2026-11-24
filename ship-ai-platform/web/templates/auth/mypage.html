@@ -1,122 +1,206 @@
 {% extends "layout/base.html" %}
-{% block title %}마이페이지 | K-SmartShip{% endblock %}
+{% block title %}내 정보 및 접근 권한 | K-SmartShip{% endblock %}
 
 {% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">내 정보 및 시스템 접근 권한</h1>
+  </div>
+</div>
+
 {% if me.role in ('ADMIN', 'MANAGER') and pending_count > 0 %}
-<div class="alert alert-warning d-flex justify-content-between align-items-center mb-4">
-  <div><strong>계정 생성 요청 알림:</strong> 관리자 승인을 기다리는 신규 계정 요청이 <strong>{{ pending_count }}건</strong> 있습니다.</div>
-  <a href="#admin-users-section" class="btn btn-dark btn-sm">아래에서 확인</a>
+<div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div><strong>계정 발급 승인 대기:</strong> 관리자 승인을 기다리는 신규 신청이 <strong>{{ pending_count }}건</strong> 있습니다.</div>
+  <a href="#admin-users-section" class="btn btn-dark btn-sm">아래 목록에서 확인</a>
 </div>
 {% endif %}
 
 <div class="row g-4 mb-4">
-  <!-- 1. 사용자 계정 정보 및 부여된 접근 권한 -->
   <div class="col-lg-6">
-    <div class="surface-card h-100">
-      <h5 class="fw-bold mb-3">내 계정 정보 및 접근 권한</h5>
-      <table class="table table-sm table-borderless small mb-3">
+    <div class="panel-card h-100 mb-0">
+      <div class="d-flex align-items-center gap-3 pb-3 mb-3 border-bottom">
+        <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
+             style="width:52px;height:52px;background:#0b1f3a;font-size:20px;">
+          {{ me.full_name[0] if me.full_name else 'U' }}
+        </div>
+        <div>
+          <div class="fw-bold" style="font-size:18px;color:#0b1f3a;">
+            {{ me.full_name }} <span class="text-muted fw-normal" style="font-size:14px;">({{ me.username }})</span>
+          </div>
+          <div class="d-flex gap-2 mt-1">
+            <span class="status-chip status-info">{{ me.role }}</span>
+            <span class="status-chip status-muted">{{ '사내 임직원' if me.user_type == 'INTERNAL' else '협력사' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="table table-borderless table-sm mb-3" style="font-size:14px;">
         <tbody>
-          <tr><th class="text-muted" style="width:130px;">성명 / 아이디</th><td><strong>{{ me.full_name }}</strong> ({{ me.username }})</td></tr>
-          <tr><th class="text-muted">역할 / 구분</th><td>{{ me.role }} · {{ me.user_type }}</td></tr>
-          <tr><th class="text-muted">소속 회사</th><td>{{ me.erp_company_code or '-' }}</td></tr>
-          <tr><th class="text-muted">소속 야드</th><td>{{ me.erp_branch_code or '-' }}</td></tr>
-          <tr><th class="text-muted">부서 / 팀명</th><td>{{ me.department_name or '-' }}</td></tr>
-          <tr><th class="text-muted">주 작업 구역</th><td>{{ me.default_workspace or '-' }}</td></tr>
-          <tr><th class="text-muted">ERP 사번</th><td>{{ me.erp_employee_code or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal" style="width:130px;">소속 회사</th><td class="fw-semibold">{{ me.erp_company_code or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">소속 야드</th><td class="fw-semibold">{{ me.erp_branch_code or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">부서 / 팀명</th><td class="fw-semibold">{{ me.department_name or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">주 작업 구역</th><td class="fw-semibold">{{ me.default_workspace or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">사번</th><td class="fw-semibold">{{ me.erp_employee_code or '-' }}</td></tr>
         </tbody>
       </table>
-      <div class="border-top pt-3 small">
-        <div class="fw-semibold mb-2">부여된 접근 권한</div>
-        <div class="d-flex flex-wrap gap-2">
-          <span class="badge {% if me.can_access_erp == 'Y' %}bg-primary{% else %}bg-secondary{% endif %}">ERP 조회: {{ me.can_access_erp }}</span>
-          <span class="badge {% if me.can_access_internal_rag == 'Y' %}bg-primary{% else %}bg-secondary{% endif %}">사내 규범(RAG): {{ me.can_access_internal_rag }}</span>
-          <span class="badge {% if me.can_control_robot == 'Y' %}bg-primary{% else %}bg-secondary{% endif %}">로봇 제어: {{ me.can_control_robot }}</span>
+
+      <div class="pt-3 border-top">
+        <div class="fw-bold mb-2 small" style="color:#0b1f3a;">부여된 접근 권한</div>
+        <div class="row g-2">
+          <div class="col-4">
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">자재·인력 조회</div>
+              <span class="status-chip {{ 'status-ok' if me.can_access_erp == 'Y' else 'status-muted' }}">{{ '허용' if me.can_access_erp == 'Y' else '제한' }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">사내 규정 열람</div>
+              <span class="status-chip {{ 'status-ok' if me.can_access_internal_rag == 'Y' else 'status-muted' }}">{{ '허용' if me.can_access_internal_rag == 'Y' else '제한' }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">로봇 제어</div>
+              <span class="status-chip {{ 'status-ok' if me.can_control_robot == 'Y' else 'status-muted' }}">{{ '허용' if me.can_control_robot == 'Y' else '제한' }}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 2. 기본 정보 및 비밀번호 변경 -->
-  <div class="col-lg-6">
-    <div class="surface-card h-100">
-      <h5 class="fw-bold mb-3">기본 정보 및 비밀번호 변경</h5>
+  <div class="col-lg-6" id="password-section">
+    <div class="panel-card h-100 mb-0">
+      <h2 class="panel-title mb-1">기본 정보 및 비밀번호 변경</h2>
+      <p class="text-muted small mb-3">표시 이름(닉네임), 이메일, 로그인 비밀번호를 변경할 수 있습니다.</p>
+
       <form method="post" action="/mypage/update-profile">
-        <div class="mb-2">
-          <label class="form-label small fw-semibold">표시 이름(닉네임)</label>
-          <input type="text" name="display_name" class="form-control form-control-sm" value="{{ me.display_name or me.full_name }}">
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">표시 이름 (닉네임)</label>
+            <input type="text" name="display_name" class="form-control" value="{{ me.display_name or me.full_name }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">이메일</label>
+            <input type="email" name="email" class="form-control" value="{{ me.email or '' }}">
+          </div>
         </div>
+
+        <hr class="my-3">
+        <div class="small fw-bold text-secondary mb-2">비밀번호 변경 (변경 시에만 입력)</div>
         <div class="mb-3">
-          <label class="form-label small fw-semibold">이메일</label>
-          <input type="email" name="email" class="form-control form-control-sm" value="{{ me.email or '' }}">
-        </div>
-        <div class="border-top pt-3 mb-2">
           <label class="form-label small fw-semibold">현재 비밀번호</label>
-          <input type="password" name="current_password" class="form-control form-control-sm">
+          <input type="password" name="current_password" class="form-control" placeholder="현재 사용 중인 비밀번호">
         </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
             <label class="form-label small fw-semibold">새 비밀번호</label>
-            <input type="password" name="new_password" class="form-control form-control-sm">
+            <input type="password" name="new_password" class="form-control" placeholder="새 비밀번호 입력">
           </div>
-          <div class="col-6">
+          <div class="col-md-6">
             <label class="form-label small fw-semibold">새 비밀번호 확인</label>
-            <input type="password" name="confirm_password" class="form-control form-control-sm">
+            <input type="password" name="confirm_password" class="form-control" placeholder="새 비밀번호 다시 입력">
           </div>
         </div>
-        <button type="submit" class="btn btn-dark btn-sm px-3">변경 저장</button>
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary px-4" style="background:#0052cc;border-color:#0052cc;">변경 사항 저장</button>
+        </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- 3. 관리자 전용: 계정 접근 권한 관리 -->
 {% if me.role in ('ADMIN', 'MANAGER') %}
-<div id="admin-users-section" class="surface-card">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <h5 class="fw-bold mb-0">계정 승인 및 접근 권한 관리</h5>
-    <form method="get" action="/mypage" class="d-flex gap-2">
-      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="이름, 아이디, 부서 검색">
-      <button type="submit" class="btn btn-outline-dark btn-sm">검색</button>
+<div class="panel-card" id="admin-users-section">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+    <div>
+      <h2 class="panel-title">사내 · 외부 협력사 계정 및 접근 권한 관리</h2>
+      <p class="text-muted small mb-0 mt-1">스위치를 변경하면 즉시 저장되며, 권한이 없는 메뉴와 문서는 자동으로 제한됩니다.</p>
+    </div>
+
+    <form method="get" action="/mypage" class="d-flex gap-2 flex-wrap">
+      <select name="user_type" class="form-select form-select-sm" style="width:130px;" onchange="this.form.submit()">
+        <option value="ALL" {% if user_type_filter == 'ALL' %}selected{% endif %}>전체 구분</option>
+        <option value="INTERNAL" {% if user_type_filter == 'INTERNAL' %}selected{% endif %}>사내 직원</option>
+        <option value="EXTERNAL" {% if user_type_filter == 'EXTERNAL' %}selected{% endif %}>외부 협력사</option>
+      </select>
+      <input type="text" name="q" class="form-control form-control-sm" style="width:190px;" value="{{ q or '' }}" placeholder="성명 · 사번 · 부서 검색">
+      <button type="submit" class="btn btn-dark btn-sm">검색</button>
     </form>
   </div>
 
   <div class="table-responsive">
-    <table class="table table-sm table-clean mb-0 small">
+    <table class="table table-enterprise align-middle">
       <thead>
         <tr>
-          <th>성명 (아이디)</th>
-          <th>소속 / 야드</th>
+          <th>성명 / 아이디</th>
+          <th>구분 · 소속</th>
           <th>역할</th>
-          <th>ERP</th>
-          <th>사내RAG</th>
-          <th>로봇</th>
-          <th>상태</th>
-          <th>저장</th>
+          <th class="text-center">자재·인력</th>
+          <th class="text-center">사내 규정</th>
+          <th class="text-center">로봇 제어</th>
+          <th class="text-center">계정 상태</th>
         </tr>
       </thead>
       <tbody>
         {% for u in all_users %}
-        <tr data-uid="{{ u.user_id }}">
-          <td><strong>{{ u.full_name }}</strong> ({{ u.username }})</td>
-          <td>{{ u.department_name or '-' }} / {{ u.erp_branch_code or '-' }}</td>
+        <tr>
           <td>
-            <select class="form-select form-select-sm u-role">
-              <option value="WORKER" {% if u.role == 'WORKER' %}selected{% endif %}>WORKER</option>
-              <option value="MANAGER" {% if u.role == 'MANAGER' %}selected{% endif %}>MANAGER</option>
+            <div class="fw-bold">{{ u.full_name }}</div>
+            <div class="small text-muted">{{ u.username }} · {{ u.erp_employee_code or '-' }}</div>
+          </td>
+          <td>
+            <span class="status-chip {{ 'status-info' if u.user_type == 'INTERNAL' else 'status-warn' }} mb-1">
+              {{ '사내' if u.user_type == 'INTERNAL' else '외부' }}
+            </span>
+            <div class="small text-muted">{{ u.erp_company_code or '-' }} / {{ u.erp_branch_code or '-' }}</div>
+          </td>
+          <td>
+            <select class="form-select form-select-sm js-user-role" data-uid="{{ u.user_id }}" style="width:115px;"
+                    {% if me.role != 'ADMIN' or u.user_id == me.user_id %}disabled{% endif %}>
               <option value="ADMIN" {% if u.role == 'ADMIN' %}selected{% endif %}>ADMIN</option>
+              <option value="MANAGER" {% if u.role == 'MANAGER' %}selected{% endif %}>MANAGER</option>
+              <option value="WORKER" {% if u.role == 'WORKER' %}selected{% endif %}>WORKER</option>
             </select>
           </td>
-          <td><input type="checkbox" class="form-check-input u-erp" {% if u.can_access_erp == 'Y' %}checked{% endif %}></td>
-          <td><input type="checkbox" class="form-check-input u-rag" {% if u.can_access_internal_rag == 'Y' %}checked{% endif %}></td>
-          <td><input type="checkbox" class="form-check-input u-robot" {% if u.can_control_robot == 'Y' %}checked{% endif %}></td>
-          <td>
-            <select class="form-select form-select-sm u-active">
-              <option value="Y" {% if u.is_active == 'Y' %}selected{% endif %}>활성</option>
-              <option value="N" {% if u.is_active == 'N' %}selected{% endif %}>대기/중지</option>
-            </select>
+          <td class="text-center">
+            <div class="form-check form-switch d-inline-block">
+              <input class="form-check-input js-user-perm" type="checkbox"
+                     data-uid="{{ u.user_id }}" data-field="can_access_erp"
+                     {% if u.can_access_erp == 'Y' %}checked{% endif %}
+                     {% if me.role != 'ADMIN' %}disabled{% endif %}>
+            </div>
           </td>
-          <td><button type="button" class="btn btn-primary btn-sm py-0" onclick="saveUserControl(this)">적용</button></td>
+          <td class="text-center">
+            <div class="form-check form-switch d-inline-block">
+              <input class="form-check-input js-user-perm" type="checkbox"
+                     data-uid="{{ u.user_id }}" data-field="can_access_internal_rag"
+                     {% if u.can_access_internal_rag == 'Y' %}checked{% endif %}
+                     {% if me.role != 'ADMIN' %}disabled{% endif %}>
+            </div>
+          </td>
+          <td class="text-center">
+            <div class="form-check form-switch d-inline-block">
+              <input class="form-check-input js-user-perm" type="checkbox"
+                     data-uid="{{ u.user_id }}" data-field="can_control_robot"
+                     {% if u.can_control_robot == 'Y' %}checked{% endif %}>
+            </div>
+          </td>
+          <td class="text-center">
+            {% if u.is_active == 'N' and u.created_by is none %}
+              <button type="button" class="btn btn-primary btn-sm js-user-approve" data-uid="{{ u.user_id }}">가입 승인</button>
+            {% else %}
+              <button type="button" class="btn btn-sm {{ 'btn-outline-success' if u.is_active == 'Y' else 'btn-outline-secondary' }} js-user-toggle"
+                      data-uid="{{ u.user_id }}" {% if u.user_id == me.user_id %}disabled{% endif %}>
+                {{ '사용 중' if u.is_active == 'Y' else '중지됨' }}
+              </button>
+            {% endif %}
+          </td>
         </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">조회된 사용자가 없습니다.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -127,23 +211,34 @@
 
 {% block extra_js %}
 <script>
-function saveUserControl(btn) {
-  const $tr = $(btn).closest('tr');
-  $.ajax({
-    url: '/api/admin/user-control',
-    method: 'POST',
-    contentType: 'application/json',
-    data: JSON.stringify({
-      target_user_id: parseInt($tr.data('uid'), 10),
-      role: $tr.find('.u-role').val(),
-      can_access_erp: $tr.find('.u-erp').is(':checked') ? 'Y' : 'N',
-      can_access_internal_rag: $tr.find('.u-rag').is(':checked') ? 'Y' : 'N',
-      can_control_robot: $tr.find('.u-robot').is(':checked') ? 'Y' : 'N',
-      is_active: $tr.find('.u-active').val()
-    }),
-    success: res => { alert(res.message || '저장되었습니다.'); location.reload(); },
-    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '저장에 실패했습니다.')
+$(function () {
+  function sendUserControl(payload, onOk) {
+    $.ajax({
+      url: '/api/admin/user-control',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify(payload),
+      success: function (res) { if (onOk) onOk(res); },
+      error: function (xhr) {
+        alert((xhr.responseJSON && xhr.responseJSON.message) || '권한 변경에 실패했습니다.');
+        location.reload();
+      }
+    });
+  }
+  $('.js-user-perm').on('change', function () {
+    var $el = $(this);
+    sendUserControl({ target_user_id: $el.data('uid'), action: 'UPDATE_PERM', field: $el.data('field'), value: $el.is(':checked') ? 'Y' : 'N' });
   });
-}
+  $('.js-user-role').on('change', function () {
+    var $el = $(this);
+    sendUserControl({ target_user_id: $el.data('uid'), action: 'UPDATE_PERM', field: 'role', value: $el.val() }, function () { location.reload(); });
+  });
+  $('.js-user-approve').on('click', function () {
+    sendUserControl({ target_user_id: $(this).data('uid'), action: 'APPROVE' }, function () { location.reload(); });
+  });
+  $('.js-user-toggle').on('click', function () {
+    sendUserControl({ target_user_id: $(this).data('uid'), action: 'TOGGLE_ACTIVE' }, function () { location.reload(); });
+  });
+});
 </script>
 {% endblock %}

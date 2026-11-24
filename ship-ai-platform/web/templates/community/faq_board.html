@@ -2,27 +2,35 @@
 {% block title %}FAQ / QNA | K-SmartShip{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <div class="btn-group">
-    <a href="/service/faq?tab=faq" class="btn btn-sm {% if tab == 'faq' %}btn-dark{% else %}btn-outline-dark{% endif %}">FAQ</a>
-    <a href="/service/faq?tab=qna" class="btn btn-sm {% if tab == 'qna' %}btn-dark{% else %}btn-outline-dark{% endif %}">QNA</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">FAQ / QNA</h1>
   </div>
   {% if tab == 'qna' %}
-    <a href="/service/faq/write?tab=qna" class="btn btn-primary btn-sm">글 작성</a>
+    <a href="/service/faq/write?tab=qna" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">글 작성</a>
   {% elif me.role == 'ADMIN' %}
-    <a href="/service/faq/write?tab=faq" class="btn btn-primary btn-sm">FAQ 등록</a>
+    <a href="/service/faq/write?tab=faq" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">FAQ 등록</a>
   {% endif %}
 </div>
 
-<div class="surface-card">
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'faq' %}active{% endif %}" href="/service/faq?tab=faq">FAQ (자주 묻는 질문)</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'qna' %}active{% endif %}" href="/service/faq?tab=qna">QNA (문의 게시판)</a>
+  </li>
+</ul>
+
+<div class="panel-card">
   <div class="table-responsive mb-3">
-    <table class="table table-clean mb-0">
+    <table class="table table-enterprise">
       <thead>
         <tr>
-          <th style="width:80px;">번호</th>
-          <th style="width:120px;">분류</th>
+          <th style="width:70px;">번호</th>
+          <th style="width:110px;">분류</th>
           <th>제목</th>
-          <th style="width:130px;">작성자</th>
+          <th style="width:140px;">작성자</th>
           <th style="width:110px;">등록일</th>
           <th style="width:70px;">조회</th>
         </tr>
@@ -31,16 +39,16 @@
         {% for p in posts %}
         <tr>
           <td>{{ p.board_id }}</td>
-          <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+          <td><span class="status-chip status-muted">{{ p.category }}</span></td>
           <td>
             <a href="/service/faq/{{ p.board_id }}" class="text-decoration-none text-dark fw-semibold">{{ p.title }}</a>
             {% if tab == 'qna' and reply_counts.get(p.board_id) %}
-              <span class="badge bg-primary ms-1">답변 {{ reply_counts.get(p.board_id) }}</span>
+              <span class="status-chip status-info ms-1">답변 {{ reply_counts.get(p.board_id) }}</span>
             {% endif %}
           </td>
-          <td class="small">{{ p.writer_display }}</td>
-          <td class="small text-muted">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '-' }}</td>
-          <td class="small text-muted">{{ p.view_count }}</td>
+          <td>{{ p.writer_display }}</td>
+          <td class="text-muted">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '-' }}</td>
+          <td class="text-muted">{{ p.view_count }}</td>
         </tr>
         {% else %}
         <tr><td colspan="6" class="text-center text-muted py-4">등록된 게시글이 없습니다.</td></tr>
@@ -49,29 +57,20 @@
     </table>
   </div>
 
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
     <form method="get" action="/service/faq" class="d-flex gap-2">
       <input type="hidden" name="tab" value="{{ tab }}">
-      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="제목, 내용, 작성자 검색">
-      <button type="submit" class="btn btn-outline-dark btn-sm text-nowrap">검색</button>
+      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" style="width:240px;" placeholder="제목, 내용, 작성자 검색">
+      <button type="submit" class="btn btn-dark btn-sm text-nowrap">검색</button>
     </form>
 
     <ul class="pagination pagination-sm mb-0">
-      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-        <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a>
-      </li>
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a></li>
       {% for it in page_items %}
-        {% if it == '...' %}
-          <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% else %}
-          <li class="page-item {% if it == page %}active{% endif %}">
-            <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a>
-          </li>
-        {% endif %}
+        {% if it == '...' %}<li class="page-item disabled"><span class="page-link">...</span></li>
+        {% else %}<li class="page-item {% if it == page %}active{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a></li>{% endif %}
       {% endfor %}
-      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-        <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a>
-      </li>
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a></li>
     </ul>
   </div>
 </div>

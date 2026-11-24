@@ -31,15 +31,31 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 vision_bp = Blueprint("vision", __name__, url_prefix="/vision")
 
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+
+RUNPOD_ENDPOINT_ID = (os.getenv("RUNPOD_ENDPOINT_ID") or "").strip()
+RUNPOD_API_KEY = (os.getenv("RUNPOD_API_KEY") or "").strip()
+RUNPOD_SERVERLESS_URL = (
+    f"https://api.runpod.ai/v2/{RUNPOD_ENDPOINT_ID}" if RUNPOD_ENDPOINT_ID else ""
+)
 RUNPOD_BASE = (
     os.getenv("RUNPOD_BASE")
     or os.getenv("VISION_API_URL")
-    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net/"
+    or (f"https://{RUNPOD_ENDPOINT_ID}-5000.proxy.runpod.net" if RUNPOD_ENDPOINT_ID else "")
+    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net"
 ).rstrip("/")
 RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed"
 RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections"
 RUNPOD_PAUSE_URL = f"{RUNPOD_BASE}/pause"
 RUNPOD_CHANGE_VIDEO_URL = f"{RUNPOD_BASE}/change_video/"
+
+
+def _runpod_headers() -> dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if RUNPOD_API_KEY:
+        headers["Authorization"] = f"Bearer {RUNPOD_API_KEY}"
+    return headers
 
 # DB 기본값(video1.mp4 등)과 RunPod(final.py) 실제 파일명 매핑
 VIDEO_FILENAME_ALIASES = {
@@ -534,7 +550,7 @@ def video_feed():
     def proxy_stream():
         req = None
         try:
-            req = requests.get(RUNPOD_STREAM_URL, stream=True, timeout=(3, 15), verify=False)
+            req = requests.get(RUNPOD_STREAM_URL, headers=_runpod_headers(), stream=True, timeout=(3, 15), verify=False)
             for chunk in req.iter_content(chunk_size=4096):
                 if not chunk:
                     break
@@ -558,7 +574,7 @@ def video_feed():
 @vision_bp.route("/detections")
 def get_detections():
     try:
-        res = requests.get(RUNPOD_JSON_URL, timeout=1.5, verify=False)
+        res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
         if res.status_code == 200:
             data = res.json()
             data["source"] = "LIVE"
@@ -571,7 +587,7 @@ def get_detections():
 @vision_bp.route("/pause")
 def toggle_pause():
     try:
-        res = requests.get(RUNPOD_PAUSE_URL, timeout=3, verify=False)
+        res = requests.get(RUNPOD_PAUSE_URL, headers=_runpod_headers(), timeout=3, verify=False)
         return jsonify(res.json())
     except Exception:
         return jsonify({"status": "error", "is_paused": False})
@@ -582,7 +598,7 @@ def change_video(filename):
     try:
         mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
         target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}"
-        res = requests.get(target_url, timeout=3, verify=False)
+        res = requests.get(target_url, headers=_runpod_headers(), timeout=3, verify=False)
         with _TRACKER_LOCK:
             _SEEN_JOINT_TRACKER_KEYS.clear()
             _SEEN_OCR_KEYS.clear()
@@ -874,7 +890,7 @@ def save_vision_snapshot():
 
     if not detection_data or not detection_data.get("predictions"):
         try:
-            det_res = requests.get(RUNPOD_JSON_URL, timeout=1.5, verify=False)
+            det_res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
             if det_res.status_code == 200:
                 detection_data = det_res.json()
         except Exception:

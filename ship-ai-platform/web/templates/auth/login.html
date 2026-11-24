@@ -1,64 +1,84 @@
 {% extends "layout/base.html" %}
-{% block title %}로그인 | K-SmartShip{% endblock %}
+{% block title %}업무포털 로그인 | K-SmartShip{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center my-4">
-  <div class="col-lg-9">
-    <div class="row g-0 border rounded-3 overflow-hidden bg-white">
-      <!-- 1. 사이트 소개 및 계정 발급 절차 설명 -->
-      <div class="col-md-5 bg-dark text-white p-4 d-flex flex-column justify-content-between">
-        <div>
-          <h4 class="fw-bold mb-3">K-SmartShip</h4>
-          <p class="small text-light opacity-75 mb-4">
-            선박 CAD 도면, 현장 카메라(Vision), 기술 기준서(RAG), 자재·인력 관리를 하나로 연결한 선박 제조 공정 운영 시스템입니다.
-          </p>
-          <div class="small text-light opacity-75">
-            <div class="fw-semibold text-white mb-1">계정 발급 절차</div>
-            1. 하단 계정 발급 신청 작성<br>
-            2. 관리자 검토 및 접근 권한 부여<br>
-            3. 승인 완료 후 로그인 이용
-          </div>
-        </div>
-        <div class="small text-secondary mt-4">권한에 따라 ERP·보안문서·작업승인 기능이 구분됩니다.</div>
+<div class="auth-portal-wrap">
+  <div class="auth-portal-topbar">
+    <div class="fw-semibold" style="color:#0b1f3a;">K-SmartShip 자율용접 통합업무포털</div>
+    <div>시스템 문의: <strong style="color:#0b1f3a;">010-1234-5678</strong> (K-SmartShip 운영지원팀)</div>
+  </div>
+
+  <div class="row g-0">
+    <div class="col-lg-5 auth-left-pane">
+      <div>
+        <span class="auth-badge">INTEGRATED AUTH</span>
+        <h2 class="fw-bold mb-3" style="font-size:26px;line-height:1.35;">
+          임직원 및 협력사<br>통합 인증 시스템
+        </h2>
+        <p class="mb-0" style="color:#cbd5e1;font-size:14px;line-height:1.7;">
+          본 시스템은 사내 직영 엔지니어 및 인가된 협력업체 작업자 전용 플랫폼입니다.<br><br>
+          최초 접속자는 <strong class="text-white">[신규 계정 발급 신청]</strong> 후 관리자의 승인을 받아야 정상적으로 로그인하실 수 있습니다.
+        </p>
       </div>
 
-      <!-- 2~4. 로그인 폼 + 신규 계정 발급 + 권한별 빠른 로그인 -->
-      <div class="col-md-7 p-4">
-        <h5 class="fw-bold mb-3">로그인</h5>
-        <form method="post" action="/login" class="mb-3">
+      <div class="pt-4 mt-4" style="border-top:1px solid rgba(255,255,255,0.16);">
+        <div class="fw-bold mb-2" style="font-size:13px;color:#e2e8f0;">계정 발급 및 보안 수칙</div>
+        <ul class="mb-0 ps-3" style="color:#cbd5e1;font-size:12.5px;line-height:1.85;">
+          <li>신규 신청 계정은 관리자 승인 완료 후 이용 가능합니다.</li>
+          <li>권한(사내·협력사)에 따라 사내 규정 문서 및 자원 관리 접근 범위가 차등 적용됩니다.</li>
+          <li>5회 이상 비밀번호 오류 시 계정 보호를 위해 접속이 제한됩니다.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="col-lg-7 auth-right-pane">
+      <div>
+        <h3 class="fw-bold mb-1" style="font-size:23px;color:#0b1f3a;">업무포털 로그인</h3>
+        <p class="text-muted small mb-4">부여받은 아이디(사번)와 비밀번호를 입력해 주십시오.</p>
+
+        <form method="post" action="/login">
           <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
           <div class="mb-3">
-            <label class="form-label small fw-semibold">아이디 또는 사번</label>
-            <input type="text" name="username" class="form-control" required autofocus>
+            <label class="form-label fw-semibold small" style="color:#1e293b;">아이디 (사번 / 계정 ID)</label>
+            <input type="text" name="username" class="form-control form-control-lg fs-6" placeholder="아이디 또는 사번을 입력하세요" required autofocus>
           </div>
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">비밀번호</label>
-            <input type="password" name="password" class="form-control" required>
+          <div class="mb-4">
+            <label class="form-label fw-semibold small" style="color:#1e293b;">비밀번호</label>
+            <input type="password" name="password" class="form-control form-control-lg fs-6" placeholder="비밀번호를 입력하세요" required>
           </div>
-          <button type="submit" class="btn btn-primary w-100 fw-semibold">로그인</button>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg fs-6 fw-bold py-2" style="background:#0052cc;border-color:#0052cc;">
+              통합 로그인
+            </button>
+          </div>
         </form>
 
-        <div class="text-end mb-4">
-          <a href="/register" class="small text-decoration-none">신규 계정 발급 신청 →</a>
+        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top small">
+          <span class="text-muted">아직 사내/협력사 계정이 없으신가요?</span>
+          <a href="/register" class="fw-bold text-decoration-none" style="color:#0052cc;">신규 계정 발급 신청 →</a>
         </div>
-
-        {% if quick_users %}
-        <div class="border-top pt-3">
-          <div class="small fw-semibold text-muted mb-2">권한별 빠른 로그인 (프로젝트 테스트용)</div>
-          <div class="d-flex flex-wrap gap-2">
-            {% for u in quick_users %}
-            <form method="post" action="/login/quick">
-              <input type="hidden" name="user_id" value="{{ u.user_id }}">
-              <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
-              <button type="submit" class="btn btn-outline-secondary btn-sm">
-                {{ u.full_name }} ({{ u.role }} / {{ u.user_type }})
-              </button>
-            </form>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
       </div>
+
+      {% if quick_users %}
+      <div class="auth-quick-box">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="small fw-semibold text-secondary">권한별 빠른 로그인 (시연·테스트용)</span>
+          <span class="small text-muted">총 {{ quick_users|length }}개 계정</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for u in quick_users %}
+          <form method="post" action="/login/quick" class="m-0">
+            <input type="hidden" name="user_id" value="{{ u.user_id }}">
+            <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+            <button type="submit"
+                    class="btn btn-sm fw-semibold {{ 'btn-outline-danger' if u.role == 'ADMIN' else ('btn-outline-primary' if u.role == 'MANAGER' else 'btn-outline-secondary') }}">
+              {{ u.full_name }} ({{ u.role }} · {{ '사내' if u.user_type == 'INTERNAL' else '외부' }})
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>

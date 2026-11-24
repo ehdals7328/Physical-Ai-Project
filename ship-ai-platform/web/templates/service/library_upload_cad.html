@@ -1,174 +1,197 @@
 {% extends "layout/base.html" %}
-{% block title %}CAD 도면 및 공정 큐 등록 | 자료실{% endblock %}
+{% block title %}선박 도면 · AI 공정 순서 등록 | 자료실{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h5 class="fw-bold mb-0">CAD 도면 · 블록 공정 큐 등록</h5>
-  <a href="/service/library?tab=cad" class="btn btn-outline-secondary btn-sm">목록으로 돌아가기</a>
+<div class="page-header">
+  <div>
+    <h1 class="page-title">선박 도면 업로드 및 공정 순서 등록</h1>
+  </div>
+  <a href="/service/library?tab=cad" class="btn btn-outline-secondary btn-sm">목록으로</a>
 </div>
 
-<!-- 1. CAD 도면 파일 업로드 (Gate 1 파싱) -->
-<div class="surface-card mb-3">
-  <h6 class="fw-bold mb-3">1. CAD 도면 파일 업로드 (DXF / PDF)</h6>
+<div class="panel-card">
+  <div class="section-bar"><h2 class="panel-title">1. 선박 도면 파일 및 배치 야드 선택</h2></div>
   <form id="cad-parse-form" class="row g-3 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label small fw-semibold">DXF 도면 파일 *</label>
+    <div class="col-md-4">
+      <label class="form-label small fw-semibold">CAD 도면 파일 (DXF) *</label>
       <input type="file" name="dxf_file" accept=".dxf" class="form-control form-control-sm" required>
     </div>
-    <div class="col-md-5">
-      <label class="form-label small fw-semibold">도면 PDF 파일 (선택)</label>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">도면 PDF (선택)</label>
       <input type="file" name="pdf_file" accept=".pdf" class="form-control form-control-sm">
-    </div>
-    <div class="col-md-2">
-      <button type="submit" id="btn-parse-cad" class="btn btn-dark btn-sm w-100">도면 파싱</button>
-    </div>
-  </form>
-</div>
-
-<!-- 2. 도면 메타 및 야드 배치 설정 (CAD_DRAWINGS) -->
-<div class="surface-card mb-3">
-  <h6 class="fw-bold mb-3">2. 도면 정보 및 야드 배치 설정</h6>
-  <input type="hidden" id="cad-dxf-path">
-  <input type="hidden" id="cad-pdf-path">
-  <input type="hidden" id="cad-sha256">
-  <div class="row g-3">
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold">선박 호선 *</label>
-      <input type="text" id="cad-ship-code" class="form-control form-control-sm" placeholder="예: HN-GUNNERUS-01">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold">도면명</label>
-      <input type="text" id="cad-title" class="form-control form-control-sm">
     </div>
     <div class="col-md-3">
       <label class="form-label small fw-semibold">배치 야드 *</label>
       <select id="cad-branch-code" class="form-select form-select-sm">
         {% for b in branches %}
-        <option value="{{ b.branch_code }}">{{ b.branch_name }} ({{ b.branch_code }})</option>
+        <option value="{{ b.branch_code }}">{{ b.branch_name }}</option>
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
-      <label class="form-label small fw-semibold">작업 구역</label>
+    <div class="col-md-2 d-grid">
+      <button type="submit" id="btn-parse-cad" class="btn btn-primary btn-sm fw-semibold" style="background:#0052cc;border-color:#0052cc;">AI 도면 분석</button>
+    </div>
+  </form>
+</div>
+
+<div id="ai-cad-result-section" class="panel-card" style="display:none;">
+  <div class="section-bar">
+    <h2 class="panel-title">2. AI가 정리한 블록 작업 순서 검토</h2>
+    <span class="status-chip status-info" id="ai-cad-meta-badge"></span>
+  </div>
+
+  <input type="hidden" id="cad-dxf-path">
+  <input type="hidden" id="cad-pdf-path">
+  <input type="hidden" id="cad-sha256">
+
+  <div class="row g-2 mb-3 small">
+    <div class="col-md-4">
+      <label class="form-label text-muted mb-1">선박 호선 (자동 추출)</label>
+      <input type="text" id="cad-ship-code" class="form-control form-control-sm fw-bold">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label text-muted mb-1">도면명</label>
+      <input type="text" id="cad-title" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label text-muted mb-1">작업 구역</label>
       <input type="text" id="cad-work-zone" class="form-control form-control-sm" value="ZONE-A-BAY1">
     </div>
   </div>
-</div>
-
-<!-- 3. DXF 파싱 블록 작업 패키지 큐 검토 (WORK_PLANS) -->
-<div class="surface-card">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h6 class="fw-bold mb-0">3. 블록 작업 패키지 큐 검토 (STAGING)</h6>
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addPlanRow()">+ 블록 행 추가</button>
-  </div>
 
   <div class="table-responsive mb-3">
-    <table class="table table-sm table-clean mb-0 small" id="cad-plans-table">
+    <table class="table table-enterprise" id="ai-plan-table">
       <thead>
         <tr>
-          <th style="width:70px;">순위</th>
+          <th>순서</th>
           <th>블록코드</th>
-          <th style="width:90px;">강종</th>
-          <th style="width:80px;">두께(mm)</th>
-          <th style="width:90px;">공정</th>
-          <th style="width:110px;">용접장(mm)</th>
-          <th style="width:100px;">예상와이어(kg)</th>
-          <th style="width:70px;">소요일</th>
-          <th style="width:50px;"></th>
+          <th>강종 / 두께</th>
+          <th>용접 방식 / 자재</th>
+          <th>용접 길이</th>
+          <th>예상 와이어</th>
+          <th>예상 기간</th>
+          <th>AI 추천 사유</th>
         </tr>
       </thead>
-      <tbody>
-        <tr id="cad-empty-row"><td colspan="9" class="text-center text-muted py-4">DXF 파일을 파싱하거나 행을 추가해 블록 작업 큐를 구성해 주세요.</td></tr>
-      </tbody>
+      <tbody></tbody>
     </table>
   </div>
 
-  <!-- 4. 임시 저장(STAGING) / 공정 큐 확정(ACTIVE) -->
-  <div class="d-flex justify-content-end gap-2">
-    <button type="button" class="btn btn-outline-dark btn-sm px-3" onclick="saveCadPlans(false)">임시 저장 (STAGING)</button>
-    <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" onclick="saveCadPlans(true)">공정 큐 확정 (ACTIVE)</button>
+  <div class="d-flex gap-2 mb-3">
+    <input type="text" id="cad-replan-input" class="form-control form-control-sm"
+           placeholder="수정이 필요하면 AI에게 요청하세요 (예: 전체 공정을 SAW로 변경해줘 / 순서를 반전해줘 / 일정을 1일로 단축해줘)">
+    <button type="button" class="btn btn-outline-dark btn-sm text-nowrap px-3" onclick="requestAiReplan()">AI 다시 계산</button>
   </div>
+
+  <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+    <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="saveCadPlans(false)">임시 저장</button>
+    <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" style="background:#0052cc;border-color:#0052cc;" onclick="saveCadPlans(true)">공정 확정 및 반영</button>
+  </div>
+</div>
+
+<div class="panel-card mb-0">
+  <div class="section-bar">
+    <h2 class="panel-title">등록된 블록 공정 목록</h2>
+    <a href="/service/library/upload-cad" class="btn btn-outline-secondary btn-sm py-0">새로고침</a>
+  </div>
+  {% if existing_plans %}
+  <div class="table-responsive">
+    <table class="table table-enterprise">
+      <thead>
+        <tr><th>순서</th><th>야드 · 구역</th><th>블록코드</th><th>강종 / 두께</th><th>공정</th><th>예상 기간</th><th>진척률</th><th>상태</th></tr>
+      </thead>
+      <tbody>
+        {% for p in existing_plans %}
+        <tr>
+          <td><span class="badge bg-dark">순서 {{ p.priority_rank }}</span></td>
+          <td>{{ branch_map.get(p.branch_code, p.branch_code) }} · {{ p.work_zone }}</td>
+          <td><strong>{{ p.block_code }}</strong></td>
+          <td>{{ p.material_grade }} / {{ p.thickness_mm }}mm</td>
+          <td>{{ p.process_code }}</td>
+          <td>{{ p.est_duration_days }}일</td>
+          <td>{{ p.progress_pct }}%</td>
+          <td><span class="status-chip {{ 'status-ok' if p.plan_state == 'COMPLETED' else ('status-info' if p.plan_state == 'IN_PROGRESS' else 'status-muted') }}">{{ '완료' if p.plan_state == 'COMPLETED' else ('진행 중' if p.plan_state == 'IN_PROGRESS' else ('임시 저장' if p.plan_state == 'STAGING' else '대기 중')) }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="small text-muted py-4 text-center">등록된 선박 공정 목록이 없습니다. 위에서 도면(DXF)을 올려 공정을 생성해 보세요.</div>
+  {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function addPlanRow(item) {
-  $('#cad-empty-row').remove();
-  const idx = $('#cad-plans-table tbody tr').length + 1;
-  const r = item || {
-    priority_rank: idx, block_code: '', material_grade: 'AH36', thickness_mm: 12,
-    process_code: 'FCAW', est_weld_length_mm: 10000, est_wire_kg: 30, est_duration_days: 1
-  };
-  $('#cad-plans-table tbody').append(`
-    <tr>
-      <td><input type="number" class="form-control form-control-sm p-rank" value="${r.priority_rank}" min="1"></td>
-      <td><input type="text" class="form-control form-control-sm p-blk" value="${$('<div>').text(r.block_code || '').html()}"></td>
-      <td><input type="text" class="form-control form-control-sm p-mat" value="${$('<div>').text(r.material_grade || 'AH36').html()}"></td>
-      <td><input type="number" step="0.5" class="form-control form-control-sm p-thk" value="${r.thickness_mm}"></td>
-      <td>
-        <select class="form-select form-select-sm p-proc">
-          <option value="FCAW" ${r.process_code === 'FCAW' ? 'selected' : ''}>FCAW</option>
-          <option value="SAW" ${r.process_code === 'SAW' ? 'selected' : ''}>SAW</option>
-          <option value="GMAW" ${r.process_code === 'GMAW' ? 'selected' : ''}>GMAW</option>
-        </select>
-      </td>
-      <td><input type="number" step="0.1" class="form-control form-control-sm p-len" value="${r.est_weld_length_mm}"></td>
-      <td><input type="number" step="0.1" class="form-control form-control-sm p-wire" value="${r.est_wire_kg}"></td>
-      <td><input type="number" class="form-control form-control-sm p-days" value="${r.est_duration_days}" min="1"></td>
-      <td><button type="button" class="btn btn-link btn-sm text-danger p-0" onclick="$(this).closest('tr').remove()">삭제</button></td>
-    </tr>`);
+var currentAiPlans = [];
+var esc = window.KSmartMd.esc;
+
+function renderAiPlansTable(plans) {
+  currentAiPlans = plans || [];
+  var rows = currentAiPlans.map(function (p) {
+    return (
+      '<tr>' +
+        '<td><span class="badge bg-dark">순서 ' + esc(p.priority_rank) + '</span></td>' +
+        '<td><strong>' + esc(p.block_code) + '</strong><div class="small text-muted">' + esc(p.block_name) + '</div></td>' +
+        '<td>' + esc(p.material_grade) + ' / ' + esc(p.thickness_mm) + 'mm</td>' +
+        '<td><span class="badge bg-light text-dark border">' + esc(p.process_code) + '</span> <span class="small text-muted">' + esc(p.wire_mat_code) + '</span></td>' +
+        '<td>' + Number(p.est_weld_length_mm || 0).toLocaleString() + ' mm</td>' +
+        '<td>' + esc(p.est_wire_kg) + ' kg</td>' +
+        '<td>' + esc(p.est_duration_days) + '일</td>' +
+        '<td class="text-secondary">' + esc(p.plan_rationale || '-') + '</td>' +
+      '</tr>'
+    );
+  }).join('');
+  $('#ai-plan-table tbody').html(rows || '<tr><td colspan="8" class="text-center text-muted py-3">추출된 블록이 없습니다.</td></tr>');
 }
 
-$('#cad-parse-form').on('submit', function(e) {
+$('#cad-parse-form').on('submit', function (e) {
   e.preventDefault();
-  const fd = new FormData(this);
-  $('#btn-parse-cad').prop('disabled', true).text('파싱 중...');
+  var fd = new FormData(this);
+  $('#btn-parse-cad').prop('disabled', true).text('AI 분석 중...');
   $.ajax({
     url: '/service/api/library/cad-parse',
     method: 'POST',
     data: fd,
     processData: false,
     contentType: false,
-    success: function(res) {
+    success: function (res) {
       $('#cad-dxf-path').val(res.dxf_file_path || '');
       $('#cad-pdf-path').val(res.pdf_file_path || '');
       $('#cad-sha256').val(res.file_sha256 || '');
+      $('#cad-ship-code').val(res.ship_code || '');
       $('#cad-title').val(res.drawing_title || '');
-      if (!$('#cad-ship-code').val() && res.drawing_title) {
-        $('#cad-ship-code').val('HN-' + res.drawing_title.slice(0, 14).toUpperCase());
-      }
-      $('#cad-plans-table tbody').empty();
-      (res.plans || []).forEach(p => addPlanRow(p));
-      $('#btn-parse-cad').prop('disabled', false).text('도면 파싱');
+      $('#ai-cad-meta-badge').text((res.vessel_name || '선박 도면') + ' · ' + res.plans.length + '개 블록 추출');
+      renderAiPlansTable(res.plans || []);
+      $('#ai-cad-result-section').slideDown(150);
+      $('#btn-parse-cad').prop('disabled', false).text('AI 도면 분석');
     },
-    error: function(xhr) {
-      alert((xhr.responseJSON && xhr.responseJSON.message) || '도면 파싱에 실패했습니다.');
-      $('#btn-parse-cad').prop('disabled', false).text('도면 파싱');
+    error: function (xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '도면 분석에 실패했습니다.');
+      $('#btn-parse-cad').prop('disabled', false).text('AI 도면 분석');
     }
   });
 });
 
-function saveCadPlans(confirmActive) {
-  const plans = [];
-  $('#cad-plans-table tbody tr').each(function() {
-    if (this.id === 'cad-empty-row') return;
-    const proc = $(this).find('.p-proc').val();
-    plans.push({
-      priority_rank: parseInt($(this).find('.p-rank').val() || '1', 10),
-      block_code: $.trim($(this).find('.p-blk').val()),
-      material_grade: $.trim($(this).find('.p-mat').val()),
-      thickness_mm: parseFloat($(this).find('.p-thk').val() || '12'),
-      process_code: proc,
-      joint_type: 'BUTT',
-      wire_mat_code: proc === 'SAW' ? 'WIRE-SAW-4.0' : 'WIRE-CSF71T',
-      est_weld_length_mm: parseFloat($(this).find('.p-len').val() || '10000'),
-      est_weight_ton: 15.0,
-      est_wire_kg: parseFloat($(this).find('.p-wire').val() || '30'),
-      est_duration_days: parseInt($(this).find('.p-days').val() || '1', 10)
-    });
+function requestAiReplan() {
+  var instruction = $.trim($('#cad-replan-input').val());
+  if (!instruction || !currentAiPlans.length) return;
+  $.ajax({
+    url: '/service/api/library/cad-replan',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ plans: currentAiPlans, instruction: instruction }),
+    success: function (res) {
+      renderAiPlansTable(res.plans || []);
+      $('#cad-replan-input').val('');
+      alert(res.message);
+    },
+    error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '재산출에 실패했습니다.'); }
   });
+}
 
+function saveCadPlans(confirmActive) {
   $.ajax({
     url: '/service/api/library/cad-save',
     method: 'POST',
@@ -182,13 +205,13 @@ function saveCadPlans(confirmActive) {
       dxf_file_path: $('#cad-dxf-path').val(),
       pdf_file_path: $('#cad-pdf-path').val(),
       file_sha256: $('#cad-sha256').val(),
-      plans: plans
+      plans: currentAiPlans
     }),
-    success: function(res) {
+    success: function (res) {
       alert(res.message);
       window.location.href = '/service/workspace';
     },
-    error: xhr => alert((xhr.responseJSON && xhr.responseJSON.message) || '저장에 실패했습니다.')
+    error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '저장에 실패했습니다.'); }
   });
 }
 </script>

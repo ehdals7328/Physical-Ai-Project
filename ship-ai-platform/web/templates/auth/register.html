@@ -4,9 +4,9 @@
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
-    <div class="surface-card">
-      <h5 class="fw-bold mb-1">계정 발급 신청</h5>
-      <p class="small text-muted mb-4">신청 내용은 관리자 마이페이지에 접수되며, 승인 후 로그인할 수 있습니다.</p>
+    <div class="panel-card">
+      <h3 class="fw-bold mb-1" style="color:#0b1f3a;font-size:21px;">신규 계정 발급 신청</h3>
+      <p class="text-muted small mb-4">신청 완료 후 관리자가 승인하면 로그인하여 이용할 수 있습니다.</p>
 
       <form method="post" action="/register">
         <div class="row g-3">
@@ -23,8 +23,8 @@
             <input type="text" name="full_name" class="form-control" required>
           </div>
           <div class="col-md-6">
-            <label class="form-label small fw-semibold">표시 이름(닉네임)</label>
-            <input type="text" name="display_name" class="form-control">
+            <label class="form-label small fw-semibold">표시 이름 (닉네임)</label>
+            <input type="text" name="display_name" class="form-control" placeholder="미입력 시 성명 사용">
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">이메일</label>
@@ -33,11 +33,10 @@
           <div class="col-md-6">
             <label class="form-label small fw-semibold">소속 구분</label>
             <select name="user_type" class="form-select">
-              <option value="INTERNAL">사내 임직원 (INTERNAL)</option>
-              <option value="EXTERNAL">협력사 (EXTERNAL)</option>
+              <option value="INTERNAL">사내 임직원</option>
+              <option value="EXTERNAL">협력사</option>
             </select>
           </div>
-
           <div class="col-md-4">
             <label class="form-label small fw-semibold">소속 회사</label>
             <select name="erp_company_code" class="form-select">
@@ -57,23 +56,21 @@
             </select>
           </div>
           <div class="col-md-4">
-            <label class="form-label small fw-semibold">ERP 사번</label>
-            <input type="text" name="erp_employee_code" class="form-control">
+            <label class="form-label small fw-semibold">사번</label>
+            <input type="text" name="erp_employee_code" class="form-control" placeholder="발급받은 사번 입력">
           </div>
-
           <div class="col-md-6">
             <label class="form-label small fw-semibold">부서 / 팀명</label>
-            <input type="text" name="department_name" class="form-control">
+            <input type="text" name="department_name" class="form-control" placeholder="소속 부서 또는 팀명">
           </div>
           <div class="col-md-6">
             <label class="form-label small fw-semibold">주 작업 구역</label>
             <input type="text" name="default_workspace" class="form-control" placeholder="예: ZONE-A-BAY1">
           </div>
         </div>
-
-        <div class="d-flex justify-content-end gap-2 mt-4">
+        <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
           <a href="/login" class="btn btn-outline-secondary">취소</a>
-          <button type="submit" class="btn btn-primary px-4">계정 발급 신청</button>
+          <button type="submit" class="btn btn-primary px-4" style="background:#0052cc;border-color:#0052cc;">계정 신청 제출</button>
         </div>
       </form>
     </div>
