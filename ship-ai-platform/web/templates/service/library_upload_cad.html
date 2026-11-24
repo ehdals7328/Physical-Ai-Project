@@ -1,0 +1,119 @@
+{% extends "layout/base.html" %}
+{% block title %}선박 도면 등록 | 자료실{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">선박 도면 (CAD) 등록</h1>
+  </div>
+  <a href="/service/library?tab=cad" class="btn btn-outline-secondary btn-sm">목록으로</a>
+</div>
+
+<div class="panel-card">
+  <div class="section-bar">
+    <h2 class="panel-title">신규 선박 도면 업로드</h2>
+    <span class="small text-muted">이미 등록된 동일한 도면 파일은 중복 검사로 자동 차단됩니다.</span>
+  </div>
+
+  <div id="cad-upload-alert" class="alert d-none small mb-3" role="alert"></div>
+
+  <form id="cad-upload-form">
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold">CAD 도면 파일 (DXF) *</label>
+        <input type="file" name="dxf_file" accept=".dxf" class="form-control form-control-sm" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small fw-semibold">도면 PDF 파일 (선택)</label>
+        <input type="file" name="pdf_file" accept=".pdf" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">배치 야드 *</label>
+        <select name="branch_code" class="form-select form-select-sm" required>
+          {% for b in branches %}
+          <option value="{{ b.branch_code }}">{{ b.branch_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">선박 호선 (선택)</label>
+        <input type="text" name="ship_code" class="form-control form-control-sm" placeholder="미입력 시 파일명 기준">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">도면명 (선택)</label>
+        <input type="text" name="drawing_title" class="form-control form-control-sm" placeholder="미입력 시 파일명 사용">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">작업 구역</label>
+        <input type="text" name="work_zone" class="form-control form-control-sm" value="ZONE-A-BAY1">
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+      <button type="reset" class="btn btn-outline-secondary btn-sm px-3">초기화</button>
+      <button type="submit" id="btn-upload-cad" class="btn btn-primary btn-sm px-4 fw-semibold" style="background:#0052cc;border-color:#0052cc;">도면 등록</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel-card mb-0">
+  <div class="section-bar">
+    <h2 class="panel-title">등록된 CAD 도면 목록</h2>
+    <a href="/service/library/upload-cad" class="btn btn-outline-secondary btn-sm py-0">새로고침</a>
+  </div>
+  {% if existing_drawings %}
+  <div class="table-responsive">
+    <table class="table table-enterprise">
+      <thead>
+        <tr><th>도면번호</th><th>선박 호선</th><th>도면명</th><th>배치 야드 · 구역</th><th>등록자</th><th>상태</th></tr>
+      </thead>
+      <tbody>
+        {% for d in existing_drawings %}
+        <tr>
+          <td class="small text-muted">{{ d.drawing_id }}</td>
+          <td><strong>{{ d.ship_code }}</strong></td>
+          <td>{{ d.drawing_title }}</td>
+          <td>{{ branch_map.get(d.branch_code, d.branch_code) }} · {{ d.work_zone }}</td>
+          <td class="small">{{ d.uploaded_by }}</td>
+          <td><span class="status-chip status-ok">{{ d.plan_status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="small text-muted py-4 text-center">등록된 CAD 도면이 없습니다.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$('#cad-upload-form').on('submit', function (e) {
+  e.preventDefault();
+  var fd = new FormData(this);
+  var $btn = $('#btn-upload-cad');
+  var $alert = $('#cad-upload-alert');
+  $alert.addClass('d-none').removeClass('alert-success alert-danger alert-warning');
+  $btn.prop('disabled', true).text('중복 확인 및 등록 중...');
+
+  $.ajax({
+    url: '/service/api/library/cad-upload',
+    method: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    success: function (res) {
+      $alert.removeClass('d-none').addClass('alert-success').text(res.message);
+      setTimeout(function () { location.reload(); }, 1200);
+    },
+    error: function (xhr) {
+      var msg = (xhr.responseJSON && xhr.responseJSON.message) || '도면 등록에 실패했습니다.';
+      var cls = xhr.status === 409 ? 'alert-warning' : 'alert-danger';
+      $alert.removeClass('d-none').addClass(cls).text(msg);
+      $btn.prop('disabled', false).text('도면 등록');
+    }
+  });
+});
+</script>
+{% endblock %}

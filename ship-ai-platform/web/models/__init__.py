@@ -12,6 +12,8 @@ from .schema import (
     VisionInspection,
     RobotExecution,
     CommunityBoard,
+    CadDrawing,
+    WorkPlan,
     ErpCompany,
     ErpBranch,
     ErpBlockMaster,

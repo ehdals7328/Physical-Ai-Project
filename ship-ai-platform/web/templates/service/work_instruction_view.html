@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ wo.work_no }} 작업지시서 ({{ inst.revision_no }})</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <style>
+    body { background: #f8fafc; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: #0f172a; padding: 24px; }
+    .doc-sheet { max-width: 860px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 32px; box-shadow: 0 4px 16px rgba(15,23,42,.06); }
+    .doc-header { border-bottom: 2px solid #0b1f3a; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+    .doc-title { font-size: 22px; font-weight: 800; color: #0b1f3a; margin: 0; }
+    .meta-table th { background: #f1f5f9; width: 18%; font-weight: 700; color: #334155; }
+    .meta-table td { width: 32%; }
+    .inst-body { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; white-space: pre-wrap; font-size: 13.5px; line-height: 1.7; }
+    @media print { .no-print { display: none !important; } body { background: #fff; padding: 0; } .doc-sheet { box-shadow: none; border: 0; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="doc-sheet">
+    <div class="doc-header">
+      <div>
+        <div class="small text-muted fw-semibold">K-SmartShip 공식 용접 작업지시서</div>
+        <h1 class="doc-title">{{ wo.work_title }}</h1>
+      </div>
+      <div class="text-end">
+        <span class="badge bg-dark me-1">{{ inst.revision_no }}</span>
+        <span class="badge {% if inst.approval_status == 'APPROVED' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+          {{ '승인 완료' if inst.approval_status == 'APPROVED' else '승인 대기' }}
+        </span>
+        <div class="mt-2 no-print">
+          <button type="button" class="btn btn-primary btn-sm px-3" onclick="window.print()">PDF 인쇄 / 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="table table-bordered table-sm small meta-table mb-4">
+      <tbody>
+        <tr>
+          <th>작업지시 번호</th><td><strong>{{ wo.work_no }}</strong></td>
+          <th>작업 지시 시간</th><td>{{ issued_at_kst }}</td>
+        </tr>
+        <tr>
+          <th>선박 호선 / 블록</th><td><strong>{{ wo.ship_code }}</strong> / {{ wo.block_code }}</td>
+          <th>야드 / 구역</th><td>{{ branch_name }} · {{ wo.work_zone }}</td>
+        </tr>
+        <tr>
+          <th>모재 강종 / 두께</th><td>{{ wo.material_grade }} / {{ wo.thickness_mm }} mm</td>
+          <th>용접 공정 / 자세</th><td>{{ wo.process_code }} / {{ wo.weld_position }}</td>
+        </tr>
+        <tr>
+          <th>배정 작업자</th><td>{{ dispatch_info.worker_name if dispatch_info else '배정 대기' }}</td>
+          <th>배정 자재 Lot</th><td>{{ dispatch_info.allocated_lot_no if dispatch_info else '-' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if welding_params %}
+    <h6 class="fw-bold mb-2">용접 시공 파라미터</h6>
+    <table class="table table-bordered table-sm small mb-4">
+      <tbody>
+        {% for k, v in welding_params.items() %}
+        <tr>
+          <th style="width:28%;background:#f8fafc;">{{ k }}</th>
+          <td>{{ v }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <h6 class="fw-bold mb-2">상세 작업 지침</h6>
+    <div class="inst-body">{{ instruction_text }}</div>
+  </div>
+</body>
+</html>

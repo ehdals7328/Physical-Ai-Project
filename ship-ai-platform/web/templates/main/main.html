@@ -2,67 +2,325 @@
 {% block title %}K-SmartShip | 스마트 조선소 통합 운영 플랫폼{% endblock %}
 {% block main_class %}{% endblock %}
 
-{% block page_context %}
-{"page_title": "메인 홈", "summary": "선박 번호 기준 조선소 업무 흐름 안내 및 빠른 검색"}
+{% block extra_css %}
+<style>
+  /* 메인 페이지 전용 풀스케일 스크롤텔링 스타일 (다른 페이지 비율에 영향 없음) */
+  .main-scroll-progress {
+    position: fixed;
+    top: 66px;
+    left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, #0052cc, #38bdf8);
+    z-index: 1029;
+    transition: width 0.08s linear;
+  }
+
+  .main-wide-shell {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding-left: clamp(20px, 4vw, 56px);
+    padding-right: clamp(20px, 4vw, 56px);
+  }
+
+  /* 1. 대형 히어로 캐러셀 */
+  .main-hero-slide {
+    min-height: clamp(500px, 76vh, 700px);
+    display: flex;
+    align-items: center;
+    padding: clamp(64px, 8vw, 104px) 0;
+    color: #ffffff;
+    position: relative;
+  }
+
+  .hero-bg-1 { background: linear-gradient(135deg, #102a4c 0%, #1b437a 60%, #2563eb 135%); }
+  .hero-bg-2 { background: linear-gradient(135deg, #123055 0%, #1d4e89 62%, #0284c7 140%); }
+  .hero-bg-3 { background: linear-gradient(135deg, #163254 0%, #224d82 60%, #3b82f6 140%); }
+
+  .main-hero-eyebrow {
+    display: inline-block;
+    font-size: 13.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #e0f2fe;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 22px;
+  }
+
+  .main-hero-title {
+    font-size: clamp(32px, 4.2vw, 54px);
+    font-weight: 800;
+    line-height: 1.24;
+    letter-spacing: -0.025em;
+    max-width: 900px;
+    margin-bottom: 20px;
+  }
+
+  .main-hero-sub {
+    font-size: clamp(16px, 1.3vw, 19.5px);
+    line-height: 1.7;
+    color: #e2e8f0;
+    max-width: 720px;
+    margin-bottom: 34px;
+  }
+
+  .main-hero-btn {
+    padding: 13px 28px;
+    font-size: 15.5px;
+    font-weight: 700;
+    border-radius: 10px;
+  }
+
+  .scroll-cue {
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13px;
+    font-weight: 600;
+    animation: cueBounce 2s infinite;
+  }
+
+  @keyframes cueBounce {
+    0%, 100% { transform: translate(-50%, 0); }
+    50% { transform: translate(-50%, 7px); }
+  }
+
+  /* 2. 빠른 업무 시작 바 */
+  .main-quick-bar {
+    background: #ffffff;
+    border-bottom: 1px solid #dde3ec;
+    padding: 34px 0;
+  }
+
+  .main-quick-input {
+    height: 52px;
+    font-size: 15.5px;
+    border-radius: 10px;
+    padding: 0 18px;
+  }
+
+  /* 3. 큼직한 스크롤텔링 밴드 (전체적으로 밝고 쾌적한 톤 유지) */
+  .st-band {
+    padding: clamp(72px, 8.5vw, 124px) 0;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    overflow: hidden;
+  }
+
+  .st-band.alt {
+    background: #f5f8fc;
+  }
+
+  .st-band.soft-blue-band {
+    background: linear-gradient(145deg, #eef4fc 0%, #f8fbff 100%);
+    border-bottom: none;
+  }
+
+  .st-kicker {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #0052cc;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .st-heading {
+    font-size: clamp(26px, 3vw, 40px);
+    font-weight: 800;
+    line-height: 1.28;
+    letter-spacing: -0.025em;
+    color: #0b1f3a;
+    margin-bottom: 18px;
+  }
+
+  .st-lead {
+    font-size: clamp(15.5px, 1.2vw, 18px);
+    line-height: 1.75;
+    color: #475569;
+    margin-bottom: 28px;
+  }
+
+  /* 3대 핵심 서비스 대형 카드 */
+  .st-service-card {
+    background: #ffffff;
+    border: 1px solid #dde3ec;
+    border-radius: 16px;
+    padding: clamp(26px, 2.8vw, 36px);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .st-service-card:hover {
+    transform: translateY(-6px);
+    border-color: #0052cc;
+    box-shadow: 0 18px 40px rgba(11, 31, 58, 0.08);
+  }
+
+  .st-service-num {
+    font-size: 13px;
+    font-weight: 800;
+    color: #0052cc;
+    background: #eff6ff;
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+
+  .st-service-title {
+    font-size: clamp(20px, 1.6vw, 23px);
+    font-weight: 800;
+    color: #0b1f3a;
+    margin-bottom: 12px;
+  }
+
+  .st-service-desc {
+    font-size: 15px;
+    line-height: 1.7;
+    color: #4b5563;
+    margin-bottom: 26px;
+  }
+
+  /* 스토리 비주얼 패널 (밝고 정돈된 카드형) */
+  .st-visual-panel {
+    background: #ffffff;
+    color: #0b1f3a;
+    border: 1px solid #d7e2f0;
+    border-radius: 20px;
+    padding: clamp(26px, 3vw, 40px);
+    box-shadow: 0 16px 38px rgba(11, 31, 58, 0.06);
+  }
+
+  .st-mini-tile {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px;
+    height: 100%;
+  }
+
+  .st-step-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 18px 22px;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid #d7e2f0;
+    box-shadow: 0 4px 14px rgba(11, 31, 58, 0.04);
+  }
+
+  .st-step-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #0052cc;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* 양방향 스크롤텔링 애니메이션 */
+  .st-reveal {
+    opacity: 0;
+    transform: translateY(42px);
+    transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1), transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+
+  .st-reveal.from-left { transform: translateX(-44px); }
+  .st-reveal.from-right { transform: translateX(44px); }
+  .st-reveal.scale-up { transform: translateY(32px) scale(0.96); }
+
+  .st-reveal.in-view {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  .st-delay-1 { transition-delay: 0.08s; }
+  .st-delay-2 { transition-delay: 0.18s; }
+  .st-delay-3 { transition-delay: 0.28s; }
+
+  @media (max-width: 767.98px) {
+    .main-hero-slide { min-height: 440px; }
+    .scroll-cue { display: none; }
+    .st-reveal.from-left, .st-reveal.from-right { transform: translateY(30px); }
+  }
+</style>
 {% endblock %}
 
 {% block full_width_top %}
-<!-- 전체 폭 캐러셀 -->
-<div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6000">
-  <div class="carousel-indicators">
+<div class="main-scroll-progress" id="mainScrollBar"></div>
+
+<!-- M-01a: 풀스케일 자동 슬라이드 히어로 캐러셀 -->
+<div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5200">
+  <div class="carousel-indicators mb-4">
     <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active"></button>
     <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1"></button>
     <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2"></button>
   </div>
+
   <div class="carousel-inner">
     <div class="carousel-item active">
-      <div class="hero-slide">
-        <div class="container-enterprise">
-          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">Smart Shipyard Platform</div>
-          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
-            선박 번호 하나로 연결되는<br>스마트 조선소 현장 관제 및 자율 용접
-          </h1>
-          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
-            CAD 도면 확인부터 현장 카메라 탐지, 자재·인력 확인, 작업지시서 승인까지 비전공자도 업무 순서대로 처리할 수 있습니다.
-          </p>
-          <div class="d-flex gap-3">
-            <a href="/service/yards" class="btn btn-primary px-4 py-2 fw-semibold">작업현황 바로가기</a>
-            <a href="/service/erp" class="btn btn-outline-light px-4 py-2 fw-semibold">자원관리 대시보드</a>
+      <div class="main-hero-slide hero-bg-1">
+        <div class="main-wide-shell">
+          <span class="main-hero-eyebrow">[수정 - 슬라이드 1 배지 문구]</span>
+          <h1 class="main-hero-title">[수정 - 슬라이드 1 메인 헤드라인]</h1>
+          <p class="main-hero-sub">[수정 - 슬라이드 1 서비스 핵심 소개 문구]</p>
+          <div class="d-flex flex-wrap gap-3">
+            <a href="/service/workspace" class="btn btn-light text-primary main-hero-btn">통합 업무 시작하기</a>
+            <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-outline-light main-hero-btn">현장 관제 보기</a>
           </div>
         </div>
+        <div class="scroll-cue">아래로 스크롤하여 기능 보기 ↓</div>
       </div>
     </div>
 
     <div class="carousel-item">
-      <div class="hero-slide" style="background:#102a4c;">
-        <div class="container-enterprise">
-          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">Field Vision Monitoring</div>
-          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
-            운반 단계 블록 번호 식별부터<br>작업 중 CCTV·로봇 용접선 탐지까지
-          </h1>
-          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
-            운반 중인 야드는 블록 번호를 자동 확인하고, 작업 중인 야드는 광역 CCTV와 로봇 용접선 시점을 버튼으로 전환합니다.
-          </p>
-          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-primary px-4 py-2 fw-semibold">현장카메라 열기</a>
+      <div class="main-hero-slide hero-bg-2">
+        <div class="main-wide-shell">
+          <span class="main-hero-eyebrow">[수정 - 슬라이드 2 배지 문구 (Vision)]</span>
+          <h1 class="main-hero-title">[수정 - 슬라이드 2 메인 헤드라인]</h1>
+          <p class="main-hero-sub">[수정 - 슬라이드 2 현장 카메라 · 인식 기능 소개 문구]</p>
+          <div class="d-flex flex-wrap gap-3">
+            <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-light text-primary main-hero-btn">현장 관제 열기</a>
+            <a href="/service/library?tab=cad" class="btn btn-outline-light main-hero-btn">선박 도면 보기</a>
+          </div>
         </div>
+        <div class="scroll-cue">아래로 스크롤하여 기능 보기 ↓</div>
       </div>
     </div>
 
     <div class="carousel-item">
-      <div class="hero-slide" style="background:#142840;">
-        <div class="container-enterprise">
-          <div class="text-uppercase fw-semibold mb-2" style="color:#93c5fd;font-size:13px;letter-spacing:0.06em;">ERP &amp; AI Automation</div>
-          <h1 class="fw-bold mb-3" style="font-size:40px;line-height:1.25;max-width:780px;">
-            자재·자격증 이상 조기 감지 및<br>근거 기반 작업지시서 자동 작성
-          </h1>
-          <p class="mb-4" style="color:#cbd5e1;font-size:17px;max-width:640px;">
-            사내 규정 문서와 실시간 ERP·기상 정보를 종합해 초안을 작성하고, 담당자의 최종 승인 후 원장에 확정합니다.
-          </p>
-          <a href="/service/erp#hitl-section" class="btn btn-primary px-4 py-2 fw-semibold">승인함 확인</a>
+      <div class="main-hero-slide hero-bg-3">
+        <div class="main-wide-shell">
+          <span class="main-hero-eyebrow">[수정 - 슬라이드 3 배지 문구 (Workflow)]</span>
+          <h1 class="main-hero-title">[수정 - 슬라이드 3 메인 헤드라인]</h1>
+          <p class="main-hero-sub">[수정 - 슬라이드 3 작업지시 · 승인 · 납기 흐름 소개 문구]</p>
+          <div class="d-flex flex-wrap gap-3">
+            <a href="/service/work-status" class="btn btn-light text-primary main-hero-btn">작업 현황 확인</a>
+            <a href="/service/workspace" class="btn btn-outline-light main-hero-btn">통합 업무 이동</a>
+          </div>
         </div>
+        <div class="scroll-cue">아래로 스크롤하여 기능 보기 ↓</div>
       </div>
     </div>
   </div>
+
   <button class="carousel-control-prev" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="prev">
     <span class="carousel-control-prev-icon"></span>
   </button>
@@ -71,19 +329,20 @@
   </button>
 </div>
 
-<!-- 선박번호 빠른 시작 바 -->
-<section style="background:#ffffff;border-bottom:1px solid #dde3ec;padding:30px 0;">
-  <div class="container-enterprise">
-    <form action="/service/yards" method="get" class="row g-3 align-items-center">
+<!-- 빠른 업무 요청 바 -->
+<section class="main-quick-bar">
+  <div class="main-wide-shell">
+    <form action="/service/workspace" method="get" class="row g-3 align-items-center">
       <div class="col-lg-4">
-        <div class="fw-bold" style="color:#0b1f3a;font-size:16px;">빠른 업무 시작</div>
-        <div class="text-muted" style="font-size:13px;">CAD에 적힌 선박 번호나 블록 번호로 해당 야드와 도면을 바로 찾습니다.</div>
+        <div class="fw-bold" style="color:#0b1f3a;font-size:18px;">[수정 - 빠른 업무 시작 제목]</div>
+        <div class="text-muted" style="font-size:14px;">[수정 - 빠른 업무 시작 한 줄 안내]</div>
       </div>
       <div class="col-lg-6">
-        <input type="text" name="q" class="form-control form-control-lg" placeholder="{{ ('예: ' ~ (sample_hints | join(', '))) if sample_hints else '선박 번호 또는 블록 번호를 입력하세요' }}">
+        <input type="text" name="prompt" class="form-control main-quick-input"
+               placeholder="{{ ('예: ' ~ (sample_hints | join(', ')) ~ ' 자재와 용접 기준 확인해줘') if sample_hints else '[수정 - 입력창 예시 문구]' }}">
       </div>
       <div class="col-lg-2 d-grid">
-        <button type="submit" class="btn btn-dark btn-lg fs-6 fw-semibold">작업 찾기</button>
+        <button type="submit" class="btn btn-primary fw-bold" style="height:52px;font-size:15.5px;border-radius:10px;background:#0052cc;border-color:#0052cc;">업무 시작 →</button>
       </div>
     </form>
   </div>
@@ -91,37 +350,139 @@
 {% endblock %}
 
 {% block content %}
-<!-- 대기업식 스크롤텔링: 주요 기능 3개 영역 -->
-<section class="story-section">
-  <div class="container-enterprise">
-    <div class="row align-items-center g-5 story-reveal">
-      <div class="col-lg-6">
-        <div class="text-primary fw-bold mb-2" style="font-size:13px;">01. 작업현황 · 현장카메라 (Vision)</div>
-        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">야드 지도와 CAD 도면에서 현장 영상으로 바로 연결</h2>
-        <p class="text-secondary mb-4" style="font-size:16px;">
-          지도에서 우리 야드와 계약 협력사 위치를 한눈에 확인하고, 진행 중인 CAD 도면을 쉬운 요약 설명으로 봅니다.
-          바로가기를 누르면 운반 중 야드는 블록 번호를, 작업 중 야드는 광역 CCTV와 로봇 용접선 탐지 화면을 보여줍니다.
-        </p>
-        <div class="d-flex gap-2">
-          <a href="/service/yards" class="btn btn-outline-primary">작업현황 보기</a>
-          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-link text-decoration-none">현장카메라 이동 →</a>
+<!-- 섹션 1: 3대 핵심 업무 대형 카드 -->
+<section class="st-band">
+  <div class="main-wide-shell">
+    <div class="text-center mb-5 st-reveal">
+      <div class="st-kicker">[수정 - 섹션 1 소제목]</div>
+      <h2 class="st-heading">[수정 - 섹션 1 메인 제목]</h2>
+      <p class="st-lead mx-auto mb-0" style="max-width:680px;">[수정 - 섹션 1 요약 설명]</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-4 st-reveal scale-up st-delay-1">
+        <div class="st-service-card">
+          <div>
+            <span class="st-service-num">01 · 통합 업무</span>
+            <h3 class="st-service-title">[수정 - 카드 1 제목]</h3>
+            <p class="st-service-desc">[수정 - 카드 1 통합 업무 기능 설명]</p>
+          </div>
+          <a href="/service/workspace" class="btn btn-outline-primary fw-bold px-4 py-2 align-self-start" style="border-radius:9px;">통합 업무 바로가기 →</a>
         </div>
       </div>
-      <div class="col-lg-6">
-        <div class="panel-card mb-0" style="background:#f8fafc;">
+
+      <div class="col-lg-4 st-reveal scale-up st-delay-2">
+        <div class="st-service-card">
+          <div>
+            <span class="st-service-num">02 · 현장 관제</span>
+            <h3 class="st-service-title">[수정 - 카드 2 제목]</h3>
+            <p class="st-service-desc">[수정 - 카드 2 현장 관제 기능 설명]</p>
+          </div>
+          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-outline-primary fw-bold px-4 py-2 align-self-start" style="border-radius:9px;">현장 관제 바로가기 →</a>
+        </div>
+      </div>
+
+      <div class="col-lg-4 st-reveal scale-up st-delay-3">
+        <div class="st-service-card">
+          <div>
+            <span class="st-service-num">03 · 작업 현황 · 자료실</span>
+            <h3 class="st-service-title">[수정 - 카드 3 제목]</h3>
+            <p class="st-service-desc">[수정 - 카드 3 작업 현황 및 자료실 기능 설명]</p>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="/service/work-status" class="btn btn-outline-primary fw-bold px-4 py-2" style="border-radius:9px;">작업 현황</a>
+            <a href="/service/library" class="btn btn-outline-secondary fw-bold px-4 py-2" style="border-radius:9px;">자료실</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 섹션 2: Story 01 — smart-vision -->
+<section class="st-band alt">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6 st-reveal from-left">
+        <div class="st-kicker">CHAPTER 01 · SMART - VISION</div>
+        <h2 class="st-heading">[수정 - Vision 섹션 메인 제목]</h2>
+        <p class="st-lead">[수정 - Vision 현장 카메라 · 객체/번호 인식 설명]</p>
+        <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-primary main-hero-btn" style="background:#0052cc;border-color:#0052cc;">현장 관제 이동 →</a>
+      </div>
+
+      <div class="col-lg-6 st-reveal from-right">
+        <div class="st-visual-panel">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <span class="fw-bold fs-5" style="color:#0b1f3a;">[수정 - Vision 패널 제목]</span>
+            <span class="status-chip status-info">[수정 - 상태 배지]</span>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 항목 1 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 항목 1 제목]</div>
+                <div class="small text-secondary">[수정 - 항목 1 설명]</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 항목 2 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 항목 2 제목]</div>
+                <div class="small text-secondary">[수정 - 항목 2 설명]</div>
+              </div>
+            </div>
+          </div>
+          <div class="p-3 rounded-3 small text-secondary bg-light border">[수정 - Vision 하단 보조 설명 또는 예시 이미지 영역]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 섹션 3: Story 02 — smart-agent -->
+<section class="st-band">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5 flex-lg-row-reverse">
+      <div class="col-lg-6 st-reveal from-right">
+        <div class="st-kicker">CHAPTER 02 · SMART - AGENT</div>
+        <h2 class="st-heading">[수정 - Agent 섹션 메인 제목]</h2>
+        <p class="st-lead">[수정 - Agent 기준서 검색 · 자재/자격 점검 · 메일 초안 설명]</p>
+        <a href="/service/workspace" class="btn btn-primary main-hero-btn" style="background:#0052cc;border-color:#0052cc;">통합 업무 이동 →</a>
+      </div>
+
+      <div class="col-lg-6 st-reveal from-left">
+        <div class="st-visual-panel">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <span class="fw-bold fs-5" style="color:#0b1f3a;">[수정 - Agent 패널 제목]</span>
+            <span class="status-chip status-info">[수정 - 상태 배지]</span>
+          </div>
           <div class="row g-3">
-            <div class="col-6">
-              <div class="p-3 bg-white border rounded h-100">
-                <div class="small text-muted mb-1">운반 중 단계</div>
-                <div class="fw-bold">블록 번호 OCR 확인</div>
-                <div class="small text-secondary mt-2">작업 투입 전 목표 선박·블록 일치 여부 검증</div>
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 기능 1 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 기능 1 제목]</div>
+                <div class="small text-secondary">[수정 - 기능 1 설명]</div>
               </div>
             </div>
-            <div class="col-6">
-              <div class="p-3 bg-white border rounded h-100">
-                <div class="small text-muted mb-1">작업 중 단계</div>
-                <div class="fw-bold">CCTV · 로봇 시점 전환</div>
-                <div class="small text-secondary mt-2">작업자·크레인 안전 감시 및 용접선 궤적 탐지</div>
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 기능 2 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 기능 2 제목]</div>
+                <div class="small text-secondary">[수정 - 기능 2 설명]</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 기능 3 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 기능 3 제목]</div>
+                <div class="small text-secondary">[수정 - 기능 3 설명]</div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="st-mini-tile">
+                <div class="small text-primary fw-bold mb-1">[수정 - 기능 4 라벨]</div>
+                <div class="fw-bold fs-6 mb-1">[수정 - 기능 4 제목]</div>
+                <div class="small text-secondary">[수정 - 기능 4 설명]</div>
               </div>
             </div>
           </div>
@@ -131,58 +492,50 @@
   </div>
 </section>
 
-<section class="story-section alt">
-  <div class="container-enterprise">
-    <div class="row align-items-center g-5 story-reveal">
-      <div class="col-lg-6 order-lg-2">
-        <div class="text-primary fw-bold mb-2" style="font-size:13px;">02. 자원관리 (ERP) &amp; AI 자동 처리</div>
-        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">부족 자재와 만료 임박 자격증을 먼저 알려주고 원클릭 처리</h2>
-        <p class="text-secondary mb-4" style="font-size:16px;">
-          사내 자재, 직영·협력사 인력, 로봇, 차량 현황을 깔끔한 대시보드로 요약합니다.
-          재고가 부족한 자재의 협력사 발주나 자격증 갱신 안내 메일은 AI 업무 도우미가 초안을 만들고, 담당자 승인 후 최종 반영합니다.
-        </p>
-        <a href="/service/erp" class="btn btn-outline-primary">자원관리 대시보드 보기</a>
-      </div>
-      <div class="col-lg-6 order-lg-1">
-        <div class="panel-card mb-0">
-          <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
-            <span class="fw-bold">통합 ERP · 협력사 B2B 연동</span>
-            <span class="status-chip status-info">DB 실시간 조회</span>
-          </div>
-          <div class="row g-3 text-center">
-            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">자재·재고</div><div class="fw-bold mt-1">부족 감지</div></div></div>
-            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">사내·외부 인력</div><div class="fw-bold mt-1">자격 D-Day</div></div></div>
-            <div class="col-4"><div class="p-3 bg-light rounded"><div class="small text-muted">로봇·차량</div><div class="fw-bold mt-1">대기/사용/점검</div></div></div>
-          </div>
+<!-- 섹션 4: Story 03 — smart-workflow (너무 어둡던 다크 네이비 제거 -> 밝고 쾌적한 소프트 블루 밴드) -->
+<section class="st-band soft-blue-band">
+  <div class="main-wide-shell">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-5 st-reveal from-left">
+        <div class="st-kicker">CHAPTER 03 · SMART - WORKFLOW</div>
+        <h2 class="st-heading">[수정 - Workflow 섹션 메인 제목]</h2>
+        <p class="st-lead">[수정 - 도면 등록부터 승인·납기 추적까지 전체 업무 흐름 설명]</p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="/service/workspace" class="btn btn-primary main-hero-btn" style="background:#0052cc;border-color:#0052cc;">지금 시작하기 →</a>
+          <a href="/service/work-status" class="btn btn-outline-dark main-hero-btn">작업 현황 보기</a>
         </div>
       </div>
-    </div>
-  </div>
-</section>
 
-<section class="story-section">
-  <div class="container-enterprise">
-    <div class="row align-items-center g-5 story-reveal">
-      <div class="col-lg-6">
-        <div class="text-primary fw-bold mb-2" style="font-size:13px;">03. 작업지시서 생성 · 자료실 · 이력 관리</div>
-        <h2 class="fw-bold mb-3" style="font-size:30px;color:#0b1f3a;">도면 제원과 사내 규정을 근거로 표준 문서를 자동 생성</h2>
-        <p class="text-secondary mb-4" style="font-size:16px;">
-          계정 권한에 맞춰 사내 규정 문서(RAG)와 현장 기상·용접선 데이터를 종합해 작업지시서를 작성합니다.
-          생성된 문서와 야드별 용접선 탐지 기록은 이력 화면에서 언제든 추적하고 다운로드할 수 있습니다.
-        </p>
-        <div class="d-flex gap-2">
-          <a href="/service/history" class="btn btn-outline-primary">작업·용접 이력 보기</a>
-          <a href="/mypage/files" class="btn btn-link text-decoration-none">자료실 이동 →</a>
-        </div>
-      </div>
-      <div class="col-lg-6">
-        <div class="panel-card mb-0" style="background:#f8fafc;">
-          <ol class="mb-0 ps-3" style="line-height:2.1;">
-            <li><strong>선박·블록 선택</strong> — 지도와 CAD 도면에서 대상 확인</li>
-            <li><strong>현장 영상 검증</strong> — 운반 번호 확인 및 작업 중 CCTV·로봇 용접선 탐지</li>
-            <li><strong>자원 및 규정 검토</strong> — ERP 재고·자격 확인 및 AI 초안 생성</li>
-            <li><strong>최종 승인·보관</strong> — 담당자 결재 후 공식 DOCX/PDF 발행 및 이력 저장</li>
-          </ol>
+      <div class="col-lg-7 st-reveal from-right">
+        <div class="d-flex flex-column gap-3">
+          <div class="st-step-row">
+            <span class="st-step-badge">1</span>
+            <div>
+              <div class="fw-bold fs-5 mb-1" style="color:#0b1f3a;">[수정 - 1단계 제목]</div>
+              <div class="small text-secondary">[수정 - 1단계 상세 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-row">
+            <span class="st-step-badge">2</span>
+            <div>
+              <div class="fw-bold fs-5 mb-1" style="color:#0b1f3a;">[수정 - 2단계 제목]</div>
+              <div class="small text-secondary">[수정 - 2단계 상세 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-row">
+            <span class="st-step-badge">3</span>
+            <div>
+              <div class="fw-bold fs-5 mb-1" style="color:#0b1f3a;">[수정 - 3단계 제목]</div>
+              <div class="small text-secondary">[수정 - 3단계 상세 설명]</div>
+            </div>
+          </div>
+          <div class="st-step-row">
+            <span class="st-step-badge">4</span>
+            <div>
+              <div class="fw-bold fs-5 mb-1" style="color:#0b1f3a;">[수정 - 4단계 제목]</div>
+              <div class="small text-secondary">[수정 - 4단계 상세 설명]</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -192,17 +545,33 @@
 
 {% block extra_js %}
 <script>
-$(function () {
-  function revealOnScroll() {
-    var trigger = $(window).scrollTop() + $(window).height() * 0.92;
-    $('.story-reveal').each(function () {
-      if ($(this).offset().top < trigger) {
-        $(this).addClass('visible');
-      }
-    });
+(function () {
+  var bar = document.getElementById('mainScrollBar');
+  function updateBar() {
+    if (!bar) return;
+    var docH = document.documentElement.scrollHeight - window.innerHeight;
+    var pct = docH > 0 ? Math.min(100, Math.max(0, (window.scrollY / docH) * 100)) : 0;
+    bar.style.width = pct + '%';
   }
-  revealOnScroll();
-  $(window).on('scroll', revealOnScroll);
-});
+  window.addEventListener('scroll', updateBar, { passive: true });
+  updateBar();
+
+  var targets = document.querySelectorAll('.st-reveal');
+  if (!targets.length) return;
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+        } else {
+          entry.target.classList.remove('in-view');
+        }
+      });
+    }, { threshold: 0.14 });
+    targets.forEach(function (el) { io.observe(el); });
+  } else {
+    targets.forEach(function (el) { el.classList.add('in-view'); });
+  }
+})();
 </script>
 {% endblock %}
