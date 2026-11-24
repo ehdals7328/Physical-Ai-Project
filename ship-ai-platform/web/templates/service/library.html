@@ -1,0 +1,273 @@
+{% extends "layout/base.html" %}
+{% block title %}자료실 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">자료실</h1>
+  </div>
+
+  {% if is_admin %}
+  <div class="d-flex flex-wrap gap-2">
+    <button type="button" id="btn-sync-db" class="btn btn-outline-dark btn-sm fw-semibold px-3" onclick="syncLibraryDb()">폴더 자료 불러오기</button>
+    <a href="/service/library/upload-pdf" class="btn btn-outline-primary btn-sm fw-semibold px-3">규정 PDF 등록</a>
+    <a href="/service/library/upload-cad" class="btn btn-primary btn-sm fw-semibold px-3" style="background:#0052cc;border-color:#0052cc;">선박 도면 등록</a>
+  </div>
+  {% endif %}
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  {% if 'public' in allowed_tabs %}
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'public' %}active{% endif %}" href="/service/library?tab=public">
+      공통 기술문서 <span class="badge bg-light text-dark border ms-1">{{ tab_counts.public }}</span>
+    </a>
+  </li>
+  {% endif %}
+  {% if 'internal' in allowed_tabs %}
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'internal' %}active{% endif %}" href="/service/library?tab=internal">
+      사내 규정 <span class="badge bg-light text-dark border ms-1">{{ tab_counts.internal }}</span>
+    </a>
+  </li>
+  {% endif %}
+  {% if 'cad' in allowed_tabs %}
+  <li class="nav-item">
+    <a class="nav-link fw-semibold {% if tab == 'cad' %}active{% endif %}" href="/service/library?tab=cad">
+      선박 도면 (CAD) <span class="badge bg-light text-dark border ms-1">{{ tab_counts.cad }}</span>
+    </a>
+  </li>
+  {% endif %}
+</ul>
+
+<div class="panel-card">
+  <form method="get" action="/service/library" class="d-flex gap-2 mb-3" style="max-width:420px;">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="문서명 또는 파일명 검색">
+    <button type="submit" class="btn btn-dark btn-sm text-nowrap px-3">검색</button>
+  </form>
+
+  {% if tab == 'cad' %}
+  <!-- 선박 도면(CAD): 같은 선박/도면의 여러 파일 형식을 묶어서 표시 -->
+  <div class="d-flex flex-column gap-3 mb-3">
+    {% for g in cad_groups %}
+    <div class="border rounded p-3 bg-white">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+          <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
+            <strong style="font-size:15.5px;color:#0b1f3a;">{{ g.group_title }}</strong>
+            {% for fmt in g.formats %}
+              <span class="badge bg-light text-dark border">{{ fmt }}</span>
+            {% endfor %}
+            <span class="small text-muted">총 {{ g.files|length }}개 파일</span>
+          </div>
+          <div class="small text-muted">{{ g.group_desc }}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;"
+                  onclick="openCadPreview({{ g.preview_doc_id }})">
+            {{ 'PDF 도면 보기' if g.has_pdf else '도면 미리보기' }}
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm"
+                  onclick="$('#cad-files-{{ loop.index }}').slideToggle(140)">
+            포함 파일 ({{ g.files|length }}) ▾
+          </button>
+        </div>
+      </div>
+
+      <!-- 묶인 개별 파일 목록 (클릭 시 펼침) -->
+      <div id="cad-files-{{ loop.index }}" class="mt-3 pt-2 border-top" style="display:none;">
+        <div class="table-responsive">
+          <table class="table table-sm table-enterprise mb-0">
+            <thead>
+              <tr><th>파일명</th><th>형식</th><th>상태</th><th class="text-end">미리보기 / 관리</th></tr>
+            </thead>
+            <tbody>
+              {% for f in g.files %}
+              <tr>
+                <td><span class="fw-semibold">{{ f.file_name }}</span></td>
+                <td><span class="badge bg-light text-dark border">{{ f.ext }}</span></td>
+                <td><span class="status-chip {{ 'status-ok' if f.is_active == 'Y' else 'status-warn' }}">{{ '사용 중' if f.is_active == 'Y' else '비활성' }}</span></td>
+                <td class="text-end text-nowrap">
+                  <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="openCadPreview({{ f.document_id }})">보기</button>
+                  {% if is_admin %}
+                    <button type="button" class="btn btn-outline-dark btn-sm py-0 ms-1" onclick="toggleDocActive({{ f.document_id }})">{{ '비활성화' if f.is_active == 'Y' else '활성화' }}</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm py-0 ms-1" onclick="removeDoc({{ f.document_id }})">삭제</button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5 small">등록된 선박 도면이 없습니다. 상단의 [폴더 자료 불러오기] 또는 [선박 도면 등록]을 이용해 주세요.</div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <!-- 공통 기술문서 / 사내 규정 PDF 테이블 -->
+  <div class="table-responsive mb-3">
+    <table class="table table-enterprise">
+      <thead>
+        <tr>
+          <th>문서명</th>
+          <th>구분</th>
+          <th>상태</th>
+          <th>문서 열람</th>
+          {% if is_admin %}<th class="text-end">관리</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in docs %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ d.document_title }}</div>
+            <div class="small text-muted">{{ d.original_file_name }}</div>
+          </td>
+          <td>{{ '공통 기술문서' if d.collection_type == 'PUBLIC' else '사내 규정' }}</td>
+          <td>
+            <span class="status-chip {{ 'status-ok' if d.is_active == 'Y' else 'status-warn' }}">
+              {{ '검색 반영 중' if d.is_active == 'Y' else '비활성' }}
+            </span>
+          </td>
+          <td>
+            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
+                    onclick="openPdfModal({{ d.document_id }}, {{ d.document_title | tojson }})">PDF 보기</button>
+          </td>
+          {% if is_admin %}
+          <td class="text-end text-nowrap">
+            {% if d.collection_type == 'INTERNAL' %}
+              <button type="button" class="btn btn-outline-dark btn-sm py-0" onclick="toggleDocActive({{ d.document_id }})">{{ '비활성화' if d.is_active == 'Y' else '활성화' }}</button>
+              <button type="button" class="btn btn-outline-danger btn-sm py-0 ms-1" onclick="removeDoc({{ d.document_id }})">삭제</button>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 5 if is_admin else 4 }}" class="text-center text-muted py-4">등록된 문서가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <ul class="pagination pagination-sm justify-content-center mb-0">
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}"><a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a></li>
+    {% for it in page_items %}
+      {% if it == '...' %}<li class="page-item disabled"><span class="page-link">...</span></li>
+      {% else %}<li class="page-item {% if it == page %}active{% endif %}"><a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a></li>{% endif %}
+    {% endfor %}
+    <li class="page-item {% if page >= total_pages %}disabled{% endif %}"><a class="page-link" href="/service/library?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a></li>
+  </ul>
+</div>
+
+<!-- 브라우저 내장 PDF / 2D 도면 / 3D 제원 미리보기 모달 (강제 다운로드 방지) -->
+<div class="modal fade" id="docPreviewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-3">
+        <h6 class="modal-title fw-bold" id="preview-modal-title">문서 미리보기</h6>
+        <div class="d-flex align-items-center gap-2">
+          <a id="preview-newtab-link" href="#" target="_blank" class="btn btn-outline-primary btn-sm" style="display:none;">새 탭에서 크게 보기</a>
+          <a id="preview-download-link" href="#" class="btn btn-outline-secondary btn-sm" style="display:none;">파일 다운로드</a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-body p-0" id="preview-modal-body" style="min-height:540px;background:#f8fafc;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var esc = window.KSmartMd.esc;
+
+function openPdfModal(docId, title) {
+  var url = '/api/document/file/' + docId;
+  $('#preview-modal-title').text(title || 'PDF 문서 보기');
+  $('#preview-newtab-link').attr('href', url).show();
+  $('#preview-download-link').attr('href', url + '?download=1').show();
+  $('#preview-modal-body').html('<iframe src="' + url + '" style="width:100%;height:72vh;border:0;"></iframe>');
+  new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
+}
+
+function openCadPreview(docId) {
+  $('#preview-modal-title').text('선박 도면 불러오는 중...');
+  $('#preview-newtab-link, #preview-download-link').hide();
+  $('#preview-modal-body').html('<div class="p-5 text-center text-muted">도면 미리보기를 준비하고 있습니다...</div>');
+  new bootstrap.Modal(document.getElementById('docPreviewModal')).show();
+
+  $.getJSON('/service/api/cad/preview/' + docId, function (res) {
+    $('#preview-modal-title').text(res.title || res.file_name || '도면 미리보기');
+    if (res.download_url) $('#preview-download-link').attr('href', res.download_url).show();
+
+    if (res.mode === 'pdf' && res.pdf_url) {
+      $('#preview-newtab-link').attr('href', res.pdf_url).show();
+      $('#preview-modal-body').html('<iframe src="' + res.pdf_url + '" style="width:100%;height:72vh;border:0;"></iframe>');
+    } else if (res.mode === 'svg' && res.svg) {
+      $('#preview-modal-body').html('<div class="p-3 bg-white overflow-auto text-center" style="max-height:72vh;">' + res.svg + '</div>');
+    } else if (res.mode === 'iges3d' && res.wireframe_3d) {
+      window.KSmartCad.mountIgesViewer(document.getElementById('preview-modal-body'), res.wireframe_3d, res.summary);
+    } else {
+      var s = res.summary || {};
+      var bbox = s.bbox ? ('가로 ' + s.bbox.width + ' × 세로 ' + s.bbox.height) : '제원 추출 정보 없음';
+      var layers = (s.layers || []).slice(0, 12).join(', ') || '-';
+      $('#preview-modal-body').html(
+        '<div class="p-4">' +
+          '<div class="alert alert-info small mb-3">이 파일(' + esc(res.file_name) + ')은 3D CAD 전용 형식으로, 핵심 제원 요약을 먼저 표시합니다. 필요 시 우측 상단에서 원본 파일을 내려받을 수 있습니다.</div>' +
+          '<div class="row g-3 small">' +
+            '<div class="col-md-6"><div class="bg-white border rounded p-3"><div class="text-muted">파일 형식</div><strong>' + esc(s.format || '-') + '</strong></div></div>' +
+            '<div class="col-md-6"><div class="bg-white border rounded p-3"><div class="text-muted">도면 치수 범위</div><strong>' + esc(bbox) + '</strong></div></div>' +
+            '<div class="col-12"><div class="bg-white border rounded p-3"><div class="text-muted mb-1">추출 레이어 / 구성</div><div>' + esc(layers) + '</div></div></div>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+  }).fail(function () {
+    $('#preview-modal-body').html('<div class="p-5 text-center text-danger">도면 미리보기를 불러오지 못했습니다.</div>');
+  });
+}
+
+function syncLibraryDb() {
+  var $btn = $('#btn-sync-db');
+  $btn.prop('disabled', true).text('불러오는 중...');
+  $.ajax({
+    url: '/service/api/library/sync-db',
+    method: 'POST',
+    success: function (res) { alert(res.message); location.reload(); },
+    error: function (xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '자료 불러오기에 실패했습니다.');
+      $btn.prop('disabled', false).text('폴더 자료 불러오기');
+    }
+  });
+}
+
+function toggleDocActive(docId) {
+  $.ajax({
+    url: '/api/admin/rag-pdf/toggle-active',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ document_id: docId, page: {{ page }} }),
+    success: function (res) { alert(res.message || '상태가 변경되었습니다.'); location.reload(); },
+    error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '처리에 실패했습니다.'); }
+  });
+}
+
+function removeDoc(docId) {
+  if (!confirm('이 문서를 삭제하시겠습니까?')) return;
+  $.ajax({
+    url: '/api/admin/rag-pdf/remove-rag-file',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({ document_id: docId, page: {{ page }} }),
+    success: function (res) { alert(res.message || '삭제되었습니다.'); location.reload(); },
+    error: function (xhr) { alert((xhr.responseJSON && xhr.responseJSON.message) || '삭제에 실패했습니다.'); }
+  });
+}
+</script>
+{% endblock %}

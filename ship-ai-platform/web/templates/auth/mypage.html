@@ -1,72 +1,68 @@
 {% extends "layout/base.html" %}
 {% block title %}내 정보 및 접근 권한 | K-SmartShip{% endblock %}
-{% block page_context %}
-{"page_title": "내 계정 정보", "summary": "{{ me.full_name }} ({{ me.role }} / {{ me.user_type }}), 소속 야드 {{ me.erp_branch_code }}"}
-{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
     <h1 class="page-title">내 정보 및 시스템 접근 권한</h1>
-    <p class="page-desc">계정의 소속 정보와 부여된 시스템 권한을 확인하고 비밀번호를 변경할 수 있습니다.</p>
   </div>
 </div>
 
+{% if me.role in ('ADMIN', 'MANAGER') and pending_count > 0 %}
+<div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+  <div><strong>계정 발급 승인 대기:</strong> 관리자 승인을 기다리는 신규 신청이 <strong>{{ pending_count }}건</strong> 있습니다.</div>
+  <a href="#admin-users-section" class="btn btn-dark btn-sm">아래 목록에서 확인</a>
+</div>
+{% endif %}
+
 <div class="row g-4 mb-4">
-  <!-- 좌측: 내 계정 정보 카드 -->
   <div class="col-lg-6">
     <div class="panel-card h-100 mb-0">
-      <div class="d-flex align-items-center gap-3 pb-4 mb-4 border-bottom">
+      <div class="d-flex align-items-center gap-3 pb-3 mb-3 border-bottom">
         <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
-             style="width:56px;height:56px;background:#0b1f3a;font-size:22px;">
+             style="width:52px;height:52px;background:#0b1f3a;font-size:20px;">
           {{ me.full_name[0] if me.full_name else 'U' }}
         </div>
         <div>
-          <div class="fw-bold" style="font-size:20px;color:#0b1f3a;">
-            {{ me.full_name }} <span class="text-muted fw-normal" style="font-size:15px;">({{ me.username }})</span>
+          <div class="fw-bold" style="font-size:18px;color:#0b1f3a;">
+            {{ me.full_name }} <span class="text-muted fw-normal" style="font-size:14px;">({{ me.username }})</span>
           </div>
           <div class="d-flex gap-2 mt-1">
             <span class="status-chip status-info">{{ me.role }}</span>
-            <span class="status-chip status-muted">{{ me.user_type }}</span>
+            <span class="status-chip status-muted">{{ '사내 임직원' if me.user_type == 'INTERNAL' else '협력사' }}</span>
           </div>
         </div>
       </div>
 
-      <table class="table table-borderless table-sm mb-4" style="font-size:14.5px;">
+      <table class="table table-borderless table-sm mb-3" style="font-size:14px;">
         <tbody>
-          <tr><th class="text-muted fw-normal" style="width:140px;">소속 회사</th><td class="fw-semibold">{{ me.erp_company_code or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal" style="width:130px;">소속 회사</th><td class="fw-semibold">{{ me.erp_company_code or '-' }}</td></tr>
           <tr><th class="text-muted fw-normal">소속 야드</th><td class="fw-semibold">{{ me.erp_branch_code or '-' }}</td></tr>
           <tr><th class="text-muted fw-normal">부서 / 팀명</th><td class="fw-semibold">{{ me.department_name or '-' }}</td></tr>
-          <tr><th class="text-muted fw-normal">주 작업구역</th><td class="fw-semibold">{{ me.default_workspace or '-' }}</td></tr>
-          <tr><th class="text-muted fw-normal">ERP 사번</th><td class="fw-semibold">{{ me.erp_employee_code or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">주 작업 구역</th><td class="fw-semibold">{{ me.default_workspace or '-' }}</td></tr>
+          <tr><th class="text-muted fw-normal">사번</th><td class="fw-semibold">{{ me.erp_employee_code or '-' }}</td></tr>
         </tbody>
       </table>
 
       <div class="pt-3 border-top">
-        <div class="fw-bold mb-3" style="font-size:14px;color:#0b1f3a;">부여된 시스템 접근 권한</div>
+        <div class="fw-bold mb-2 small" style="color:#0b1f3a;">부여된 접근 권한</div>
         <div class="row g-2">
           <div class="col-4">
-            <div class="p-3 border rounded text-center bg-light">
-              <div class="small text-muted mb-1">ERP 연동</div>
-              <span class="status-chip {{ 'status-ok' if me.can_access_erp == 'Y' else 'status-muted' }}">
-                {{ me.can_access_erp }}
-              </span>
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">자재·인력 조회</div>
+              <span class="status-chip {{ 'status-ok' if me.can_access_erp == 'Y' else 'status-muted' }}">{{ '허용' if me.can_access_erp == 'Y' else '제한' }}</span>
             </div>
           </div>
           <div class="col-4">
-            <div class="p-3 border rounded text-center bg-light">
-              <div class="small text-muted mb-1">사내 대외비 RAG</div>
-              <span class="status-chip {{ 'status-ok' if me.can_access_internal_rag == 'Y' else 'status-muted' }}">
-                {{ me.can_access_internal_rag }}
-              </span>
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">사내 규정 열람</div>
+              <span class="status-chip {{ 'status-ok' if me.can_access_internal_rag == 'Y' else 'status-muted' }}">{{ '허용' if me.can_access_internal_rag == 'Y' else '제한' }}</span>
             </div>
           </div>
           <div class="col-4">
-            <div class="p-3 border rounded text-center bg-light">
-              <div class="small text-muted mb-1">로봇 물리제어</div>
-              <span class="status-chip {{ 'status-ok' if me.can_control_robot == 'Y' else 'status-muted' }}">
-                {{ me.can_control_robot }}
-              </span>
+            <div class="p-2 border rounded text-center bg-light">
+              <div class="small text-muted mb-1">로봇 제어</div>
+              <span class="status-chip {{ 'status-ok' if me.can_control_robot == 'Y' else 'status-muted' }}">{{ '허용' if me.can_control_robot == 'Y' else '제한' }}</span>
             </div>
           </div>
         </div>
@@ -74,11 +70,10 @@
     </div>
   </div>
 
-  <!-- 우측: 프로필 & 비밀번호 변경 -->
   <div class="col-lg-6" id="password-section">
     <div class="panel-card h-100 mb-0">
       <h2 class="panel-title mb-1">기본 정보 및 비밀번호 변경</h2>
-      <p class="text-muted small mb-4">표시 이름(커뮤니티 닉네임), 이메일, 로그인 비밀번호를 변경할 수 있습니다.</p>
+      <p class="text-muted small mb-3">표시 이름(닉네임), 이메일, 로그인 비밀번호를 변경할 수 있습니다.</p>
 
       <form method="post" action="/mypage/update-profile">
         <div class="row g-3 mb-3">
@@ -92,8 +87,8 @@
           </div>
         </div>
 
-        <hr class="my-4">
-        <div class="small fw-bold text-secondary mb-3">비밀번호 변경 (변경 시에만 입력)</div>
+        <hr class="my-3">
+        <div class="small fw-bold text-secondary mb-2">비밀번호 변경 (변경 시에만 입력)</div>
         <div class="mb-3">
           <label class="form-label small fw-semibold">현재 비밀번호</label>
           <input type="password" name="current_password" class="form-control" placeholder="현재 사용 중인 비밀번호">
@@ -110,31 +105,28 @@
         </div>
 
         <div class="d-flex justify-content-end">
-          <button type="submit" class="btn btn-primary px-4">변경 사항 저장</button>
+          <button type="submit" class="btn btn-primary px-4" style="background:#0052cc;border-color:#0052cc;">변경 사항 저장</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- 관리자(ADMIN/MANAGER) 전용: 사내·외부 직원 권한 및 사용 가능 기능 관리 -->
 {% if me.role in ('ADMIN', 'MANAGER') %}
 <div class="panel-card" id="admin-users-section">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
     <div>
-      <h2 class="panel-title">사내 · 외부 협력사 직원 권한 및 사용 가능 기능</h2>
-      <p class="text-muted small mb-0 mt-1">
-        권한 스위치를 변경하면 즉시 저장되며, 권한이 없는 기능(대외비 RAG·ERP·로봇 제어)은 AI 도우미와 API에서 자동 차단됩니다.
-      </p>
+      <h2 class="panel-title">사내 · 외부 협력사 계정 및 접근 권한 관리</h2>
+      <p class="text-muted small mb-0 mt-1">스위치를 변경하면 즉시 저장되며, 권한이 없는 메뉴와 문서는 자동으로 제한됩니다.</p>
     </div>
 
-    <form method="get" action="/mypage" class="d-flex gap-2">
-      <select name="user_type" class="form-select form-select-sm" style="width:140px;" onchange="this.form.submit()">
+    <form method="get" action="/mypage" class="d-flex gap-2 flex-wrap">
+      <select name="user_type" class="form-select form-select-sm" style="width:130px;" onchange="this.form.submit()">
         <option value="ALL" {% if user_type_filter == 'ALL' %}selected{% endif %}>전체 구분</option>
         <option value="INTERNAL" {% if user_type_filter == 'INTERNAL' %}selected{% endif %}>사내 직원</option>
         <option value="EXTERNAL" {% if user_type_filter == 'EXTERNAL' %}selected{% endif %}>외부 협력사</option>
       </select>
-      <input type="text" name="q" class="form-control form-control-sm" style="width:200px;" value="{{ q or '' }}" placeholder="성명 · 사번 · 부서 검색">
+      <input type="text" name="q" class="form-control form-control-sm" style="width:190px;" value="{{ q or '' }}" placeholder="성명 · 사번 · 부서 검색">
       <button type="submit" class="btn btn-dark btn-sm">검색</button>
     </form>
   </div>
@@ -146,10 +138,9 @@
           <th>성명 / 아이디</th>
           <th>구분 · 소속</th>
           <th>역할</th>
-          <th class="text-center">ERP 연동</th>
-          <th class="text-center">대외비 RAG</th>
+          <th class="text-center">자재·인력</th>
+          <th class="text-center">사내 규정</th>
           <th class="text-center">로봇 제어</th>
-          <th>사용 가능 기능 요약</th>
           <th class="text-center">계정 상태</th>
         </tr>
       </thead>
@@ -197,14 +188,6 @@
                      {% if u.can_control_robot == 'Y' %}checked{% endif %}>
             </div>
           </td>
-          <td class="small text-secondary">
-            {% set feats = ['현장조회', 'FAQ'] %}
-            {% if u.can_access_erp == 'Y' %}{% set _ = feats.append('ERP조회') %}{% endif %}
-            {% if u.can_access_internal_rag == 'Y' %}{% set _ = feats.append('대외비문서') %}{% endif %}
-            {% if u.can_control_robot == 'Y' %}{% set _ = feats.append('로봇제어') %}{% endif %}
-            {% if u.role in ('ADMIN', 'MANAGER') %}{% set _ = feats.append('문서승인·문의답변') %}{% endif %}
-            {{ feats | join(', ') }}
-          </td>
           <td class="text-center">
             {% if u.is_active == 'N' and u.created_by is none %}
               <button type="button" class="btn btn-primary btn-sm js-user-approve" data-uid="{{ u.user_id }}">가입 승인</button>
@@ -217,7 +200,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted py-4">조회된 사용자가 없습니다.</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">조회된 사용자가 없습니다.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -235,40 +218,24 @@ $(function () {
       method: 'POST',
       contentType: 'application/json',
       data: JSON.stringify(payload),
-      success: function (res) {
-        if (onOk) onOk(res);
-      },
+      success: function (res) { if (onOk) onOk(res); },
       error: function (xhr) {
         alert((xhr.responseJSON && xhr.responseJSON.message) || '권한 변경에 실패했습니다.');
         location.reload();
       }
     });
   }
-
   $('.js-user-perm').on('change', function () {
     var $el = $(this);
-    sendUserControl({
-      target_user_id: $el.data('uid'),
-      action: 'UPDATE_PERM',
-      field: $el.data('field'),
-      value: $el.is(':checked') ? 'Y' : 'N'
-    });
+    sendUserControl({ target_user_id: $el.data('uid'), action: 'UPDATE_PERM', field: $el.data('field'), value: $el.is(':checked') ? 'Y' : 'N' });
   });
-
   $('.js-user-role').on('change', function () {
     var $el = $(this);
-    sendUserControl({
-      target_user_id: $el.data('uid'),
-      action: 'UPDATE_PERM',
-      field: 'role',
-      value: $el.val()
-    }, function () { location.reload(); });
+    sendUserControl({ target_user_id: $el.data('uid'), action: 'UPDATE_PERM', field: 'role', value: $el.val() }, function () { location.reload(); });
   });
-
   $('.js-user-approve').on('click', function () {
     sendUserControl({ target_user_id: $(this).data('uid'), action: 'APPROVE' }, function () { location.reload(); });
   });
-
   $('.js-user-toggle').on('click', function () {
     sendUserControl({ target_user_id: $(this).data('uid'), action: 'TOGGLE_ACTIVE' }, function () { location.reload(); });
   });

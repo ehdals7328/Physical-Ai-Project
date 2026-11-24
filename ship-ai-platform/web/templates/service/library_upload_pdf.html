@@ -1,0 +1,95 @@
+{% extends "layout/base.html" %}
+{% block title %}사내 규정 PDF 등록 | 자료실{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">사내 규정 PDF 등록</h1>
+      </div>
+      <a href="/service/library?tab=internal" class="btn btn-outline-secondary btn-sm">목록으로</a>
+    </div>
+
+    <div class="panel-card">
+      <form id="pdf-upload-form">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">문서 제목 (선택)</label>
+          <input type="text" name="document_title" class="form-control" placeholder="미입력 시 파일명 사용">
+        </div>
+        <div class="mb-4">
+          <label class="form-label small fw-semibold">PDF 파일 선택 *</label>
+          <input type="file" name="pdf_file" accept=".pdf" class="form-control" required>
+        </div>
+
+        <div id="ingest-progress-box" class="border rounded p-3 bg-light mb-4" style="display:none;">
+          <div class="d-flex justify-content-between small mb-2">
+            <strong id="ingest-stage-text">문서 분석 준비 중...</strong>
+            <span id="ingest-pct-text" class="fw-bold text-primary">0%</span>
+          </div>
+          <div class="progress" style="height:10px;">
+            <div id="ingest-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%;"></div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+          <button type="reset" class="btn btn-outline-secondary btn-sm px-3">취소</button>
+          <button type="submit" id="btn-start-ingest" class="btn btn-primary btn-sm px-4" style="background:#0052cc;border-color:#0052cc;">문서 등록 시작</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var pdfPoll = null;
+
+function pollIngestStatus() {
+  clearInterval(pdfPoll);
+  pdfPoll = setInterval(function () {
+    $.getJSON('/api/admin/rag-pdf/list?page=1', function (res) {
+      var job = res.active_job;
+      if (!job) {
+        clearInterval(pdfPoll);
+        $('#ingest-stage-text').text('문서 등록 및 AI 반영이 완료되었습니다.');
+        $('#ingest-pct-text').text('100%');
+        $('#ingest-bar').removeClass('progress-bar-animated').css('width', '100%');
+        $('#btn-start-ingest').prop('disabled', false);
+        return;
+      }
+      $('#ingest-stage-text').text(job.detail || job.stage || '처리 중...');
+      $('#ingest-pct-text').text((job.progress || 0) + '%');
+      $('#ingest-bar').css('width', (job.progress || 0) + '%');
+    });
+  }, 1200);
+}
+
+$('#pdf-upload-form').on('submit', function (e) {
+  e.preventDefault();
+  var fd = new FormData(this);
+  fd.append('mode', 'ADD');
+  $('#ingest-progress-box').show();
+  $('#btn-start-ingest').prop('disabled', true);
+  $('#ingest-stage-text').text('파일을 업로드하고 있습니다...');
+  $('#ingest-bar').addClass('progress-bar-animated').css('width', '10%');
+
+  $.ajax({
+    url: '/api/admin/rag-pdf/upsert',
+    method: 'POST',
+    data: fd,
+    processData: false,
+    contentType: false,
+    success: function (res) {
+      $('#ingest-stage-text').text(res.message || '문서 분석을 시작했습니다.');
+      pollIngestStatus();
+    },
+    error: function (xhr) {
+      $('#ingest-stage-text').text((xhr.responseJSON && xhr.responseJSON.message) || '업로드에 실패했습니다.');
+      $('#btn-start-ingest').prop('disabled', false);
+    }
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,283 @@
+{% extends "layout/base.html" %}
+{% block title %}작업 현황 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">작업 현황</h1>
+  </div>
+  <a href="/service/work-status{% if selected %}?work_id={{ selected.wo.work_id }}{% endif %}" class="btn btn-outline-secondary btn-sm fw-semibold px-3">새로고침</a>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile clickable" onclick="location.href='/service/work-status?status=ALL'">
+      <div class="kpi-label">전체 작업지시</div>
+      <div class="kpi-value">{{ kpi.total }}<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-blue clickable" onclick="location.href='/service/work-status?status=IN_PROGRESS'">
+      <div class="kpi-label">진행 중</div>
+      <div class="kpi-value">{{ kpi.in_progress }}<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-warn clickable" onclick="location.href='/service/work-status?status=READY'">
+      <div class="kpi-label">착수 대기</div>
+      <div class="kpi-value">{{ kpi.ready }}<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="kpi-tile kpi-ok clickable" onclick="location.href='/service/work-status?status=COMPLETED'">
+      <div class="kpi-label">완료됨</div>
+      <div class="kpi-value">{{ kpi.completed }}<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- 좌측: 작업 목록 -->
+  <div class="col-lg-4">
+    <div class="panel-card mb-0">
+      <div class="d-flex gap-1 mb-3 flex-wrap">
+        <a href="/service/work-status?status=ALL" class="btn btn-sm {% if status_filter == 'ALL' %}btn-primary{% else %}btn-outline-secondary{% endif %}">전체</a>
+        <a href="/service/work-status?status=IN_PROGRESS" class="btn btn-sm {% if status_filter == 'IN_PROGRESS' %}btn-primary{% else %}btn-outline-secondary{% endif %}">진행 중</a>
+        <a href="/service/work-status?status=READY" class="btn btn-sm {% if status_filter == 'READY' %}btn-primary{% else %}btn-outline-secondary{% endif %}">대기</a>
+        <a href="/service/work-status?status=COMPLETED" class="btn btn-sm {% if status_filter == 'COMPLETED' %}btn-primary{% else %}btn-outline-secondary{% endif %}">완료</a>
+      </div>
+
+      <div class="d-flex flex-column gap-2 mb-3">
+        {% for item in orders %}
+        <a href="/service/work-status?status={{ status_filter }}&work_id={{ item.wo.work_id }}"
+           class="text-decoration-none border rounded p-3 {% if selected and selected.wo.work_id == item.wo.work_id %}border-primary bg-primary-subtle text-dark{% else %}bg-white text-dark{% endif %}">
+          <div class="d-flex justify-content-between align-items-center mb-1 small">
+            <strong>{{ item.wo.work_no }}</strong>
+            <span class="status-chip {% if item.wo.status_code == 'COMPLETED' %}status-ok{% elif item.wo.status_code == 'IN_PROGRESS' %}status-info{% else %}status-warn{% endif %}">
+              {{ '완료' if item.wo.status_code == 'COMPLETED' else ('진행 중' if item.wo.status_code == 'IN_PROGRESS' else '착수 대기') }}
+            </span>
+          </div>
+          <div class="small text-secondary">{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>
+        </a>
+        {% else %}
+        <div class="small text-muted py-4 text-center">조회된 작업이 없습니다.</div>
+        {% endfor %}
+      </div>
+
+      {% if queued_plans %}
+      <div class="border-top pt-3">
+        <div class="small fw-bold text-muted mb-2">다음 대기 블록</div>
+        {% for qp in queued_plans %}
+        <div class="small py-1 d-flex justify-content-between border-bottom">
+          <span><span class="badge bg-secondary me-1">순서 {{ qp.priority_rank }}</span>{{ qp.block_code }}</span>
+          <span class="text-muted">{{ qp.process_code }} · {{ qp.est_duration_days }}일</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 우측: 선택 작업 상세 -->
+  <div class="col-lg-8">
+    {% if selected %}
+    <!-- 1. 기본 작업 및 배정 자원 요약 -->
+    <div class="panel-card">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+          <h2 class="fw-bold mb-1" style="font-size:19px;color:#0b1f3a;">{{ selected.wo.work_no }} · {{ selected.wo.block_code }} ({{ selected.wo.ship_code }})</h2>
+          <div class="small text-muted">{{ selected.branch_name }} · {{ selected.wo.work_zone }} · {{ selected.wo.material_grade }} {{ selected.wo.thickness_mm }}mm · {{ selected.wo.process_code }}</div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="status-chip {% if selected.wo.status_code == 'COMPLETED' %}status-ok{% elif selected.wo.status_code == 'IN_PROGRESS' %}status-info{% elif selected.wo.status_code == 'SUSPENDED' %}status-danger{% else %}status-warn{% endif %}">
+            {{ '완료' if selected.wo.status_code == 'COMPLETED' else ('진행 중' if selected.wo.status_code == 'IN_PROGRESS' else ('일시 중단' if selected.wo.status_code == 'SUSPENDED' else '착수 대기')) }}
+          </span>
+          <span class="badge bg-dark">{{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }}</span>
+        </div>
+      </div>
+
+      <div class="row g-2 small">
+        <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">배정 작업자</div><strong class="fs-6">{{ dispatch_info.worker_name if dispatch_info else '배정 대기' }}</strong></div></div>
+        <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">배정 자재 Lot</div><strong class="fs-6">{{ dispatch_info.allocated_lot_no if dispatch_info else '-' }}</strong></div></div>
+        <div class="col-12 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">용접 로봇 상태</div><strong class="fs-6">{{ '대기' if not robot_info else robot_info.robot_status }}</strong></div></div>
+      </div>
+    </div>
+
+    <!-- 2. 관련 최신 문서 (최신 작업지시서 + 선박 도면 3D/PDF 바로보기 + 해당 야드 전체 발주 계획서 기록) -->
+    <div class="panel-card">
+      <div class="section-bar">
+        <h3 class="panel-title">관련 최신 문서</h3>
+        <span class="small text-muted">{{ selected.branch_name }} 기준</span>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% if selected.pdf_url %}
+          <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;"
+                  onclick="openInlinePdfModal({{ selected.pdf_url | tojson }}, '작업지시서 ({{ selected.latest_inst.revision_no }})')">
+            최신 작업지시서 보기 ({{ selected.latest_inst.revision_no }})
+          </button>
+        {% endif %}
+        {% if cad_doc_info %}
+          <button type="button" class="btn btn-outline-dark btn-sm px-3 fw-semibold"
+                  onclick="openWorkCadPreview({{ cad_doc_info.document_id }})">
+            선박 도면 보기 ({{ cad_doc_info.ext }})
+          </button>
+        {% endif %}
+        {% if not selected.pdf_url and not cad_doc_info %}
+          <span class="small text-muted">연결된 작업지시서나 도면이 아직 없습니다.</span>
+        {% endif %}
+      </div>
+
+      <!-- 해당 야드로 발주된 발주 계획서 전체 기록 -->
+      <div class="border-top pt-3">
+        <div class="small fw-bold text-secondary mb-2">{{ selected.branch_name }} 발주 계획서 기록 ({{ yard_po_docs|length }}건)</div>
+        {% if yard_po_docs %}
+          <div class="d-flex flex-column gap-2">
+            {% for po_doc in yard_po_docs %}
+            <div class="border rounded p-2 px-3 bg-light d-flex justify-content-between align-items-center flex-wrap gap-2 small">
+              <div>
+                <strong>{{ po_doc.title }}</strong>
+                <span class="badge bg-white text-dark border ms-1">{{ po_doc.revision_no }}</span>
+                <span class="text-muted ms-2">{{ po_doc.created_at }}</span>
+              </div>
+              <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
+                      onclick="openInlinePdfModal({{ po_doc.pdf_url | tojson }}, {{ po_doc.title | tojson }})">
+                발주서 보기
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="small text-muted">해당 야드로 발행된 발주 계획서 PDF 기록이 없습니다.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 3. 협력사 발주 납기 및 처리 이력 (회사별 클릭 전환 + 세로 시간 추적 타임라인) -->
+    <div class="panel-card mb-0">
+      <div class="section-bar">
+        <h3 class="panel-title">협력사 발주 납기 및 처리 이력</h3>
+        <span class="small text-muted">협력사를 클릭하면 해당 업체의 시간별 진행 현황을 확인할 수 있습니다.</span>
+      </div>
+
+      <!-- 협력사 선택 탭 -->
+      <div class="d-flex flex-wrap gap-2 mb-3" id="partner-timeline-tabs">
+        <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" data-partner="ALL" onclick="selectPartnerTimeline('ALL', this)">
+          전체 ({{ all_timeline_events|length }})
+        </button>
+        {% for pt in partner_tabs %}
+        <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-partner="{{ pt.partner_id }}" onclick="selectPartnerTimeline('{{ pt.partner_id }}', this)">
+          {{ pt.partner_name }} ({{ pt.order_count }}건)
+        </button>
+        {% endfor %}
+      </div>
+
+      <!-- 세로 시간 추적 타임라인 렌더링 영역 -->
+      <div id="partner-timeline-body" class="pt-1"></div>
+    </div>
+    {% else %}
+    <div class="panel-card text-center text-muted py-5">선택된 작업이 없습니다.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 문서 / 선박 도면(PDF · 2D DXF · 3D IGS) 브라우저 내장 미리보기 모달 -->
+<div class="modal fade" id="workDocPreviewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-3">
+        <h6 class="modal-title fw-bold" id="wdp-title">문서 미리보기</h6>
+        <div class="d-flex align-items-center gap-2">
+          <a id="wdp-newtab" href="#" target="_blank" class="btn btn-outline-primary btn-sm" style="display:none;">새 탭에서 크게 보기</a>
+          <a id="wdp-download" href="#" class="btn btn-outline-secondary btn-sm" style="display:none;">원본 다운로드</a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+      </div>
+      <div class="modal-body p-0" id="wdp-body" style="min-height:540px;background:#f8fafc;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var esc = window.KSmartMd.esc;
+var ALL_EVENTS = {{ all_timeline_events | tojson }};
+var PARTNER_MAP = {
+  {% for pt in partner_tabs %}
+  {{ pt.partner_id | tojson }}: {{ pt.events | tojson }}{% if not loop.last %},{% endif %}
+  {% endfor %}
+};
+
+function renderVerticalTimeline(events) {
+  var $box = $('#partner-timeline-body');
+  if (!events || !events.length) {
+    $box.html('<div class="small text-muted py-3 text-center">기록된 발주 납기 또는 처리 이력이 없습니다.</div>');
+    return;
+  }
+  var html = '<div class="v-timeline">' + events.map(function (ev) {
+    var cls = ev.state === 'done' ? 'state-done' : (ev.state === 'active' ? 'state-active' : '');
+    return (
+      '<div class="v-timeline-item ' + cls + '">' +
+        '<span class="v-timeline-dot"></span>' +
+        '<div class="d-flex align-items-center flex-wrap gap-2 mb-1">' +
+          '<span class="v-timeline-time">' + esc(ev.time) + '</span>' +
+          '<span class="badge bg-light text-dark border">' + esc(ev.partner_name || '') + '</span>' +
+        '</div>' +
+        '<div class="v-timeline-title">' + esc(ev.title) + '</div>' +
+        '<div class="v-timeline-detail">' + esc(ev.detail || '') + '</div>' +
+      '</div>'
+    );
+  }).join('') + '</div>';
+  $box.html(html);
+}
+
+function selectPartnerTimeline(partnerId, btnEl) {
+  $('#partner-timeline-tabs button').removeClass('btn-primary').addClass('btn-outline-secondary');
+  if (btnEl) $(btnEl).removeClass('btn-outline-secondary').addClass('btn-primary');
+  if (partnerId === 'ALL') renderVerticalTimeline(ALL_EVENTS);
+  else renderVerticalTimeline(PARTNER_MAP[partnerId] || []);
+}
+
+function openInlinePdfModal(pdfUrl, title) {
+  $('#wdp-title').text(title || '문서 보기');
+  $('#wdp-newtab').attr('href', pdfUrl).show();
+  $('#wdp-download').hide();
+  $('#wdp-body').html('<iframe src="' + pdfUrl + '" style="width:100%;height:72vh;border:0;"></iframe>');
+  new bootstrap.Modal(document.getElementById('workDocPreviewModal')).show();
+}
+
+function openWorkCadPreview(docId) {
+  $('#wdp-title').text('선박 도면 불러오는 중...');
+  $('#wdp-newtab, #wdp-download').hide();
+  $('#wdp-body').html('<div class="p-5 text-center text-muted">선박 도면을 화면에 준비하고 있습니다...</div>');
+  new bootstrap.Modal(document.getElementById('workDocPreviewModal')).show();
+
+  $.getJSON('/service/api/cad/preview/' + docId, function (res) {
+    $('#wdp-title').text(res.title || res.file_name || '선박 도면 보기');
+    if (res.download_url) $('#wdp-download').attr('href', res.download_url).show();
+
+    if (res.mode === 'pdf' && res.pdf_url) {
+      $('#wdp-newtab').attr('href', res.pdf_url).show();
+      $('#wdp-body').html('<iframe src="' + res.pdf_url + '" style="width:100%;height:72vh;border:0;"></iframe>');
+    } else if (res.mode === 'svg' && res.svg) {
+      $('#wdp-body').html('<div class="p-3 bg-white overflow-auto text-center" style="max-height:72vh;">' + res.svg + '</div>');
+    } else if (res.mode === 'iges3d' && res.wireframe_3d) {
+      window.KSmartCad.mountIgesViewer(document.getElementById('wdp-body'), res.wireframe_3d, res.summary);
+    } else {
+      var s = res.summary || {};
+      $('#wdp-body').html(
+        '<div class="p-4 small">' +
+          '<div class="alert alert-info mb-3">파일(' + esc(res.file_name) + ')의 3D 형상 선분이 확인되지 않아 제원 요약을 표시합니다.</div>' +
+          '<div class="bg-white border rounded p-3"><strong>형식:</strong> ' + esc(s.format || '-') + '</div>' +
+        '</div>'
+      );
+    }
+  }).fail(function () {
+    $('#wdp-body').html('<div class="p-5 text-center text-danger">선박 도면 미리보기를 불러오지 못했습니다.</div>');
+  });
+}
+
+renderVerticalTimeline(ALL_EVENTS);
+</script>
+{% endblock %}

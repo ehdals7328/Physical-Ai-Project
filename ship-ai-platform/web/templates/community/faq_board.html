@@ -1,167 +1,77 @@
 {% extends "layout/base.html" %}
-{% block title %}FAQ · 문의 및 현장 커뮤니티 | K-SmartShip{% endblock %}
-{% block page_context %}
-{"page_title": "FAQ (문의 · 커뮤니티)", "summary": "현재 탭: {{ '1:1 공식 문의' if tab == 'inquiry' else '현장 커뮤니티' }}, 총 {{ total_count }}건"}
-{% endblock %}
+{% block title %}FAQ / QNA | K-SmartShip{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">FAQ · 고객지원</h1>
-    <p class="page-desc">
-      공식 문의는 권한 있는 팀장 또는 관리자만 답변할 수 있으며, 현장 커뮤니티는 닉네임 또는 익명으로 자유롭게 소통할 수 있습니다.
-    </p>
+    <h1 class="page-title">FAQ / QNA</h1>
   </div>
-  <button type="button" class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#writeBoardModal">
-    {{ '공식 문의 작성' if tab == 'inquiry' else '커뮤니티 글쓰기' }}
-  </button>
+  {% if tab == 'qna' %}
+    <a href="/service/faq/write?tab=qna" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">글 작성</a>
+  {% elif me.role == 'ADMIN' %}
+    <a href="/service/faq/write?tab=faq" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">FAQ 등록</a>
+  {% endif %}
 </div>
 
-<ul class="nav nav-tabs mb-4">
+<ul class="nav nav-tabs mb-3">
   <li class="nav-item">
-    <a class="nav-link fw-semibold {% if tab == 'inquiry' %}active{% endif %}" href="/service/faq?tab=inquiry">
-      1:1 공식 문의 <span class="badge bg-light text-dark border ms-1">{{ inquiry_total }}</span>
-    </a>
+    <a class="nav-link fw-semibold {% if tab == 'faq' %}active{% endif %}" href="/service/faq?tab=faq">FAQ (자주 묻는 질문)</a>
   </li>
   <li class="nav-item">
-    <a class="nav-link fw-semibold {% if tab == 'community' %}active{% endif %}" href="/service/faq?tab=community">
-      현장 커뮤니티 <span class="badge bg-light text-dark border ms-1">{{ community_total }}</span>
-    </a>
+    <a class="nav-link fw-semibold {% if tab == 'qna' %}active{% endif %}" href="/service/faq?tab=qna">QNA (문의 게시판)</a>
   </li>
 </ul>
 
 <div class="panel-card">
-  <form method="get" action="/service/faq" class="row g-2 align-items-center mb-4">
-    <input type="hidden" name="tab" value="{{ tab }}">
-    <div class="col-md-5">
-      <input type="text" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="제목, 내용, 작성자 검색">
-    </div>
-    <div class="col-auto">
-      <button type="submit" class="btn btn-dark btn-sm px-3">검색</button>
-      {% if q %}<a href="/service/faq?tab={{ tab }}" class="btn btn-outline-secondary btn-sm">초기화</a>{% endif %}
-    </div>
-    <div class="col text-end small text-muted">총 {{ total_count }}건</div>
-  </form>
-
-  <div class="table-responsive">
-    <table class="table table-enterprise align-middle">
+  <div class="table-responsive mb-3">
+    <table class="table table-enterprise">
       <thead>
         <tr>
           <th style="width:70px;">번호</th>
           <th style="width:110px;">분류</th>
           <th>제목</th>
           <th style="width:140px;">작성자</th>
-          <th style="width:110px;">{{ '답변 상태' if tab == 'inquiry' else '댓글' }}</th>
-          <th style="width:80px;" class="text-end">조회</th>
+          <th style="width:110px;">등록일</th>
+          <th style="width:70px;">조회</th>
         </tr>
       </thead>
       <tbody>
         {% for p in posts %}
-        {% set rcnt = reply_counts.get(p.board_id, 0) %}
         <tr>
-          <td class="small text-muted">{{ p.board_id }}</td>
+          <td>{{ p.board_id }}</td>
           <td><span class="status-chip status-muted">{{ p.category }}</span></td>
           <td>
-            <a href="/service/faq/{{ p.board_id }}" class="text-decoration-none fw-semibold text-dark">{{ p.title }}</a>
-          </td>
-          <td class="small text-secondary">{{ p.writer_display }}</td>
-          <td>
-            {% if tab == 'inquiry' %}
-              {% if rcnt > 0 %}
-                <span class="status-chip status-ok">답변완료</span>
-              {% else %}
-                <span class="status-chip status-warn">답변대기</span>
-              {% endif %}
-            {% else %}
-              <span class="small text-muted">{{ rcnt }}개</span>
+            <a href="/service/faq/{{ p.board_id }}" class="text-decoration-none text-dark fw-semibold">{{ p.title }}</a>
+            {% if tab == 'qna' and reply_counts.get(p.board_id) %}
+              <span class="status-chip status-info ms-1">답변 {{ reply_counts.get(p.board_id) }}</span>
             {% endif %}
           </td>
-          <td class="text-end small text-muted">{{ p.view_count }}</td>
+          <td>{{ p.writer_display }}</td>
+          <td class="text-muted">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else '-' }}</td>
+          <td class="text-muted">{{ p.view_count }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="text-center text-muted py-5">등록된 게시글이 없습니다.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-4">등록된 게시글이 없습니다.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <!-- 스마트 페이지네이션 (10페이지 초과 시 중간 ... 생략) -->
-  <nav class="mt-4">
-    <ul class="pagination pagination-sm justify-content-center mb-0">
-      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
-        <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a>
-      </li>
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <form method="get" action="/service/faq" class="d-flex gap-2">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" style="width:240px;" placeholder="제목, 내용, 작성자 검색">
+      <button type="submit" class="btn btn-dark btn-sm text-nowrap">검색</button>
+    </form>
+
+    <ul class="pagination pagination-sm mb-0">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page - 1 }}">이전</a></li>
       {% for it in page_items %}
-        {% if it == '...' %}
-          <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% else %}
-          <li class="page-item {% if it == page %}active{% endif %}">
-            <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a>
-          </li>
-        {% endif %}
+        {% if it == '...' %}<li class="page-item disabled"><span class="page-link">...</span></li>
+        {% else %}<li class="page-item {% if it == page %}active{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ it }}">{{ it }}</a></li>{% endif %}
       {% endfor %}
-      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
-        <a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a>
-      </li>
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}"><a class="page-link" href="/service/faq?tab={{ tab }}&q={{ q }}&page={{ page + 1 }}">다음</a></li>
     </ul>
-  </nav>
-</div>
-
-<!-- 글쓰기 모달 -->
-<div class="modal fade" id="writeBoardModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title fw-bold">{{ '1:1 공식 문의 작성' if tab == 'inquiry' else '현장 커뮤니티 글쓰기' }}</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form method="post" action="/service/faq/write">
-        <input type="hidden" name="tab" value="{{ tab }}">
-        <div class="modal-body">
-          <div class="row g-3 mb-3">
-            <div class="col-md-4">
-              <label class="form-label small fw-semibold">분류</label>
-              <select name="category" class="form-select form-select-sm">
-                {% if tab == 'inquiry' %}
-                  <option value="공식문의">공식문의</option>
-                  <option value="계정/권한">계정/권한</option>
-                  <option value="자재/장비">자재/장비</option>
-                  <option value="현장기술">현장기술</option>
-                  <option value="오류신고">오류신고</option>
-                {% else %}
-                  <option value="자유소통">자유소통</option>
-                  <option value="현장노하우">현장노하우</option>
-                  <option value="익명건의">익명건의</option>
-                {% endif %}
-              </select>
-            </div>
-            {% if tab == 'community' %}
-            <div class="col-md-8 d-flex align-items-end">
-              <div class="form-check form-switch mb-1">
-                <input class="form-check-input" type="checkbox" id="chk-anon-write" name="is_anonymous" value="Y">
-                <label class="form-check-label small fw-semibold" for="chk-anon-write">
-                  익명으로 작성 (꺼두면 계정 닉네임 '{{ me.display_name or me.full_name }}'으로 표시)
-                </label>
-              </div>
-            </div>
-            {% endif %}
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label small fw-semibold">제목</label>
-            <input type="text" name="title" class="form-control" required placeholder="제목을 입력하세요">
-          </div>
-          <div>
-            <label class="form-label small fw-semibold">내용</label>
-            <textarea name="content" rows="6" class="form-control" required placeholder="내용을 자세히 입력해 주세요"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-primary btn-sm px-4">등록하기</button>
-        </div>
-      </form>
-    </div>
   </div>
 </div>
 {% endblock %}

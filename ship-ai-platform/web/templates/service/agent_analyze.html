@@ -1,0 +1,105 @@
+{% extends "layout/base.html" %}
+{% block title %}작업 준비 분석 | K-SmartShip{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">작업 준비 자동 분석 {% if block_code %}· {{ block_code }}{% endif %}</h1>
+  </div>
+  <a href="{{ cancel_url }}" class="btn btn-outline-secondary btn-sm px-3">작업 취소</a>
+</div>
+
+<div class="panel-card">
+  <div class="stepper-bar mb-4">
+    <div class="stepper-node done">1. 요청 확인</div>
+    <div class="stepper-node active">2. AI 자동 분석</div>
+    <div class="stepper-node">3. 통합 실행안</div>
+    <div class="stepper-node">4. 승인 · 착수</div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2 small">
+    <strong id="step-text">작업 조건과 기존 지시서 중복 여부를 확인하고 있습니다...</strong>
+    <span id="step-pct" class="fw-bold text-primary">15%</span>
+  </div>
+  <div class="progress mb-4" style="height:10px;">
+    <div id="step-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:15%;"></div>
+  </div>
+
+  <ul class="list-group small" id="tool-checklist">
+    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+      <span class="fw-semibold">기존 작업지시서 중복 및 버전 확인</span>
+      <span class="status-chip status-info">진행 중</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+      <span class="fw-semibold">선박 도면 제원 · 야드 자재/자격/로봇 상태 점검</span>
+      <span class="status-chip status-muted">대기</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+      <span class="fw-semibold">용접 시공 기준서 · 현장 기상 · 협력사 지원 조회</span>
+      <span class="status-chip status-muted">대기</span>
+    </li>
+    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+      <span class="fw-semibold">안전 기준 검증 및 통합 실행안 초안 작성</span>
+      <span class="status-chip status-muted">대기</span>
+    </li>
+  </ul>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var PROMPT_TEXT = {{ prompt | tojson }};
+var BRANCH_CODE = {{ branch_code | tojson }};
+var BLOCK_CODE = {{ block_code | tojson }};
+var analyzePoll = null;
+
+function setToolStates(stage) {
+  var order = { RUNNING_AGENT: 0, top_supervisor_init: 0, team1_analysis: 1, team2_search: 2, team2_knowledge: 2, team3_docgen: 3 };
+  var pctMap = { 0: 25, 1: 50, 2: 75, 3: 92 };
+  var idx = order[stage] !== undefined ? order[stage] : 1;
+  $('#step-bar').css('width', pctMap[idx] + '%');
+  $('#step-pct').text(pctMap[idx] + '%');
+
+  $('#tool-checklist li').each(function (i) {
+    var $b = $(this).find('.status-chip');
+    if (i < idx) $b.attr('class', 'status-chip status-ok').text('완료');
+    else if (i === idx) $b.attr('class', 'status-chip status-info').text('진행 중');
+    else $b.attr('class', 'status-chip status-muted').text('대기');
+  });
+}
+
+$.ajax({
+  url: '/service/api/assistant/ask',
+  method: 'POST',
+  contentType: 'application/json',
+  data: JSON.stringify({
+    question: PROMPT_TEXT,
+    new_session: true,
+    page_context: {
+      page_title: '작업 준비 분석',
+      branch_code: BRANCH_CODE,
+      selected_work: { branch_code: BRANCH_CODE, block_id: BLOCK_CODE }
+    }
+  }),
+  success: function (res) {
+    var sid = res.session_id;
+    analyzePoll = setInterval(function () {
+      $.getJSON('/service/api/assistant/status/' + encodeURIComponent(sid), function (st) {
+        if (st.status === 'RUNNING') {
+          $('#step-text').text(st.step_message || '분석 중입니다...');
+          setToolStates(st.current_state || 'RUNNING_AGENT');
+          return;
+        }
+        clearInterval(analyzePoll);
+        $('#step-bar').css('width', '100%');
+        $('#step-pct').text('100%');
+        window.location.href = '/service/agent/plan/' + encodeURIComponent(sid) + '?from={{ return_to }}';
+      });
+    }, 1500);
+  },
+  error: function (xhr) {
+    $('#step-text').text((xhr.responseJSON && xhr.responseJSON.message) || '분석 시작 중 오류가 발생했습니다.');
+  }
+});
+</script>
+{% endblock %}
