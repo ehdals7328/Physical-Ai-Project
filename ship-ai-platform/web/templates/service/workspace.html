@@ -135,6 +135,20 @@
     if (dynamicActions[id]) dynamicActions[id](this);
   });
 
+  function setStageLoading() {
+    var $st = $('#workspace-stage');
+    if ($.trim($st.html())) {
+      $st.addClass('is-loading');
+    } else {
+      $st.html('<div class="panel-card text-muted text-center py-5">화면을 불러오고 있습니다...</div>');
+    }
+  }
+
+  function setStageHtml(html) {
+    var $st = $('#workspace-stage');
+    $st.removeClass('is-loading').html('<div class="stage-fade-in">' + html + '</div>');
+  }
+
   function setActiveChip(mode) {
     currentMode = mode;
     $('#ws-mode-chips button').removeClass('btn-primary').addClass('btn-outline-secondary');
@@ -199,7 +213,7 @@
   function renderInitView() {
     setActiveChip('init');
     resetDynamicActions();
-    $('#workspace-stage').html('<div class="panel-card text-muted text-center py-5">현장 운영 현황을 불러오고 있습니다...</div>');
+    setStageLoading();
 
     $.getJSON('/service/api/workspace/summary', function (res) {
       summaryCache = res;
@@ -396,7 +410,7 @@
 
       var goDraftAct = registerAction(function () { renderDraftCenterView(); });
 
-      $('#workspace-stage').html(
+      setStageHtml(
         quickHtml +
         kpiHtml +
         '<div class="row g-3">' +
@@ -423,7 +437,7 @@
         '</div>'
       );
     }).fail(function () {
-      $('#workspace-stage').html('<div class="alert alert-danger">현황 정보를 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.</div>');
+      setStageHtml('<div class="alert alert-danger">현황 정보를 불러오지 못했습니다. 새로고침을 눌러 다시 시도해 주세요.</div>');
     });
   }
 
@@ -473,7 +487,7 @@
           }
         }
 
-        $('#workspace-stage').html(
+        setStageHtml(
           '<div class="panel-card">' +
             '<div class="section-bar"><h2 class="panel-title">업무 질문 · 용접 기준서 안내</h2><a href="/service/library" class="small fw-semibold text-decoration-none">자료실 전체 보기 →</a></div>' +
             '<p class="text-secondary small mb-4">상단 입력창에 용접 조건, 안전 수칙, 야드 자재·인력, 메일 작성, 오늘 업무를 자유롭게 입력해 주세요.</p>' +
@@ -521,7 +535,7 @@
       actionHtml += '<button type="button" class="btn btn-outline-primary btn-sm px-3" data-act-id="' + mailAct + '">이 내용으로 메일 작성 →</button>';
     }
 
-    $('#workspace-stage').html(
+    setStageHtml(
       '<div class="panel-card">' +
         '<div class="section-bar">' +
           '<div class="d-flex align-items-center gap-2"><h2 class="panel-title">분석 결과</h2><span class="status-chip status-info">' + esc(label) + '</span></div>' +
@@ -538,14 +552,14 @@
      ========================================================================= */
   function renderErpView(branchCode, subtab) {
     if (!CAN_ERP) {
-      $('#workspace-stage').html('<div class="panel-card text-center py-5"><h5 class="fw-bold mb-2">자재·인력 조회 권한이 필요합니다</h5><p class="text-muted small mb-0">담당자에게 조회 권한 부여를 요청해 주세요.</p></div>');
+      setStageHtml('<div class="panel-card text-center py-5"><h5 class="fw-bold mb-2">자재·인력 조회 권한이 필요합니다</h5><p class="text-muted small mb-0">담당자에게 조회 권한 부여를 요청해 주세요.</p></div>');
       return;
     }
     currentErpBranch = branchCode || 'ALL';
     currentErpSubtab = subtab || 'materials';
     setActiveChip('erp');
     resetDynamicActions();
-    $('#workspace-stage').html('<div class="panel-card text-muted text-center py-5">야드 자재·인력·장비 현황을 불러오고 있습니다...</div>');
+    setStageLoading();
 
     $.getJSON('/service/api/workspace/erp-yard', { branch_code: currentErpBranch }, function (res) {
       erpDataCache = res;
@@ -580,7 +594,7 @@
           '<div class="col-6 col-lg-3"><div class="kpi-tile clickable" data-erp-tab="b2b"><div class="kpi-label">협력사 지원 가능</div><div class="kpi-value">' + esc(k.b2b_count || 0) + '<span class="fs-6 fw-normal text-muted ms-1">건</span></div><div class="kpi-sub">자재 · 인력 · 장비</div></div></div>' +
         '</div>';
 
-      $('#workspace-stage').html(topBar + kpiRow + '<div id="erp-subtab-body" class="panel-card mb-0"></div>');
+      setStageHtml(topBar + kpiRow + '<div id="erp-subtab-body" class="panel-card mb-0"></div>');
       $('#erp-branch-select').on('change', function () { renderErpView($(this).val(), currentErpSubtab); });
       $('[data-erp-tab]').on('click', function () {
         currentErpSubtab = $(this).attr('data-erp-tab');
@@ -620,7 +634,7 @@
             '<td class="text-end text-muted">' + esc(m.reserved_qty) + ' ' + esc(m.unit) + '</td>' +
             '<td class="text-end fw-bold ' + (m.is_low ? 'text-danger' : 'text-dark') + '">' + esc(m.available_qty) + ' ' + esc(m.unit) + '</td>' +
             '<td>' + (m.is_low ? '<span class="status-chip status-danger">부족</span>' : '<span class="status-chip status-ok">정상</span>') + (m.has_open_po ? ' <span class="status-chip status-warn">발주중</span>' : '') + '</td>' +
-            '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm py-0" data-act-id="' + poAct + '">발주 메일</button></td>' +
+            '<td class="text-end"><button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + poAct + '">발주 메일</button></td>' +
           '</tr>'
         );
       }).join('') || '<tr><td colspan="8" class="text-center text-muted py-4">조회된 자재가 없습니다.</td></tr>';
@@ -653,7 +667,7 @@
             '<td><strong>' + esc(w.cert_code) + '</strong> <span class="badge bg-light text-dark border">' + esc(w.weld_process) + '</span></td>' +
             '<td>' + esc(w.cert_expiry_date) + '</td>' +
             '<td><span class="status-chip ' + pillCls + '">' + esc(w.dday_label) + '</span></td>' +
-            '<td class="text-end"><button type="button" class="btn btn-outline-dark btn-sm py-0" data-act-id="' + mAct + '">갱신 메일</button></td>' +
+            '<td class="text-end"><button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + mAct + '">갱신 메일</button></td>' +
           '</tr>'
         );
       }).join('') || '<tr><td colspan="6" class="text-center text-muted py-4">조회된 작업자가 없습니다.</td></tr>';
@@ -734,12 +748,12 @@
 
   function renderDraftCenterView() {
     if (!CAN_ERP) {
-      $('#workspace-stage').html('<div class="panel-card text-center py-5"><h5 class="fw-bold mb-2">발주 · 메일 발송 권한이 필요합니다</h5><p class="text-muted small mb-0">담당자에게 권한 부여를 요청해 주세요.</p></div>');
+      setStageHtml('<div class="panel-card text-center py-5"><h5 class="fw-bold mb-2">발주 · 메일 발송 권한이 필요합니다</h5><p class="text-muted small mb-0">담당자에게 권한 부여를 요청해 주세요.</p></div>');
       return;
     }
     setActiveChip('draft');
     resetDynamicActions();
-    $('#workspace-stage').html('<div class="panel-card text-muted text-center py-5">발송 대상과 승인 대기 문서를 불러오고 있습니다...</div>');
+    setStageLoading();
 
     $.getJSON('/service/api/workspace/draft-center', function (res) {
       var bulkBtn = '';
@@ -848,7 +862,7 @@
         });
       });
 
-      $('#workspace-stage').html(
+      setStageHtml(
         '<div class="row g-3">' +
           '<div class="col-lg-5">' +
             '<div class="panel-card"><div class="section-bar"><h3 class="panel-title">자격 갱신 안내 대상</h3>' + bulkBtn + '</div>' + alertWorkersHtml + '</div>' +
@@ -890,7 +904,7 @@
   function renderVisionCheckView(branchCode, blockCode) {
     setActiveChip('vision');
     resetDynamicActions();
-    $('#workspace-stage').html('<div class="panel-card text-muted text-center py-5">현장 스냅샷과 중복 작업지시 여부를 확인하고 있습니다...</div>');
+    setStageLoading();
 
     $.ajax({
       url: '/service/api/workspace/check-duplicate',
@@ -899,7 +913,7 @@
       data: JSON.stringify({ branch_code: branchCode || '', block_code: blockCode || '' }),
       success: function (res) {
         if (!res.block) {
-          $('#workspace-stage').html('<div class="panel-card text-muted text-center py-5">등록된 블록 데이터가 없습니다.</div>');
+          setStageHtml('<div class="panel-card text-muted text-center py-5">등록된 블록 데이터가 없습니다.</div>');
           return;
         }
         var b = res.block;
@@ -931,7 +945,7 @@
               : '<div class="small text-muted">작업지시 생성은 담당자 권한이 필요합니다.</div>');
         }
 
-        $('#workspace-stage').html(
+        setStageHtml(
           '<div class="row g-3">' +
             '<div class="col-lg-7">' +
               '<div class="panel-card h-100 mb-0">' +
@@ -1002,7 +1016,7 @@
     });
     var cancelAct = registerAction(function () { renderInitView(); });
 
-    $('#workspace-stage').html(
+    setStageHtml(
       '<div class="panel-card">' +
         '<div class="section-bar">' +
           '<h2 class="panel-title">' + (draft.type === 'PO' ? '발주 메일 미리보기 (수정 후 발송)' : '안내 메일 미리보기 (수정 후 발송)') + '</h2>' +
@@ -1053,7 +1067,7 @@
         '</div>';
     }
 
-    $('#workspace-stage').html(
+    setStageHtml(
       '<div class="panel-card">' +
         '<div class="section-bar">' +
           '<h2 class="panel-title">오늘 업무 현황 (' + esc(res.branch_name) + ' · ' + orders.length + '건)</h2>' +
@@ -1099,7 +1113,7 @@
 
         // 2단계: 전문 질의 / 규격 검색 / 작업지시서 생성 -> 기존 LangGraph Agent 호출
         setActiveChip('qa');
-        $('#workspace-stage').html(
+        setStageHtml(
           '<div class="panel-card py-4">' +
             '<div class="d-flex align-items-center gap-3">' +
               '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>' +
@@ -1133,12 +1147,12 @@
             }, 1500);
           },
           error: function (xhr) {
-            $('#workspace-stage').html('<div class="alert alert-danger">' + esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 중 오류가 발생했습니다.') + '</div>');
+            setStageHtml('<div class="alert alert-danger">' + esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 중 오류가 발생했습니다.') + '</div>');
           }
         });
       },
       error: function (xhr) {
-        $('#workspace-stage').html('<div class="alert alert-warning">' + esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 권한이 없거나 오류가 발생했습니다.') + '</div>');
+        setStageHtml('<div class="alert alert-warning">' + esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 권한이 없거나 오류가 발생했습니다.') + '</div>');
       }
     });
   }

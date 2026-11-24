@@ -3312,84 +3312,31 @@ def library_upload_pdf_page():
 def library_upload_cad_page():
     user = User.query.get_or_404(session["user_id"])
     if user.role not in ("ADMIN", "MANAGER"):
-        flash("CAD 도면 및 공정 큐 등록은 담당자만 이용할 수 있습니다.", "warning")
+        flash("선박 도면 등록은 담당자만 이용할 수 있습니다.", "warning")
         return redirect(url_for("service.library_page"))
     branches = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).all()
     branch_map = {b.branch_code: b.branch_name for b in branches}
-    existing_drawings = _safe_query_cad_drawings(limit=10)
-    existing_plans = _safe_query_work_plans(states=["STAGING", "PENDING", "IN_PROGRESS", "COMPLETED"])
+    existing_drawings = _safe_query_cad_drawings(limit=20)
     return render_template(
         "service/library_upload_cad.html",
         me=user,
         branches=branches,
         branch_map=branch_map,
         existing_drawings=existing_drawings,
-        existing_plans=existing_plans[:15],
     )
 
 
-def _auto_build_cad_work_plans(dxf_path: Path, meta: dict, vessel_name: str, user_hint: str = "") -> list[dict]:
-    """
-    DXF 기하 메타데이터 기반 AI/자동 블록 작업 패키지 큐 추론기.
-    [AGENT_TEAM_HOOK] 추후 LLM/LangGraph CAD 계획 에이전트가 준비되면 이 함수 내부를 교체해 연결합니다.
-    """
-    raw_blocks = [b for b in (meta.get("blocks") or []) if b and not str(b).startswith("*")]
-    if not raw_blocks:
-        raw_blocks = [l for l in (meta.get("layers") or []) if str(l).upper() not in ("0", "DEFPOINTS")]
-    if not raw_blocks:
-        raw_blocks = [f"{dxf_path.stem}-DB-AFT", f"{dxf_path.stem}-DB-MID", f"{dxf_path.stem}-DK-FWD"]
-
-    bbox = meta.get("bbox") or {}
-    raw_w = float(bbox.get("width") or 12000.0)
-    if raw_w <= 100.0:
-        raw_w = 12000.0
-
-    hint_lower = user_hint.lower()
-    force_saw = "saw" in hint_lower
-    force_fcaw = "fcaw" in hint_lower
-
-    plans = []
-    for idx, bname in enumerate(raw_blocks[:5], 1):
-        clean_code = _re.sub(r"[^A-Za-z0-9_-]", "", str(bname).upper().replace(" ", "-"))[:24] or f"BLK-{idx:02d}"
-        lower_b = str(bname).lower()
-        if force_saw or ("deck" in lower_b or "dk" in lower_b or idx == 3):
-            proc, wire_code, grade, thick, joint = "SAW", "WIRE-SAW-L60", "AH36", 16.0, "BUTT"
-            rationale = "상부 데크·광폭 평판 구간으로 자동 서브머지드(SAW) 맞대기 공정이 효율적입니다."
-        elif force_fcaw or ("bottom" in lower_b or "db" in lower_b or idx == 1):
-            proc, wire_code, grade, thick, joint = "FCAW", "WIRE-CSF71T", "AH36", 12.0, "BUTT"
-            rationale = "이중저·선저 기초 블록으로 전체 선체 기준선 확보를 위해 최우선(P1) 배정했습니다."
-        else:
-            proc, wire_code, grade, thick, joint = "FCAW", "WIRE-CSF71T", "SS400", 10.0, "FILLET"
-            rationale = "인접 블록 조립 후 연속 투입되는 중·소조립 구간으로 순차 배정했습니다."
-
-        est_len = round(max(2400.0, (raw_w / max(1, min(len(raw_blocks), 3))) * (1.15 - idx * 0.1)), 1)
-        est_wire = round(max(8.0, (est_len / 1000.0) * 3.0), 1)
-        est_days = max(1, min(3, int(est_len // 6000) + 1))
-        plans.append({
-            "priority_rank": idx,
-            "block_code": clean_code,
-            "block_name": f"{vessel_name} · {bname}"[:140],
-            "material_grade": grade,
-            "thickness_mm": thick,
-            "process_code": proc,
-            "joint_type": joint,
-            "wire_mat_code": wire_code,
-            "est_weld_length_mm": est_len,
-            "est_weight_ton": round(12.0 + idx * 4.5, 1),
-            "est_wire_kg": est_wire,
-            "est_duration_days": est_days,
-            "plan_rationale": rationale,
-        })
-    return plans
-
-
-@service_bp.route("/api/library/cad-parse", methods=["POST"])
+@service_bp.route("/api/library/cad-upload", methods=["POST"])
 @login_required
-def api_library_cad_parse():
-    """SR-01c Gate 1: DXF/PDF 업로드 후 SHA-256 해시 + Agent 자동 블록 공정 큐 생성"""
+def api_library_cad_upload():
+    """
+    선박 CAD 도면(DXF / PDF) 등록 API:
+    - SHA-256 해시로 DOCUMENT_METADATA 및 CAD_DRAWINGS 중복 여부를 엄격히 검사
+    - 이미 등록된 동일 파일이면 즉시 409 거절 (중복 적재 차단)
+    - 작업 순서 산출/질의는 통합 업무(AI Agent)에서 수행
+    """
     import hashlib
     from werkzeug.utils import secure_filename
-    from modules.knowledge.cad_parser import parse_dxf_metadata, detect_vessel_context
 
     user = User.query.get_or_404(session["user_id"])
     if user.role not in ("ADMIN", "MANAGER"):
@@ -3397,162 +3344,120 @@ def api_library_cad_parse():
 
     dxf_file = request.files.get("dxf_file")
     pdf_file = request.files.get("pdf_file")
-    user_hint = (request.form.get("agent_hint") or "").strip()
-    if not dxf_file or not dxf_file.filename:
-        return jsonify({"status": "ERROR", "message": "DXF 도면 파일을 선택해 주세요."}), 400
+    branch_code = (request.form.get("branch_code") or "").strip()
+    ship_code = (request.form.get("ship_code") or "").strip()
+    work_zone = (request.form.get("work_zone") or "ZONE-A-BAY1").strip()
+    custom_title = (request.form.get("drawing_title") or "").strip()
 
+    if not dxf_file or not dxf_file.filename:
+        return jsonify({"status": "ERROR", "message": "등록할 CAD 도면 파일(DXF)을 선택해 주세요."}), 400
+    if not branch_code:
+        return jsonify({"status": "ERROR", "message": "배치 야드를 선택해 주세요."}), 400
+
+    dxf_bytes = dxf_file.read()
+    if not dxf_bytes:
+        return jsonify({"status": "ERROR", "message": "빈 파일은 등록할 수 없습니다."}), 400
+
+    sha256 = hashlib.sha256(dxf_bytes).hexdigest()
+
+    # 1) DOCUMENT_METADATA 중복 검사 (이미 data/cad_drawings 등에 적재된 동일 파일 차단)
+    dup_meta = DocumentMetadata.query.filter_by(file_hash_sha256=sha256).first()
+    if dup_meta:
+        return jsonify({
+            "status": "DUPLICATE",
+            "message": f"이미 등록된 동일한 CAD 도면 파일입니다. ({dup_meta.original_file_name} / {dup_meta.document_code}) 중복 업로드는 거절됩니다.",
+        }), 409
+
+    # 2) CAD_DRAWINGS 중복 검사
+    try:
+        dup_cad = CadDrawing.query.filter_by(file_sha256=sha256).first()
+        if dup_cad:
+            return jsonify({
+                "status": "DUPLICATE",
+                "message": f"이미 등록된 동일한 CAD 도면입니다. (도면번호: {dup_cad.drawing_id}, 호선: {dup_cad.ship_code}) 중복 업로드는 거절됩니다.",
+            }), 409
+    except Exception:
+        db.session.rollback()
+
+    # 3) PDF 첨부 시 PDF도 중복 검사
+    pdf_bytes = None
+    if pdf_file and pdf_file.filename:
+        pdf_bytes = pdf_file.read()
+        if pdf_bytes:
+            pdf_sha = hashlib.sha256(pdf_bytes).hexdigest()
+            dup_pdf = DocumentMetadata.query.filter_by(file_hash_sha256=pdf_sha).first()
+            if dup_pdf:
+                return jsonify({
+                    "status": "DUPLICATE",
+                    "message": f"첨부한 도면 PDF가 이미 등록되어 있습니다. ({dup_pdf.original_file_name} / {dup_pdf.document_code})",
+                }), 409
+
+    # 4) 신규 파일 저장
     upload_dir = PROJECT_ROOT / "data" / "cad_drawings" / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
-
     safe_dxf = secure_filename(dxf_file.filename) or f"cad_{uuid.uuid4().hex[:6]}.dxf"
     dxf_path = upload_dir / f"{uuid.uuid4().hex[:6]}_{safe_dxf}"
-    dxf_file.save(str(dxf_path))
+    dxf_path.write_bytes(dxf_bytes)
+    dxf_rel = dxf_path.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()[:500]
 
-    pdf_rel_path = ""
-    if pdf_file and pdf_file.filename:
+    pdf_rel = None
+    if pdf_bytes and pdf_file and pdf_file.filename:
         safe_pdf = secure_filename(pdf_file.filename) or f"cad_{uuid.uuid4().hex[:6]}.pdf"
         pdf_path = upload_dir / f"{uuid.uuid4().hex[:6]}_{safe_pdf}"
-        pdf_file.save(str(pdf_path))
-        pdf_rel_path = str(pdf_path.relative_to(PROJECT_ROOT))
+        pdf_path.write_bytes(pdf_bytes)
+        pdf_rel = pdf_path.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()[:500]
 
-    sha256 = hashlib.sha256(dxf_path.read_bytes()).hexdigest()
-    meta = parse_dxf_metadata(dxf_path)
-    vessel_name, vessel_desc = detect_vessel_context(dxf_path)
-    parsed_plans = _auto_build_cad_work_plans(dxf_path, meta, vessel_name, user_hint=user_hint)
-
-    stem_clean = _re.sub(r"[^A-Za-z0-9]", "", Path(safe_dxf).stem)[:12].upper() or "SHIP01"
-    suggested_ship_code = f"HN-{stem_clean}"
-
-    return jsonify({
-        "status": "SUCCESS",
-        "dxf_file_path": str(dxf_path.relative_to(PROJECT_ROOT)),
-        "pdf_file_path": pdf_rel_path,
-        "file_sha256": sha256,
-        "drawing_title": Path(safe_dxf).stem,
-        "ship_code": suggested_ship_code,
-        "vessel_name": vessel_name,
-        "vessel_desc": vessel_desc,
-        "layer_count": len(meta.get("layers") or []),
-        "plans": parsed_plans,
-    })
-
-
-@service_bp.route("/api/library/cad-replan", methods=["POST"])
-@login_required
-def api_library_cad_replan():
-    """SR-01c: 사용자가 자연어로 조건 변경 요청 시 Agent가 공정 큐를 자동 재산출"""
-    user = User.query.get_or_404(session["user_id"])
-    if user.role not in ("ADMIN", "MANAGER"):
-        return jsonify({"status": "FORBIDDEN", "message": "권한이 없습니다."}), 403
-
-    data = request.get_json(silent=True) or {}
-    plans = list(data.get("plans") or [])
-    instruction = (data.get("instruction") or "").strip()
-    if not plans or not instruction:
-        return jsonify({"status": "ERROR", "message": "재산출할 공정 큐와 요청 내용을 확인해 주세요."}), 400
-
-    low = instruction.lower()
-    # [AGENT_TEAM_HOOK] 추후 LLM 공정 재편성 에이전트 연결 지점
-    if "역순" in instruction or "순서 반전" in instruction:
-        plans.reverse()
-    for idx, p in enumerate(plans, 1):
-        p["priority_rank"] = idx
-        if "saw" in low:
-            p["process_code"] = "SAW"
-            p["wire_mat_code"] = "WIRE-SAW-L60"
-            p["plan_rationale"] = f"요청('{instruction}') 반영: SAW 공정 및 와이어 규격으로 자동 재편성"
-        elif "fcaw" in low:
-            p["process_code"] = "FCAW"
-            p["wire_mat_code"] = "WIRE-CSF71T"
-            p["plan_rationale"] = f"요청('{instruction}') 반영: FCAW 공정 및 와이어 규격으로 자동 재편성"
-        elif "gmaw" in low:
-            p["process_code"] = "GMAW"
-            p["wire_mat_code"] = "WIRE-GMAW-70S"
-            p["plan_rationale"] = f"요청('{instruction}') 반영: GMAW 공정으로 자동 재편성"
-        elif "단축" in instruction or "1일" in instruction:
-            p["est_duration_days"] = 1
-            p["plan_rationale"] = f"요청('{instruction}') 반영: 집중 투입 기준 1일 공정으로 재산출"
-        else:
-            p["plan_rationale"] = f"요청('{instruction}') 기준 우선순위 및 작업 순서 재검토 완료"
-
-    return jsonify({"status": "SUCCESS", "plans": plans, "message": "요청 조건을 반영해 AI가 공정 큐를 재산출했습니다."})
-
-
-@service_bp.route("/api/library/cad-save", methods=["POST"])
-@login_required
-def api_library_cad_save():
-    """SR-01c Gate 2: CAD_DRAWINGS + WORK_PLANS 동시 적재 (STAGING 임시저장 또는 ACTIVE 확정)"""
-    user = User.query.get_or_404(session["user_id"])
-    if user.role not in ("ADMIN", "MANAGER"):
-        return jsonify({"status": "FORBIDDEN", "message": "권한이 없습니다."}), 403
-
-    data = request.get_json(silent=True) or {}
-    confirm = bool(data.get("confirm"))
-    plan_status = "ACTIVE" if confirm else "STAGING"
-    branch_code = (data.get("branch_code") or "").strip()
-    work_zone = (data.get("work_zone") or "ZONE-A-BAY1").strip()
-    ship_code = (data.get("ship_code") or "").strip()
-    plans_in = data.get("plans") or []
-
-    if not branch_code or not ship_code:
-        return jsonify({"status": "ERROR", "message": "선박 호선과 배치 야드를 확인해 주세요."}), 400
-    if not plans_in:
-        return jsonify({"status": "ERROR", "message": "먼저 CAD 도면을 파싱하여 AI 공정 큐를 생성해 주세요."}), 400
-
+    drawing_title = (custom_title or Path(safe_dxf).stem)[:200]
+    resolved_ship_code = (ship_code or f"HN-{_re.sub(r'[^A-Za-z0-9]', '', Path(safe_dxf).stem)[:12].upper() or 'SHIP01'}")[:30]
     drawing_id = f"DWG-{uuid.uuid4().hex[:10].upper()}"
-    try:
-        dwg = CadDrawing(
-            drawing_id=drawing_id,
-            ship_code=ship_code,
-            drawing_title=(data.get("drawing_title") or ship_code)[:200],
-            dxf_file_path=(data.get("dxf_file_path") or "")[:500],
-            pdf_file_path=(data.get("pdf_file_path") or "")[:500] or None,
-            file_sha256=(data.get("file_sha256") or uuid.uuid4().hex)[:64],
-            revision_no=int(data.get("revision_no") or 0),
-            branch_code=branch_code,
-            work_zone=work_zone,
-            plan_status=plan_status,
-            uploaded_by=user.username,
-        )
-        db.session.add(dwg)
+    doc_code = f"CAD-INT-{sha256[:10].upper()}"
+    if DocumentMetadata.query.filter_by(document_code=doc_code).first():
+        doc_code = f"CAD-INT-{uuid.uuid4().hex[:10].upper()}"
 
-        for idx, row in enumerate(plans_in, 1):
-            rank = int(row.get("priority_rank") or idx)
-            state = "PENDING" if confirm else "STAGING"
-            db.session.add(WorkPlan(
-                plan_id=f"PLAN-{uuid.uuid4().hex[:10].upper()}",
-                drawing_id=drawing_id,
-                branch_code=branch_code,
-                work_zone=work_zone,
-                priority_rank=rank,
-                block_code=str(row.get("block_code") or f"BLK-{rank}").strip()[:40],
-                block_name=str(row.get("block_name") or f"{ship_code} 블록 {rank}").strip()[:150],
-                material_grade=str(row.get("material_grade") or "AH36").strip()[:20],
-                thickness_mm=float(row.get("thickness_mm") or 12.0),
-                process_code=str(row.get("process_code") or "FCAW").strip()[:20],
-                joint_type=str(row.get("joint_type") or "BUTT").strip()[:20],
-                wire_mat_code=str(row.get("wire_mat_code") or "WIRE-CSF71T").strip()[:40],
-                est_weld_length_mm=float(row.get("est_weld_length_mm") or 10000.0),
-                est_weight_ton=float(row.get("est_weight_ton") or 10.0),
-                est_wire_kg=float(row.get("est_wire_kg") or 20.0),
-                est_duration_days=int(row.get("est_duration_days") or 1),
-                plan_state=state,
-                plan_rationale=str(row.get("plan_rationale") or "")[:500] or None,
-            ))
+    try:
+        # DOCUMENT_METADATA 등록
+        db.session.add(DocumentMetadata(
+            document_code=doc_code,
+            document_title=f"{drawing_title} (DXF)"[:200],
+            collection_type="INTERNAL",
+            category_code="CAD_DRAWING",
+            original_file_name=dxf_file.filename[:255],
+            storage_uri=dxf_rel,
+            file_hash_sha256=sha256,
+            vector_collection="col_internal_ship_sop",
+            ingest_status="COMPLETED",
+            is_active="Y",
+            uploaded_by=user.user_id,
+        ))
+        # CAD_DRAWINGS 등록 (테이블 존재 시)
+        try:
+            with db.session.begin_nested():
+                db.session.add(CadDrawing(
+                    drawing_id=drawing_id,
+                    ship_code=resolved_ship_code,
+                    drawing_title=drawing_title,
+                    dxf_file_path=dxf_rel,
+                    pdf_file_path=pdf_rel,
+                    file_sha256=sha256,
+                    revision_no=0,
+                    branch_code=branch_code,
+                    work_zone=work_zone,
+                    plan_status="ACTIVE",
+                    uploaded_by=user.username,
+                ))
+        except Exception:
+            pass
 
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            "status": "ERROR",
-            "message": f"DB 저장 실패 (03_SHIP_USER_DDL.sql 적용 여부를 확인하세요): {str(e)}",
-        }), 500
+        return jsonify({"status": "ERROR", "message": f"도면 등록 중 오류가 발생했습니다: {str(e)}"}), 500
 
     return jsonify({
         "status": "SUCCESS",
         "drawing_id": drawing_id,
-        "plan_status": plan_status,
-        "message": "AI 공정 큐가 확정(ACTIVE)되어 통합 업무와 현장 관제에 즉시 반영되었습니다." if confirm else "임시 저장(STAGING)되었습니다.",
+        "ship_code": resolved_ship_code,
+        "message": f"[{drawing_title}] 선박 도면이 등록되었습니다. 작업 순서나 작업지시 준비는 통합 업무에서 요청해 주세요.",
     })
 
 
