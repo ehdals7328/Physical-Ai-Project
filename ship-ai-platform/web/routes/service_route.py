@@ -3129,7 +3129,7 @@ def agent_analyze_page():
                 cad_pdf_path = str(abs_pdf)
             branch_code = branch_code or dwg.branch_code
             if not prompt:
-                prompt = f"[{dwg.drawing_title}] 선체 구조 CAD 도면을 해석해 자율 블록 분할 및 공정 계획을 수립해줘"
+                prompt = f"[CAD_REANALYZE:{dwg.drawing_id}] [{dwg.drawing_title}] 선체 구조 CAD 도면을 재해석해 자율 블록 분할 및 공정 계획을 수립해줘"
 
     # 다른 화면에서 돌아온 경우 기존 백그라운드 session_id 그대로 복원 (중복 실행 방지)
     if resume_session_id:
@@ -3314,10 +3314,33 @@ def api_confirm_cad_plan():
         return jsonify({"status": "FORBIDDEN", "message": "공정 계획 확정은 담당자/관리자만 가능합니다."}), 403
 
     data = request.get_json(silent=True) or {}
-    session_id = (data.get("session_id") or "").strip()
+    session_id = (
+        data.get("session_id")
+        or session.get("workflow_thread_id")
+        or session.get("last_agent_thread_id")
+        or ""
+    ).strip()
     confirm_mode = (data.get("confirm_mode") or "ACTIVE").strip().upper()
     drawing_meta = data.get("drawing_meta") or {}
     edited_packages = data.get("work_packages") or []
+
+    # 프론트에서 work_packages/drawing_meta가 비어 넘어오면 DB에 저장된 CAD_STAGING_PLAN에서 자동 복원
+    if (not edited_packages or not drawing_meta) and session_id:
+        last_ai = (
+            AgentChatHistory.query
+            .filter_by(user_id=user.user_id, session_id=session_id, role_code="ASSISTANT")
+            .order_by(AgentChatHistory.message_id.desc())
+            .first()
+        )
+        if last_ai and last_ai.retrieval_chunks_json:
+            for c in _parse_json_or_literal(last_ai.retrieval_chunks_json):
+                if isinstance(c, dict) and c.get("_type") == "CAD_STAGING_PLAN":
+                    st = c.get("staging") or {}
+                    if not drawing_meta:
+                        drawing_meta = st.get("drawing_meta") or {}
+                    if not edited_packages:
+                        edited_packages = st.get("work_packages") or []
+                    break
 
     if not edited_packages:
         return jsonify({"status": "ERROR", "message": "확정할 분할 블록 목록이 비어 있습니다."}), 400
@@ -3357,10 +3380,19 @@ def api_confirm_cad_plan():
                 last_ai.retrieval_chunks_json = json.dumps(chunks, ensure_ascii=False, default=str)
                 db.session.commit()
 
-        po_cnt = len(res.get("proactive_po_drafts") or [])
+        po_drafts = res.get("proactive_po_drafts") or []
+        saved_po_cnt = sum(1 for p in po_drafts if p.get("db_saved"))
+        failed_pos = [p for p in po_drafts if not p.get("db_saved")]
+
         msg = f"공정 계획 {len(res.get('created_plans') or [])}개 블록이 확정되었습니다 ({confirm_mode})."
-        if po_cnt:
-            msg += f" 자재 부족 감지로 선제 발주서 초안 {po_cnt}건이 결재 대기함에 등록되었습니다."
+        if saved_po_cnt:
+            msg += f" 자재 부족 감지로 선제 발주서 초안 {saved_po_cnt}건이 결재 대기함에 등록되었습니다."
+        if failed_pos:
+            reasons = ", ".join(
+                f"{p.get('item_code')}({p.get('error') or p.get('quote_status') or 'DB 저장 실패'})"
+                for p in failed_pos
+            )
+            msg += f" ⚠️ 선제 PO 미등록 {len(failed_pos)}건: {reasons}"
         return jsonify({"status": "SUCCESS", "message": msg, **res})
     except Exception as e:
         db.session.rollback()
@@ -3474,7 +3506,12 @@ def work_status_page():
     if not selected_detail and orders_data:
         selected_detail = orders_data[0]
 
-    queued_plans = _safe_query_work_plans(states=["PENDING"], today_only=False)
+    selected_branch_code = selected_detail["wo"].work_region if selected_detail else None
+    queued_plans = _safe_query_work_plans(
+        branch_code=selected_branch_code,
+        states=["PENDING"],
+        today_only=False,
+    )
     dispatch_info, robot_info = None, None
     cad_doc_info = None
     yard_po_docs = []
@@ -3486,16 +3523,33 @@ def work_status_page():
         wo = selected_detail["wo"]
         yard_code = wo.work_region
         dest_branch = branch_obj_map.get(yard_code)
-        dispatch_info = MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).first()
+        dispatch_info = (
+            MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).first()
+            or MesWorkOrderDispatch.query.filter_by(block_id=wo.block_code, status="COMMITTED")
+            .order_by(MesWorkOrderDispatch.created_at.desc())
+            .first()
+        )
         if not dispatch_info and selected_detail.get("latest_inst"):
             env_m = _load_env_meta(selected_detail["latest_inst"])
             dp = env_m.get("_draft_payload") if isinstance(env_m.get("_draft_payload"), dict) else {}
             dp_params = dp.get("parameters") or {}
             dp_commit = dp.get("erp_commit") or {}
-            w_name = dp_commit.get("worker_name") or dp_params.get("worker_name")
-            lot_val = dp.get("allocated_lot_no") or dp_commit.get("allocated_lot_no")
+            dp_res = dp.get("erp_resource_status") or {}
+            w_name = (
+                dp_commit.get("worker_name")
+                or dp_params.get("worker_name")
+                or (dp_res.get("worker_qualification") or {}).get("worker_name")
+            )
+            lot_val = (
+                dp.get("allocated_lot_no")
+                or dp_commit.get("allocated_lot_no")
+                or dp_res.get("assigned_lot_no")
+            )
             if w_name or lot_val:
-                dispatch_info = {"worker_name": w_name or "배정 대기", "allocated_lot_no": lot_val or "-"}
+                dispatch_info = {
+                    "worker_name": w_name or "배정 대기",
+                    "allocated_lot_no": lot_val or "-",
+                }
         robot_info = RobotExecution.query.filter_by(work_id=wo.work_id).first()
 
         # 1) 실제 선박 선체 CAD 도면 선택 (프로펠러 등 비선체 부품 제외 + 호선/야드 매칭 우선)
@@ -4544,7 +4598,56 @@ def api_library_cad_upload():
         "message": f"[{drawing_title}] 선박 도면이 등록되었습니다. 작업 순서나 작업지시 준비는 통합 업무에서 요청해 주세요.",
     })
 
+@service_bp.route("/api/library/cad-delete/<drawing_id>", methods=["DELETE"])
+@login_required
+def api_library_cad_delete(drawing_id: str):
+    """등록된 CAD 도면 및 착수 전(PENDING/QUEUED/LOCKED) 공정 계획 삭제 (진행 중 작업 있으면 차단)"""
+    user = User.query.get_or_404(session["user_id"])
+    if user.role not in ("ADMIN", "MANAGER"):
+        return jsonify({"status": "FORBIDDEN", "message": "도면 삭제 권한이 없습니다."}), 403
 
+    dwg = CadDrawing.query.filter_by(drawing_id=drawing_id).first()
+    if not dwg:
+        return jsonify({"status": "ERROR", "message": "해당 CAD 도면을 찾을 수 없습니다."}), 404
+
+    # 현장에서 이미 진행 중(IN_PROGRESS)인 작업이 있으면 삭제 차단
+    in_progress_cnt = db.session.execute(
+        text("""
+            SELECT COUNT(*) FROM WORK_PLANS
+            WHERE DRAWING_ID = :d_id AND PLAN_STATE = 'IN_PROGRESS'
+        """),
+        {"d_id": drawing_id},
+    ).scalar() or 0
+
+    if in_progress_cnt > 0:
+        return jsonify({
+            "status": "ERROR",
+            "message": f"이미 현장에서 진행 중인 작업({in_progress_cnt}건)이 있어 삭제할 수 없습니다.",
+        }), 409
+
+    try:
+        # 1) 연결된 대기/확정 전 공정 계획 삭제
+        db.session.execute(
+            text("DELETE FROM WORK_PLANS WHERE DRAWING_ID = :d_id"),
+            {"d_id": drawing_id},
+        )
+        # 2) 동일 파일 재업로드가 가능하도록 DOCUMENT_METADATA의 해당 해시 레코드 정리
+        if dwg.file_sha256:
+            DocumentMetadata.query.filter_by(
+                file_hash_sha256=dwg.file_sha256,
+                category_code="CAD_DRAWING",
+            ).delete(synchronize_session=False)
+        # 3) CAD_DRAWINGS 레코드 삭제
+        db.session.delete(dwg)
+        db.session.commit()
+        return jsonify({
+            "status": "SUCCESS",
+            "message": f"도면({drawing_id})과 연결된 대기 공정 계획이 삭제되었습니다.",
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "ERROR", "message": f"삭제 중 오류가 발생했습니다: {str(e)}"}), 500
+    
 @service_bp.route("/api/cad/file/<int:doc_id>", methods=["GET"])
 @login_required
 def cad_raw_file(doc_id: int):

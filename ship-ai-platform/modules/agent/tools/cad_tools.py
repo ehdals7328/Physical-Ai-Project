@@ -275,14 +275,15 @@ def _extract_spatial_drawing_views(dxf_path: Path) -> Dict[str, Any]:
         v["notes"] = v["notes"][:25]
         v["dimensions_mm"] = v["dimensions_mm"][:20]
 
-    # 알루미늄 전용 상부구조 뷰(예: WHEELHOUSE TOP)는 강재 용접 대상에서 분리
+    # 알루미늄 전용 상부구조 뷰(예: WHEELHOUSE TOP, SUPERSTRUCT. TOP)는 강재 용접 대상에서 분리
+    non_steel_keywords = ("WHEELHOUSE", "SUPERSTRUCT", "BRIDGE", "ALUMIN")
     steel_views = [
         v for v in view_anchors
-        if not any(k in v["view_title"].upper() for k in ("WHEELHOUSE", "SUPERSTRUCTURE"))
+        if not any(k in v["view_title"].upper() for k in non_steel_keywords)
     ]
     non_steel_views = [
         v["view_title"] for v in view_anchors
-        if any(k in v["view_title"].upper() for k in ("WHEELHOUSE", "SUPERSTRUCTURE"))
+        if any(k in v["view_title"].upper() for k in non_steel_keywords)
     ]
 
     return {
@@ -304,6 +305,7 @@ def extract_cad_spatial_facts(
     ship_code: str = "HN-GUNNERUS-01",
     user_engine: Any = None,
     svg_cache_dir: str = DEFAULT_SVG_CACHE_DIR,
+    is_reanalyze: bool = False,
 ) -> Dict[str, Any]:
     dxf_path = Path(dxf_path_str)
     pdf_path = Path(pdf_path_str) if pdf_path_str else None
@@ -323,20 +325,29 @@ def extract_cad_spatial_facts(
 
     if user_engine is not None:
         with user_engine.connect() as conn:
-            dup_cnt = conn.execute(
-                text("""
-                    SELECT COUNT(*) FROM CAD_DRAWINGS
-                    WHERE BRANCH_CODE = :b_code AND WORK_ZONE = :w_zone
-                      AND FILE_SHA256 = :f_hash AND PLAN_STATUS = 'ACTIVE'
-                """),
-                {"b_code": branch_code, "w_zone": work_zone, "f_hash": file_hash},
-            ).scalar() or 0
-            if dup_cnt > 0:
-                return {
-                    "status": "REJECTED",
-                    "gate": "GATE_1_DUPLICATE",
-                    "reason": f"현재 {branch_code} ({work_zone})에 동일한 도면이 이미 ACTIVE 상태로 운영 중입니다.",
-                }
+            if not is_reanalyze:
+                dup_cnt = conn.execute(
+                    text("""
+                        SELECT COUNT(*)
+                        FROM CAD_DRAWINGS d
+                        WHERE d.BRANCH_CODE = :b_code
+                          AND d.WORK_ZONE = :w_zone
+                          AND d.FILE_SHA256 = :f_hash
+                          AND d.PLAN_STATUS = 'ACTIVE'
+                          AND EXISTS (
+                              SELECT 1 FROM WORK_PLANS wp
+                              WHERE wp.DRAWING_ID = d.DRAWING_ID
+                                AND wp.PLAN_STATE IN ('IN_PROGRESS', 'PENDING')
+                          )
+                    """),
+                    {"b_code": branch_code, "w_zone": work_zone, "f_hash": file_hash},
+                ).scalar() or 0
+                if dup_cnt > 0:
+                    return {
+                        "status": "REJECTED",
+                        "gate": "GATE_1_DUPLICATE",
+                        "reason": f"현재 {branch_code} ({work_zone})에 동일한 도면이 이미 ACTIVE 상태로 운영 중입니다.",
+                    }
 
             active_cnt = conn.execute(
                 text("""
@@ -460,33 +471,65 @@ def confirm_cad_work_plan(
                 {"b_code": branch_code, "w_zone": work_zone},
             )
 
-        conn.execute(
-            text("""
-                INSERT INTO CAD_DRAWINGS (
-                    DRAWING_ID, SHIP_CODE, DRAWING_TITLE, DXF_FILE_PATH, PDF_FILE_PATH,
-                    FILE_SHA256, REVISION_NO, BRANCH_CODE, WORK_ZONE, DRAWING_SCALE,
-                    PLAN_STATUS, UPLOADED_BY
-                ) VALUES (
-                    :drawing_id, :ship_code, :title, :dxf_path, :pdf_path,
-                    :sha256, :rev_no, :b_code, :w_zone, :scale,
-                    :status, :uploaded_by
-                )
-            """),
-            {
-                "drawing_id": drawing_id,
-                "ship_code": drawing_meta.get("ship_code", "HN-GUNNERUS-01"),
-                "title": drawing_meta.get("drawing_title", "CAD Structure Plan"),
-                "dxf_path": drawing_meta.get("dxf_file_path", ""),
-                "pdf_path": drawing_meta.get("pdf_file_path", ""),
-                "sha256": drawing_meta.get("file_sha256", uuid.uuid4().hex),
-                "rev_no": int(drawing_meta.get("revision_no", 0)),
-                "b_code": branch_code,
-                "w_zone": work_zone,
-                "scale": float(drawing_meta.get("drawing_scale", 50.0)),
-                "status": dwg_status,
-                "uploaded_by": uploaded_by,
-            },
-        )
+        file_sha = drawing_meta.get("file_sha256")
+        existing_dwg_id = None
+        if file_sha:
+            existing_dwg_id = conn.execute(
+                text("""
+                    SELECT DRAWING_ID FROM CAD_DRAWINGS
+                    WHERE BRANCH_CODE = :b_code
+                      AND WORK_ZONE = :w_zone
+                      AND FILE_SHA256 = :sha256
+                    FETCH FIRST 1 ROWS ONLY
+                """),
+                {"b_code": branch_code, "w_zone": work_zone, "sha256": file_sha},
+            ).scalar()
+
+        if existing_dwg_id:
+            drawing_id = str(existing_dwg_id)
+            conn.execute(
+                text("""
+                    UPDATE CAD_DRAWINGS
+                    SET PLAN_STATUS = :status,
+                        REVISION_NO = :rev_no,
+                        DRAWING_SCALE = :scale
+                    WHERE DRAWING_ID = :drawing_id
+                """),
+                {
+                    "status": dwg_status,
+                    "rev_no": int(drawing_meta.get("revision_no", 0)),
+                    "scale": float(drawing_meta.get("drawing_scale", 50.0)),
+                    "drawing_id": drawing_id,
+                },
+            )
+        else:
+            conn.execute(
+                text("""
+                    INSERT INTO CAD_DRAWINGS (
+                        DRAWING_ID, SHIP_CODE, DRAWING_TITLE, DXF_FILE_PATH, PDF_FILE_PATH,
+                        FILE_SHA256, REVISION_NO, BRANCH_CODE, WORK_ZONE, DRAWING_SCALE,
+                        PLAN_STATUS, UPLOADED_BY
+                    ) VALUES (
+                        :drawing_id, :ship_code, :title, :dxf_path, :pdf_path,
+                        :sha256, :rev_no, :b_code, :w_zone, :scale,
+                        :status, :uploaded_by
+                    )
+                """),
+                {
+                    "drawing_id": drawing_id,
+                    "ship_code": drawing_meta.get("ship_code", "HN-GUNNERUS-01"),
+                    "title": drawing_meta.get("drawing_title", "CAD Structure Plan"),
+                    "dxf_path": drawing_meta.get("dxf_file_path", ""),
+                    "pdf_path": drawing_meta.get("pdf_file_path", ""),
+                    "sha256": file_sha or uuid.uuid4().hex,
+                    "rev_no": int(drawing_meta.get("revision_no", 0)),
+                    "b_code": branch_code,
+                    "w_zone": work_zone,
+                    "scale": float(drawing_meta.get("drawing_scale", 50.0)),
+                    "status": dwg_status,
+                    "uploaded_by": uploaded_by,
+                },
+            )
 
         for idx, pkg in enumerate(edited_packages, start=1):
             plan_id = f"PLAN-{datetime.now().strftime('%m%d')}-{uuid.uuid4().hex[:5].upper()}"
@@ -547,9 +590,9 @@ def confirm_cad_work_plan(
     if mode != "QUEUED" and erp_engine is not None:
         short_term_demand: Dict[str, float] = {}
         for p in created_plans:
-            if p["rank"] <= 2:
-                w_code = p["wire_code"]
-                short_term_demand[w_code] = short_term_demand.get(w_code, 0.0) + p["wire_kg"]
+            # 전체 블록(또는 단기 착수 구간)의 자재 소요량을 합산해 부족 품목 자동 감지
+            w_code = p["wire_code"]
+            short_term_demand[w_code] = short_term_demand.get(w_code, 0.0) + p["wire_kg"]
 
         safety_buffer_kg = 50.0
         with erp_engine.connect() as erp_conn:
@@ -730,6 +773,11 @@ def _create_proactive_po_draft(
             if isinstance(po_export_raw, str)
             else (po_export_raw or {})
         )
+        if isinstance(po_meta, dict):
+            if not po_meta.get("download_pdf_url") and po_meta.get("download_po_pdf_url"):
+                po_meta["download_pdf_url"] = po_meta["download_po_pdf_url"]
+            if not po_meta.get("pdf_path") and po_meta.get("po_pdf_path"):
+                po_meta["pdf_path"] = po_meta["po_pdf_path"]
         po_payload["files"] = po_meta
         po_payload["pdf_path"] = po_meta.get("pdf_path")
         po_payload["download_pdf_url"] = po_meta.get("download_pdf_url")
@@ -809,6 +857,7 @@ def _create_proactive_po_draft(
                 po_payload["db_saved"] = True
     except Exception as po_db_err:
         print(f"⚠️ [CAD 선제 PO DB 저장 경고]: {po_db_err}")
+        po_payload["error"] = f"DB 저장 오류: {po_db_err}"
 
     return po_payload
 

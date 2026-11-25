@@ -99,12 +99,14 @@ def cad_metric_collector_node(state: ShipAgentState) -> Dict[str, Any]:
         briefing = get_daily_work_briefing(user_engine=user_engine, branch_code=branch_code)
         return {"cad_staging_result": {"status": "BRIEFING_ONLY", "briefing": briefing}}
 
+    is_reanalyze = "[CAD_REANALYZE" in str(state.get("user_query") or "")
     extracted = extract_cad_spatial_facts(
         dxf_path_str=dxf_path,
         pdf_path_str=pdf_path or None,
         branch_code=branch_code,
         work_zone=work_zone,
         user_engine=user_engine,
+        is_reanalyze=is_reanalyze,
     )
     if extracted.get("status") != "EXTRACTED":
         return {"cad_staging_result": extracted}
@@ -229,14 +231,19 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
         "2. **선박 건조 순서 엄수**: 반드시 하부 구조(`TANKTOP`, `DOUBLE BOTTOM`, `SINGLE BOTTOM`, 기관실 받침대 구역)를 상부 갑판(`1-DECK`, `A-DECK`)보다 먼저(P1, P2...) 배치하십시오.\n"
         "3. **세부 용접 작업(sub_tasks) 도출**: 각 블록마다 도면의 부재 규격(`HP80x6`, `HP140x8`, `W200x8`, `FL150x10` 등)을 반영해 맞대기(`BUTT`/SAW)와 필렛(`FILLET`/FCAW) 세부 작업을 2~3개 도출하고, "
         "취부·용접·정리를 포함한 현실적인 공수(`est_man_hours`)와 가용 작업자 수 기준 소요일수(`est_duration_days`)를 계산하십시오.\n"
-        "4. **자재·양중 제약 반영**: 야드 가용 와이어 재고가 부족한 공정의 블록은 `need_material_po=True`로 표시하고 조달 리드타임(1일)을 반영해 착수일을 잡으십시오.\n\n"
+        "4. **자재·양중 제약 반영**: 야드 가용 와이어 재고가 부족한 공정의 블록은 `need_material_po=True`로 표시하고 조달 리드타임(1일)을 반영해 착수일을 잡으십시오.\n"
+        "5. **선체 방향(선미 AFT / 선수 FWD) 교차 검증**: 조선 도면 표준상 `Fr.0` 쪽은 선미(AP/AFT: 프로펠러·러더·STERN ROLLER·SLIPWAY 위치)이며, "
+        "프레임 번호가 커지는 쪽(`Fr.50~60`)이 선수(FP/FWD: FOREBODY·벌버스 바우 위치)입니다. 도면 이미지와 텍스트 표기를 반드시 대조해 AFT/MID/FWD 방향을 절대 뒤바꾸지 마십시오.\n"
+        "6. **비강재(알루미늄) 구역 블록 편성 절대 금지**: 도면에 `ALUMINIUM ABOVE A-DECK`, `AL.`, `WHEELHOUSE`, `SUPERSTRUCT.` 등 알루미늄 표기가 있는 상부구조는 "
+        "탄소강 용접 대상(`divided_blocks`)에서 완전히 제외하고 `drawing_interpretation`에만 제외 사유로 기록하십시오.\n"
+        "7. **2D 단면도 추정치 한계 명시**: 종단면도(Longitudinal Section)처럼 선박 폭(Breadth) 정보가 없는 도면은 중량·용접장이 예비 추정치임을 `block_division_criterion`에 명시하십시오.\n\n"
         f"- 선박명: {dwg_meta.get('vessel_name')} | 도면명: {dwg_meta.get('drawing_title')}\n"
         f"- 대상 야드: {dwg_meta.get('branch_code')} / 작업구역: {dwg_meta.get('work_zone')}\n"
-        f"- 제외된 비강재(알루미늄) 구역: {json.dumps(dwg_meta.get('excluded_non_steel_views'), ensure_ascii=False)}\n"
+        f"- 제외된 비강재(알루미늄) 뷰: {json.dumps(dwg_meta.get('excluded_non_steel_views'), ensure_ascii=False)}\n"
+        f"- 도면 내 비강재(알루미늄) 주석: {json.dumps(dwg_meta.get('excluded_non_steel_notes'), ensure_ascii=False)}\n"
         f"- DXF 공간 좌표 기반 추출 뷰 및 프레임 데이터:\n{json.dumps(spatial_views, ensure_ascii=False, indent=2)}\n"
         f"- 대상 야드 실시간 자원(크레인·가용 작업자·와이어 재고·기존 블록):\n{json.dumps(yard_ctx, ensure_ascii=False, indent=2)}"
     )
-
     msg_content: List[Dict[str, Any]] = [{"type": "text", "text": prompt_text}]
     if image_b64:
         msg_content.append({
@@ -276,11 +283,23 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
 
     lower_keywords = ("TANKTOP", "DOUBLE BOTTOM", "SINGLE BOTTOM", "BOTTOM", "ENGINE")
     upper_keywords = ("1-DECK", "2-DECK", "A-DECK", "MAIN DECK", "UPPER DECK")
+    non_steel_block_keywords = ("WHEELHOUSE", "SUPERSTRUCT", "BRIDGE", "ALUMIN")
+    has_aluminum_superstructure = bool(
+        dwg_meta.get("excluded_non_steel_views")
+        or any("AL" in str(n).upper() for n in (dwg_meta.get("excluded_non_steel_notes") or []))
+    )
     lower_latest_end: Optional[datetime] = None
 
     scheduled_packages: List[Dict[str, Any]] = []
     for blk in sorted(analysis_out.divided_blocks, key=lambda x: x.priority_rank):
         pkg = blk.model_dump()
+
+        # 0) 비강재(알루미늄) 상부구조가 탄소강 용접 블록에 혼입된 경우 결정론적 제외
+        blk_identity = f"{pkg.get('block_code', '')} {pkg.get('block_name', '')} {pkg.get('deck_level', '')}".upper()
+        if has_aluminum_superstructure and any(k in blk_identity for k in non_steel_block_keywords):
+            continue
+
+        pkg["priority_rank"] = len(scheduled_packages) + 1
         pkg["plan_state"] = "STAGING"
         pkg["estimation_status"] = "AI_ESTIMATED_REVIEW_REQUIRED"
 
@@ -296,7 +315,7 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
             span_days = duration_days
             e_dt = s_dt + timedelta(days=span_days)
 
-        # 1) 와이어 품목별 누적 재고 차감 및 해당 블록 단독 리드타임 반영
+        # 1) 와이어 품목별 누적 재고 차감 및 부족 사유·리드타임 일관 반영
         w_code = pkg["wire_mat_code"]
         req_wire = float(pkg.get("est_wire_kg") or 0.0)
         avail_before = remaining_wire.get(w_code, 0.0)
@@ -306,11 +325,11 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
             if s_dt < material_ready_dt:
                 s_dt = material_ready_dt
                 e_dt = s_dt + timedelta(days=span_days)
-                if "리드타임" not in pkg.get("schedule_rationale", ""):
-                    pkg["schedule_rationale"] = (
-                        f"{pkg.get('schedule_rationale', '').rstrip()} "
-                        f"({w_code} 가용 {round(avail_before, 1)}kg < 소요 {round(req_wire, 1)}kg로 조달 리드타임 1일 반영)"
-                    ).strip()
+                lead_note = f"({w_code} 누적 잔여 {round(avail_before, 1)}kg < 소요 {round(req_wire, 1)}kg로 선제 발주 및 리드타임 1일 반영)"
+            else:
+                lead_note = f"({w_code} 선행 블록 소진 후 잔여 {round(avail_before, 1)}kg < 소요 {round(req_wire, 1)}kg로 착수 전 선제 발주 필요)"
+            if "선제 발주" not in pkg.get("schedule_rationale", ""):
+                pkg["schedule_rationale"] = f"{pkg.get('schedule_rationale', '').rstrip()} {lead_note}".strip()
         else:
             pkg["need_material_po"] = False
 
