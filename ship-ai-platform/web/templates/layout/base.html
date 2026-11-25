@@ -115,7 +115,88 @@
 <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/markdown_render.js') }}"></script>
-<script src="{{ url_for('static', filename='js/cad_viewer.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vision_viewer.js') }}"></script>
+
+{% if session.get('user_id') and not request.path.startswith('/service/agent/analyze') %}
+<a href="/service/workspace?resume=1" id="global-bg-agent-pill"
+   style="display:none;position:fixed;right:20px;bottom:20px;z-index:1060;width:270px;background:#0b1f3a;color:#fff;padding:11px 14px;border-radius:12px;box-shadow:0 10px 28px rgba(11,31,58,0.32);text-decoration:none;font-size:12.5px;border:1px solid rgba(255,255,255,0.14);">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <span class="d-inline-flex align-items-center gap-2 fw-bold">
+      <span id="global-bg-spinner" class="spinner-border spinner-border-sm text-info" role="status" style="width:13px;height:13px;"></span>
+      <span id="global-bg-title">AI 작업 분석 중</span>
+    </span>
+    <span id="global-bg-pct" class="fw-bold text-info">25%</span>
+  </div>
+  <div class="progress mb-1" style="height:5px;background:rgba(255,255,255,0.18);">
+    <div id="global-bg-bar" class="progress-bar bg-info progress-bar-striped progress-bar-animated" style="width:25%;"></div>
+  </div>
+  <div id="global-bg-sub" class="text-truncate" style="font-size:11.5px;color:#cbd5e1;">클릭하면 작업 화면으로 돌아갑니다 →</div>
+</a>
+<script>
+(function () {
+  var ACTIVE_KEY = 'ksmartship_bg_agent_sid';
+  var LAST_SEEN_KEY = 'ksmartship_bg_agent_seen_exec';
+  var IS_WORKSPACE = window.location.pathname.indexOf('/service/workspace') === 0;
+  var IS_PLAN_PAGE = window.location.pathname.indexOf('/service/agent/plan/') === 0;
+
+  function checkBgAgent() {
+    var trackedSid = sessionStorage.getItem(ACTIVE_KEY) || '';
+    $.getJSON('/service/api/assistant/active', function (res) {
+      var $pill = $('#global-bg-agent-pill');
+      if (!res || res.status === 'IDLE') {
+        $pill.hide();
+        return;
+      }
+      var onOriginScreen = (
+        (!res.is_workflow && IS_WORKSPACE) ||
+        (res.is_workflow && (window.location.pathname.indexOf('/service/agent/analyze') === 0 || IS_PLAN_PAGE))
+      );
+      if (onOriginScreen) {
+        if (res.status !== 'RUNNING') {
+          if (res.execution_id) sessionStorage.setItem(LAST_SEEN_KEY, String(res.execution_id));
+          if (trackedSid === res.session_id) sessionStorage.removeItem(ACTIVE_KEY);
+        }
+        $pill.hide();
+        return;
+      }
+
+      if (res.status === 'RUNNING') {
+        var pct = parseInt(res.progress_pct || 30, 10);
+        sessionStorage.setItem(ACTIVE_KEY, res.session_id || '');
+        $pill.attr('href', res.return_url || '/service/workspace?resume=1');
+        $('#global-bg-spinner').show();
+        $('#global-bg-title').text(res.is_workflow ? '작업 준비 분석 중' : 'AI 백그라운드 분석 중');
+        $('#global-bg-pct').text(pct + '%');
+        $('#global-bg-bar').addClass('progress-bar-animated bg-info').removeClass('bg-success').css('width', pct + '%');
+        $('#global-bg-sub').text((res.step_message || '분석 진행 중') + ' · 클릭하여 복귀 →');
+        $pill.css({ display: 'block', background: '#0b1f3a', bottom: IS_WORKSPACE ? '122px' : '20px' });
+      } else if (trackedSid && res.session_id === trackedSid && res.status === 'SUCCESS') {
+        var seenId = sessionStorage.getItem(LAST_SEEN_KEY) || '';
+        if (String(res.execution_id || '') !== seenId) {
+          $pill.attr('href', res.return_url || '/service/workspace?resume=1');
+          $('#global-bg-spinner').hide();
+          $('#global-bg-title').text(res.is_workflow ? '작업 준비 분석 완료' : 'AI 분석 완료');
+          $('#global-bg-pct').text('100%');
+          $('#global-bg-bar').removeClass('progress-bar-animated bg-info').addClass('bg-success').css('width', '100%');
+          $('#global-bg-sub').text('클릭하면 결과 화면으로 바로 이동합니다 →');
+          $pill.css({ display: 'block', background: '#0052cc', bottom: IS_WORKSPACE ? '122px' : '20px' });
+        } else {
+          $pill.hide();
+        }
+      } else {
+        $pill.hide();
+      }
+    });
+  }
+
+  $(function () {
+    checkBgAgent();
+    setInterval(checkBgAgent, 2500);
+  });
+})();
+</script>
+{% endif %}
+
 {% block extra_js %}{% endblock %}
 <script>
 // Prevent Bootstrap 5 Modal._adjustDialog / ScrollBarHelper from adding padding-right on open/close

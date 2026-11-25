@@ -48,7 +48,7 @@
   </form>
 
   {% if tab == 'cad' %}
-  <!-- 선박 도면(CAD): 같은 선박/도면의 여러 파일 형식을 묶어서 표시 -->
+  <!-- 선박 도면(CAD): 실제 도면 PDF만 웹 미리보기 지원, 원본 CAD(.dxf/.igs 등)는 가짜 렌더링 차단 및 원본 다운로드 제공 -->
   <div class="d-flex flex-column gap-3 mb-3">
     {% for g in cad_groups %}
     <div class="border rounded p-3 bg-white">
@@ -64,10 +64,16 @@
           <div class="small text-muted">{{ g.group_desc }}</div>
         </div>
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;"
-                  onclick="openCadPreview({{ g.preview_doc_id }})">
-            {{ 'PDF 도면 보기' if g.has_pdf else '도면 미리보기' }}
+          {% if g.has_pdf %}
+          <button type="button" class="btn btn-primary btn-sm px-3 js-open-cad" style="background:#0052cc;border-color:#0052cc;"
+                  data-doc-id="{{ g.preview_doc_id }}">
+            도면 PDF 보기
           </button>
+          {% else %}
+          <a href="/api/document/file/{{ g.preview_doc_id }}?download=1" class="btn btn-outline-dark btn-sm px-3">
+            원본 CAD 다운로드
+          </a>
+          {% endif %}
           <button type="button" class="btn btn-outline-secondary btn-sm"
                   onclick="$('#cad-files-{{ loop.index }}').slideToggle(140)">
             포함 파일 ({{ g.files|length }}) ▾
@@ -75,12 +81,11 @@
         </div>
       </div>
 
-      <!-- 묶인 개별 파일 목록 (클릭 시 펼침) -->
       <div id="cad-files-{{ loop.index }}" class="mt-3 pt-2 border-top" style="display:none;">
         <div class="table-responsive">
           <table class="table table-sm table-enterprise mb-0">
             <thead>
-              <tr><th>파일명</th><th>형식</th><th>상태</th><th class="text-end">미리보기 / 관리</th></tr>
+              <tr><th>파일명</th><th>형식</th><th>상태</th><th class="text-end">열람 / 관리</th></tr>
             </thead>
             <tbody>
               {% for f in g.files %}
@@ -89,7 +94,12 @@
                 <td><span class="badge bg-light text-dark border">{{ f.ext }}</span></td>
                 <td><span class="status-chip {{ 'status-ok' if f.is_active == 'Y' else 'status-warn' }}">{{ '사용 중' if f.is_active == 'Y' else '비활성' }}</span></td>
                 <td class="text-end text-nowrap">
-                  <button type="button" class="btn btn-outline-primary btn-sm py-0" onclick="openCadPreview({{ f.document_id }})">보기</button>
+                  {% if f.ext == 'PDF' %}
+                    <button type="button" class="btn btn-outline-primary btn-sm py-0 js-open-pdf"
+                            data-doc-id="{{ f.document_id }}" data-doc-title="{{ f.title }}">PDF 보기</button>
+                  {% else %}
+                    <a href="/api/document/file/{{ f.document_id }}?download=1" class="btn btn-outline-secondary btn-sm py-0">원본 다운로드</a>
+                  {% endif %}
                   {% if is_admin %}
                     <button type="button" class="btn btn-outline-dark btn-sm py-0 ms-1" onclick="toggleDocActive({{ f.document_id }})">{{ '비활성화' if f.is_active == 'Y' else '활성화' }}</button>
                     <button type="button" class="btn btn-outline-danger btn-sm py-0 ms-1" onclick="removeDoc({{ f.document_id }})">삭제</button>
@@ -107,7 +117,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <!-- 공통 기술문서 / 사내 규정 PDF 테이블 -->
+  <!-- 공통 기술문서 / 사내 규정 PDF 테이블 (안전한 data-* 속성 사용) -->
   <div class="table-responsive mb-3">
     <table class="table table-enterprise">
       <thead>
@@ -133,8 +143,9 @@
             </span>
           </td>
           <td>
-            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
-                    onclick="openPdfModal({{ d.document_id }}, {{ d.document_title | tojson }})">PDF 보기</button>
+            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 js-open-pdf"
+                    data-doc-id="{{ d.document_id }}"
+                    data-doc-title="{{ d.document_title }}">PDF 보기</button>
           </td>
           {% if is_admin %}
           <td class="text-end text-nowrap">
@@ -165,7 +176,7 @@
   </ul>
 </div>
 
-<!-- 브라우저 내장 PDF / 2D 도면 / 3D 제원 미리보기 모달 (강제 다운로드 방지) -->
+<!-- 브라우저 내장 PDF 미리보기 모달 -->
 <div class="modal fade" id="docPreviewModal" tabindex="-1">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
@@ -188,7 +199,7 @@
 var esc = window.KSmartMd.esc;
 
 function openPdfModal(docId, title) {
-  var url = '/api/document/file/' + docId;
+  var url = '/api/document/file/' + encodeURIComponent(docId);
   $('#preview-modal-title').text(title || 'PDF 문서 보기');
   $('#preview-newtab-link').attr('href', url).show();
   $('#preview-download-link').attr('href', url + '?download=1').show();
@@ -199,39 +210,39 @@ function openPdfModal(docId, title) {
 function openCadPreview(docId) {
   $('#preview-modal-title').text('선박 도면 불러오는 중...');
   $('#preview-newtab-link, #preview-download-link').hide();
-  $('#preview-modal-body').html('<div class="p-5 text-center text-muted">도면 미리보기를 준비하고 있습니다...</div>');
+  $('#preview-modal-body').html('<div class="p-5 text-center text-muted">도면 PDF를 준비하고 있습니다...</div>');
   bootstrap.Modal.getOrCreateInstance(document.getElementById('docPreviewModal')).show();
 
-  $.getJSON('/service/api/cad/preview/' + docId, function (res) {
-    $('#preview-modal-title').text(res.title || res.file_name || '도면 미리보기');
+  $.getJSON('/service/api/cad/preview/' + encodeURIComponent(docId), function (res) {
+    $('#preview-modal-title').text(res.title || res.file_name || '선박 도면');
     if (res.download_url) $('#preview-download-link').attr('href', res.download_url).show();
 
     if (res.mode === 'pdf' && res.pdf_url) {
       $('#preview-newtab-link').attr('href', res.pdf_url).show();
       $('#preview-modal-body').html('<iframe src="' + res.pdf_url + '" style="width:100%;height:72vh;border:0;"></iframe>');
-    } else if (res.mode === 'svg' && res.svg) {
-      $('#preview-modal-body').html('<div class="p-3 bg-white overflow-auto text-center" style="max-height:72vh;">' + res.svg + '</div>');
-    } else if (res.mode === 'iges3d' && res.wireframe_3d) {
-      window.KSmartCad.mountIgesViewer(document.getElementById('preview-modal-body'), res.wireframe_3d, res.summary);
+    } else if (res.mode === 'missing') {
+      $('#preview-modal-body').html('<div class="p-5 text-center text-warning">로컬 폴더에 해당 파일이 존재하지 않습니다. 상단의 [폴더 자료 불러오기]를 실행해 주세요.</div>');
     } else {
-      var s = res.summary || {};
-      var bbox = s.bbox ? ('가로 ' + s.bbox.width + ' × 세로 ' + s.bbox.height) : '제원 추출 정보 없음';
-      var layers = (s.layers || []).slice(0, 12).join(', ') || '-';
       $('#preview-modal-body').html(
-        '<div class="p-4">' +
-          '<div class="alert alert-info small mb-3">이 파일(' + esc(res.file_name) + ')은 3D CAD 전용 형식으로, 핵심 제원 요약을 먼저 표시합니다. 필요 시 우측 상단에서 원본 파일을 내려받을 수 있습니다.</div>' +
-          '<div class="row g-3 small">' +
-            '<div class="col-md-6"><div class="bg-white border rounded p-3"><div class="text-muted">파일 형식</div><strong>' + esc(s.format || '-') + '</strong></div></div>' +
-            '<div class="col-md-6"><div class="bg-white border rounded p-3"><div class="text-muted">도면 치수 범위</div><strong>' + esc(bbox) + '</strong></div></div>' +
-            '<div class="col-12"><div class="bg-white border rounded p-3"><div class="text-muted mb-1">추출 레이어 / 구성</div><div>' + esc(layers) + '</div></div></div>' +
-          '</div>' +
+        '<div class="p-5 text-center">' +
+          '<div class="fw-bold mb-2" style="color:#0b1f3a;">원본 CAD 파일 (' + esc(res.file_name) + ')</div>' +
+          '<p class="small text-muted mb-3">원본 CAD 파일(DXF·IGS 등)은 브라우저 미리보기를 지원하지 않습니다. 전용 CAD 프로그램에서 확인하시려면 원본 파일을 다운로드해 주세요.</p>' +
+          (res.download_url ? '<a href="' + esc(res.download_url) + '" class="btn btn-primary btn-sm px-4">원본 파일 다운로드</a>' : '') +
         '</div>'
       );
     }
   }).fail(function () {
-    $('#preview-modal-body').html('<div class="p-5 text-center text-danger">도면 미리보기를 불러오지 못했습니다.</div>');
+    $('#preview-modal-body').html('<div class="p-5 text-center text-danger">도면 정보를 불러오지 못했습니다.</div>');
   });
 }
+
+$(document).on('click', '.js-open-pdf', function () {
+  openPdfModal($(this).attr('data-doc-id'), $(this).attr('data-doc-title'));
+});
+
+$(document).on('click', '.js-open-cad', function () {
+  openCadPreview($(this).attr('data-doc-id'));
+});
 
 function syncLibraryDb() {
   var $btn = $('#btn-sync-db');

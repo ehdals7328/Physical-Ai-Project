@@ -91,20 +91,6 @@
     50% { transform: translate(-50%, 7px); }
   }
 
-  /* 2. 빠른 업무 시작 바 */
-  .main-quick-bar {
-    background: #ffffff;
-    border-bottom: 1px solid #dde3ec;
-    padding: 34px 0;
-  }
-
-  .main-quick-input {
-    height: 52px;
-    font-size: 15.5px;
-    border-radius: 10px;
-    padding: 0 18px;
-  }
-
   /* 3. 큼직한 스크롤텔링 밴드 (전체적으로 밝고 쾌적한 톤 유지) */
   .st-band {
     padding: clamp(72px, 8.5vw, 124px) 0;
@@ -329,24 +315,6 @@
   </button>
 </div>
 
-<!-- 빠른 업무 요청 바 -->
-<section class="main-quick-bar">
-  <div class="main-wide-shell">
-    <form action="/service/workspace" method="get" class="row g-3 align-items-center">
-      <div class="col-lg-4">
-        <div class="fw-bold" style="color:#0b1f3a;font-size:18px;">[수정 - 빠른 업무 시작 제목]</div>
-        <div class="text-muted" style="font-size:14px;">[수정 - 빠른 업무 시작 한 줄 안내]</div>
-      </div>
-      <div class="col-lg-6">
-        <input type="text" name="prompt" class="form-control main-quick-input"
-               placeholder="{{ ('예: ' ~ (sample_hints | join(', ')) ~ ' 자재와 용접 기준 확인해줘') if sample_hints else '[수정 - 입력창 예시 문구]' }}">
-      </div>
-      <div class="col-lg-2 d-grid">
-        <button type="submit" class="btn btn-primary fw-bold" style="height:52px;font-size:15.5px;border-radius:10px;background:#0052cc;border-color:#0052cc;">업무 시작 →</button>
-      </div>
-    </form>
-  </div>
-</section>
 {% endblock %}
 
 {% block content %}

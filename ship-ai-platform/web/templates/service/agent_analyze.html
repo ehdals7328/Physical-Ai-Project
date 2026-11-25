@@ -52,7 +52,7 @@
     <input type="hidden" name="from" value="{{ return_to }}">
     <div class="col-12 col-md">
       <textarea id="revise-prompt-input" name="prompt" rows="2" class="form-control cmd-textarea"
-                placeholder="예: 작업자를 장반장으로 변경하고 예열 온도를 120℃ 기준으로 개정해줘 (Enter 전송 · Shift+Enter 줄바꿈)" required></textarea>
+                placeholder="예: 배정 작업자를 {{ sample_worker_name }}으로 변경하거나 예열·용접 조건 변경 내용을 입력하세요 (Enter 전송 · Shift+Enter 줄바꿈)" required></textarea>
     </div>
     <div class="col-12 col-md-auto">
       <button type="submit" class="btn btn-primary fw-semibold px-4 w-100"
@@ -112,14 +112,15 @@ $('#revise-prompt-input').on('keydown', function (e) {
 var PROMPT_TEXT = {{ prompt | tojson }};
 var BRANCH_CODE = {{ branch_code | tojson }};
 var BLOCK_CODE = {{ block_code | tojson }};
+var RESUME_SID = {{ resume_session_id | tojson }};
 var analyzePoll = null;
 
-function setToolStates(stage) {
+function setToolStates(stage, pctFromServer) {
   var order = { RUNNING_AGENT: 0, top_supervisor_init: 0, team1_analysis: 1, team2_search: 2, team2_knowledge: 2, team3_docgen: 3 };
-  var pctMap = { 0: 25, 1: 50, 2: 75, 3: 92 };
   var idx = order[stage] !== undefined ? order[stage] : 1;
-  $('#step-bar').css('width', pctMap[idx] + '%');
-  $('#step-pct').text(pctMap[idx] + '%');
+  var pct = pctFromServer || [25, 50, 75, 92][idx] || 30;
+  $('#step-bar').css('width', pct + '%');
+  $('#step-pct').text(pct + '%');
 
   $('#tool-checklist li').each(function (i) {
     var $b = $(this).find('.status-chip');
@@ -129,39 +130,53 @@ function setToolStates(stage) {
   });
 }
 
-$.ajax({
-  url: '/service/api/assistant/ask',
-  method: 'POST',
-  contentType: 'application/json',
-  data: JSON.stringify({
-    question: PROMPT_TEXT,
-    new_session: true,
-    page_context: {
-      page_title: '작업 준비 분석',
-      branch_code: BRANCH_CODE,
-      selected_work: { branch_code: BRANCH_CODE, block_id: BLOCK_CODE }
-    }
-  }),
-  success: function (res) {
-    var sid = res.session_id;
-    analyzePoll = setInterval(function () {
-      $.getJSON('/service/api/assistant/status/' + encodeURIComponent(sid), function (st) {
-        if (st.status === 'RUNNING') {
-          $('#step-text').text(st.step_message || '분석 중입니다...');
-          setToolStates(st.current_state || 'RUNNING_AGENT');
-          return;
-        }
-        clearInterval(analyzePoll);
-        $('#step-bar').css('width', '100%');
-        $('#step-pct').text('100%');
-        window.location.href = '/service/agent/plan/' + encodeURIComponent(sid) + '?from={{ return_to }}';
-      });
-    }, 1500);
-  },
-  error: function (xhr) {
-    $('#step-text').text((xhr.responseJSON && xhr.responseJSON.message) || '분석 시작 중 오류가 발생했습니다.');
+function beginStatusPolling(sid) {
+  sessionStorage.setItem('ksmartship_bg_agent_sid', sid);
+  // 주소창에 session_id 반영 (새로고침하거나 뒤로갔다 와도 중복 재실행 방지)
+  if (window.history && window.history.replaceState && window.location.search.indexOf('session_id=') === -1) {
+    window.history.replaceState(null, '', '/service/agent/analyze?session_id=' + encodeURIComponent(sid) + '&from={{ return_to }}');
   }
-});
+  function pollOnce() {
+    $.getJSON('/service/api/assistant/status/' + encodeURIComponent(sid), function (st) {
+      if (st.status === 'RUNNING') {
+        $('#step-text').text(st.step_message || '분석 중입니다... (다른 화면으로 이동해도 계속 진행됩니다)');
+        setToolStates(st.current_state || 'RUNNING_AGENT', st.progress_pct);
+        return;
+      }
+      clearInterval(analyzePoll);
+      $('#step-bar').css('width', '100%');
+      $('#step-pct').text('100%');
+      window.location.href = '/service/agent/plan/' + encodeURIComponent(sid) + '?from={{ return_to }}';
+    });
+  }
+  pollOnce();
+  analyzePoll = setInterval(pollOnce, 1500);
+}
+
+if (RESUME_SID) {
+  beginStatusPolling(RESUME_SID);
+} else {
+  $.ajax({
+    url: '/service/api/assistant/ask',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      question: PROMPT_TEXT,
+      new_session: true,
+      page_context: {
+        page_title: '작업 준비 분석',
+        branch_code: BRANCH_CODE,
+        selected_work: { branch_code: BRANCH_CODE, block_id: BLOCK_CODE }
+      }
+    }),
+    success: function (res) {
+      beginStatusPolling(res.session_id);
+    },
+    error: function (xhr) {
+      $('#step-text').text((xhr.responseJSON && xhr.responseJSON.message) || '분석 시작 중 오류가 발생했습니다.');
+    }
+  });
+}
 {% endif %}
 </script>
 {% endblock %}

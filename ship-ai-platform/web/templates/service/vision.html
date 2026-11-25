@@ -5,41 +5,66 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 {% endblock %}
 
+{% set _is_transport = (selected_stage == 'TRANSPORT') %}
+{% set _init_stage = 'transport' if _is_transport else 'assembly' %}
+
 {% block content %}
 <div class="page-header">
-  <div>
-    <h1 class="page-title">{{ current_card.branch_name if current_card else '현장 관제' }}</h1>
-    {% if current_card %}
-    {% else %}
-    {% endif %}
+  <div class="d-flex align-items-center flex-wrap gap-2">
+    <h1 class="page-title mb-0">{{ current_card.branch_name if current_card else '현장 관제' }}</h1>
+    <span class="status-chip {{ 'status-warn' if _is_transport else 'status-info' }}">
+      {{ '운반 단계 · 블록 번호 확인' if _is_transport else '조립 · 용접 단계' }}
+    </span>
   </div>
 
-  <div class="btn-group btn-group-sm">
-    <button type="button" class="btn btn-primary px-3 fw-semibold" id="btn-cam-cctv" onclick="switchCam('cctv')">CCTV</button>
-    <button type="button" class="btn btn-outline-secondary px-3 fw-semibold" id="btn-cam-robot" onclick="switchCam('robot')">로봇 카메라</button>
+  <!-- 작업 진도에 맞춰 운반 OR (조립 + 용접)만 활성화 -->
+  <div class="btn-group btn-group-sm" role="group" aria-label="공정 카메라 전환">
+    <button type="button"
+            class="btn vision-stage-btn {{ 'btn-primary' if _is_transport else 'btn-outline-secondary' }} px-3 fw-semibold"
+            id="btn-cam-transport"
+            {% if not _is_transport %}disabled title="운반 완료 — 현재 야드는 조립 · 용접 단계입니다"{% endif %}
+            onclick="switchCam('transport')">운반(OCR)</button>
+
+    <button type="button"
+            class="btn vision-stage-btn {{ 'btn-primary' if not _is_transport else 'btn-outline-secondary' }} px-3 fw-semibold"
+            id="btn-cam-assembly"
+            {% if _is_transport %}disabled title="현재 야드는 운반 단계입니다"{% endif %}
+            onclick="switchCam('assembly')">CCTV(조립)</button>
+
+    <button type="button"
+            class="btn vision-stage-btn btn-outline-secondary px-3 fw-semibold"
+            id="btn-cam-welding"
+            {% if _is_transport %}disabled title="현재 야드는 운반 단계입니다"{% endif %}
+            onclick="switchCam('welding')">로봇(용접)</button>
   </div>
 </div>
 
-<!-- 1~2. 대형 실시간 영상 (9칸) + 현재 화면 탐지 객체 (3칸) -->
+<!-- 1~2. 공용 KSmartVision 뷰포트 (9칸) + 실시간 탐지 객체 (3칸) -->
 <div class="row g-3 mb-3">
   <div class="col-lg-9">
-    <div class="bg-dark rounded overflow-hidden text-center" style="min-height:480px;display:flex;align-items:center;justify-content:center;">
-      <img id="live-feed" src="/vision/video_feed" class="img-fluid w-100" alt="현장 카메라 영상">
+    <div class="vision-viewport">
+      <img id="live-feed" alt="현장 카메라 영상" style="display:none;">
+      <video id="live-video" autoplay loop muted playsinline style="display:none;"></video>
+      <div id="live-feed-status" class="vision-overlay">
+        <div class="spinner-border text-light" role="status" style="width:2rem;height:2rem;"></div>
+        <div id="live-feed-status-text" class="fw-semibold small">RunPod 비전 서버(.pt)에 연결하고 있습니다...</div>
+      </div>
     </div>
   </div>
+
   <div class="col-lg-3">
     <div class="panel-card h-100 mb-0 d-flex flex-column justify-content-between">
       <div>
         <div class="section-bar">
           <h2 class="panel-title">탐지 객체</h2>
-          <span class="status-chip status-ok">실시간</span>
+          <span id="live-source-badge" class="status-chip status-info">연결 중</span>
         </div>
         <div class="border rounded p-2 px-3 bg-light mb-3">
-          <div class="small text-muted">선박 · 블록 번호</div>
+          <div class="small text-muted">선박 · 블록 번호 (OCR)</div>
           <div id="live-ocr" class="fw-bold text-primary fs-6">확인 중...</div>
         </div>
         <ul id="live-det-list" class="list-unstyled small mb-0 text-secondary">
-          <li class="py-1">실시간 탐지 정보를 불러오는 중...</li>
+          <li class="py-1">실시간 탐지 JSON을 기다리는 중입니다...</li>
         </ul>
       </div>
       {% if current_card %}
@@ -49,7 +74,7 @@
   </div>
 </div>
 
-<!-- 3. 영상 아래: 칸 전체 클릭으로 지도 펼침/접힘 (별도 버튼 제거) -->
+<!-- 3. 영상 아래: 칸 전체 클릭으로 지도 펼침/접힘 -->
 <div class="panel-card map-toggle-bar" id="map-toggle-card" onclick="toggleYardMap()">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
@@ -73,7 +98,7 @@
   </div>
 </div>
 
-<!-- 4. 지도 아래(최하단): 현장 작업 지시 (업무 무관 내용 입력 시 현장 관제로 자동 복귀) -->
+<!-- 4. 지도 아래(최하단): 현장 작업 지시 -->
 {% if me.role in ('ADMIN', 'MANAGER') %}
 <div class="panel-card mb-0">
   <div class="section-bar mb-2 pb-2">
@@ -100,18 +125,21 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-var CCTV_VIDEO = {{ (current_card.cctv_video if current_card else '') | tojson }};
-var ROBOT_VIDEO = {{ (current_card.robot_video if current_card else '') | tojson }};
+var MAP_CENTER = {{ map_center | tojson }};
 var leafletMap = null;
 var mapOpen = false;
 var esc = window.KSmartMd.esc;
 
+var mainVisionViewer = window.KSmartVision.mount({
+  useServerless: {{ 'true' if use_serverless else 'false' }},
+  isTransportYard: {{ 'true' if _is_transport else 'false' }},
+  initStage: {{ _init_stage | tojson }},
+  cameraCode: {{ (current_card.camera_code if current_card else '') | tojson }},
+  listMode: 'list'
+});
+
 function switchCam(mode) {
-  var target = (mode === 'robot') ? ROBOT_VIDEO : CCTV_VIDEO;
-  if (!target) return;
-  $('#btn-cam-cctv').toggleClass('btn-primary', mode === 'cctv').toggleClass('btn-outline-secondary', mode !== 'cctv');
-  $('#btn-cam-robot').toggleClass('btn-primary', mode === 'robot').toggleClass('btn-outline-secondary', mode !== 'robot');
-  $.get('/vision/change_video/' + encodeURIComponent(target));
+  mainVisionViewer.switchStage(mode);
 }
 
 function toggleYardMap() {
@@ -127,15 +155,16 @@ function toggleYardMap() {
 
 function initOrResizeMap() {
   if (!leafletMap) {
-    leafletMap = L.map('yard-leaflet-map').setView([35.2, 129.0], 8);
+    leafletMap = L.map('yard-leaflet-map').setView(MAP_CENTER, 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(leafletMap);
     $.getJSON('/vision/api/map-markers', function (res) {
       var bounds = [];
       (res.hq_branches || []).forEach(function (b) {
         bounds.push([b.lat, b.lng]);
+        var stageTag = b.work_stage === 'TRANSPORT' ? '운반 단계' : '조립·용접 단계';
         L.circleMarker([b.lat, b.lng], { color: '#0052cc', radius: 9, fillOpacity: 0.85 })
           .addTo(leafletMap)
-          .bindTooltip(b.branch_name + ' (클릭 시 카메라 전환)')
+          .bindTooltip(b.branch_name + ' (' + stageTag + ' · 클릭 시 전환)')
           .on('click', function () { window.location.href = '/vision/?branch=' + encodeURIComponent(b.branch_code); });
       });
       (res.partners || []).forEach(function (p) {
@@ -160,25 +189,6 @@ function initOrResizeMap() {
     leafletMap.invalidateSize();
   }
 }
-
-function pollDetections() {
-  $.getJSON('/vision/detections', function (res) {
-    var preds = res.predictions || [];
-    var ocrItem = preds.find(function (p) { return p.ocr_text; });
-    $('#live-ocr').text(ocrItem ? ocrItem.ocr_text : '미감지');
-    $('#live-det-list').html(
-      preds.length
-        ? preds.map(function (p) {
-            return '<li class="py-2 border-bottom d-flex justify-content-between align-items-center">' +
-              '<span class="fw-semibold text-dark">' + esc(p.class || p.class_name || '객체') + '</span>' +
-              '<span class="status-chip status-muted">' + Math.round((p.confidence || 0) * 100) + '%</span></li>';
-          }).join('')
-        : '<li class="text-muted py-2">탐지된 객체가 없습니다.</li>'
-    );
-  });
-}
-setInterval(pollDetections, 2000);
-pollDetections();
 
 $('#vision-prompt-input').on('keydown', function (e) {
   if (e.key === 'Enter' && !e.shiftKey) {

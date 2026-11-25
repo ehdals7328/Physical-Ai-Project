@@ -1,4 +1,5 @@
 # web/routes/vision_route.py
+import base64
 import json
 import os
 import threading
@@ -7,6 +8,7 @@ import requests
 import urllib3
 from datetime import datetime, timedelta
 from pathlib import Path
+from dotenv import load_dotenv
 from flask import Blueprint, render_template, Response, jsonify, request, session, redirect, url_for, flash
 from werkzeug.utils import secure_filename
 
@@ -31,8 +33,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 vision_bp = Blueprint("vision", __name__, url_prefix="/vision")
 
-from dotenv import load_dotenv
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(dotenv_path=PROJECT_ROOT / ".env", override=True)
 
 RUNPOD_ENDPOINT_ID = (os.getenv("RUNPOD_ENDPOINT_ID") or "").strip()
 RUNPOD_API_KEY = (os.getenv("RUNPOD_API_KEY") or "").strip()
@@ -42,13 +44,121 @@ RUNPOD_SERVERLESS_URL = (
 RUNPOD_BASE = (
     os.getenv("RUNPOD_BASE")
     or os.getenv("VISION_API_URL")
-    or (f"https://{RUNPOD_ENDPOINT_ID}-5000.proxy.runpod.net" if RUNPOD_ENDPOINT_ID else "")
-    or "https://uo0jsqxqmasntr-5000.proxy.runpod.net"
-).rstrip("/")
-RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed"
-RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections"
-RUNPOD_PAUSE_URL = f"{RUNPOD_BASE}/pause"
-RUNPOD_CHANGE_VIDEO_URL = f"{RUNPOD_BASE}/change_video/"
+    or ""
+).strip().rstrip("/")
+RUNPOD_STREAM_URL = f"{RUNPOD_BASE}/video_feed" if RUNPOD_BASE else ""
+RUNPOD_JSON_URL = f"{RUNPOD_BASE}/detections" if RUNPOD_BASE else ""
+RUNPOD_PAUSE_URL = f"{RUNPOD_BASE}/pause" if RUNPOD_BASE else ""
+RUNPOD_CHANGE_VIDEO_URL = f"{RUNPOD_BASE}/change_video/" if RUNPOD_BASE else ""
+
+# DB 기본값(video1.mp4 등)과 RunPod 파일명/단계 매핑
+VIDEO_FILENAME_ALIASES = {
+    "video1.mp4": "Test_1.mp4",
+    "video2.mp4": "ocr_test.mp4",
+    "video3.mp4": "seg_Test.mp4",
+    "transport": "ocr_test.mp4",
+    "assembly": "Test_1.mp4",
+    "welding": "seg_Test.mp4",
+}
+
+STAGE_MAP = {
+    "transport": "transport",
+    "test1": "transport",
+    "test1.png": "transport",
+    "ocr_test.mp4": "transport",
+    "video2.mp4": "transport",
+    "assembly": "assembly",
+    "test2": "assembly",
+    "test2.png": "assembly",
+    "test2.mp4": "assembly",
+    "test_1.mp4": "assembly",
+    "video1.mp4": "assembly",
+    "welding": "welding",
+    "test3": "welding",
+    "test3.png": "welding",
+    "test3.mp4": "welding",
+    "seg_test.mp4": "welding",
+    "video3.mp4": "welding",
+}
+
+# ⭐ RunPod Serverless 최신 결과 메모리 캐시 (웹 실시간 표시용 · 블로킹 방지)
+_RUNPOD_STATE_LOCK = threading.Lock()
+_RUNPOD_FETCH_LOCK = threading.Lock()
+_RUNPOD_STATE: dict = {
+    "stage": "assembly",
+    "bay_id": "",
+    "image_bytes": b"",
+    "image_data_url": "",
+    "detection_data": {"image": {"width": 960, "height": 540}, "source": "WAIT", "stage": "assembly", "predictions": []},
+    "is_fetching": False,
+    "last_error": "",
+    "updated_at": 0.0,
+}
+
+# ⭐ DB 중복 적재 방지 캐시 (시나리오 그대로 유지 — DB 과적재 차단)
+_TRACKER_LOCK = threading.Lock()
+_SEEN_JOINT_TRACKER_KEYS: set[tuple[str, int]] = set()
+_SEEN_OCR_KEYS: set[tuple[str, str]] = set()
+_CAMERA_AUTOSAVE_LOCK = threading.Lock()
+_LAST_CAMERA_AUTOSAVE_TS: dict[str, float] = {}
+AUTOSAVE_COOLDOWN_SEC = 10.0
+_LAST_MANUAL_SAVE_TS: dict[str, float] = {}
+MANUAL_SAVE_COOLDOWN_SEC = 3.0
+
+MAX_DISK_FILES_PER_FOLDER = 40
+RECORDS_PER_PAGE = 5
+VISION_CAPTURE_DIR = Path(__file__).resolve().parents[1] / "static" / "captures"
+
+CLASS_LABEL_KO = {
+    "weld_joint": "용접선",
+    "weld_seam": "용접선",
+    "seam": "용접선",
+    "weld_bead": "용접비드",
+    "ship_block": "선박블록",
+    "block": "선박블록",
+    "transporter": "트랜스포터",
+    "vehicle_transporter": "트랜스포터",
+    "forklift": "지게차",
+    "truck": "운반차량",
+    "vehicle": "운반차량",
+    "crane_hook": "크레인후크",
+    "crane": "크레인",
+    "crane_lifting": "크레인 인양 중",
+    "hook": "크레인후크",
+    "worker": "작업자",
+    "person": "작업자",
+    "flame": "용접불꽃",
+    "welding_arc": "용접아크",
+    "spark": "용접스파크",
+    "torch": "용접토치",
+    "robot": "용접로봇",
+    "helmet": "안전모",
+    "obstacle": "장애물",
+}
+
+
+def _get_default_camera_code() -> str:
+    try:
+        br = ErpBranch.query.filter_by(status_code="ACTIVE").order_by(ErpBranch.branch_code.asc()).first()
+        if br and br.camera_code:
+            return br.camera_code
+    except Exception:
+        pass
+    return ""
+
+
+def _get_default_work_id() -> int | None:
+    try:
+        wo = WorkOrder.query.order_by(WorkOrder.work_id.desc()).first()
+        if wo:
+            return wo.work_id
+    except Exception:
+        pass
+    return None
+
+
+def _use_serverless() -> bool:
+    return bool(RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY)
 
 
 def _runpod_headers() -> dict[str, str]:
@@ -57,292 +167,435 @@ def _runpod_headers() -> dict[str, str]:
         headers["Authorization"] = f"Bearer {RUNPOD_API_KEY}"
     return headers
 
-# DB 기본값(video1.mp4 등)과 RunPod(final.py) 실제 파일명 매핑
-VIDEO_FILENAME_ALIASES = {
-    "video1.mp4": "Test_1.mp4",
-    "video2.mp4": "ocr_test.mp4",
-    "video3.mp4": "seg_Test.mp4",
-}
 
-# ⭐ 동일 tracker_id 중복 무한 저장 방지 캐시 (카메라/영상별 tracker_id 추적)
-_TRACKER_LOCK = threading.Lock()
-_SEEN_JOINT_TRACKER_KEYS: set[tuple[str, int]] = set()
-_SEEN_OCR_KEYS: set[tuple[str, str]] = set()
+def _resolve_stage(name: str | None) -> str:
+    s = (name or "").strip().lower()
+    if s in STAGE_MAP:
+        return STAGE_MAP[s]
+    if "ocr" in s or "transport" in s or "video2" in s:
+        return "transport"
+    if "seg" in s or "robot" in s or "weld" in s or "video3" in s:
+        return "welding"
+    return "assembly"
 
-# ⭐ 다중 접속 클라우드 과부하 방지
-_VISION_UPLOAD_SEMAPHORE = threading.BoundedSemaphore(2)
-_CAMERA_AUTOSAVE_LOCK = threading.Lock()
-_LAST_CAMERA_AUTOSAVE_TS: dict[str, float] = {}
-AUTOSAVE_COOLDOWN_SEC = 10.0
-_LAST_MANUAL_SAVE_TS: dict[str, float] = {}
-MANUAL_SAVE_COOLDOWN_SEC = 3.0
 
-MAX_DISK_FILES_PER_FOLDER = 40
-MAX_VISION_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB 제한
-RECORDS_PER_PAGE = 5
+def _bbox_xyxy_to_box(bbox: list) -> dict:
+    if not bbox or len(bbox) < 4:
+        return {}
+    x1, y1, x2, y2 = [float(v) for v in bbox[:4]]
+    return {
+        "x": round((x1 + x2) / 2.0, 1),
+        "y": round((y1 + y2) / 2.0, 1),
+        "width": round(x2 - x1, 1),
+        "height": round(y2 - y1, 1),
+    }
 
-VISION_UPLOAD_DIR = Path(__file__).resolve().parents[1] / "static" / "uploads" / "vision"
-VISION_CAPTURE_DIR = Path(__file__).resolve().parents[1] / "static" / "captures"
-ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
-ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
-# 현장 친화적 클래스 한글명 매핑 (화면 표시용)
-CLASS_LABEL_KO = {
-    "weld_joint": "용접선",
-    "weld_bead": "용접비드",
-    "ship_block": "선박블록",
-    "block": "선박블록",
-    "crane_hook": "크레인후크",
-    "hook": "크레인후크",
-    "heavy_equipment": "중장비",
-    "robot": "용접로봇",
-    "worker": "작업자",
-    "torch": "용접토치",
-    "hand": "작업자손",
-    "spark": "용접불꽃",
-}
+def _normalize_incoming_json(raw: dict) -> dict:
+    """
+    RunPod에서 들어온 JSON(Serverless payload 또는 Pod predictions JSON)에서
+    모든 탐지 객체(block, transporter, worker, crane, weld_joint, torch, spark 등)를
+    누락 없이 추출하여 웹 탐지 객체 목록으로 정리합니다.
+    """
+    if not isinstance(raw, dict):
+        return {"image": {"width": 960, "height": 540}, "source": "EMPTY", "predictions": []}
+
+    stage = str(raw.get("stage") or "").lower()
+    width, height = 1920, 1080
+    predictions: list[dict] = []
+    seen_keys: set[tuple] = set()
+
+    def _add_pred(
+        cls_raw: str,
+        conf_val: float = 0.0,
+        bbox=None,
+        ocr_text: str = "",
+        extra: dict | None = None,
+    ):
+        cls_clean = str(cls_raw or "object").strip()
+        if not cls_clean:
+            cls_clean = "object"
+        c_low = cls_clean.lower()
+        conf_f = round(float(conf_val or 0.0), 4)
+        box_dict = {}
+        bbox_sig = ()
+        if isinstance(bbox, dict) and bbox:
+            box_dict = bbox
+            bbox_sig = (round(float(bbox.get("x", 0)), 0), round(float(bbox.get("y", 0)), 0))
+        elif isinstance(bbox, (list, tuple)) and len(bbox) >= 4:
+            box_dict = _bbox_xyxy_to_box(list(bbox))
+            bbox_sig = tuple(round(float(v), 0) for v in bbox[:4])
+
+        # 같은 객체가 blocks와 detections 양쪽에 중복 포함된 경우 1건으로 병합
+        norm_cls = "block" if c_low in ("block", "ship_block") else c_low
+        dedup_key = (norm_cls, round(conf_f, 2), bbox_sig)
+        if dedup_key in seen_keys:
+            if ocr_text:
+                for prev in predictions:
+                    p_low = str(prev.get("class", "")).lower()
+                    p_norm = "block" if p_low in ("block", "ship_block") else p_low
+                    if p_norm == norm_cls and not prev.get("ocr_text"):
+                        prev["ocr_text"] = ocr_text
+            return
+        seen_keys.add(dedup_key)
+
+        item = {
+            "class": cls_clean,
+            "class_ko": CLASS_LABEL_KO.get(c_low, cls_clean),
+            "confidence": conf_f,
+            "box": box_dict,
+        }
+        if ocr_text:
+            item["ocr_text"] = str(ocr_text).strip()
+        if extra:
+            for k, v in extra.items():
+                if k not in item and v is not None:
+                    item[k] = v
+        predictions.append(item)
+
+    def _scan_detection_list(items, default_cls: str = "object", fallback_ocr: str = ""):
+        if not isinstance(items, list):
+            return
+        for obj in items:
+            if not isinstance(obj, dict):
+                continue
+            cls_raw = str(
+                obj.get("class")
+                or obj.get("class_name")
+                or obj.get("label")
+                or obj.get("name")
+                or default_cls
+            )
+            conf_raw = (
+                obj.get("confidence")
+                if obj.get("confidence") is not None
+                else (obj.get("conf") if obj.get("conf") is not None else obj.get("score", 0.0))
+            )
+            ocr_val = str(obj.get("ocr_id") or obj.get("ocr_text") or obj.get("block_id") or "").strip()
+            if not ocr_val and cls_raw.lower() in ("block", "ship_block"):
+                ocr_val = fallback_ocr
+            bbox_val = obj.get("bbox") or obj.get("box")
+            extra = {}
+            if obj.get("tracker_id") is not None:
+                extra["tracker_id"] = obj.get("tracker_id")
+            if obj.get("class_id") is not None:
+                extra["class_id"] = obj.get("class_id")
+            if obj.get("centerline_waypoints"):
+                extra["centerline_waypoints"] = obj.get("centerline_waypoints")
+            _add_pred(cls_raw, conf_raw, bbox=bbox_val, ocr_text=ocr_val, extra=extra)
+
+    def _scan_stage_dict(sd: dict, default_ocr: str = ""):
+        nonlocal width, height
+        if not isinstance(sd, dict):
+            return
+        res = sd.get("image_resolution")
+        if isinstance(res, (list, tuple)) and len(res) >= 2:
+            width, height = int(res[0]), int(res[1])
+
+        # 알려진 객체 배열 전부 추출 (blocks, detections, transporters, workers, cranes 등)
+        key_defaults = (
+            ("blocks", "ship_block"),
+            ("detections", "object"),
+            ("all_detections", "object"),
+            ("objects", "object"),
+            ("predictions", "object"),
+            ("transporters", "transporter"),
+            ("vehicles", "transporter"),
+            ("workers", "worker"),
+            ("persons", "worker"),
+            ("cranes", "crane"),
+        )
+        known_keys = {k for k, _ in key_defaults}
+        for k, def_cls in key_defaults:
+            if k in sd:
+                _scan_detection_list(sd.get(k), default_cls=def_cls, fallback_ocr=default_ocr)
+
+        # 혹시 handler.py가 다른 키 이름의 리스트로 객체를 내려줘도 자동 수집
+        for k, val in sd.items():
+            if k in known_keys or k in ("image_resolution", "weld_seam_centerline", "torch_bbox"):
+                continue
+            if isinstance(val, list) and val and isinstance(val[0], dict):
+                if any(fld in val[0] for fld in ("class", "class_name", "label", "conf", "confidence", "bbox")):
+                    _scan_detection_list(val, default_cls=k.rstrip("s") or "object", fallback_ocr=default_ocr)
+
+    # 케이스 1: 최상위 predictions/detections 리스트가 직접 내려오는 경우
+    if isinstance(raw.get("image"), dict):
+        width = int(raw["image"].get("width") or width)
+        height = int(raw["image"].get("height") or height)
+    if isinstance(raw.get("predictions"), list):
+        _scan_detection_list(raw.get("predictions"))
+    if isinstance(raw.get("detections"), list):
+        _scan_detection_list(raw.get("detections"))
+
+    # 케이스 2: Serverless stage payload (transport_data / assembly_data / welding_data)
+    if "transport_data" in raw and isinstance(raw.get("transport_data"), dict):
+        td = raw["transport_data"]
+        top_ocr = str(td.get("block_id") or td.get("ocr_id") or td.get("ocr_text") or "").strip()
+        _scan_stage_dict(td, default_ocr=top_ocr)
+
+        # 만약 handler가 transporter/worker를 리스트 대신 boolean/count 요약 키로만 내려준 경우에도 표시
+        has_tp = any(p["class"].lower() in ("transporter", "vehicle_transporter", "truck", "vehicle") for p in predictions)
+        if not has_tp and (td.get("transporter_detected") or int(td.get("transporter_count") or 0) > 0):
+            _add_pred("transporter", float(td.get("transporter_conf") or 1.0))
+
+        has_wk = any(p["class"].lower() in ("worker", "person") for p in predictions)
+        wk_cnt = int(td.get("worker_count") or 0)
+        if not has_wk and (td.get("worker_detected") or wk_cnt > 0):
+            for _ in range(max(1, wk_cnt)):
+                _add_pred("worker", float(td.get("worker_conf") or 1.0))
+
+        if not predictions and top_ocr:
+            _add_pred("ship_block", float(td.get("ocr_confidence") or 0.0), ocr_text=top_ocr)
+
+    if "assembly_data" in raw and isinstance(raw.get("assembly_data"), dict):
+        ad = raw["assembly_data"]
+        _scan_stage_dict(ad)
+        if ad.get("crane_lifting"):
+            _add_pred("crane_lifting", 1.0)
+
+    if "welding_data" in raw and isinstance(raw.get("welding_data"), dict):
+        wd = raw["welding_data"]
+        _scan_stage_dict(wd)
+        if wd.get("seam_detected"):
+            pts = wd.get("weld_seam_centerline") or []
+            _add_pred(
+                "weld_joint",
+                1.0,
+                extra={
+                    "class_ko": f"용접선 (중심점 {wd.get('point_count', len(pts))}개)",
+                    "centerline_waypoints": pts,
+                },
+            )
+            # class_ko override
+            for p in predictions:
+                if p["class"] == "weld_joint":
+                    p["class_ko"] = f"용접선 (중심점 {wd.get('point_count', len(pts))}개)"
+        if wd.get("torch_detected"):
+            _add_pred("torch", 1.0, bbox=wd.get("torch_bbox") or [])
+        if wd.get("spark_detected"):
+            _add_pred("spark", 1.0)
+
+    # 디버그용 수신 키 로그 (터미널에서 RunPod가 실제 어떤 JSON 키를 보내는지 즉시 확인 가능)
+    try:
+        sub_keys = {
+            k: list(raw[k].keys())
+            for k in ("transport_data", "assembly_data", "welding_data")
+            if isinstance(raw.get(k), dict)
+        }
+        print(f"[Vision JSON] stage={stage or 'live'} preds={len(predictions)} top_keys={list(raw.keys())} sub_keys={sub_keys}")
+    except Exception:
+        pass
+
+    return {
+        "image": {"width": width, "height": height},
+        "source": raw.get("source") or "LIVE",
+        "stage": stage,
+        "bay_id": raw.get("bay_id") or "",
+        "timestamp": raw.get("timestamp"),
+        "predictions": predictions,
+    }
+
+
+def _call_runpod_serverless(stage: str = "assembly", bay_id: str = "", image_base64: str | None = None) -> dict:
+    headers = {
+        "Authorization": f"Bearer {RUNPOD_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body: dict = {"input": {"stage": stage, "bay_id": bay_id}}
+    if image_base64:
+        body["input"]["image_base64"] = image_base64
+
+    res = requests.post(f"{RUNPOD_SERVERLESS_URL}/runsync", headers=headers, json=body, timeout=90)
+    res.raise_for_status()
+    data = res.json()
+
+    job_id = data.get("id")
+    for _ in range(30):
+        if data.get("status") not in ("IN_QUEUE", "IN_PROGRESS"):
+            break
+        time.sleep(2)
+        st = requests.get(f"{RUNPOD_SERVERLESS_URL}/status/{job_id}", headers=headers, timeout=30)
+        st.raise_for_status()
+        data = st.json()
+
+    if data.get("status") != "COMPLETED":
+        raise RuntimeError(f"RunPod 추론 실패: {data.get('status')}")
+
+    output = data.get("output") or {}
+    if "error" in output:
+        raise RuntimeError(str(output["error"]))
+
+    b64_img = output.get("annotated_image_base64") or ""
+    img_bytes = base64.b64decode(b64_img) if b64_img else b""
+    image_data_url = f"data:image/jpeg;base64,{b64_img}" if b64_img else ""
+    b64_vid = output.get("annotated_video_base64") or ""
+    video_data_url = output.get("annotated_video_url") or (f"data:video/mp4;base64,{b64_vid}" if b64_vid else "")
+    detection_data = _normalize_incoming_json(output.get("payload") or output)
+
+    return {
+        "stage": stage,
+        "bay_id": bay_id,
+        "image_bytes": img_bytes,
+        "image_data_url": image_data_url,
+        "video_data_url": video_data_url,
+        "detection_data": detection_data,
+        "is_fetching": False,
+        "last_error": "",
+        "updated_at": time.time(),
+    }
+
+
+def _fetch_serverless_stage(stage: str, bay_id: str = "", force: bool = False) -> dict:
+    target_stage = _resolve_stage(stage)
+    with _RUNPOD_STATE_LOCK:
+        if (
+            not force
+            and _RUNPOD_STATE["image_bytes"]
+            and _RUNPOD_STATE["stage"] == target_stage
+        ):
+            return dict(_RUNPOD_STATE)
+
+    with _RUNPOD_FETCH_LOCK:
+        with _RUNPOD_STATE_LOCK:
+            if (
+                not force
+                and _RUNPOD_STATE["image_bytes"]
+                and _RUNPOD_STATE["stage"] == target_stage
+            ):
+                return dict(_RUNPOD_STATE)
+            _RUNPOD_STATE["is_fetching"] = True
+            _RUNPOD_STATE["stage"] = target_stage
+
+        try:
+            result = _call_runpod_serverless(stage=target_stage, bay_id=bay_id)
+            with _RUNPOD_STATE_LOCK:
+                _RUNPOD_STATE.update(result)
+                return dict(_RUNPOD_STATE)
+        except Exception as e:
+            with _RUNPOD_STATE_LOCK:
+                _RUNPOD_STATE["is_fetching"] = False
+                _RUNPOD_STATE["last_error"] = str(e)
+            raise
 
 
 def _prune_old_disk_files(folder: Path, max_keep: int = MAX_DISK_FILES_PER_FOLDER):
-    """디스크 용량 과부하 방지를 위해 오래된 물리 파일만 정리 (기록은 영구 보존)"""
+    if not folder.exists():
+        return
     try:
-        if not folder.exists():
-            return
         files = sorted(
             (p for p in folder.iterdir() if p.is_file()),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
         for old_file in files[max_keep:]:
-            try:
-                old_file.unlink()
-            except Exception:
-                pass
+            old_file.unlink(missing_ok=True)
     except Exception:
         pass
-
-
-def _get_image_dimensions(file_path: Path) -> tuple[int, int]:
-    try:
-        import fitz
-        with fitz.open(str(file_path)) as doc:
-            if len(doc) > 0:
-                rect = doc[0].rect
-                return int(rect.width), int(rect.height)
-    except Exception:
-        pass
-    return 960, 540
-
-
-def _capture_single_mjpeg_frame(timeout_sec: float = 2.0) -> bytes | None:
-    req = None
-    try:
-        req = requests.get(RUNPOD_STREAM_URL, stream=True, timeout=(1.5, timeout_sec), verify=False)
-        buf = bytearray()
-        for chunk in req.iter_content(chunk_size=4096):
-            if not chunk:
-                break
-            buf.extend(chunk)
-            start = buf.find(b"\xff\xd8")
-            end = buf.find(b"\xff\xd9", start + 2) if start != -1 else -1
-            if start != -1 and end != -1:
-                return bytes(buf[start:end + 2])
-            if len(buf) > 1024 * 1024:
-                break
-    except Exception:
-        pass
-    finally:
-        if req is not None:
-            try:
-                req.close()
-            except Exception:
-                pass
-    return None
-
-
-def _build_realistic_yolo_fallback(width: int, height: int) -> list[dict]:
-    sx = width / 960.0
-    sy = height / 540.0
-    base_waypoints = [
-        [241, 290], [284, 298], [325, 308], [364, 320], [405, 330],
-        [446, 340], [487, 349], [529, 358], [568, 369], [610, 378],
-        [651, 388], [693, 397], [735, 406], [776, 415]
-    ]
-    scaled_waypoints = [[round(pt[0] * sx, 1), round(pt[1] * sy, 1)] for pt in base_waypoints]
-
-    return [
-        {
-            "class": "weld_joint",
-            "class_id": 5,
-            "confidence": 0.89,
-            "tracker_id": int(time.time()) % 900 + 100,
-            "box": {
-                "x": round(508.0 * sx, 1),
-                "y": round(352.0 * sy, 1),
-                "width": round(560.0 * sx, 1),
-                "height": round(160.0 * sy, 1),
-            },
-            "centerline_waypoints": scaled_waypoints,
-        },
-        {
-            "class": "ship_block",
-            "class_id": 1,
-            "confidence": 0.93,
-            "tracker_id": 27,
-            "box": {
-                "x": round(480.0 * sx, 1),
-                "y": round(290.0 * sy, 1),
-                "width": round(820.0 * sx, 1),
-                "height": round(440.0 * sy, 1),
-            },
-        },
-        {
-            "class": "crane_hook",
-            "class_id": 2,
-            "confidence": 0.78,
-            "tracker_id": 28,
-            "box": {
-                "x": round(720.0 * sx, 1),
-                "y": round(95.0 * sy, 1),
-                "width": round(120.0 * sx, 1),
-                "height": round(140.0 * sy, 1),
-            },
-        },
-    ]
 
 
 def _extract_valid_ocr_text(predictions: list[dict]) -> str | None:
-    """탐지 결과 중 유효한 블록 식별 문자(OCR) 추출"""
-    for pred in predictions:
-        raw_ocr = str(pred.get("block_id") or pred.get("ocr_text") or "").strip()
-        if raw_ocr and raw_ocr.lower() not in ("scanning...", "none", "null", "-"):
-            return raw_ocr[:100]
+    for p in predictions:
+        raw = str(p.get("block_id") or p.get("ocr_text") or p.get("ocr_id") or "").strip()
+        if raw and raw.lower() not in ("scanning...", "none", "null", "-"):
+            return raw[:100]
     return None
 
 
 def _format_detected_objects_ko(dets: list) -> str:
-    """탐지된 객체 목록을 현장 작업자가 이해하기 쉬운 한글 요약으로 변환"""
     if not dets:
-        return "탐지 객체 없음"
-    parts = []
-    for d in dets[:5]:
-        ko = CLASS_LABEL_KO.get(str(d.class_name).lower(), d.class_name)
-        pct = int(float(d.confidence or 0) * 100)
-        parts.append(f"{ko}({pct}%)")
-    return ", ".join(parts)
+        return "객체 없음"
+    counts: dict[str, int] = {}
+    for d in dets:
+        raw = (d.class_name or "unknown").lower()
+        label = CLASS_LABEL_KO.get(raw, d.class_name or "객체")
+        counts[label] = counts.get(label, 0) + 1
+    return ", ".join(f"{k} {v}" for k, v in counts.items())
 
 
 def _query_inspections_paginated(
-    *,
     page: int = 1,
     per_page: int = RECORDS_PER_PAGE,
-    camera_code: str = "ALL",
-    saved_date: str = "",
+    camera_filter: str = "ALL",
+    date_filter: str = "",
     keyword: str = "",
+    branch_filter: str = "ALL",
 ) -> dict:
-    """현장 탐지 기록 검색(카메라 · 촬영일 · 키워드/OCR문자) + 페이지네이션"""
-    page = max(1, int(page or 1))
-    camera_code = (camera_code or "ALL").strip()
-    saved_date = (saved_date or "").strip()
-    keyword = (keyword or "").strip().lower()
+    try:
+        page = max(1, int(page))
+    except Exception:
+        page = 1
 
-    # 사용 가능한 카메라 채널 목록 수집
-    cam_rows = (
-        db.session.query(VisionAnalysis.camera_code)
-        .distinct()
-        .order_by(VisionAnalysis.camera_code.asc())
-        .all()
-    )
-    camera_options = [r[0] for r in cam_rows if r[0]]
-
-    query = (
-        db.session.query(VisionInspection, VisionAnalysis)
+    base_q = (
+        db.session.query(VisionInspection, VisionAnalysis, WorkOrder)
         .join(VisionAnalysis, VisionInspection.analysis_id == VisionAnalysis.analysis_id)
+        .outerjoin(WorkOrder, VisionInspection.work_id == WorkOrder.work_id)
     )
-
-    if camera_code and camera_code != "ALL":
-        query = query.filter(VisionAnalysis.camera_code == camera_code)
-
-    if saved_date:
+    if camera_filter and camera_filter != "ALL":
+        base_q = base_q.filter(VisionAnalysis.camera_code == camera_filter)
+    if branch_filter and branch_filter != "ALL":
+        base_q = base_q.filter(WorkOrder.work_region == branch_filter)
+    if date_filter:
         try:
-            dt_start = datetime.strptime(saved_date, "%Y-%m-%d")
-            dt_end = dt_start + timedelta(days=1)
-            query = query.filter(
-                VisionInspection.created_at >= dt_start,
-                VisionInspection.created_at < dt_end,
+            d0 = datetime.strptime(date_filter.strip(), "%Y-%m-%d")
+            base_q = base_q.filter(
+                VisionInspection.created_at >= d0,
+                VisionInspection.created_at < d0 + timedelta(days=1),
             )
-        except ValueError:
+        except Exception:
             pass
-
-    rows = query.order_by(VisionInspection.inspection_id.desc()).all()
-
-    filtered_items = []
-    for insp, ana in rows:
-        dets = VisionDetection.query.filter_by(analysis_id=insp.analysis_id).all()
-        obj_summary_ko = _format_detected_objects_ko(dets)
-        obj_raw = ", ".join(str(d.class_name) for d in dets)
-
-        ocr_val = getattr(insp, "ocr_text", None) or ""
-        if not ocr_val:
-            for d in dets:
-                d_ocr = getattr(d, "ocr_text", None)
-                if d_ocr:
-                    ocr_val = d_ocr
-                    break
-
-        recorded_time = (
-            insp.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            if insp.created_at
-            else (ana.created_at.strftime("%Y-%m-%d %H:%M:%S") if ana and ana.created_at else "-")
+    if keyword:
+        kw = f"%{keyword.strip()}%"
+        base_q = base_q.filter(
+            db.or_(
+                VisionAnalysis.camera_code.ilike(kw),
+                VisionInspection.ocr_text.ilike(kw),
+                WorkOrder.block_code.ilike(kw),
+                WorkOrder.work_no.ilike(kw),
+            )
         )
 
-        if keyword:
-            haystack = " ".join([
-                f"#{insp.inspection_id}",
-                str(insp.inspection_id),
-                str(ana.camera_code or ""),
-                obj_summary_ko,
-                obj_raw,
-                str(ocr_val),
-                str(insp.start_point_json or ""),
-                str(insp.end_point_json or ""),
-                recorded_time,
-            ]).lower()
-            if keyword not in haystack:
-                continue
+    total_count = base_q.count()
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    rows = (
+        base_q.order_by(VisionInspection.inspection_id.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
 
-        filtered_items.append({
+    analysis_ids = [ana.analysis_id for _, ana, _ in rows]
+    det_map: dict[int, list] = {}
+    if analysis_ids:
+        for det in VisionDetection.query.filter(VisionDetection.analysis_id.in_(analysis_ids)).all():
+            det_map.setdefault(det.analysis_id, []).append(det)
+
+    items = []
+    for insp, ana, wo in rows:
+        dets = det_map.get(ana.analysis_id, [])
+        items.append({
             "inspection_id": insp.inspection_id,
-            "analysis_id": insp.analysis_id,
-            "camera_code": ana.camera_code if ana else "-",
-            "start_point": insp.start_point_json,
-            "end_point": insp.end_point_json,
-            "ocr_text": ocr_val or "-",
-            "detected_objects_str": obj_summary_ko,
+            "analysis_id": ana.analysis_id,
+            "camera_code": ana.camera_code,
+            "work_no": wo.work_no if wo else "-",
+            "block_code": wo.block_code if wo else "-",
+            "ocr_text": insp.ocr_text or "-",
+            "detected_summary": _format_detected_objects_ko(dets),
+            "safety_clearance_yn": insp.safety_clearance_yn,
             "inspection_status": insp.inspection_status,
-            "created_at": recorded_time,
+            "created_at": insp.created_at.strftime("%Y-%m-%d %H:%M") if insp.created_at else "-",
         })
 
-    total_count = len(filtered_items)
-    total_pages = max(1, (total_count + per_page - 1) // per_page)
-    if page > total_pages:
-        page = total_pages
-
-    start_idx = (page - 1) * per_page
-    paged_items = filtered_items[start_idx:start_idx + per_page]
-
     return {
-        "inspections": paged_items,
-        "camera_options": camera_options,
+        "items": items,
         "page": page,
-        "per_page": per_page,
-        "total_count": total_count,
         "total_pages": total_pages,
+        "total_count": total_count,
     }
 
 
 # ---------------------------------------------------------------------
-# 1. 비전 관제 메인 화면 (/vision/)
+# 1. 현장 관제 메인 페이지 (/vision/)
 # ---------------------------------------------------------------------
 @vision_bp.route("/")
 def index():
@@ -379,11 +632,31 @@ def index():
         for wo in active_orders_raw
     ]
 
+    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
+    robot_detail_video = os.getenv("ROBOT_DETAIL_VIDEO", "seg_Test.mp4")
+
     branch_cards = []
     for br in branches:
-        raw_vid = br.default_video or "Test_1.mp4"
+        raw_vid = br.default_video or ""
         mapped_vid = VIDEO_FILENAME_ALIASES.get(raw_vid.lower(), raw_vid)
         br_orders = [o for o in all_orders_summary if o["work_region"] == br.branch_code]
+        br_blocks = [b for b in all_blocks if b.branch_code == br.branch_code]
+        is_ocr_vid = "ocr" in mapped_vid.lower()
+        st = "TRANSPORT" if is_ocr_vid else "WORKING"
+
+        if br_orders:
+            primary_ship = br_orders[0]["ship_code"]
+            primary_block = br_orders[0]["block_code"]
+            primary_work_id = br_orders[0]["work_id"]
+        elif br_blocks:
+            primary_ship = br_blocks[0].ship_code
+            primary_block = br_blocks[0].block_id
+            primary_work_id = active_orders_raw[0].work_id if active_orders_raw else (_get_default_work_id() or 0)
+        else:
+            primary_ship = "-"
+            primary_block = "-"
+            primary_work_id = active_orders_raw[0].work_id if active_orders_raw else (_get_default_work_id() or 0)
+
         branch_cards.append({
             "branch_code": br.branch_code,
             "branch_name": br.branch_name,
@@ -391,35 +664,16 @@ def index():
             "address": br.address or "",
             "camera_code": br.camera_code or f"CAM-{br.branch_code}",
             "default_video": mapped_vid,
+            "work_stage": st,
+            "ocr_video": mapped_vid if is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video2.mp4", "ocr_test.mp4"),
+            "cctv_video": mapped_vid if not is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video1.mp4", "Test_1.mp4"),
+            "robot_video": robot_detail_video,
+            "primary_ship": primary_ship,
+            "primary_block": primary_block,
+            "primary_work_id": primary_work_id,
             "active_order_count": len(br_orders),
             "orders": br_orders,
         })
-
-    # DB(ERP_BRANCHES.DEFAULT_VIDEO 및 WORK_ORDERS) 기반 동적 공정 단계 & 영상 채널 매핑 (하드코딩 제거)
-    robot_detail_video = os.getenv("ROBOT_DETAIL_VIDEO", "seg_Test.mp4")
-    all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
-    for card in branch_cards:
-        def_vid = (card.get("default_video") or "").strip()
-        is_ocr_vid = "ocr" in def_vid.lower()
-        st = "TRANSPORT" if is_ocr_vid else "WORKING"
-        card["work_stage"] = st
-        card["stage_label"] = "운반 중" if st == "TRANSPORT" else "작업 중"
-        card["ocr_video"] = def_vid if is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video2.mp4", "ocr_test.mp4")
-        card["cctv_video"] = def_vid if not is_ocr_vid else VIDEO_FILENAME_ALIASES.get("video1.mp4", "Test_1.mp4")
-        card["robot_video"] = robot_detail_video
-        br_blocks = [b for b in all_blocks if b.branch_code == card["branch_code"]]
-        if card["orders"]:
-            card["primary_ship"] = card["orders"][0]["ship_code"]
-            card["primary_block"] = card["orders"][0]["block_code"]
-            card["primary_work_id"] = card["orders"][0]["work_id"]
-        elif br_blocks:
-            card["primary_ship"] = br_blocks[0].ship_code
-            card["primary_block"] = br_blocks[0].block_id
-            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
-        else:
-            card["primary_ship"] = "-"
-            card["primary_block"] = "-"
-            card["primary_work_id"] = active_orders_raw[0].work_id if active_orders_raw else 1
 
     selected_branch = request.args.get("branch", "").strip()
     if not selected_branch and branch_cards:
@@ -427,8 +681,15 @@ def index():
     current_card = next((c for c in branch_cards if c["branch_code"] == selected_branch), branch_cards[0] if branch_cards else None)
     selected_stage = current_card["work_stage"] if current_card else "WORKING"
 
+    coords = [(float(b.latitude), float(b.longitude)) for b in branches if b.latitude is not None and b.longitude is not None]
+    map_center = [
+        round(sum(c[0] for c in coords) / len(coords), 4),
+        round(sum(c[1] for c in coords) / len(coords), 4),
+    ] if coords else [35.18, 129.07]
+
     return render_template(
         "service/vision.html",
+        map_center=map_center,
         me=user,
         initial_records=initial_records,
         robots=robots,
@@ -438,7 +699,8 @@ def index():
         active_orders=all_orders_summary,
         selected_branch=selected_branch,
         selected_stage=selected_stage,
-        runpod_base=RUNPOD_BASE,
+        init_stage="transport" if selected_stage == "TRANSPORT" else "assembly",
+        use_serverless=_use_serverless(),
     )
 
 
@@ -462,8 +724,9 @@ def get_map_markers():
 
     hq_branches = []
     for br in active_branches:
-        raw_vid = br.default_video or "Test_1.mp4"
+        raw_vid = br.default_video or ""
         mapped_vid = VIDEO_FILENAME_ALIASES.get(raw_vid.lower(), raw_vid)
+        is_ocr_vid = "ocr" in mapped_vid.lower()
         hq_branches.append({
             "branch_code": br.branch_code,
             "branch_name": br.branch_name,
@@ -473,66 +736,64 @@ def get_map_markers():
             "address": br.address or "",
             "camera_code": br.camera_code or f"CAM-{br.branch_code}",
             "default_video": mapped_vid,
+            "work_stage": "TRANSPORT" if is_ocr_vid else "WORKING",
         })
 
     partner_markers = []
     if can_see_partners:
         active_hq_contracts = (
             ErpCompany.query
-            .filter(
-                ErpCompany.company_type != "HQ",
-                ErpCompany.contract_status == "ACTIVE",
-            )
+            .filter(ErpCompany.company_type != "HQ", ErpCompany.contract_status == "ACTIVE")
             .all()
         )
         active_company_map = {c.company_code: c for c in active_hq_contracts}
-
         if active_company_map:
-            pg_locations = (
-                B2BCompanyLocation.query
-                .filter(B2BCompanyLocation.partner_id.in_(active_company_map.keys()))
-                .all()
-            )
+            try:
+                pg_locations = (
+                    B2BCompanyLocation.query
+                    .filter(B2BCompanyLocation.partner_id.in_(active_company_map.keys()))
+                    .all()
+                )
+                daehan_items = B2BDaehanMaterial.query.all()
+                donghae_workers = B2BDonghaeWorker.query.all()
+                hankook_equips = B2BHankookEquipment.query.all()
 
-            daehan_items = B2BDaehanMaterial.query.all()
-            donghae_workers = B2BDonghaeWorker.query.all()
-            hankook_equips = B2BHankookEquipment.query.all()
+                for loc in pg_locations:
+                    hq_comp = active_company_map.get(loc.partner_id)
+                    my_mats = [m for m in daehan_items if m.partner_id == loc.partner_id]
+                    my_workers = [w for w in donghae_workers if w.partner_id == loc.partner_id]
+                    my_equips = [e for e in hankook_equips if e.partner_id == loc.partner_id]
 
-            for loc in pg_locations:
-                hq_comp = active_company_map.get(loc.partner_id)
+                    if my_mats:
+                        shared_info = f"가용 자재 {len(my_mats)}종 (" + ", ".join(
+                            f"{m.item_name} {int(m.available_qty)}{m.unit}" for m in my_mats[:2]
+                        ) + ")"
+                    elif my_workers:
+                        shared_info = f"파견 가능 인력 {len(my_workers)}명 (" + ", ".join(
+                            f"{w.worker_name}[{w.cert_code}]" for w in my_workers[:2]
+                        ) + ")"
+                    elif my_equips:
+                        shared_info = f"대기 장비 {len(my_equips)}대 (" + ", ".join(
+                            f"{e.asset_name}" for e in my_equips[:2]
+                        ) + ")"
+                    else:
+                        shared_info = f"전문 분야: {loc.specialty_desc}"
 
-                my_mats = [m for m in daehan_items if m.partner_id == loc.partner_id]
-                my_workers = [w for w in donghae_workers if w.partner_id == loc.partner_id]
-                my_equips = [e for e in hankook_equips if e.partner_id == loc.partner_id]
-
-                if my_mats:
-                    shared_info = f"가용 자재 {len(my_mats)}종 (" + ", ".join(
-                        f"{m.item_name} {int(m.available_qty)}{m.unit}" for m in my_mats[:2]
-                    ) + ")"
-                elif my_workers:
-                    shared_info = f"파견 가능 인력 {len(my_workers)}명 (" + ", ".join(
-                        f"{w.worker_name}[{w.cert_code}]" for w in my_workers[:2]
-                    ) + ")"
-                elif my_equips:
-                    shared_info = f"대기 장비 {len(my_equips)}대 (" + ", ".join(
-                        f"{e.asset_name}" for e in my_equips[:2]
-                    ) + ")"
-                else:
-                    shared_info = f"전문 분야: {loc.specialty_desc}"
-
-                partner_markers.append({
-                    "company_code": loc.partner_id,
-                    "company_name": loc.company_name,
-                    "company_type": loc.specialty_desc,
-                    "representative": loc.representative,
-                    "phone": hq_comp.contact_phone if hq_comp else "-",
-                    "contract_period": loc.contract_period,
-                    "contract_status": hq_comp.contract_status if hq_comp else "ACTIVE",
-                    "address": loc.address,
-                    "lat": float(loc.latitude),
-                    "lng": float(loc.longitude),
-                    "shared_b2b_resources": shared_info,
-                })
+                    partner_markers.append({
+                        "company_code": loc.partner_id,
+                        "company_name": loc.company_name,
+                        "company_type": loc.specialty_desc,
+                        "representative": loc.representative,
+                        "phone": hq_comp.contact_phone if hq_comp else "-",
+                        "contract_period": loc.contract_period,
+                        "contract_status": hq_comp.contract_status if hq_comp else "ACTIVE",
+                        "address": loc.address,
+                        "lat": float(loc.latitude),
+                        "lng": float(loc.longitude),
+                        "shared_b2b_resources": shared_info,
+                    })
+            except Exception as e:
+                print("[협력사 지도 조회 참고]:", e)
 
     return jsonify({
         "status": "SUCCESS",
@@ -543,10 +804,27 @@ def get_map_markers():
 
 
 # ---------------------------------------------------------------------
-# 3. 실시간 카메라 스트리밍 & 제어 프록시
+# 3. RunPod 영상 스트림 & 실시간 JSON 탐지 프록시 (가짜 폴백 없음)
 # ---------------------------------------------------------------------
 @vision_bp.route("/video_feed")
 def video_feed():
+    if _use_serverless():
+        try:
+            stage = request.args.get("stage") or _RUNPOD_STATE.get("stage") or "assembly"
+            bay_id = request.args.get("bay_id") or _get_default_camera_code()
+            force = request.args.get("refresh") == "1"
+            state = _fetch_serverless_stage(stage=stage, bay_id=bay_id, force=force)
+            if state["image_bytes"]:
+                resp = Response(state["image_bytes"], mimetype="image/jpeg")
+                resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                return resp
+        except Exception as e:
+            print("[RunPod Serverless 이미지 로드 에러]:", e)
+        return Response(status=503)
+
+    if not RUNPOD_STREAM_URL:
+        return Response(status=503)
+
     def proxy_stream():
         req = None
         try:
@@ -558,7 +836,7 @@ def video_feed():
         except GeneratorExit:
             pass
         except Exception as e:
-            print("실시간 카메라 스트림 연결 종료/에러:", e)
+            print("[RunPod 스트림 연결 종료]:", e)
         finally:
             if req is not None:
                 try:
@@ -573,19 +851,77 @@ def video_feed():
 
 @vision_bp.route("/detections")
 def get_detections():
+    """RunPod에서 들어온 실시간 JSON을 블로킹 없이 웹 탐지 객체 카드에 그대로 전달"""
+    if _use_serverless():
+        with _RUNPOD_STATE_LOCK:
+            if _RUNPOD_STATE["is_fetching"] and not _RUNPOD_STATE["image_bytes"]:
+                return jsonify({
+                    "image": {"width": 960, "height": 540},
+                    "source": "LOADING",
+                    "stage": _RUNPOD_STATE["stage"],
+                    "predictions": [],
+                })
+            det = _RUNPOD_STATE["detection_data"] or {
+                "image": {"width": 960, "height": 540},
+                "source": "WAIT",
+                "stage": _RUNPOD_STATE["stage"],
+                "predictions": [],
+            }
+            if _RUNPOD_STATE["last_error"] and not det.get("predictions"):
+                det = dict(det, error=_RUNPOD_STATE["last_error"])
+            return jsonify(det)
+
+    if not RUNPOD_JSON_URL:
+        return jsonify({"image": {"width": 960, "height": 540}, "source": "OFFLINE", "predictions": []})
+
     try:
-        res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
+        res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=2.0, verify=False)
         if res.status_code == 200:
-            data = res.json()
-            data["source"] = "LIVE"
-            return jsonify(data)
+            return jsonify(_normalize_incoming_json(res.json()))
         return jsonify({"image": {"width": 960, "height": 540}, "source": "ERR", "predictions": []})
     except Exception:
         return jsonify({"image": {"width": 960, "height": 540}, "source": "OFFLINE", "predictions": []})
 
 
+@vision_bp.route("/change_video/<filename>")
+def change_video(filename):
+    bay_id = request.args.get("bay_id") or _get_default_camera_code()
+    if _use_serverless():
+        try:
+            stage = _resolve_stage(filename)
+            state = _fetch_serverless_stage(stage=stage, bay_id=bay_id, force=True)
+            with _TRACKER_LOCK:
+                _SEEN_JOINT_TRACKER_KEYS.clear()
+                _SEEN_OCR_KEYS.clear()
+            return jsonify({
+                "status": "ok",
+                "stage": stage,
+                "image_data_url": state.get("image_data_url", ""),
+                "video_data_url": state.get("video_data_url", ""),
+                "detection_data": state["detection_data"],
+            })
+        except Exception as e:
+            print("[RunPod 스테이지 전환 에러]:", e)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
+    if not RUNPOD_CHANGE_VIDEO_URL:
+        return jsonify({"status": "error", "message": "RUNPOD_BASE가 설정되지 않았습니다."}), 503
+
+    try:
+        mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
+        res = requests.get(f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}", headers=_runpod_headers(), timeout=3, verify=False)
+        with _TRACKER_LOCK:
+            _SEEN_JOINT_TRACKER_KEYS.clear()
+            _SEEN_OCR_KEYS.clear()
+        return jsonify(res.json())
+    except Exception as e:
+        return jsonify({"status": "error", "video": filename, "message": str(e)}), 500
+
+
 @vision_bp.route("/pause")
 def toggle_pause():
+    if _use_serverless() or not RUNPOD_PAUSE_URL:
+        return jsonify({"status": "ok", "is_paused": False})
     try:
         res = requests.get(RUNPOD_PAUSE_URL, headers=_runpod_headers(), timeout=3, verify=False)
         return jsonify(res.json())
@@ -593,154 +929,9 @@ def toggle_pause():
         return jsonify({"status": "error", "is_paused": False})
 
 
-@vision_bp.route("/change_video/<filename>")
-def change_video(filename):
-    try:
-        mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
-        target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}"
-        res = requests.get(target_url, headers=_runpod_headers(), timeout=3, verify=False)
-        with _TRACKER_LOCK:
-            _SEEN_JOINT_TRACKER_KEYS.clear()
-            _SEEN_OCR_KEYS.clear()
-        return jsonify(res.json())
-    except Exception as e:
-        print("카메라 채널 전환 에러:", e)
-        return jsonify({"status": "error", "video": filename})
-
-
 # ---------------------------------------------------------------------
-# 4. 사진 / 영상 직접 업로드 분석 & 자동 기록 API
+# 4. DB 중복 방지 기록 저장 시나리오 (그대로 유지 — DB 과적재 차단)
 # ---------------------------------------------------------------------
-@vision_bp.route("/api/upload-yolo", methods=["POST"])
-def upload_and_run_yolo():
-    if "user_id" not in session:
-        return jsonify({"status": "ERROR", "message": "로그인이 필요합니다."}), 401
-
-    acquired = _VISION_UPLOAD_SEMAPHORE.acquire(timeout=5.0)
-    if not acquired:
-        return jsonify({
-            "status": "ERROR",
-            "message": "현재 다른 사용자의 현장 영상 분석이 집중되고 있습니다. 몇 초 후 다시 시도해 주세요."
-        }), 429
-
-    try:
-        media_file = request.files.get("media_file")
-        camera_code = request.form.get("camera_code", "CAM-UPLOAD").strip() or "CAM-UPLOAD"
-        work_id = request.form.get("work_id", 1, type=int)
-        auto_save = request.form.get("auto_save", "Y").strip().upper() == "Y"
-
-        if not media_file or not media_file.filename:
-            return jsonify({"status": "ERROR", "message": "분석할 현장 사진 또는 영상 파일을 선택해 주세요."}), 400
-
-        orig_name = media_file.filename
-        ext = Path(orig_name).suffix.lower()
-        if ext not in ALLOWED_IMAGE_EXT and ext not in ALLOWED_VIDEO_EXT:
-            return jsonify({
-                "status": "ERROR",
-                "message": "지원하지 않는 파일 형식입니다. 사진(JPG, PNG, WEBP) 또는 영상(MP4, MOV, AVI, WEBM)을 선택해 주세요."
-            }), 400
-
-        VISION_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-        now_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_name = secure_filename(Path(orig_name).stem) or "media"
-        saved_filename = f"vision_{now_tag}_{safe_name}{ext}"
-        saved_path = VISION_UPLOAD_DIR / saved_filename
-        media_file.save(str(saved_path))
-
-        if saved_path.stat().st_size > MAX_VISION_UPLOAD_BYTES:
-            saved_path.unlink(missing_ok=True)
-            return jsonify({"status": "ERROR", "message": "업로드 파일 용량은 최대 50MB 이하여야 합니다."}), 400
-
-        _prune_old_disk_files(VISION_UPLOAD_DIR, max_keep=MAX_DISK_FILES_PER_FOLDER)
-
-        media_type = "IMAGE" if ext in ALLOWED_IMAGE_EXT else "VIDEO"
-        public_url = f"/static/uploads/vision/{saved_filename}"
-
-        start_ts = time.time()
-        width, height = (960, 540)
-        if media_type == "IMAGE":
-            width, height = _get_image_dimensions(saved_path)
-
-        predictions = []
-        infer_source = "AI_SERVER"
-
-        for endpoint in ("/predict", "/infer", "/upload"):
-            try:
-                with open(saved_path, "rb") as f_stream:
-                    resp = requests.post(
-                        f"{RUNPOD_BASE}{endpoint}",
-                        files={"file": (saved_filename, f_stream, media_file.mimetype or "application/octet-stream")},
-                        timeout=8,
-                        verify=False,
-                    )
-                if resp.status_code == 200:
-                    payload = resp.json()
-                    if isinstance(payload, dict) and "predictions" in payload:
-                        predictions = payload.get("predictions") or []
-                        img_info = payload.get("image") or {}
-                        width = int(img_info.get("width") or width)
-                        height = int(img_info.get("height") or height)
-                        infer_source = "AI_SERVER"
-                        break
-            except Exception:
-                continue
-
-        if not predictions:
-            try:
-                det_resp = requests.get(RUNPOD_JSON_URL, timeout=2.0, verify=False)
-                if det_resp.status_code == 200:
-                    det_json = det_resp.json()
-                    predictions = det_json.get("predictions") or []
-                    img_info = det_json.get("image") or {}
-                    width = int(img_info.get("width") or width)
-                    height = int(img_info.get("height") or height)
-                    infer_source = "LIVE_SYNC"
-            except Exception:
-                pass
-
-        if not predictions:
-            predictions = _build_realistic_yolo_fallback(width, height)
-            infer_source = "LOCAL_FALLBACK"
-
-        inference_ms = round((time.time() - start_ts) * 1000, 2)
-        detection_payload = {
-            "image": {"width": width, "height": height},
-            "source": infer_source,
-            "predictions": predictions,
-        }
-
-        saved_analysis_id = None
-        if auto_save and predictions:
-            try:
-                saved_analysis_id = _insert_vision_records(
-                    work_id=work_id,
-                    camera_code=camera_code,
-                    source_uri=public_url,
-                    orig_img_uri=public_url,
-                    vis_img_uri=public_url,
-                    width=width,
-                    height=height,
-                    inference_ms=inference_ms,
-                    predictions=predictions,
-                )
-            except Exception as e:
-                db.session.rollback()
-                print(f"[현장 업로드 기록 저장 참고]: {e}")
-
-        return jsonify({
-            "status": "SUCCESS",
-            "media_type": media_type,
-            "media_url": public_url,
-            "filename": orig_name,
-            "saved_filename": saved_filename,
-            "inference_time_ms": inference_ms,
-            "analysis_id": saved_analysis_id,
-            "detection_data": detection_payload,
-        })
-    finally:
-        _VISION_UPLOAD_SEMAPHORE.release()
-
-
 def _insert_vision_records(
     *,
     work_id: int,
@@ -767,7 +958,7 @@ def _insert_vision_records(
         visualized_image_uri=vis_img_uri[:500],
         image_width=int(width or 960),
         image_height=int(height or 540),
-        inference_time_ms=float(inference_ms or 28.5),
+        inference_time_ms=float(inference_ms or 0.0),
         welding_state=welding_state,
         status_code="COMPLETED",
     )
@@ -779,11 +970,10 @@ def _insert_vision_records(
         for p in predictions
     )
     safety_yn = "N" if interfering else "Y"
-
     frame_ocr_text = _extract_valid_ocr_text(predictions)
+
     first_det_id = None
     first_waypoints = None
-
     det_has_ocr_col = hasattr(VisionDetection, "ocr_text")
     insp_has_ocr_col = hasattr(VisionInspection, "ocr_text")
 
@@ -830,25 +1020,19 @@ def _insert_vision_records(
             if trk_id is not None:
                 with _TRACKER_LOCK:
                     _SEEN_JOINT_TRACKER_KEYS.add((camera_code, int(trk_id)))
-
-            start_pt = waypoints[0]
-            end_pt = waypoints[-1]
-
             insp_kwargs = dict(
                 analysis_id=new_analysis.analysis_id,
                 detection_id=det_row.detection_id,
                 work_id=int(work_id) if work_id else 1,
-                start_point_json=json.dumps(start_pt),
-                end_point_json=json.dumps(end_pt),
+                start_point_json=json.dumps(waypoints[0]),
+                end_point_json=json.dumps(waypoints[-1]),
                 safety_clearance_yn=safety_yn,
                 inspection_status="BEFORE_WELD",
                 defect_detail_json=None,
             )
             if insp_has_ocr_col:
                 insp_kwargs["ocr_text"] = pred_ocr or frame_ocr_text
-
-            insp_row = VisionInspection(**insp_kwargs)
-            db.session.add(insp_row)
+            db.session.add(VisionInspection(**insp_kwargs))
             first_waypoints = waypoints
 
     if first_waypoints is None and first_det_id is not None:
@@ -864,9 +1048,7 @@ def _insert_vision_records(
         )
         if insp_has_ocr_col:
             insp_kwargs["ocr_text"] = frame_ocr_text
-
-        insp_row = VisionInspection(**insp_kwargs)
-        db.session.add(insp_row)
+        db.session.add(VisionInspection(**insp_kwargs))
 
     if frame_ocr_text:
         with _TRACKER_LOCK:
@@ -876,32 +1058,30 @@ def _insert_vision_records(
     return new_analysis.analysis_id
 
 
-# ---------------------------------------------------------------------
-# 5. 실시간 스트림 자동/수동 기록 저장 API (동일 tracker_id 중복 무한 저장 차단)
-# ---------------------------------------------------------------------
 @vision_bp.route("/api/save-snapshot", methods=["POST"])
 def save_vision_snapshot():
+    """동일 tracker_id / OCR 중복 저장 및 쿨다운 차단 시나리오 유지"""
     payload = request.get_json(silent=True) or {}
-    work_id = payload.get("work_id") or 1
+    work_id = payload.get("work_id") or _get_default_work_id()
     camera_code = payload.get("camera_code") or "CAM-UNASSIGNED"
-    video_name = payload.get("video_name", "Test_1.mp4")
+    video_name = payload.get("video_name", "live")
     auto_mode = payload.get("auto_mode", True)
     detection_data = payload.get("detection_data") or {}
 
     if not detection_data or not detection_data.get("predictions"):
-        try:
-            det_res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
-            if det_res.status_code == 200:
-                detection_data = det_res.json()
-        except Exception:
-            pass
+        if _use_serverless():
+            with _RUNPOD_STATE_LOCK:
+                detection_data = _RUNPOD_STATE.get("detection_data") or {}
+        elif RUNPOD_JSON_URL:
+            try:
+                det_res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
+                if det_res.status_code == 200:
+                    detection_data = _normalize_incoming_json(det_res.json())
+            except Exception:
+                pass
 
     image_meta = detection_data.get("image") or {"width": 960, "height": 540}
     predictions = detection_data.get("predictions") or []
-
-    if not predictions and not auto_mode:
-        predictions = _build_realistic_yolo_fallback(960, 540)
-
     if not predictions:
         return jsonify({"status": "SKIPPED", "message": "현재 화면에 탐지된 대상이 없습니다."})
 
@@ -909,95 +1089,78 @@ def save_vision_snapshot():
         str(p.get("class", "")).lower() in ("flame", "arc", "welding_arc", "spark")
         for p in predictions
     )
-    welding_state = "IN_WELDING" if has_arc_flame else "BEFORE_WELD"
-
-    if auto_mode and welding_state == "IN_WELDING":
+    if auto_mode and has_arc_flame:
         return jsonify({"status": "LOCKED", "welding_state": "IN_WELDING"})
 
-    # 수동 저장 시 연속 클릭(3초 이내 중복 클릭)으로 인한 DB 과다 적재 방지
     if not auto_mode:
         now_ts = time.time()
         with _CAMERA_AUTOSAVE_LOCK:
-            last_manual = _LAST_MANUAL_SAVE_TS.get(camera_code, 0.0)
-            if now_ts - last_manual < MANUAL_SAVE_COOLDOWN_SEC:
-                return jsonify({
-                    "status": "THROTTLED",
-                    "message": "방금 기록을 남겼습니다. 3초 뒤에 다시 눌러주세요.",
-                })
+            if now_ts - _LAST_MANUAL_SAVE_TS.get(camera_code, 0.0) < MANUAL_SAVE_COOLDOWN_SEC:
+                return jsonify({"status": "THROTTLED", "message": "방금 기록을 남겼습니다. 3초 뒤에 다시 시도해 주세요."})
             _LAST_MANUAL_SAVE_TS[camera_code] = now_ts
 
-    # ⭐ 자동 저장 시: 동일 tracker_id(용접선) 또는 동일 OCR 블록 번호 중복 저장 원천 차단
     if auto_mode:
         joint_preds = [
             p for p in predictions
-            if str(p.get("class", "")).lower() == "weld_joint"
-            and p.get("tracker_id") is not None
+            if str(p.get("class", "")).lower() == "weld_joint" and p.get("tracker_id") is not None
         ]
         ocr_text = _extract_valid_ocr_text(predictions)
-
         with _TRACKER_LOCK:
-            new_joints = [
-                j for j in joint_preds
-                if (camera_code, int(j.get("tracker_id"))) not in _SEEN_JOINT_TRACKER_KEYS
-            ]
-            is_new_ocr = bool(ocr_text and (camera_code, ocr_text) not in _SEEN_OCR_KEYS)
+            has_new_joint = any((camera_code, int(p["tracker_id"])) not in _SEEN_JOINT_TRACKER_KEYS for p in joint_preds)
+            has_new_ocr = bool(ocr_text and (camera_code, ocr_text) not in _SEEN_OCR_KEYS)
+        if not has_new_joint and not has_new_ocr:
+            return jsonify({"status": "DUPLICATE", "message": "이미 기록된 동일 대상입니다."})
 
-        if not new_joints and not is_new_ocr:
-            return jsonify({"status": "SKIPPED", "message": "이미 기록된 추적 ID입니다."})
-
-        # 카메라당 최소 10초 쿨다운 (다중 접속 보호)
         now_ts = time.time()
         with _CAMERA_AUTOSAVE_LOCK:
-            last_ts = _LAST_CAMERA_AUTOSAVE_TS.get(camera_code, 0.0)
-            if now_ts - last_ts < AUTOSAVE_COOLDOWN_SEC:
-                return jsonify({"status": "THROTTLED", "message": "저장 쿨다운 대기 중"})
+            if now_ts - _LAST_CAMERA_AUTOSAVE_TS.get(camera_code, 0.0) < AUTOSAVE_COOLDOWN_SEC:
+                return jsonify({"status": "THROTTLED", "message": "자동 저장 쿨다운 대기 중"})
             _LAST_CAMERA_AUTOSAVE_TS[camera_code] = now_ts
 
+    VISION_CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
+    snap_name = f"snap_{camera_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    snap_path = VISION_CAPTURE_DIR / snap_name
+    img_uri = "/static/captures/placeholder.jpg"
+
+    if _use_serverless():
+        with _RUNPOD_STATE_LOCK:
+            cached_bytes = _RUNPOD_STATE.get("image_bytes") or b""
+        if cached_bytes:
+            snap_path.write_bytes(cached_bytes)
+            _prune_old_disk_files(VISION_CAPTURE_DIR)
+            img_uri = f"/static/captures/{snap_name}"
+
     try:
-        now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        VISION_CAPTURE_DIR.mkdir(parents=True, exist_ok=True)
-        capture_filename = f"frame_{camera_code}_{now_str}.jpg"
-        capture_path = VISION_CAPTURE_DIR / capture_filename
-        public_capture_uri = f"/static/captures/{capture_filename}"
-
-        if not auto_mode:
-            frame_bytes = _capture_single_mjpeg_frame(timeout_sec=2.0)
-            if frame_bytes:
-                capture_path.write_bytes(frame_bytes)
-                _prune_old_disk_files(VISION_CAPTURE_DIR, max_keep=MAX_DISK_FILES_PER_FOLDER)
-
         analysis_id = _insert_vision_records(
-            work_id=int(work_id) if work_id else 1,
+            work_id=work_id,
             camera_code=camera_code,
-            source_uri=f"{RUNPOD_STREAM_URL} ({video_name})",
-            orig_img_uri=public_capture_uri,
-            vis_img_uri=public_capture_uri,
-            width=int(image_meta.get("width", 960)),
-            height=int(image_meta.get("height", 540)),
-            inference_ms=28.5,
+            source_uri=f"{RUNPOD_SERVERLESS_URL or RUNPOD_STREAM_URL} ({video_name})",
+            orig_img_uri=img_uri,
+            vis_img_uri=img_uri,
+            width=int(image_meta.get("width") or 960),
+            height=int(image_meta.get("height") or 540),
+            inference_ms=0.0,
             predictions=predictions,
         )
-        return jsonify({
-            "status": "SUCCESS",
-            "analysis_id": analysis_id,
-            "capture_uri": public_capture_uri,
-            "message": f"[{camera_code}] 현장 화면 분석 기록(#{analysis_id})이 저장되었습니다.",
-        })
+        return jsonify({"status": "SAVED", "analysis_id": analysis_id})
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "ERROR", "message": str(e)}), 500
 
 
-# ---------------------------------------------------------------------
-# 6. 하단 탐지 기록 검색 & 페이지네이션 조회 API
-# ---------------------------------------------------------------------
 @vision_bp.route("/api/db-records", methods=["GET"])
 def get_vision_db_records():
-    payload = _query_inspections_paginated(
-        page=request.args.get("page", 1, type=int),
-        per_page=RECORDS_PER_PAGE,
-        camera_code=request.args.get("camera_code", "ALL"),
-        saved_date=request.args.get("saved_date", ""),
-        keyword=request.args.get("keyword", ""),
-    )
-    return jsonify({"status": "SUCCESS", **payload})
+    if "user_id" not in session:
+        return jsonify({"status": "ERROR"}), 401
+    page = request.args.get("page", 1, type=int)
+    camera = request.args.get("camera", "ALL")
+    date_str = request.args.get("date", "")
+    keyword = request.args.get("keyword", "")
+    branch = request.args.get("branch", "ALL")
+    return jsonify(_query_inspections_paginated(
+        page=page,
+        camera_filter=camera,
+        date_filter=date_str,
+        keyword=keyword,
+        branch_filter=branch,
+    ))
