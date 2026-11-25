@@ -4,6 +4,7 @@ modules/agent/tools/document_tools.py
 중량물 취급 작업계획서(Heavy Lifting Plan) PDF 생성 및 Audit 로그로 저장하는 표준 도구 모음
 """
 import json
+import html
 import os
 import re
 import shutil
@@ -562,16 +563,16 @@ def export_work_order_file(
         "travel_speed": clean_speed,
         "shielding_gas": resolved_gas,
         "preheat_temp": preheat_display,
-        "ndt_requirement": (
+        "ndt_requirement": html.escape(str(
             weld_params.get("ndt_requirement")
             or weld_params.get("ndt_spec")
             or "-"
-        ),
-        "consumable_spec": (
+        )),
+        "consumable_spec": html.escape(str(
             weld_params.get("consumable_spec")
             or weld_params.get("consumable_storage_rule")
             or "-"
-        ),
+        )),
         "vision_status_text": vision_status_text,
         "safety_clearance_text": safety_clearance_text,
         "safety_clearance_yn": clearance_yn or "-",
@@ -594,15 +595,16 @@ def export_work_order_file(
         docx_created = True
         pdf_path_str = _convert_docx_to_pdf(docx_path, daily_dir, context=context)
 
-        # 초안(DRAFT) 상태에서는 PDF만 유지하고 임시 .docx 파일은 삭제하여 불필요한 파일 누적 방지
         if approval_status == "DRAFT" and pdf_path_str and Path(pdf_path_str).exists():
             docx_path.unlink(missing_ok=True)
             docx_created = False
     else:
         print(
-            f"⚠️ [템플릿 미발견]: {TEMPLATE_PATH.resolve()} 경로에"
-            " work_order_template.docx 파일을 배치하세요."
+            f"⚠️ [템플릿 미발견 - 내장 HTML->PDF 폴백 실행]: {TEMPLATE_PATH.resolve()}"
         )
+        fallback_pdf = daily_dir / f"{base_name}.pdf"
+        if _render_html_to_pdf_fallback(context, fallback_pdf):
+            pdf_path_str = str(fallback_pdf)
 
     pdf_filename = Path(pdf_path_str).name if pdf_path_str else None
     docx_filename = docx_path.name if docx_created else None
@@ -798,7 +800,7 @@ def export_outsourcing_po_pdf(
             <th>합의 단가</th><td><b>{f"{int(a2a_price):,} 원" if a2a_price else "-"}</b></td>
         </tr>
         <tr>
-            <th>협의 요약 및 조건</th><td colspan="3">{str(a2a_prop.get('summary', '-')).replace('➔', '→').replace('➜', '→')}</td>
+            <th>협의 요약 및 조건</th><td colspan="3">{html.escape(str(a2a_prop.get('summary', '-')).replace('➔', '→').replace('➜', '→'))}</td>
         </tr>
         <tr>
             <th>기밀 보호 경계</th><td colspan="3">{a2a_prop.get('privacy_boundary_notice', '-')}</td>
@@ -1023,12 +1025,19 @@ def export_heavy_lifting_plan_pdf(
         a2a_note_row = f"""
         <tr>
             <th>외주 배차 A2A 협의</th>
-            <td colspan="3"><b>{a2a_prop.get('partner_name', '-')}</b> — {a2a_prop.get('summary', '-')}</td>
+            <td colspan="3"><b>{a2a_prop.get('partner_name', '-')}</b> — {a2a_summary_display}</td>
         </tr>
         """
 
     font_family, font_face_css = _prepare_korean_font_css()
-
+    route_display = html.escape(
+    str(params.get("target_destination") or lifting.get("travel_route") or "야드 내 지정 작업 구역")
+    .replace("➔", "→")
+    .replace("➜", "→")
+    )
+    a2a_summary_display = html.escape(
+    str(a2a_prop.get("summary") or "-").replace("➔", "→").replace("➜", "→")
+    )
     html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -1074,7 +1083,7 @@ def export_heavy_lifting_plan_pdf(
         </tr>
         <tr>
             <th>작업 야드 / 출발 구역</th><td>{branch_info.get('branch_name') or params.get('branch_code', '-')} ({params.get('work_zone', '-')})</td>
-            <th>이동 목적지 / 경로</th><td>{params.get('target_destination') or lifting.get('travel_route', '야드 내 지정 작업 구역')}</td>
+            <th>이동 목적지 / 경로</th><td>{route_display}</td>
         </tr>
 
         <tr><td colspan="4" class="sec-hdr">■ 2. 투입 양중·운반 장비 정격하중 및 안전율 검토</td></tr>

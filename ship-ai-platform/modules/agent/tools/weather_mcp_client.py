@@ -38,11 +38,17 @@ def _extract_weather_metrics(raw_text: str) -> Dict[str, Any]:
     try:
         parsed = json.loads(raw_text)
         if isinstance(parsed, dict):
+            def _pick(*keys: str, default: Any = None) -> Any:
+                for k in keys:
+                    if k in parsed and parsed[k] is not None:
+                        return parsed[k]
+                return default
+
             return {
-                "temperature": parsed.get("temperature") or parsed.get("temp"),
-                "wind_speed": parsed.get("wind_speed") or parsed.get("wind"),
-                "humidity": parsed.get("humidity", 50.0),
-                "precipitation": parsed.get("precipitation") or parsed.get("rainfall", 0.0),
+                "temperature": _pick("temperature", "temp"),
+                "wind_speed": _pick("wind_speed", "wind"),
+                "humidity": _pick("humidity", default=50.0),
+                "precipitation": _pick("precipitation", "rainfall", default=0.0),
             }
     except Exception:
         pass

@@ -322,7 +322,8 @@ def get_vision_overview_for_qa(
                     vi.inspection_id,
                     vi.safety_clearance_yn,
                     vi.inspection_status,
-                    vi.defect_detail_json
+                    vi.defect_detail_json,
+                    vi.estimated_length_mm
                 FROM VISION_ANALYSES va
                 LEFT JOIN VISION_INSPECTIONS vi
                     ON va.analysis_id = vi.analysis_id

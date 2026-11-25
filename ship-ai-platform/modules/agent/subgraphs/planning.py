@@ -244,9 +244,19 @@ def llm_aps_scheduler_node(state: ShipAgentState) -> Dict[str, Any]:
             "image_url": {"url": f"data:image/png;base64,{image_b64}"},
         })
 
-    analysis_out: AiCadAnalysisAndSchedule = structured_cad_planner.invoke([
-        HumanMessage(content=msg_content)
-    ])
+    try:
+        analysis_out: AiCadAnalysisAndSchedule = structured_cad_planner.invoke([
+            HumanMessage(content=msg_content)
+        ])
+    except Exception as e:
+        err_msg = f"⚠️ CAD 도면 AI 해석 중 일시적 오류가 발생했습니다: {type(e).__name__} - {e}"
+        return {
+            "cad_staging_result": {"status": "ERROR", "reason": str(e)},
+            "cad_dxf_path": None,
+            "cad_pdf_path": None,
+            "final_answer": err_msg,
+            "messages": [AIMessage(content=err_msg)],
+        }
 
     wire_inv = yard_ctx.get("wire_inventory") or {}
     remaining_wire: Dict[str, float] = {

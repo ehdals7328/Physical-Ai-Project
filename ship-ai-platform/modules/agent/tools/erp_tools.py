@@ -911,7 +911,8 @@ def check_hq_erp_resources(
                     "lot_no": r["lot_no"],
                     "supplier_code": r["supplier_code"],
                 }
-                result["inventory"][r["item_code"]] = item_dict
+                if r["item_code"] not in result["inventory"] or is_same_branch:
+                    result["inventory"][r["item_code"]] = item_dict
 
                 item_text_upper = f"{r['item_code']} {r['item_name']}".upper()
 
@@ -1126,20 +1127,22 @@ def commit_erp_work_order(
             ).scalar()
 
             # [패치 1] FK_DISPATCH_BLOCK 무결성 보장: 유효한 등록 블록인지 엄격 검증 (임의 블록 대체 금지)
-            fk_block_id = conn.execute(
+            blk_row = conn.execute(
                 text("""
-                    SELECT block_id
+                    SELECT block_id, branch_code
                     FROM ERP_BLOCK_MASTER
                     WHERE UPPER(TRIM(block_id)) = UPPER(TRIM(:bid))
                 """),
                 {"bid": block_id},
-            ).scalar()
+            ).mappings().first()
 
-            if not fk_block_id:
+            if not blk_row:
                 raise ValueError(
                     f"유효하지 않은 블록 번호('{block_id}')입니다. "
                     "ERP_BLOCK_MASTER에 등록된 블록만 작업 오더를 커밋할 수 있습니다."
                 )
+            fk_block_id = blk_row["block_id"]
+            fk_branch_code = blk_row.get("branch_code")
 
             # [Pre-commit 재검증 1] 동일 블록 중복 오더 차단
             dup_block = conn.execute(
@@ -1205,12 +1208,13 @@ def commit_erp_work_order(
             if wire_item_code and not is_outsourced:
                 wire_row = conn.execute(
                     text("""
-                        SELECT item_code, total_qty, reserved_qty
+                        SELECT item_code, branch_code, total_qty, reserved_qty
                         FROM ERP_BOM_INVENTORY
                         WHERE item_code = :i_code
+                          AND (:b_code IS NULL OR UPPER(TRIM(branch_code)) = UPPER(TRIM(:b_code)))
                         FETCH FIRST 1 ROWS ONLY
                     """),
-                    {"i_code": wire_item_code},
+                    {"i_code": wire_item_code, "b_code": fk_branch_code},
                 ).mappings().first()
 
                 if not wire_row:
@@ -1238,8 +1242,9 @@ def commit_erp_work_order(
                             UPDATE ERP_BOM_INVENTORY
                             SET reserved_qty = reserved_qty + :add_qty
                             WHERE item_code = :i_code
+                              AND UPPER(TRIM(branch_code)) = UPPER(TRIM(:b_code))
                         """),
-                        {"add_qty": reserved_applied, "i_code": wire_item_code},
+                        {"add_qty": reserved_applied, "i_code": wire_item_code, "b_code": wire_row["branch_code"]},
                     )
 
             conn.execute(

@@ -377,18 +377,8 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
 
     if not stock_available and outsourcing_domain in ("", "WELDING_MATERIAL"):
         try:
-            import os
-            from sqlalchemy import create_engine, text
-            from config import Config
-
-            binds = getattr(Config, "SQLALCHEMY_BINDS", {}) or {}
-            user_db_uri = (
-                binds.get("ship_user")
-                or binds.get("user")
-                or os.getenv("SHIP_USER_DATABASE_URL")
-            )
-            engine_opts = getattr(Config, "SQLALCHEMY_ENGINE_OPTIONS", {"pool_pre_ping": True})
-            user_eng = create_engine(user_db_uri, **engine_opts) if user_db_uri else None
+            from sqlalchemy import text
+            from modules.agent.tools.vision_tools import user_engine as user_eng
 
             target_br = str(
                 worker_qual.get("target_branch_code")
@@ -420,6 +410,11 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
                         existing_approved_po = wno
                     elif st == "DRAFT" and not existing_draft_po:
                         existing_draft_po = wno
+
+                if existing_approved_po:
+                    erp_status["linked_po_number"] = existing_approved_po
+                elif existing_draft_po:
+                    erp_status["pending_po_number"] = existing_draft_po
         except Exception as po_chk_err:
             print(f"⚠️ [Gatekeeper 선행 PO 조회 경고]: {po_chk_err}")
         

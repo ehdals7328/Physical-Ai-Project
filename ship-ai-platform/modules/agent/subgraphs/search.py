@@ -746,8 +746,8 @@ def react_tool_executor_node(state: Team2ReActState) -> Dict[str, Any]:
         try:
             if t_name == "tool_find_pending_blocks":
                 obs = find_pending_blocks.invoke({
-                    "branch_code": t_args.get("branch_code") or params.get("branch_code"),
-                    "process": t_args.get("process") or params.get("process"),
+                    "branch_code": t_args["branch_code"] if "branch_code" in t_args else params.get("branch_code"),
+                    "process": t_args["process"] if "process" in t_args else params.get("process"),
                     "exclude_blocks": excluded_blocks,
                 })
                 if obs.get("blocks"):
@@ -755,8 +755,8 @@ def react_tool_executor_node(state: Team2ReActState) -> Dict[str, Any]:
 
             elif t_name == "tool_find_eligible_workers":
                 obs = find_eligible_workers.invoke({
-                    "branch_code": t_args.get("branch_code") or params.get("branch_code"),
-                    "process": t_args.get("process") or params.get("process"),
+                    "branch_code": t_args["branch_code"] if "branch_code" in t_args else params.get("branch_code"),
+                    "process": t_args["process"] if "process" in t_args else params.get("process"),
                     "exclude_workers": excluded_workers,
                 })
 

@@ -567,14 +567,6 @@ def confirm_cad_work_plan(
                 target_need = round(req_kg + safety_buffer_kg, 2)
                 is_shortage = avail_qty < target_need
 
-                mrp_diagnostics.append({
-                    "item_code": w_code,
-                    "short_term_req_kg": round(req_kg, 2),
-                    "safety_buffer_kg": safety_buffer_kg,
-                    "current_avail_kg": avail_qty,
-                    "status": "SHORTAGE_PO_DRAFTED" if is_shortage else "SUFFICIENT",
-                })
-
                 po_draft = None
                 if is_shortage:
                     shortage_kg = round(max(target_need - avail_qty, req_kg), 1)
@@ -745,29 +737,76 @@ def _create_proactive_po_draft(
         print(f"⚠️ [CAD 선제 PO PDF 생성 경고]: {po_pdf_err}")
 
     try:
+        content_md = (
+            f"### [CAD 공정계획 연동 선제 분할 발주서 초안] {po_draft_no}\n"
+            f"- **도면 ID:** `{drawing_id}` | **대상 야드:** `{branch_code}`\n"
+            f"- **발주 품목:** `{wire_mat_code}` **{shortage_kg} kg** (현재 본사 가용: {current_avail_kg} kg)\n"
+            f"- **선정 협력사:** {partner_name} (`{partner_id}`) | **예상 금액:** {total_amount:,}원\n"
+            f"- **현장 필요일(ROS) 역산 입고 목표:** {ros_deadline}"
+        )
         with user_engine.begin() as conn:
+            # 1) 기안자 USERNAME으로 USERS.USER_ID 조회 (없으면 기본 관리자 ID 1 사용)
+            req_user_id = conn.execute(
+                text("SELECT USER_ID FROM USERS WHERE USERNAME = :uname FETCH FIRST 1 ROWS ONLY"),
+                {"uname": str(requested_by or "admin").strip()},
+            ).scalar() or 1
+
+            # 2) 부모 테이블 WORK_ORDERS 먼저 적재
             conn.execute(
                 text("""
-                    INSERT INTO WORK_INSTRUCTIONS (
-                        WO_NUMBER, VERSION_NO, CONTENT_MARKDOWN, APPROVAL_STATUS, CREATED_BY
+                    INSERT INTO WORK_ORDERS (
+                        WORK_NO, WORK_TITLE, WORK_DESCRIPTION, SHIP_CODE, BLOCK_CODE,
+                        WORK_REGION, WORK_ZONE, PROCESS_CODE, MATERIAL_GRADE,
+                        THICKNESS_MM, WELD_POSITION, STATUS_CODE, REQUESTED_BY
                     ) VALUES (
-                        :po_no, 1, :content_md, 'DRAFT', :created_by
+                        :po_no, :title, :desc_txt, :ship_code, :block_code,
+                        :branch_code, :work_zone, :proc_code, :mat_code,
+                        0, 'NA', 'READY', :req_by
                     )
                 """),
                 {
                     "po_no": po_draft_no,
-                    "content_md": (
-                        f"### [CAD 공정계획 연동 선제 분할 발주서 초안] {po_draft_no}\n"
-                        f"- **도면 ID:** `{drawing_id}` | **대상 야드:** `{branch_code}`\n"
-                        f"- **발주 품목:** `{wire_mat_code}` **{shortage_kg} kg** (현재 본사 가용: {current_avail_kg} kg)\n"
-                        f"- **선정 협력사:** {partner_name} (`{partner_id}`) | **예상 금액:** {total_amount:,}원\n"
-                        f"- **현장 필요일(ROS) 역산 입고 목표:** {ros_deadline}\n\n"
-                        f"```json\n{json.dumps(po_payload, ensure_ascii=False)}\n```"
-                    ),
-                    "created_by": requested_by,
+                    "title": f"[DRAFT] {branch_code} CAD 선제 자재 발주서 ({partner_name})",
+                    "desc_txt": f"CAD MRP 선제 발주 초안 (기안: {requested_by})",
+                    "ship_code": drawing_id[:30],
+                    "block_code": wire_mat_code,
+                    "branch_code": branch_code,
+                    "work_zone": "DOCK-1" if "GEOJE" in branch_code.upper() else "ZONE-A-BAY1",
+                    "proc_code": "SAW" if "SAW" in wire_mat_code.upper() else "FCAW",
+                    "mat_code": wire_mat_code,
+                    "req_by": req_user_id,
                 },
             )
-        po_payload["db_saved"] = True
+
+            # 3) 발급된 WORK_ID를 받아 자식 테이블 WORK_INSTRUCTIONS에 초안 적재
+            new_work_id = conn.execute(
+                text("SELECT WORK_ID FROM WORK_ORDERS WHERE WORK_NO = :po_no FETCH FIRST 1 ROWS ONLY"),
+                {"po_no": po_draft_no},
+            ).scalar()
+
+            if new_work_id is not None:
+                conn.execute(
+                    text("""
+                        INSERT INTO WORK_INSTRUCTIONS (
+                            WORK_ID, REVISION_NO, INSTRUCTION_TEXT, WELDING_PARAMS_JSON,
+                            SOURCE_REFS_JSON, EXTERNAL_ENV_JSON, APPROVAL_STATUS
+                        ) VALUES (
+                            :work_id, 'Rev.1', :content_md, :params_json,
+                            '[]', :env_json, 'DRAFT'
+                        )
+                    """),
+                    {
+                        "work_id": new_work_id,
+                        "content_md": content_md,
+                        "params_json": json.dumps(po_payload, ensure_ascii=False),
+                        "env_json": json.dumps(
+                            {"files": po_payload.get("files") or {}, "_draft_payload": po_payload},
+                            ensure_ascii=False,
+                        ),
+                    },
+                )
+                po_payload["work_id"] = new_work_id
+                po_payload["db_saved"] = True
     except Exception as po_db_err:
         print(f"⚠️ [CAD 선제 PO DB 저장 경고]: {po_db_err}")
 

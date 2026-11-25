@@ -111,19 +111,23 @@ def query_partner_b2b_catalog(
                 items = [dict(r) for r in rows]
                 selected = None
                 if items:
+                    mat_up = str(material or "").strip().upper()
+                    proc_up = str(process or "").strip().upper()
                     for it in items:
-                        if (
-                            "WIRE" in str(it.get("supplier_sku", "")).upper()
-                            or "와이어" in str(it.get("item_name", ""))
-                        ):
+                        txt = f"{it.get('hq_item_code', '')} {it.get('supplier_sku', '')} {it.get('item_name', '')}".upper()
+                        if mat_up and mat_up in txt:
+                            selected = dict(it)
+                            break
+                        if proc_up and proc_up in txt:
                             selected = dict(it)
                             break
                     if not selected:
+                        for it in items:
+                            if "WIRE" in str(it.get("supplier_sku", "")).upper() or "와이어" in str(it.get("item_name", "")):
+                                selected = dict(it)
+                                break
+                    if not selected:
                         selected = dict(items[0])
-
-                    selected.setdefault("partner_id", "VEND-DAEHAN-MAT")
-                    selected.setdefault("partner_name", "대한특수철강")
-                    selected.setdefault("business_type", "WELDING_MATERIAL")
 
                 res = {
                     "status": "SUCCESS",

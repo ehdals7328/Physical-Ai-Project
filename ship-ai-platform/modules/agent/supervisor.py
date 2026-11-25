@@ -31,7 +31,12 @@ def top_supervisor_init_node(state: ShipAgentState) -> Dict[str, Any]:
 
     prev_doc = state.get("generated_document") or {}
     prev_doc_status = str(prev_doc.get("status") or "").upper()
-    prev_doc_id = str(prev_doc.get("doc_id") or prev_doc.get("work_no") or "").strip()
+    prev_doc_id = str(
+    prev_doc.get("doc_id")
+    or prev_doc.get("work_no")
+    or prev_doc.get("work_order_number")
+    or ""
+).strip()
     prev_doc_ver = str(prev_doc.get("version") or "1").strip()
 
     # 직전 턴 역질문 대기 여부를 별도 필드로 이관한 뒤 현재 턴 상태는 초기화
