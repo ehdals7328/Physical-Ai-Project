@@ -1020,24 +1020,24 @@ def export_heavy_lifting_plan_pdf(
         f"판정: {safety_eval.get('status', '-')}"
     )
 
+    font_family, font_face_css = _prepare_korean_font_css()
+    route_display = html.escape(
+        str(params.get("target_destination") or lifting.get("travel_route") or "야드 내 지정 작업 구역")
+        .replace("➔", "→")
+        .replace("➜", "→")
+    )
+    a2a_summary_display = html.escape(
+        str(a2a_prop.get("summary") or "-").replace("➔", "→").replace("➜", "→")
+    )
+
     a2a_note_row = ""
     if a2a_prop:
         a2a_note_row = f"""
         <tr>
             <th>외주 배차 A2A 협의</th>
-            <td colspan="3"><b>{a2a_prop.get('partner_name', '-')}</b> — {a2a_summary_display}</td>
+            <td colspan="3"><b>{html.escape(str(a2a_prop.get('partner_name', '-')))}</b> — {a2a_summary_display}</td>
         </tr>
         """
-
-    font_family, font_face_css = _prepare_korean_font_css()
-    route_display = html.escape(
-    str(params.get("target_destination") or lifting.get("travel_route") or "야드 내 지정 작업 구역")
-    .replace("➔", "→")
-    .replace("➜", "→")
-    )
-    a2a_summary_display = html.escape(
-    str(a2a_prop.get("summary") or "-").replace("➔", "→").replace("➜", "→")
-    )
     html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>

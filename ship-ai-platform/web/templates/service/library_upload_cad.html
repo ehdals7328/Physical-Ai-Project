@@ -120,8 +120,13 @@ $('#cad-upload-form').on('submit', function (e) {
     processData: false,
     contentType: false,
     success: function (res) {
-      $alert.removeClass('d-none').addClass('alert-success').text(res.message);
-      setTimeout(function () { location.reload(); }, 1200);
+      var analyzeUrl = '/service/agent/analyze?cad_drawing_id=' + encodeURIComponent(res.drawing_id) +
+                       '&branch_code=' + encodeURIComponent($('#cad-branch-select').val() || '');
+      $alert.removeClass('d-none').addClass('alert-success').html(
+        window.KSmartMd.esc(res.message) +
+        ' <a href="' + analyzeUrl + '" class="btn btn-primary btn-sm ms-2 fw-semibold">AI 블록 분할 · 공정계획 수립 →</a>'
+      );
+      $btn.prop('disabled', false).text('도면 등록');
     },
     error: function (xhr) {
       var msg = (xhr.responseJSON && xhr.responseJSON.message) || '도면 등록에 실패했습니다.';

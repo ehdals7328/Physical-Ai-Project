@@ -610,6 +610,9 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "       (1) 사내 표준 규격에는 해당 분야 규정이 없음을 명확히 고지\n"
         "       (2) 사내 ERP에 실제 등록된 지원 가능 공정 및 강종 범위를 동적으로 요약 안내\n"
         "       (3) 현재 사내 규격 내에서 확인이 필요한 항목 역질문\n"
+        "   - **[자재 재고·부족 판정 엄수]**:\n"
+        "     * [본사 SHIP_ERP 자원 현황]의 `available_qty`(가용 수량)는 현재 창고에 남아 있는 보유 수량이므로 **절대 '부족 수량'으로 거꾸로 해석하지 마세요.**\n"
+        "     * 자재 부족 여부는 오직 `stock_available == False` 또는 `outsourcing_reason`에 명시된 품목만 부족으로 안내하고, 대상 야드(`branch_code`)와 다른 야드에 보관된 품목은 부족 목록에 섞지 마세요.\n"
     ),
     MessagesPlaceholder(variable_name="messages", optional=True),
     (

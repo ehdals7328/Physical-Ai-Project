@@ -45,6 +45,7 @@
         <a href="/service/work-status?status=IN_PROGRESS" class="btn btn-sm {% if status_filter == 'IN_PROGRESS' %}btn-primary{% else %}btn-outline-secondary{% endif %}">진행 중</a>
         <a href="/service/work-status?status=READY" class="btn btn-sm {% if status_filter == 'READY' %}btn-primary{% else %}btn-outline-secondary{% endif %}">대기</a>
         <a href="/service/work-status?status=COMPLETED" class="btn btn-sm {% if status_filter == 'COMPLETED' %}btn-primary{% else %}btn-outline-secondary{% endif %}">완료</a>
+        <a href="/service/work-status?status=SUSPENDED" class="btn btn-sm {% if status_filter == 'SUSPENDED' %}btn-danger{% else %}btn-outline-secondary{% endif %}">반려/중단 ({{ kpi.suspended or 0 }})</a>
       </div>
 
       <div class="d-flex flex-column gap-2 mb-3">
@@ -53,8 +54,8 @@
            class="text-decoration-none border rounded p-3 {% if selected and selected.wo.work_id == item.wo.work_id %}border-primary bg-primary-subtle text-dark{% else %}bg-white text-dark{% endif %}">
           <div class="d-flex justify-content-between align-items-center mb-1 small">
             <strong>{{ item.wo.work_no }}</strong>
-            <span class="status-chip {% if item.wo.status_code == 'COMPLETED' %}status-ok{% elif item.wo.status_code == 'IN_PROGRESS' %}status-info{% else %}status-warn{% endif %}">
-              {{ '완료' if item.wo.status_code == 'COMPLETED' else ('진행 중' if item.wo.status_code == 'IN_PROGRESS' else '착수 대기') }}
+            <span class="status-chip {% if item.wo.status_code == 'COMPLETED' %}status-ok{% elif item.wo.status_code == 'IN_PROGRESS' %}status-info{% elif item.wo.status_code == 'SUSPENDED' %}status-danger{% else %}status-warn{% endif %}">
+              {{ '완료' if item.wo.status_code == 'COMPLETED' else ('진행 중' if item.wo.status_code == 'IN_PROGRESS' else ('반려/중단' if item.wo.status_code == 'SUSPENDED' else '착수 대기')) }}
             </span>
           </div>
           <div class="small text-secondary">{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>

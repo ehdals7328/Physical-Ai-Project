@@ -117,6 +117,7 @@
     scm_partner_qa: '협력사 자원 확인',
     vision_inspection_qa: '현장 상태 확인',
     doc_generation: '작업지시서 준비',
+    cad_planning: 'CAD 공정 계획 수립',
     chat: '일반 안내'
   };
 
@@ -506,13 +507,15 @@
       var docsHtml = recentList.length
         ? recentList.map(function (d) {
             var isDraft = d.approval_status === 'DRAFT';
+            var isRejected = d.approval_status === 'REJECTED';
+            var statusLabel = isDraft ? '승인 대기' : (isRejected ? '반려됨' : '승인 완료');
             return (
               '<div class="ov-list-row">' +
-                '<div class="min-w-0">' +
-                  '<div class="ov-item-main text-truncate">' + esc(d.block_code) + ' <span class="fw-normal text-muted small">(' + esc(d.work_no) + ')</span></div>' +
-                  '<div class="ov-item-sub">' + esc(shortYardName(d.branch_name)) + ' · ' + (isDraft ? '승인 대기' : '승인 완료') + '</div>' +
+                '<div class="min-w-0 flex-grow-1 overflow-hidden me-2">' +
+                  '<div class="ov-item-main text-truncate" title="' + esc(d.work_no) + '">' + esc(d.block_code) + ' <span class="fw-normal text-muted small">(' + esc(d.work_no) + ')</span></div>' +
+                  '<div class="ov-item-sub">' + esc(shortYardName(d.branch_name)) + ' · ' + statusLabel + '</div>' +
                 '</div>' +
-                '<a href="' + esc(d.review_url) + '" class="' + (isDraft ? 'ov-btn-accent' : 'ov-btn-ghost') + '">' + (isDraft ? '승인' : '보기 →') + '</a>' +
+                '<a href="' + esc(d.review_url) + '" class="flex-shrink-0 ' + (isDraft ? 'ov-btn-accent' : 'ov-btn-ghost') + '">' + (isDraft ? '승인' : '보기 →') + '</a>' +
               '</div>'
             );
           }).join('')
@@ -645,8 +648,14 @@
     }
 
     var actionHtml = '';
-    if (activeRes.generated_document && activeRes.generated_document.approval_status === 'DRAFT' && activeRes.session_id) {
-      actionHtml += '<a href="/service/agent/plan/' + encodeURIComponent(activeRes.session_id) + '" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">실행안 검토 및 승인 →</a>';
+    var hasDraft = activeRes.generated_document && activeRes.generated_document.approval_status === 'DRAFT';
+    var hasCadStage = activeRes.result_blocks && activeRes.result_blocks.cad_staging_status === 'STAGING_SUCCESS';
+    if ((hasDraft || hasCadStage) && activeRes.session_id) {
+      actionHtml += '<a href="/service/agent/plan/' + encodeURIComponent(activeRes.session_id) + '" class="btn btn-primary btn-sm px-3" style="background:#0052cc;border-color:#0052cc;">' +
+        (hasCadStage ? '분할 블록 검토 및 확정 →' : '실행안 검토 및 승인 →') + '</a>';
+    }
+    if (activeRes.files && activeRes.files.download_pdf_url) {
+      actionHtml += '<a href="' + esc(activeRes.files.download_pdf_url) + '" target="_blank" class="btn btn-outline-primary btn-sm">PDF 보기</a>';
     }
 
     setStageHtml(
