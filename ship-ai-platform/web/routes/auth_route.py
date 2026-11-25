@@ -693,7 +693,21 @@ def login():
                 quick_users.append(u)
     except Exception:
         quick_users = []
-    return render_template("auth/login.html", quick_users=quick_users)
+    hq_contact_phone = ""
+    hq_company_name = ""
+    try:
+        hq_comp = ErpCompany.query.filter_by(company_type="HQ").first()
+        if hq_comp:
+            hq_contact_phone = hq_comp.contact_phone or ""
+            hq_company_name = hq_comp.company_name or ""
+    except Exception:
+        pass
+    return render_template(
+        "auth/login.html",
+        quick_users=quick_users,
+        hq_contact_phone=hq_contact_phone,
+        hq_company_name=hq_company_name,
+    )
 
 
 @auth_bp.route("/login/quick", methods=["POST"])
@@ -751,9 +765,18 @@ def register():
         password = request.form.get("password", "").strip()
         user_type = request.form.get("user_type", "INTERNAL")
         department_name = request.form.get("department_name", "").strip()
-        default_workspace = request.form.get("default_workspace", "ZONE-A-BAY1")
+        default_workspace = (request.form.get("default_workspace") or "").strip()
         erp_company_code = request.form.get("erp_company_code", "").strip()
         erp_branch_code = request.form.get("erp_branch_code", "").strip()
+        if not default_workspace and erp_branch_code:
+            try:
+                br_row = ErpBranch.query.filter_by(branch_code=erp_branch_code).first()
+                if br_row and br_row.work_zones_json:
+                    zones = json.loads(br_row.work_zones_json)
+                    if isinstance(zones, list) and zones:
+                        default_workspace = str(zones[0])
+            except Exception:
+                pass
         erp_employee_code = request.form.get("erp_employee_code", "").strip()
 
         if User.query.filter_by(username=username).first():
@@ -1522,16 +1545,48 @@ def view_document_file(doc_id: int):
     if doc.collection_type == "INTERNAL" and not can_internal:
         abort(403)
 
-    uri = (doc.storage_uri or "").strip()
-    if not uri or uri == ARCHIVED_URI_MARKER:
-        abort(404)
-    p = Path(uri)
-    abs_p = p if p.is_absolute() else (PROJECT_ROOT / uri)
-    try:
-        resolved = abs_p.resolve()
-        if PROJECT_ROOT.resolve() not in resolved.parents or not resolved.is_file():
-            abort(404)
-    except Exception:
+    uri = (doc.storage_uri or "").strip().replace("\\", "/")
+    resolved = None
+
+    if uri and uri != ARCHIVED_URI_MARKER and not uri.startswith(("http://", "https://", "s3://")):
+        p = Path(uri)
+        candidates = [p] if p.is_absolute() else [PROJECT_ROOT / uri]
+        # 타 PC 절대경로(.../data/...)로 저장된 경우 data/ 하위 상대경로 복원
+        lower_uri = uri.lower()
+        data_pos = lower_uri.find("/data/")
+        if data_pos != -1:
+            candidates.append(PROJECT_ROOT / uri[data_pos + 1:])
+        for cand in candidates:
+            try:
+                c_res = cand.resolve()
+                if PROJECT_ROOT.resolve() in c_res.parents and c_res.is_file():
+                    resolved = c_res
+                    break
+            except Exception:
+                continue
+
+    # 경로가 달라졌거나 s3:// 더미 URI인 경우, 로컬 data/ 폴더에서 파일명으로 자동 탐색
+    if resolved is None and doc.original_file_name:
+        target_name = Path(doc.original_file_name).name
+        data_root = PROJECT_ROOT / "data"
+        search_dirs = (
+            [data_root / "cad_drawings", data_root / "internal_pdfs", data_root / "raw_pdfs"]
+            if doc.category_code == "CAD_DRAWING"
+            else ([data_root / "internal_pdfs", data_root / "raw_pdfs", data_root / "cad_drawings"]
+                  if doc.collection_type == "INTERNAL"
+                  else [data_root / "raw_pdfs", data_root / "internal_pdfs", data_root / "cad_drawings"])
+        )
+        for sdir in search_dirs:
+            if not sdir.exists():
+                continue
+            for found in sdir.rglob(target_name):
+                if found.is_file():
+                    resolved = found.resolve()
+                    break
+            if resolved is not None:
+                break
+
+    if resolved is None:
         abort(404)
 
     as_dl = request.args.get("download", "0") == "1"

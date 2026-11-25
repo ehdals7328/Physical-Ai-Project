@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ po.b2b_order_no }} 발주 계획서</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <style>
+    body { background: #f8fafc; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; color: #0f172a; padding: 24px; }
+    .doc-sheet { max-width: 820px; margin: 0 auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 32px; box-shadow: 0 4px 16px rgba(15,23,42,.06); }
+    .doc-header { border-bottom: 2px solid #0b1f3a; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+    .doc-title { font-size: 21px; font-weight: 800; color: #0b1f3a; margin: 0; }
+    .meta-table th { background: #f1f5f9; width: 20%; font-weight: 700; color: #334155; }
+    .meta-table td { width: 30%; }
+    @media print { .no-print { display: none !important; } body { background: #fff; padding: 0; } .doc-sheet { box-shadow: none; border: 0; padding: 0; } }
+  </style>
+</head>
+<body>
+  <div class="doc-sheet">
+    <div class="doc-header">
+      <div>
+        <div class="small text-muted fw-semibold">K-SmartShip 협력사 B2B 발주 계획서</div>
+        <h1 class="doc-title">{{ po.b2b_order_no }} ({{ type_ko }})</h1>
+      </div>
+      <div class="text-end">
+        <span class="badge bg-primary">{{ po.order_status }}</span>
+        <div class="mt-2 no-print">
+          <button type="button" class="btn btn-primary btn-sm px-3" onclick="window.print()">PDF 인쇄 / 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <table class="table table-bordered table-sm small meta-table mb-4">
+      <tbody>
+        <tr>
+          <th>발주 번호</th><td><strong>{{ po.b2b_order_no }}</strong></td>
+          <th>발주 접수 일시</th><td>{{ ordered_at_kst }}</td>
+        </tr>
+        <tr>
+          <th>연계 작업번호</th><td><strong>{{ po.hq_wo_number }}</strong></td>
+          <th>발주 유형</th><td>{{ type_ko }}</td>
+        </tr>
+        <tr>
+          <th>협력사명</th><td><strong>{{ partner.company_name if partner else po.partner_id }}</strong></td>
+          <th>협력사 연락처</th><td>{{ partner.contact_phone if partner else '-' }}</td>
+        </tr>
+        <tr>
+          <th>품목 / 인력 / 장비 코드</th><td><strong>{{ po.ordered_ref_code }}</strong></td>
+          <th>발주 수량</th><td><strong>{{ po.order_qty }}</strong></td>
+        </tr>
+        <tr>
+          <th>배정 Lot / 식별번호</th><td>{{ po.allocated_lot_or_id }}</td>
+          <th>납품 야드 · 구역</th><td>{{ branch.branch_name if branch else '-' }} · {{ po.delivery_yard_zone }}</td>
+        </tr>
+        <tr>
+          <th>협력사 출발지</th><td colspan="3">{{ partner_loc.address if partner_loc else '-' }}</td>
+        </tr>
+        <tr>
+          <th>야드 도착지</th><td colspan="3">{{ branch.address if branch else '-' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

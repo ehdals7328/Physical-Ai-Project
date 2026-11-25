@@ -125,7 +125,7 @@
 
   <form id="replan-form" action="/service/agent/analyze" method="get" class="d-flex gap-2">
     <input type="text" id="replan-input" name="prompt" class="form-control"
-           placeholder="{{ '예: 작업자를 변경하고 예열 기준을 다시 확인해줘' if has_draft else '예: 투입 작업자 성명: 장반장으로 작업지시서 초안 만들어줘' }}" required>
+           placeholder="{{ '예: 작업자를 변경하고 예열 기준을 다시 확인해줘' if has_draft else '위 추천 버튼을 누르거나 투입 작업자·블록 조건을 입력하세요' }}" required>
     <button type="submit" class="btn btn-dark px-4 text-nowrap fw-semibold">{{ '계획 재산출' if has_draft else '입력 후 계속' }}</button>
   </form>
 </div>

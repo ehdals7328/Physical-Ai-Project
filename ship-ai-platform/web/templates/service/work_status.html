@@ -128,16 +128,24 @@
 
       <div class="d-flex flex-wrap gap-2 mb-3">
         {% if selected.pdf_url %}
-          <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold" style="background:#0052cc;border-color:#0052cc;"
-                  onclick="openInlinePdfModal({{ selected.pdf_url | tojson }}, '작업지시서 ({{ selected.latest_inst.revision_no if selected.latest_inst else "Rev.1" }})')">
+          <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold js-open-inline-pdf" style="background:#0052cc;border-color:#0052cc;"
+                  data-pdf-url="{{ selected.pdf_url }}"
+                  data-pdf-title="작업지시서 ({{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }})">
             최신 작업지시서 보기 ({{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }})
           </button>
         {% endif %}
         {% if cad_doc_info %}
-          <button type="button" class="btn btn-outline-dark btn-sm px-3 fw-semibold"
-                  onclick="openWorkCadPreview({{ cad_doc_info.document_id }})">
-            선박 도면 보기 ({{ cad_doc_info.ext }})
+          {% if cad_doc_info.has_pdf %}
+          <button type="button" class="btn btn-outline-dark btn-sm px-3 fw-semibold js-open-inline-pdf"
+                  data-pdf-url="{{ cad_doc_info.pdf_url }}"
+                  data-pdf-title="{{ cad_doc_info.title }} (도면 PDF)">
+            선박 도면 PDF 보기
           </button>
+          {% else %}
+          <a href="{{ cad_doc_info.download_url }}" class="btn btn-outline-dark btn-sm px-3 fw-semibold">
+            선박 도면 원본 다운로드 ({{ cad_doc_info.ext }})
+          </a>
+          {% endif %}
         {% endif %}
         {% if not selected.pdf_url and not cad_doc_info %}
           <span class="small text-muted">연결된 작업지시서나 도면이 아직 없습니다.</span>
@@ -156,8 +164,9 @@
                 <span class="badge bg-white text-dark border ms-1">{{ po_doc.revision_no }}</span>
                 <span class="text-muted ms-2">{{ po_doc.created_at }}</span>
               </div>
-              <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
-                      onclick="openInlinePdfModal({{ po_doc.pdf_url | tojson }}, {{ po_doc.title | tojson }})">
+              <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 js-open-inline-pdf"
+                      data-pdf-url="{{ po_doc.pdf_url }}"
+                      data-pdf-title="{{ po_doc.title }}">
                 발주서 보기
               </button>
             </div>
@@ -289,8 +298,11 @@ function renderVerticalTimeline(events) {
 function selectPartnerTimeline(partnerId, btnEl) {
   $('#partner-timeline-tabs button').removeClass('btn-primary').addClass('btn-outline-secondary');
   if (btnEl) $(btnEl).removeClass('btn-outline-secondary').addClass('btn-primary');
-  if (partnerId === 'ALL') renderVerticalTimeline(ALL_EVENTS);
-  else renderVerticalTimeline(PARTNER_MAP[partnerId] || []);
+  if (partnerId === 'ALL') {
+    renderVerticalTimeline(ALL_EVENTS);
+  } else {
+    renderVerticalTimeline(PARTNER_MAP[partnerId] || []);
+  }
 }
 
 function openInlinePdfModal(pdfUrl, title) {
@@ -331,6 +343,10 @@ function openWorkCadPreview(docId) {
     $('#wdp-body').html('<div class="p-5 text-center text-danger">선박 도면 미리보기를 불러오지 못했습니다.</div>');
   });
 }
+
+$(document).on('click', '.js-open-inline-pdf', function () {
+  openInlinePdfModal($(this).attr('data-pdf-url'), $(this).attr('data-pdf-title'));
+});
 
 renderVerticalTimeline(ALL_EVENTS);
 </script>

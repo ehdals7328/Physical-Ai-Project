@@ -3,49 +3,49 @@
 
 {% block content %}
 <div class="page-header">
-  <div>
-    <h1 class="page-title">통합 업무</h1>
-  </div>
-  <div class="d-flex gap-2">
-    <button type="button" class="btn btn-primary btn-sm fw-semibold px-3" id="btn-open-qa" style="background:#0052cc;border-color:#0052cc;">AI 업무 질문</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold px-3" id="btn-ws-sync">새로고침</button>
-  </div>
-</div>
-
-<!-- 상단 4개 핵심 업무 탭 (불필요한 메일 탭 삭제 · 상단 대화창은 질문 탭에서만 표시) -->
-<div class="panel-card py-3 mb-3">
-  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <div class="d-flex flex-wrap gap-1" id="ws-mode-chips">
-      <button type="button" class="btn btn-sm btn-primary fw-semibold px-3" data-mode="init">종합 현황</button>
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="vision">현장 확인 · 작업 지시</button>
-      {% if can_erp %}
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="erp">자재 · 인력 · 장비</button>
-      {% endif %}
-      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-3" data-mode="qa">AI 업무 질문 · 기준서</button>
-    </div>
-
+  <div class="d-flex align-items-center flex-wrap gap-2">
+    <h1 class="page-title mb-0">통합 업무</h1>
     <div id="ws-active-cmd" class="active-cmd-pill" style="display:none;">
       <span class="fw-bold">실행 요청</span>
       <span class="cmd-text" id="ws-active-cmd-text"></span>
       <button type="button" class="btn-close" style="font-size:9px;" id="btn-clear-cmd"></button>
     </div>
   </div>
+  <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold px-3" id="btn-ws-sync">새로고침</button>
+</div>
 
-  <!-- AI 질문 입력창 (AI 업무 질문 · 기준서 탭 선택 시에만 깔끔하게 노출) -->
-  <form id="workspace-query-form" class="row g-2 align-items-end mt-3 pt-3 border-top" style="display:none;">
+<!-- 동적 업무 영역 -->
+<div id="workspace-stage"></div>
+<div class="ws-dock-spacer"></div>
+
+<!-- 슬림 2단 하단 유동 도크: [1줄: 퀵바 | 빠른 질문] + [2줄: 채팅 입력창] -->
+<div class="ws-bottom-dock" id="ws-bottom-dock">
+  <div class="ws-dock-bar-row">
+    <div class="d-flex align-items-center gap-1 flex-shrink-0" id="ws-mode-chips">
+      <button type="button" class="btn btn-sm btn-primary fw-semibold px-2 py-1 text-nowrap" data-mode="init">종합 현황</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-2 py-1 text-nowrap" data-mode="vision">현장·지시</button>
+      {% if can_erp %}
+      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-2 py-1 text-nowrap" data-mode="erp">자재·인력</button>
+      {% endif %}
+      <button type="button" class="btn btn-sm btn-outline-secondary fw-semibold px-2 py-1 text-nowrap" data-mode="qa">기준서·질의</button>
+    </div>
+
+    <span class="ws-dock-divider" id="ws-dock-divider" style="display:none;"></span>
+
+    <div class="ws-dock-quick-inline" id="ws-dock-quick-prompts" style="display:none;"></div>
+  </div>
+
+  <form id="workspace-query-form" class="row g-2 align-items-end">
     <div class="col-12 col-md">
       <textarea id="ws-input" rows="1" class="form-control cmd-textarea"
                 placeholder="{{ sample_placeholder }}">{{ initial_prompt }}</textarea>
     </div>
     <div class="col-12 col-md-auto">
-      <button type="submit" id="ws-send-btn" class="btn btn-primary fw-semibold px-4 w-100"
-              style="height:44px;background:#0052cc;border-color:#0052cc;">질문 전송</button>
+      <button type="submit" id="ws-send-btn" class="btn btn-primary fw-semibold ws-send-btn w-100"
+              style="background:#0052cc;border-color:#0052cc;">전송</button>
     </div>
   </form>
 </div>
-
-<!-- 동적 업무 영역 -->
-<div id="workspace-stage"></div>
 
 <!-- PDF 문서 바로 보기 모달 -->
 <div class="modal fade" id="wsPdfModal" tabindex="-1">
@@ -140,6 +140,7 @@
   var lastQaResult = null;
   var activeFixedDraft = null;
   var wsPollTimer = null;
+  var wsVisionViewer = null;
 
   var summaryCache = null;
   var erpDataCache = null;
@@ -176,7 +177,12 @@
     }
   }
 
+  function destroyWsVision() {
+    if (wsVisionViewer) { wsVisionViewer.destroy(); wsVisionViewer = null; }
+  }
+
   function setStageHtml(html) {
+    destroyWsVision();
     var $st = $('#workspace-stage');
     $st.removeClass('is-loading').html('<div class="stage-fade-in">' + html + '</div>');
   }
@@ -185,11 +191,7 @@
     currentMode = mode;
     $('#ws-mode-chips button').removeClass('btn-primary').addClass('btn-outline-secondary');
     $('#ws-mode-chips button[data-mode="' + mode + '"]').removeClass('btn-outline-secondary').addClass('btn-primary');
-    if (mode === 'qa') {
-      $('#workspace-query-form').slideDown(140);
-    } else {
-      $('#workspace-query-form').hide();
-    }
+
   }
 
   function showActiveCmd(text) {
@@ -205,7 +207,7 @@
   function autoResizeTextarea(el) {
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = Math.min(120, Math.max(44, el.scrollHeight)) + 'px';
+    el.style.height = Math.min(96, Math.max(38, el.scrollHeight)) + 'px';
   }
 
   /* 고정 표준 양식 1회 확인 모달 -> 바로 발송 */
@@ -294,9 +296,47 @@
     );
   }
 
+  function renderDockQuickPrompts(list) {
+    var $row = $('#ws-dock-quick-prompts');
+    var $div = $('#ws-dock-divider');
+    if (!list || !list.length) {
+      $row.hide().empty();
+      $div.hide();
+      return;
+    }
+    var html = list.map(function (item) {
+      var label = (typeof item === 'string') ? item : (item.label || item.prompt);
+      var promptStr = (typeof item === 'string') ? item : (item.prompt || item.label);
+      return '<button type="button" class="btn btn-outline-primary rounded-pill text-nowrap ws-dock-quick-btn js-dock-quick-btn" data-prompt="' + esc(promptStr) + '">' + esc(label) + '</button>';
+    }).join('');
+    $row.html(html).css('display', 'inline-flex');
+    $div.show();
+  }
+
+  $(document).on('click', '.js-dock-quick-btn', function () {
+    var p = $(this).attr('data-prompt');
+    if (!p) return;
+    var $ta = $('#ws-input');
+    $ta.val(p).trigger('input').focus();
+    try {
+      var len = $ta.val().length;
+      $ta[0].setSelectionRange(len, len);
+    } catch (e) {}
+  });
+
   /* =========================================================================
-     1. 종합 현황 (W-01a — 들어오자마자 해야 할 일이 한눈에 보이는 구조)
+     1. 종합 현황 (W-01a — 초보자도 한눈에 파악하는 저자극 · 고가독성 미니멀 대시보드)
      ========================================================================= */
+  function shortYardName(fullName) {
+    return String(fullName || '').replace(/\s*\([^)]*\)\s*/g, '').trim() || fullName || '';
+  }
+
+  function friendlyDaysText(w) {
+    if (w.level === 'EXPIRED') return '자격 만료';
+    if (w.days_left !== undefined && w.days_left !== null) return w.days_left + '일 남음';
+    return w.dday_label || '갱신 필요';
+  }
+
   function renderInitView() {
     setActiveChip('init');
     resetDynamicActions();
@@ -304,83 +344,62 @@
 
     $.getJSON('/service/api/workspace/summary', function (res) {
       summaryCache = res;
+      renderDockQuickPrompts(res.quick_prompts || []);
       var k = res.kpi || {};
       var alertTotal = (k.low_materials_cnt || 0) + (k.expiring_workers_cnt || 0);
       var todayStr = res.today_kst || '';
 
-      var kpiAct1 = registerAction(function () { location.href = '/service/work-status'; });
-      var kpiAct2 = registerAction(function () { renderVisionCheckView(); });
-      var kpiAct3 = registerAction(function () { if (res.can_erp) renderErpView('ALL', 'materials'); });
-      var kpiAct4 = registerAction(function () { renderPendingApprovalsView(res.pending_docs || []); });
+      var actOrders = registerAction(function () { location.href = '/service/work-status'; });
+      var actVision = registerAction(function () { renderVisionCheckView(); });
+      var actErp = registerAction(function () { if (res.can_erp) renderErpView('ALL', 'materials'); });
+      var actApprovals = registerAction(function () { renderPendingApprovalsView(res.pending_docs || []); });
 
-      // 첫 진입 시 무엇을 해야 할지 한눈에 안내하는 오늘의 업무 가이드
-      var guideHtml =
-        '<div class="panel-card py-3 mb-3" style="background:#f8fafc;border-left:4px solid #0052cc;">' +
-          '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-            '<div class="small">' +
-              '<strong style="color:#0b1f3a;">오늘의 업무 순서 (' + esc(todayStr) + ' KST)</strong>' +
-              '<span class="text-secondary ms-2">① 오늘 작업 예정 블록 확인 (' + esc(k.active_queue_cnt || 0) + '건) → ② 승인 대기 지시서 결재 (' + esc(k.pending_approvals || 0) + '건) → ③ 부족 자재 · 만료 자격 즉시 발송 (' + esc(alertTotal) + '건)</span>' +
-            '</div>' +
-            '<div class="d-flex gap-1">' +
-              '<button type="button" class="btn btn-outline-primary btn-sm py-0" data-act-id="' + kpiAct2 + '">① 현장·지시</button>' +
-              '<button type="button" class="btn btn-outline-warning btn-sm py-0 text-dark" data-act-id="' + kpiAct4 + '">② 결재 (' + esc(k.pending_approvals || 0) + ')</button>' +
-            '</div>' +
+      // 1) 상단 4칸 요약 바 (색상 테두리·설명글 노이즈 없이 숫자만 깔끔하게)
+      var summaryStrip =
+        '<div class="ov-summary-strip">' +
+          '<div class="ov-metric" data-act-id="' + actVision + '">' +
+            '<div class="ov-metric-label">오늘 예정 블록</div>' +
+            '<div class="ov-metric-val">' + esc(k.active_queue_cnt || 0) + '<span class="ov-metric-unit">개</span></div>' +
+          '</div>' +
+          '<div class="ov-metric" data-act-id="' + actOrders + '">' +
+            '<div class="ov-metric-label">진행 중인 작업</div>' +
+            '<div class="ov-metric-val">' + esc(k.active_orders || 0) + '<span class="ov-metric-unit">건</span></div>' +
+          '</div>' +
+          '<div class="ov-metric" data-act-id="' + actApprovals + '">' +
+            '<div class="ov-metric-label">승인 대기</div>' +
+            '<div class="ov-metric-val ' + ((k.pending_approvals || 0) > 0 ? 'is-accent' : '') + '">' + esc(k.pending_approvals || 0) + '<span class="ov-metric-unit">건</span></div>' +
+          '</div>' +
+          '<div class="ov-metric" data-act-id="' + actErp + '">' +
+            '<div class="ov-metric-label">확인이 필요한 항목</div>' +
+            '<div class="ov-metric-val ' + (res.can_erp && alertTotal > 0 ? 'is-alert' : '') + '">' + (res.can_erp ? (esc(alertTotal) + '<span class="ov-metric-unit">건</span>') : '-') + '</div>' +
           '</div>' +
         '</div>';
 
-      var kpiHtml =
-        '<div class="row g-3 mb-4">' +
-          '<div class="col-6 col-lg-3">' +
-            '<div class="kpi-tile kpi-blue clickable" data-act-id="' + kpiAct1 + '">' +
-              '<div class="kpi-label">진행 · 대기 작업</div>' +
-              '<div class="kpi-value">' + esc(k.active_orders || 0) + '<span class="fs-6 fw-normal text-muted ms-1">건</span></div>' +
-              '<div class="kpi-sub">완료 ' + esc(k.completed_orders || 0) + '건 · 운영 야드 ' + esc(k.yards_cnt || 0) + '곳</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="col-6 col-lg-3">' +
-            '<div class="kpi-tile kpi-ok clickable" data-act-id="' + kpiAct2 + '">' +
-              '<div class="kpi-label">오늘 작업 예정 블록</div>' +
-              '<div class="kpi-value">' + esc(k.active_queue_cnt || 0) + '<span class="fs-6 fw-normal text-muted ms-1">블록</span></div>' +
-              '<div class="kpi-sub">' + esc(todayStr) + ' 계획 기준 · 로봇 ' + esc(k.robots_cnt || 0) + '대</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="col-6 col-lg-3">' +
-            '<div class="kpi-tile ' + (alertTotal > 0 ? 'kpi-danger' : '') + ' clickable" data-act-id="' + kpiAct3 + '">' +
-              '<div class="kpi-label">확인 필요 자원</div>' +
-              '<div class="kpi-value">' + (res.can_erp ? esc(alertTotal) + '<span class="fs-6 fw-normal text-muted ms-1">건</span>' : '-') + '</div>' +
-              '<div class="kpi-sub">' + (res.can_erp ? ('부족 자재 ' + esc(k.low_materials_cnt || 0) + '건 · 자격 만료 알림 ' + esc(k.expiring_workers_cnt || 0) + '명') : '담당자 권한 필요') + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<div class="col-6 col-lg-3">' +
-            '<div class="kpi-tile ' + ((k.pending_approvals || 0) > 0 ? 'kpi-warn' : '') + ' clickable" data-act-id="' + kpiAct4 + '">' +
-              '<div class="kpi-label">승인 대기 지시서</div>' +
-              '<div class="kpi-value">' + esc(k.pending_approvals || 0) + '<span class="fs-6 fw-normal text-muted ms-1">건</span></div>' +
-              '<div class="kpi-sub">클릭 시 결재 목록으로 바로 이동</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>';
-
-      // 오늘 작업 예정 블록 (KST 오늘 날짜 기준)
+      // 2) 좌측 메인: 오늘 할 작업 (한 줄에 핵심만, 색은 점 1개로 절제)
       var queueHtml = '';
       if (res.active_queue && res.active_queue.length) {
         queueHtml = res.active_queue.map(function (q) {
           var vAct = registerAction(function () { renderVisionCheckView(q.branch_code, q.block_code); });
+          var isRun = q.state === 'IN_PROGRESS';
+          var statusText = isRun ? '진행 중' : '대기 중';
+          var dotCls = isRun ? 'dot-blue' : 'dot-gray';
           return (
-            '<div class="queue-card mb-2">' +
-              '<div class="d-flex justify-content-between align-items-start gap-2 mb-2">' +
-                '<div>' +
-                  '<span class="badge bg-dark me-1">순서 ' + esc(q.priority_rank) + '</span>' +
-                  '<strong>' + esc(q.block_code) + '</strong>' +
-                  '<span class="text-muted small ms-2">' + esc(q.material_grade || '') + (q.thickness_mm ? ' ' + esc(q.thickness_mm) + 'mm' : '') + ' · ' + esc(q.process_code) + '</span>' +
-                  '<div class="text-secondary small mt-1">' + esc(q.branch_name) + ' · 계획일 ' + esc(q.planned_start_date || todayStr) + (q.wo_no ? ' · ' + esc(q.wo_no) : '') + '</div>' +
-                '</div>' +
-                '<div class="text-end">' +
-                  '<span class="status-chip ' + (q.state === 'IN_PROGRESS' ? 'status-info' : 'status-muted') + '">' + esc(koStatus(q.state)) + '</span>' +
+            '<div class="ov-list-row">' +
+              '<div class="d-flex align-items-center gap-3 min-w-0">' +
+                '<span class="ov-rank-dot">' + esc(q.priority_rank) + '</span>' +
+                '<div class="min-w-0">' +
+                  '<div class="ov-item-main d-flex align-items-center gap-2">' +
+                    '<span>' + esc(q.block_code) + '</span>' +
+                    '<span class="small fw-normal text-muted d-inline-flex align-items-center gap-1">' +
+                      '<span class="ov-dot ' + dotCls + '"></span>' + statusText +
+                    '</span>' +
+                  '</div>' +
+                  '<div class="ov-item-sub text-truncate">' + esc(shortYardName(q.branch_name)) + ' · ' + esc(q.process_code) + ' 용접</div>' +
                 '</div>' +
               '</div>' +
-              '<div class="d-flex justify-content-end gap-2">' +
-                '<button type="button" class="btn btn-outline-secondary btn-sm py-0" data-act-id="' + vAct + '">현장 · 작업지시</button>' +
-                (q.work_id ? '<a href="/service/work-status?work_id=' + esc(q.work_id) + '" class="btn btn-dark btn-sm py-0">작업 보기</a>' : '') +
+              '<div class="d-flex align-items-center gap-1 flex-shrink-0">' +
+                '<button type="button" class="ov-btn-ghost" data-act-id="' + vAct + '">현장 확인</button>' +
+                (q.work_id ? '<a href="/service/work-status?work_id=' + esc(q.work_id) + '" class="ov-btn-soft">작업 보기</a>' : '') +
               '</div>' +
             '</div>'
           );
@@ -388,38 +407,23 @@
       } else {
         queueHtml =
           '<div class="text-muted small py-4 text-center">' +
-            '오늘(' + esc(todayStr) + ') 예정된 작업 블록이 없습니다.' +
-            (res.other_date_plans_cnt > 0 ? '<div class="mt-1">(다른 일자 예정 계획 ' + esc(res.other_date_plans_cnt) + '건이 DB에 등록되어 있습니다)</div>' : '') +
+            '오늘(' + esc(todayStr) + ') 예정된 작업이 없습니다.' +
           '</div>';
       }
 
-      // 운영 야드 카드
+      // 3) 좌측 하단: 현장 카메라 바로가기 (야드명 + 현재 블록만 깔끔하게)
       var yardHtml = '';
       if (res.yard_cards && res.yard_cards.length) {
         yardHtml = '<div class="row g-2">' + res.yard_cards.map(function (y) {
-          var erpBtn = '';
-          if (res.can_erp) {
-            var yAct = registerAction(function () { renderErpView(y.branch_code, 'materials'); });
-            erpBtn = '<button type="button" class="btn btn-outline-primary btn-sm py-0" data-act-id="' + yAct + '">자재 · 인력</button>';
-          }
           return (
             '<div class="col-md-6">' +
-              '<div class="yard-tile h-100">' +
-                '<div class="d-flex justify-content-between align-items-start gap-2 mb-1">' +
-                  '<strong class="small">' + esc(y.branch_name) + '</strong>' +
-                  '<span class="status-chip status-info">' + esc(y.region_name) + '</span>' +
+              '<a href="/vision/?branch=' + encodeURIComponent(y.branch_code) + '" class="ov-yard-item">' +
+                '<div>' +
+                  '<div class="ov-item-main">' + esc(shortYardName(y.branch_name)) + '</div>' +
+                  '<div class="ov-item-sub">현재 블록 ' + esc(y.primary_block) + '</div>' +
                 '</div>' +
-                '<div class="text-muted small mb-2">진행 선박: <strong class="text-dark">' + esc(y.primary_ship) + '</strong> · 블록 ' + esc(y.primary_block) + '</div>' +
-                '<div class="d-flex flex-wrap gap-2 small text-secondary mb-2">' +
-                  '<span>작업 <strong>' + esc(y.active_order_count) + '</strong>건</span>' +
-                  '<span>장비 <strong>' + esc(y.equip_count) + '</strong>대</span>' +
-                  (y.low_mat_count > 0 ? '<span class="text-danger">부족 자재 <strong>' + esc(y.low_mat_count) + '</strong>종</span>' : '') +
-                '</div>' +
-                '<div class="d-flex gap-2">' +
-                  '<a href="/vision/?branch=' + encodeURIComponent(y.branch_code) + '" class="btn btn-dark btn-sm py-0">현장 카메라</a>' +
-                  erpBtn +
-                '</div>' +
-              '</div>' +
+                '<span class="ov-btn-soft">카메라 →</span>' +
+              '</a>' +
             '</div>'
           );
         }).join('') + '</div>';
@@ -427,12 +431,25 @@
         yardHtml = '<div class="text-muted small py-3 text-center">등록된 야드가 없습니다.</div>';
       }
 
-      // 확인 필요 자원 -> 클릭 시 고정 표준 양식 1회 확인 후 즉시 발송
-      var urgentHtml = '';
-      if (!res.can_erp) {
-        urgentHtml = '<div class="small text-muted py-3">자재·인력 조회 권한이 있는 담당자에게만 표시됩니다.</div>';
-      } else {
-        var mItems = (res.low_materials || []).map(function (m) {
+      // 4) 우측 상단: 지금 처리할 일 (승인 대기 + 부족 자재 + 자격 만료를 1개 차분한 목록으로)
+      var todoRows = [];
+      (res.pending_docs || []).forEach(function (d) {
+        todoRows.push(
+          '<div class="ov-list-row">' +
+            '<div class="d-flex align-items-start gap-2 min-w-0">' +
+              '<span class="ov-dot dot-blue mt-2"></span>' +
+              '<div class="min-w-0">' +
+                '<div class="ov-item-main text-truncate">' + esc(d.block_code) + ' 작업지시 승인 대기</div>' +
+                '<div class="ov-item-sub">' + esc(shortYardName(d.branch_name)) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<a href="' + esc(d.review_url) + '" class="ov-btn-accent">승인 검토</a>' +
+          '</div>'
+        );
+      });
+
+      if (res.can_erp) {
+        (res.low_materials || []).forEach(function (m) {
           var actId = registerAction(function () {
             openFixedMailConfirmModal(
               'PO',
@@ -441,19 +458,22 @@
               m.branch_name + ' 공정용 ' + m.item_name + '(' + m.item_code + ') 가용 재고가 ' + m.available_qty + m.unit + '으로 부족하여 긴급 납품을 요청드립니다.'
             );
           });
-          return (
-            '<div class="d-flex justify-content-between align-items-center py-2 border-bottom gap-2 small">' +
-              '<div>' +
-                '<span class="status-chip status-danger me-1">자재 부족</span>' +
-                '<strong>' + esc(m.item_name) + '</strong>' +
-                '<div class="text-muted">' + esc(m.branch_name) + ' · 가용 ' + esc(m.available_qty) + esc(m.unit) + '</div>' +
+          var cleanMatName = String(m.item_name || '').replace(/\s*\([^)]*\)\s*/g, '').trim() || m.item_name;
+          todoRows.push(
+            '<div class="ov-list-row">' +
+              '<div class="d-flex align-items-start gap-2 min-w-0">' +
+                '<span class="ov-dot dot-red mt-2"></span>' +
+                '<div class="min-w-0">' +
+                  '<div class="ov-item-main text-truncate">' + esc(cleanMatName) + ' 부족</div>' +
+                  '<div class="ov-item-sub">' + esc(shortYardName(m.branch_name)) + ' · 남은 양 ' + esc(m.available_qty) + esc(m.unit) + '</div>' +
+                '</div>' +
               '</div>' +
-              '<button type="button" class="btn btn-outline-primary btn-sm py-0 text-nowrap" data-act-id="' + actId + '">즉시 발주</button>' +
+              '<button type="button" class="ov-btn-soft" data-act-id="' + actId + '">발주</button>' +
             '</div>'
           );
-        }).join('');
+        });
 
-        var wItems = (res.expiring_workers || []).map(function (w) {
+        (res.expiring_workers || []).forEach(function (w) {
           var actId = registerAction(function () {
             openFixedMailConfirmModal(
               'EMAIL',
@@ -462,61 +482,74 @@
               '안녕하세요, ' + w.worker_name + '님.\n보유 중인 용접 자격(' + w.cert_code + ', ' + w.weld_process + ')의 만료일(' + w.cert_expiry_date + ')이 도래/경과하여 갱신 절차를 안내드립니다.'
             );
           });
-          return (
-            '<div class="d-flex justify-content-between align-items-center py-2 border-bottom gap-2 small">' +
-              '<div>' +
-                '<span class="status-chip ' + (w.level === 'EXPIRED' ? 'status-danger' : 'status-warn') + ' me-1">' + esc(w.dday_label) + '</span>' +
-                '<strong>' + esc(w.worker_name) + '</strong> (' + esc(w.cert_code) + ')' +
-                '<div class="text-muted">' + esc(w.branch_name) + ' · 만료일 ' + esc(w.cert_expiry_date) + '</div>' +
+          todoRows.push(
+            '<div class="ov-list-row">' +
+              '<div class="d-flex align-items-start gap-2 min-w-0">' +
+                '<span class="ov-dot ' + (w.level === 'EXPIRED' ? 'dot-red' : 'dot-amber') + ' mt-2"></span>' +
+                '<div class="min-w-0">' +
+                  '<div class="ov-item-main text-truncate">' + esc(w.worker_name) + ' 자격 갱신 필요</div>' +
+                  '<div class="ov-item-sub">' + esc(shortYardName(w.branch_name)) + ' · ' + esc(friendlyDaysText(w)) + '</div>' +
+                '</div>' +
               '</div>' +
-              '<button type="button" class="btn btn-outline-dark btn-sm py-0 text-nowrap" data-act-id="' + actId + '">갱신 안내</button>' +
+              '<button type="button" class="ov-btn-soft" data-act-id="' + actId + '">안내</button>' +
             '</div>'
           );
-        }).join('');
-
-        urgentHtml = (mItems + wItems) || '<div class="small text-muted py-3 text-center">현재 부족한 자재나 만료 임박 자격이 없습니다.</div>';
+        });
       }
 
-      // 최근 작업지시서 (DRAFT는 바로 결재 화면으로, APPROVED는 작업 현황으로)
-      var docsHtml = (res.recent_docs && res.recent_docs.length)
-        ? res.recent_docs.map(function (d) {
+      var todoHtml = todoRows.length
+        ? todoRows.join('')
+        : '<div class="text-muted small py-4 text-center">지금 바로 처리해야 할 긴급 항목이 없습니다.</div>';
+
+      // 5) 우측 하단: 최근 작업지시서 (최대 3건, 컬러 배지 없이 차분한 텍스트 + 열기)
+      var recentList = (res.recent_docs || []).slice(0, 3);
+      var docsHtml = recentList.length
+        ? recentList.map(function (d) {
             var isDraft = d.approval_status === 'DRAFT';
             return (
-              '<div class="d-flex justify-content-between align-items-center py-2 border-bottom small gap-2">' +
-                '<div>' +
-                  '<strong>' + esc(d.work_no) + '</strong> <span class="badge bg-light text-dark border ms-1">' + esc(d.revision_no) + '</span>' +
-                  '<div class="text-muted">' + esc(d.ship_code) + ' / ' + esc(d.block_code) + ' · ' + esc(d.branch_name) + ' · ' + esc(d.requested_at_kst || '') + '</div>' +
+              '<div class="ov-list-row">' +
+                '<div class="min-w-0">' +
+                  '<div class="ov-item-main text-truncate">' + esc(d.block_code) + ' <span class="fw-normal text-muted small">(' + esc(d.work_no) + ')</span></div>' +
+                  '<div class="ov-item-sub">' + esc(shortYardName(d.branch_name)) + ' · ' + (isDraft ? '승인 대기' : '승인 완료') + '</div>' +
                 '</div>' +
-                '<div class="text-end text-nowrap">' +
-                  '<span class="status-chip ' + (isDraft ? 'status-warn' : 'status-ok') + '">' + esc(koStatus(d.approval_status)) + '</span>' +
-                  '<a href="' + esc(d.review_url) + '" class="btn ' + (isDraft ? 'btn-primary' : 'btn-outline-dark') + ' btn-sm py-0 ms-1">' + (isDraft ? '승인 검토' : '보기') + '</a>' +
-                '</div>' +
+                '<a href="' + esc(d.review_url) + '" class="' + (isDraft ? 'ov-btn-accent' : 'ov-btn-ghost') + '">' + (isDraft ? '승인' : '보기 →') + '</a>' +
               '</div>'
             );
           }).join('')
-        : '<div class="small text-muted py-3 text-center">생성된 작업지시서가 없습니다.</div>';
+        : '<div class="text-muted small py-3 text-center">생성된 작업지시서가 없습니다.</div>';
 
       setStageHtml(
-        guideHtml +
-        kpiHtml +
+        summaryStrip +
         '<div class="row g-3">' +
           '<div class="col-lg-7">' +
-            '<div class="panel-card">' +
-              '<div class="section-bar"><h2 class="panel-title">오늘 작업 예정 블록 (' + esc(todayStr) + ')</h2><a href="/service/library/upload-cad" class="small fw-semibold text-decoration-none">+ 선박 도면 등록</a></div>' +
+            '<div class="ov-card">' +
+              '<div class="ov-card-head">' +
+                '<h2 class="ov-card-title">오늘 할 작업 <span class="fw-normal text-muted small ms-1">' + esc(todayStr) + '</span></h2>' +
+                '<a href="/service/library/upload-cad" class="ov-card-link">+ 도면 등록</a>' +
+              '</div>' +
               queueHtml +
             '</div>' +
-            '<div class="panel-card mb-0">' +
-              '<div class="section-bar"><h2 class="panel-title">운영 중인 야드</h2><a href="/vision/" class="small fw-semibold text-decoration-none">현장 관제 이동 →</a></div>' +
+            '<div class="ov-card mb-0">' +
+              '<div class="ov-card-head">' +
+                '<h2 class="ov-card-title">현장 카메라 바로가기</h2>' +
+                '<a href="/vision/" class="ov-card-link">전체 관제 →</a>' +
+              '</div>' +
               yardHtml +
             '</div>' +
           '</div>' +
           '<div class="col-lg-5">' +
-            '<div class="panel-card">' +
-              '<div class="section-bar"><h2 class="panel-title">확인이 필요한 자원</h2><span class="small text-muted">1회 확인 즉시 발송</span></div>' +
-              urgentHtml +
+            '<div class="ov-card">' +
+              '<div class="ov-card-head">' +
+                '<h2 class="ov-card-title">바로 처리할 항목</h2>' +
+                (res.can_erp ? '<button type="button" class="btn btn-link p-0 ov-card-link" data-act-id="' + actErp + '">전체 자원 →</button>' : '') +
+              '</div>' +
+              todoHtml +
             '</div>' +
-            '<div class="panel-card mb-0">' +
-              '<div class="section-bar"><h2 class="panel-title">최근 작업지시서</h2><a href="/service/work-status" class="small fw-semibold text-decoration-none">전체 현황 →</a></div>' +
+            '<div class="ov-card mb-0">' +
+              '<div class="ov-card-head">' +
+                '<h2 class="ov-card-title">최근 작업지시서</h2>' +
+                '<a href="/service/work-status" class="ov-card-link">전체 보기 →</a>' +
+              '</div>' +
               docsHtml +
             '</div>' +
           '</div>' +
@@ -538,13 +571,6 @@
     if (!lastQaResult) {
       $.getJSON('/service/api/workspace/qa-context', function (ctx) {
         var quickHtml = '';
-        if (summaryCache && summaryCache.quick_prompts && summaryCache.quick_prompts.length) {
-          var qBtns = summaryCache.quick_prompts.map(function (item) {
-            var actId = registerAction(function () { submitWorkspaceQuery(item.prompt || item.label); });
-            return '<button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 text-nowrap" data-act-id="' + actId + '">' + esc(item.label) + '</button>';
-          }).join('');
-          quickHtml = '<div class="d-flex align-items-center flex-wrap gap-2 mb-4"><span class="small fw-bold text-secondary">빠른 질문:</span>' + qBtns + '</div>';
-        }
 
         function buildDocCards(list, badgeText) {
           if (!list || !list.length) return '<div class="col-12 text-muted small py-2">등록된 문서가 없습니다.</div>';
@@ -595,7 +621,7 @@
 
     var activeRes = lastQaResult;
     var label = TASK_LABEL_MAP[activeRes.task_type] || 'AI 분석 결과';
-    var sources = activeRes.sources || [];
+    var sources = (activeRes.sources || []).slice(0, 3);
 
     var srcHtml = '';
     if (sources.length && activeRes.task_type !== 'chat') {
@@ -904,13 +930,18 @@
                   '</div>' +
                   '<a href="/vision/?branch=' + encodeURIComponent(res.branch.branch_code) + '" class="btn btn-outline-primary btn-sm">실시간 현장 관제 →</a>' +
                 '</div>' +
-                '<div class="bg-dark text-white rounded p-3 text-center mb-3">' +
-                  (v && v.image_uri ? '<img src="' + esc(v.image_uri) + '" class="img-fluid rounded" style="max-height:280px;">' : '<div class="py-5 text-secondary small">저장된 현장 사진이 없습니다. 실시간 현장 관제에서 카메라를 확인해 주세요.</div>') +
+                '<div class="vision-viewport mb-3" style="height:290px;">' +
+                  '<img id="ws-live-feed" alt="현장 카메라 영상" style="display:none;">' +
+                  '<video id="ws-live-video" autoplay loop muted playsinline style="display:none;"></video>' +
+                  '<div id="ws-live-status" class="vision-overlay">' +
+                    '<div class="spinner-border text-light" role="status" style="width:1.6rem;height:1.6rem;"></div>' +
+                    '<div id="ws-live-status-text" class="fw-semibold small">현장 카메라 영상 불러오는 중...</div>' +
+                  '</div>' +
                 '</div>' +
                 '<div class="row g-2 small">' +
                   '<div class="col-4"><div class="border rounded p-2 bg-light"><div class="text-muted">위치 야드</div><strong>' + esc(res.branch.branch_name) + '</strong></div></div>' +
-                  '<div class="col-4"><div class="border rounded p-2 bg-light"><div class="text-muted">인식된 블록 번호</div><strong class="text-primary">' + (v && v.ocr_text ? esc(v.ocr_text) : '미감지') + '</strong></div></div>' +
-                  '<div class="col-4"><div class="border rounded p-2 bg-light"><div class="text-muted">탐지 객체</div><strong>' + (v && v.detected_objects && v.detected_objects.length ? esc(v.detected_objects.join(', ')) : '없음') + '</strong></div></div>' +
+                  '<div class="col-4"><div class="border rounded p-2 bg-light"><div class="text-muted">인식된 블록 번호</div><strong id="ws-live-ocr" class="text-primary">' + (v && v.ocr_text ? esc(v.ocr_text) : '확인 중...') + '</strong></div></div>' +
+                  '<div class="col-4"><div class="border rounded p-2 bg-light"><div class="text-muted">탐지 객체</div><strong id="ws-live-det">' + (v && v.detected_objects && v.detected_objects.length ? esc(v.detected_objects.join(', ')) : '확인 중...') + '</strong></div></div>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -926,6 +957,22 @@
             '</div>' +
           '</div>'
         );
+
+        wsVisionViewer = window.KSmartVision.mount({
+          imgSelector: '#ws-live-feed',
+          videoSelector: '#ws-live-video',
+          overlaySelector: '#ws-live-status',
+          overlayTextSelector: '#ws-live-status-text',
+          ocrSelector: '#ws-live-ocr',
+          listSelector: '#ws-live-det',
+          listMode: 'inline',
+          useServerless: !!res.use_serverless,
+          isTransportYard: (res.branch && res.branch.work_stage === 'TRANSPORT'),
+          initStage: (res.branch && res.branch.init_stage) || 'assembly',
+          cameraCode: (res.branch && res.branch.camera_code) || '',
+          fallbackOcr: (v && v.ocr_text) || '',
+          fallbackObjects: (v && v.detected_objects) || []
+        });
 
         $('#vision-block-select').on('change', function () {
           var opt = this.options[this.selectedIndex];
@@ -987,6 +1034,40 @@
     );
   }
 
+  function startAgentPolling(sessionId) {
+    if (!sessionId) return;
+    clearInterval(wsPollTimer);
+    wsPollTimer = setInterval(function () {
+      $.getJSON('/service/api/assistant/status/' + encodeURIComponent(sessionId), function (st) {
+        if (st.status === 'RUNNING') {
+          $('#ws-live-step').text(st.step_message || '백그라운드에서 분석 중입니다... (다른 페이지에 다녀와도 유지됩니다)');
+          return;
+        }
+        clearInterval(wsPollTimer);
+        sessionStorage.removeItem('ksmartship_bg_agent_sid');
+        if (st.execution_id) sessionStorage.setItem('ksmartship_bg_agent_seen_exec', String(st.execution_id));
+        renderQaTabView(st);
+      });
+    }, 1500);
+  }
+
+  function showRunningStage(question, stepMsg, sessionId) {
+    if (question) showActiveCmd(question);
+    setActiveChip('qa');
+    setStageHtml(
+      '<div class="panel-card py-4">' +
+        '<div class="d-flex align-items-center gap-3">' +
+          '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>' +
+          '<div>' +
+            '<div class="fw-bold">AI 에이전트가 백그라운드에서 작업 중입니다...</div>' +
+            '<div id="ws-live-step" class="small text-muted">' + esc(stepMsg || '다른 페이지로 이동해도 분석이 중단되지 않고 계속 진행됩니다.') + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>'
+    );
+    startAgentPolling(sessionId);
+  }
+
   function submitWorkspaceQuery(qText) {
     var q = $.trim(qText);
     if (!q) return;
@@ -1046,17 +1127,8 @@
             page_context: { page_title: '통합 업무', summary: buildContextSummary() }
           }),
           success: function (res) {
-            clearInterval(wsPollTimer);
-            wsPollTimer = setInterval(function () {
-              $.getJSON('/service/api/assistant/status/' + encodeURIComponent(res.session_id), function (st) {
-                if (st.status === 'RUNNING') {
-                  $('#ws-live-step').text(st.step_message || '분석 중입니다...');
-                  return;
-                }
-                clearInterval(wsPollTimer);
-                renderQaTabView(st);
-              });
-            }, 1500);
+            sessionStorage.setItem('ksmartship_bg_agent_sid', res.session_id || '');
+            startAgentPolling(res.session_id);
           },
           error: function (xhr) {
             setStageHtml('<div class="alert alert-danger">' + esc((xhr.responseJSON && xhr.responseJSON.message) || '요청 처리 중 오류가 발생했습니다.') + '</div>');
@@ -1082,10 +1154,7 @@
   });
   $('#btn-clear-cmd').on('click', clearActiveCmd);
 
-  $('#btn-open-qa').on('click', function () {
-    renderQaTabView();
-    setTimeout(function () { $('#ws-input').focus(); }, 180);
-  });
+
 
   $('#btn-ws-sync').on('click', function () {
     if (currentMode === 'init') renderInitView();
@@ -1102,10 +1171,40 @@
     else if (mode === 'vision') renderVisionCheckView();
   });
 
+  var urlParams = new URLSearchParams(window.location.search);
+  var wantResume = urlParams.get('resume') === '1';
+
   if ($.trim($('#ws-input').val())) {
+    $.getJSON('/service/api/workspace/summary', function (res) {
+      summaryCache = res;
+      renderDockQuickPrompts(res.quick_prompts || []);
+    });
     submitWorkspaceQuery($('#ws-input').val());
   } else {
-    renderInitView();
+    $.getJSON('/service/api/assistant/active', function (act) {
+      var trackedSid = sessionStorage.getItem('ksmartship_bg_agent_sid') || '';
+      if (act && act.status === 'RUNNING' && act.session_id) {
+        $.getJSON('/service/api/workspace/summary', function (res) {
+          summaryCache = res;
+          renderDockQuickPrompts(res.quick_prompts || []);
+        });
+        sessionStorage.setItem('ksmartship_bg_agent_sid', act.session_id);
+        showRunningStage(act.question, act.step_message, act.session_id);
+      } else if (act && act.status === 'SUCCESS' && (wantResume || (trackedSid && trackedSid === act.session_id))) {
+        $.getJSON('/service/api/workspace/summary', function (res) {
+          summaryCache = res;
+          renderDockQuickPrompts(res.quick_prompts || []);
+        });
+        sessionStorage.removeItem('ksmartship_bg_agent_sid');
+        if (act.execution_id) sessionStorage.setItem('ksmartship_bg_agent_seen_exec', String(act.execution_id));
+        if (act.question) showActiveCmd(act.question);
+        renderQaTabView(act);
+      } else {
+        renderInitView();
+      }
+    }).fail(function () {
+      renderInitView();
+    });
   }
 })();
 </script>

@@ -29,7 +29,7 @@
       </div>
       <div class="col-md-4">
         <label class="form-label small fw-semibold">배치 야드 *</label>
-        <select name="branch_code" class="form-select form-select-sm" required>
+        <select name="branch_code" id="cad-branch-select" class="form-select form-select-sm" required>
           {% for b in branches %}
           <option value="{{ b.branch_code }}">{{ b.branch_name }}</option>
           {% endfor %}
@@ -45,7 +45,7 @@
       </div>
       <div class="col-md-2">
         <label class="form-label small fw-semibold">작업 구역</label>
-        <input type="text" name="work_zone" class="form-control form-control-sm" value="ZONE-A-BAY1">
+        <select name="work_zone" id="cad-zone-select" class="form-select form-select-sm"></select>
       </div>
     </div>
 
@@ -89,6 +89,22 @@
 
 {% block extra_js %}
 <script>
+
+var BRANCH_ZONES = {{ branch_zones_map | tojson }};
+function syncZoneOptions() {
+  var br = $('#cad-branch-select').val();
+  var zones = BRANCH_ZONES[br] || [];
+  var $sel = $('#cad-zone-select');
+  $sel.empty();
+  if (zones.length) {
+    zones.forEach(function (z) { $sel.append($('<option>').val(z).text(z)); });
+  } else {
+    $sel.append($('<option>').val('').text('기본 구역'));
+  }
+}
+$('#cad-branch-select').on('change', syncZoneOptions);
+syncZoneOptions();
+
 $('#cad-upload-form').on('submit', function (e) {
   e.preventDefault();
   var fd = new FormData(this);

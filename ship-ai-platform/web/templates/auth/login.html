@@ -5,7 +5,7 @@
 <div class="auth-portal-wrap">
   <div class="auth-portal-topbar">
     <div class="fw-semibold" style="color:#0b1f3a;">K-SmartShip 자율용접 통합업무포털</div>
-    <div>시스템 문의: <strong style="color:#0b1f3a;">010-1234-5678</strong> (K-SmartShip 운영지원팀)</div>
+    <div>시스템 문의: <strong style="color:#0b1f3a;">{{ hq_contact_phone or "운영지원팀" }}</strong>{% if hq_company_name %} ({{ hq_company_name }}){% endif %}</div>
   </div>
 
   <div class="row g-0">
