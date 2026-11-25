@@ -6,17 +6,25 @@
 {% endblock %}
 
 {% block content %}
+{% set init_stage = 'transport' if selected_stage == 'TRANSPORT' else 'assembly' %}
 <div class="page-header">
   <div>
     <h1 class="page-title">{{ current_card.branch_name if current_card else '현장 관제' }}</h1>
-    {% if current_card %}
-    {% else %}
-    {% endif %}
   </div>
 
   <div class="btn-group btn-group-sm">
-    <button type="button" class="btn btn-primary px-3 fw-semibold" id="btn-cam-cctv" onclick="switchCam('cctv')">CCTV</button>
-    <button type="button" class="btn btn-outline-secondary px-3 fw-semibold" id="btn-cam-robot" onclick="switchCam('robot')">로봇 카메라</button>
+    <button type="button"
+            class="btn {{ 'btn-primary' if init_stage == 'transport' else 'btn-outline-secondary' }} px-3 fw-semibold"
+            id="btn-cam-transport"
+            onclick="switchCam('transport')">운반(OCR)</button>
+    <button type="button"
+            class="btn {{ 'btn-primary' if init_stage == 'assembly' else 'btn-outline-secondary' }} px-3 fw-semibold"
+            id="btn-cam-assembly"
+            onclick="switchCam('assembly')">CCTV(조립)</button>
+    <button type="button"
+            class="btn btn-outline-secondary px-3 fw-semibold"
+            id="btn-cam-welding"
+            onclick="switchCam('welding')">로봇(용접)</button>
   </div>
 </div>
 
@@ -24,7 +32,7 @@
 <div class="row g-3 mb-3">
   <div class="col-lg-9">
     <div class="bg-dark rounded overflow-hidden text-center" style="min-height:480px;display:flex;align-items:center;justify-content:center;">
-      <img id="live-feed" src="/vision/video_feed" class="img-fluid w-100" alt="현장 카메라 영상">
+      <img id="live-feed" src="/vision/video_feed?stage={{ init_stage }}" class="img-fluid w-100" alt="현장 카메라 영상">
     </div>
   </div>
   <div class="col-lg-3">
@@ -100,18 +108,46 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-var CCTV_VIDEO = {{ (current_card.cctv_video if current_card else '') | tojson }};
-var ROBOT_VIDEO = {{ (current_card.robot_video if current_card else '') | tojson }};
 var leafletMap = null;
 var mapOpen = false;
 var esc = window.KSmartMd.esc;
 
+function renderDetections(res) {
+  var preds = (res && res.predictions) ? res.predictions : [];
+  var ocrItem = preds.find(function (p) { return p.ocr_text; });
+  $('#live-ocr').text(ocrItem ? ocrItem.ocr_text : '미감지');
+  $('#live-det-list').html(
+    preds.length
+      ? preds.map(function (p) {
+          return '<li class="py-2 border-bottom d-flex justify-content-between align-items-center">' +
+            '<span class="fw-semibold text-dark">' + esc(p.class || p.class_name || '객체') + '</span>' +
+            '<span class="status-chip status-muted">' + Math.round((p.confidence || 0) * 100) + '%</span></li>';
+        }).join('')
+      : '<li class="text-muted py-2">탐지된 객체가 없습니다.</li>'
+  );
+}
+
 function switchCam(mode) {
-  var target = (mode === 'robot') ? ROBOT_VIDEO : CCTV_VIDEO;
-  if (!target) return;
-  $('#btn-cam-cctv').toggleClass('btn-primary', mode === 'cctv').toggleClass('btn-outline-secondary', mode !== 'cctv');
-  $('#btn-cam-robot').toggleClass('btn-primary', mode === 'robot').toggleClass('btn-outline-secondary', mode !== 'robot');
-  $.get('/vision/change_video/' + encodeURIComponent(target));
+  ['transport', 'assembly', 'welding'].forEach(function (m) {
+    $('#btn-cam-' + m)
+      .toggleClass('btn-primary', mode === m)
+      .toggleClass('btn-outline-secondary', mode !== m);
+  });
+
+  $('#live-det-list').html('<li class="py-2 text-muted">RunPod AI 분석 중...</li>');
+
+  $.getJSON('/vision/change_video/' + encodeURIComponent(mode), function (res) {
+    if (res.image_data_url) {
+      $('#live-feed').attr('src', res.image_data_url);
+    } else {
+      $('#live-feed').attr('src', '/vision/video_feed?stage=' + encodeURIComponent(mode) + '&t=' + Date.now());
+    }
+    if (res.detection_data) {
+      renderDetections(res.detection_data);
+    }
+  }).fail(function () {
+    $('#live-det-list').html('<li class="py-2 text-danger">RunPod 호출 실패 (API 키/엔드포인트 확인)</li>');
+  });
 }
 
 function toggleYardMap() {
@@ -162,20 +198,7 @@ function initOrResizeMap() {
 }
 
 function pollDetections() {
-  $.getJSON('/vision/detections', function (res) {
-    var preds = res.predictions || [];
-    var ocrItem = preds.find(function (p) { return p.ocr_text; });
-    $('#live-ocr').text(ocrItem ? ocrItem.ocr_text : '미감지');
-    $('#live-det-list').html(
-      preds.length
-        ? preds.map(function (p) {
-            return '<li class="py-2 border-bottom d-flex justify-content-between align-items-center">' +
-              '<span class="fw-semibold text-dark">' + esc(p.class || p.class_name || '객체') + '</span>' +
-              '<span class="status-chip status-muted">' + Math.round((p.confidence || 0) * 100) + '%</span></li>';
-          }).join('')
-        : '<li class="text-muted py-2">탐지된 객체가 없습니다.</li>'
-    );
-  });
+  $.getJSON('/vision/detections', renderDetections);
 }
 setInterval(pollDetections, 2000);
 pollDetections();

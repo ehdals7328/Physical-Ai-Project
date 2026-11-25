@@ -693,3 +693,31 @@ html {
 .stage-fade-in {
   animation: stageFadeIn 0.22s ease forwards;
 }
+
+/* ---------- Prevent Horizontal Shift on Modal Open/Close ---------- */
+body.modal-open {
+  overflow-y: scroll !important;
+  padding-right: 0 !important;
+}
+.site-header,
+.modal {
+  padding-right: 0 !important;
+}
+
+/* ---------- Zero-Jitter Modal Fix (Bootstrap scrollbar compensation override) ---------- */
+html, body {
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable !important;
+}
+body.modal-open {
+  overflow-y: scroll !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}
+.site-header,
+.modal,
+.modal-open .site-header,
+.modal-open .modal {
+  padding-right: 0 !important;
+  margin-right: 0 !important;
+}

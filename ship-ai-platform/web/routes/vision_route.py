@@ -1,4 +1,5 @@
 # web/routes/vision_route.py
+import base64
 import json
 import os
 import threading
@@ -56,6 +57,179 @@ def _runpod_headers() -> dict[str, str]:
     if RUNPOD_API_KEY:
         headers["Authorization"] = f"Bearer {RUNPOD_API_KEY}"
     return headers
+
+
+# ⭐ RunPod Serverless 결과 메모리 캐시 (2초 폴링마다 중복 과금/지연 방지)
+_RUNPOD_CACHE_LOCK = threading.Lock()
+_RUNPOD_STATE: dict = {
+    "stage": "assembly",
+    "bay_id": "BAY-01",
+    "image_bytes": b"",
+    "image_data_url": "",
+    "detection_data": None,
+    "updated_at": 0.0,
+}
+
+
+def _resolve_stage(name: str | None) -> str:
+    """파일명(Test_1.mp4 등) 또는 버튼 모드를 handler.py의 stage(transport/assembly/welding)로 변환"""
+    s = (name or "").strip().lower()
+    if s in ("transport", "assembly", "welding"):
+        return s
+    if "ocr" in s or "video2" in s:
+        return "transport"
+    if "seg" in s or "robot" in s or "video3" in s:
+        return "welding"
+    return "assembly"
+
+
+def _bbox_xyxy_to_box(bbox: list) -> dict:
+    x1, y1, x2, y2 = [float(v) for v in bbox]
+    return {
+        "x": round((x1 + x2) / 2.0, 1),
+        "y": round((y1 + y2) / 2.0, 1),
+        "width": round(x2 - x1, 1),
+        "height": round(y2 - y1, 1),
+    }
+
+
+def _normalize_runpod_payload(payload: dict) -> dict:
+    """handler.py의 stage별 응답을 vision.html이 기대하는 predictions 형식으로 변환"""
+    stage = (payload.get("stage") or "").lower()
+    predictions = []
+    width, height = 960, 540
+
+    if stage == "transport":
+        d = payload.get("transport_data") or {}
+        res = d.get("image_resolution") or [960, 540]
+        width, height = int(res[0]), int(res[1])
+        top_ocr = d.get("block_id")
+        for b in d.get("blocks") or []:
+            predictions.append({
+                "class": b.get("class", "block"),
+                "confidence": float(b.get("conf", 0.0)),
+                "ocr_text": b.get("ocr_id") or top_ocr,
+                "box": _bbox_xyxy_to_box(b["bbox"]) if b.get("bbox") else {},
+            })
+        if not predictions and top_ocr:
+            predictions.append({
+                "class": "ship_block",
+                "confidence": float(d.get("ocr_confidence", 0.0)),
+                "ocr_text": top_ocr,
+            })
+
+    elif stage == "assembly":
+        d = payload.get("assembly_data") or {}
+        res = d.get("image_resolution") or [960, 540]
+        width, height = int(res[0]), int(res[1])
+        for det in d.get("detections") or []:
+            predictions.append({
+                "class": det.get("class", "object"),
+                "confidence": float(det.get("conf", 0.0)),
+                "box": _bbox_xyxy_to_box(det["bbox"]) if det.get("bbox") else {},
+            })
+
+    elif stage == "welding":
+        d = payload.get("welding_data") or {}
+        res = d.get("image_resolution") or [960, 540]
+        width, height = int(res[0]), int(res[1])
+        if d.get("seam_detected"):
+            predictions.append({
+                "class": "weld_joint",
+                "confidence": 0.95,
+                "centerline_waypoints": d.get("weld_seam_centerline") or [],
+            })
+        if d.get("torch_detected") and d.get("torch_bbox"):
+            predictions.append({
+                "class": "torch",
+                "confidence": 0.90,
+                "box": _bbox_xyxy_to_box(d["torch_bbox"]),
+            })
+        if d.get("spark_detected"):
+            predictions.append({
+                "class": "spark",
+                "confidence": 0.85,
+            })
+
+    return {
+        "image": {"width": width, "height": height},
+        "source": "RUNPOD_SERVERLESS",
+        "stage": stage,
+        "predictions": predictions,
+    }
+
+
+def _call_runpod_serverless(
+    stage: str = "assembly",
+    bay_id: str = "BAY-01",
+    image_base64: str | None = None,
+) -> dict:
+    headers = {
+        "Authorization": f"Bearer {RUNPOD_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body: dict = {"input": {"stage": stage, "bay_id": bay_id}}
+    if image_base64:
+        body["input"]["image_base64"] = image_base64
+
+    res = requests.post(
+        f"{RUNPOD_SERVERLESS_URL}/runsync",
+        headers=headers,
+        json=body,
+        timeout=120,
+    )
+    res.raise_for_status()
+    data = res.json()
+
+    # 콜드 스타트 등으로 대기 상태이면 완료될 때까지 폴링
+    job_id = data.get("id")
+    for _ in range(30):
+        if data.get("status") not in ("IN_QUEUE", "IN_PROGRESS"):
+            break
+        time.sleep(2)
+        st = requests.get(
+            f"{RUNPOD_SERVERLESS_URL}/status/{job_id}",
+            headers=headers,
+            timeout=30,
+        )
+        st.raise_for_status()
+        data = st.json()
+
+    if data.get("status") != "COMPLETED":
+        raise RuntimeError(f"RunPod 실행 실패: {data}")
+
+    output = data.get("output") or {}
+    if "error" in output:
+        raise RuntimeError(output["error"])
+
+    b64_img = output.get("annotated_image_base64") or ""
+    img_bytes = base64.b64decode(b64_img) if b64_img else b""
+    image_data_url = f"data:image/jpeg;base64,{b64_img}" if b64_img else ""
+    detection_data = _normalize_runpod_payload(output.get("payload") or {})
+
+    return {
+        "stage": stage,
+        "bay_id": bay_id,
+        "image_bytes": img_bytes,
+        "image_data_url": image_data_url,
+        "detection_data": detection_data,
+        "updated_at": time.time(),
+    }
+
+
+def _get_or_fetch_runpod_state(stage: str | None = None, force: bool = False) -> dict:
+    target_stage = _resolve_stage(stage or _RUNPOD_STATE.get("stage") or "assembly")
+    with _RUNPOD_CACHE_LOCK:
+        need_fetch = (
+            force
+            or not _RUNPOD_STATE["image_bytes"]
+            or _RUNPOD_STATE["stage"] != target_stage
+        )
+        if need_fetch:
+            result = _call_runpod_serverless(stage=target_stage)
+            _RUNPOD_STATE.update(result)
+        return dict(_RUNPOD_STATE)
+
 
 # DB 기본값(video1.mp4 등)과 RunPod(final.py) 실제 파일명 매핑
 VIDEO_FILENAME_ALIASES = {
@@ -124,7 +298,7 @@ def _prune_old_disk_files(folder: Path, max_keep: int = MAX_DISK_FILES_PER_FOLDE
 
 def _get_image_dimensions(file_path: Path) -> tuple[int, int]:
     try:
-        import fitz
+        import pymupdf as fitz
         with fitz.open(str(file_path)) as doc:
             if len(doc) > 0:
                 rect = doc[0].rect
@@ -246,7 +420,6 @@ def _query_inspections_paginated(
     saved_date = (saved_date or "").strip()
     keyword = (keyword or "").strip().lower()
 
-    # 사용 가능한 카메라 채널 목록 수집
     cam_rows = (
         db.session.query(VisionAnalysis.camera_code)
         .distinct()
@@ -395,7 +568,6 @@ def index():
             "orders": br_orders,
         })
 
-    # DB(ERP_BRANCHES.DEFAULT_VIDEO 및 WORK_ORDERS) 기반 동적 공정 단계 & 영상 채널 매핑 (하드코딩 제거)
     robot_detail_video = os.getenv("ROBOT_DETAIL_VIDEO", "seg_Test.mp4")
     all_blocks = ErpBlockMaster.query.order_by(ErpBlockMaster.ship_code.asc(), ErpBlockMaster.block_id.asc()).all()
     for card in branch_cards:
@@ -543,10 +715,23 @@ def get_map_markers():
 
 
 # ---------------------------------------------------------------------
-# 3. 실시간 카메라 스트리밍 & 제어 프록시
+# 3. 실시간 카메라 스트리밍 & 제어 프록시 (RunPod Serverless 우선)
 # ---------------------------------------------------------------------
 @vision_bp.route("/video_feed")
 def video_feed():
+    if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+        try:
+            stage = request.args.get("stage")
+            force = request.args.get("refresh") == "1"
+            state = _get_or_fetch_runpod_state(stage=stage, force=force)
+            if state["image_bytes"]:
+                resp = Response(state["image_bytes"], mimetype="image/jpeg")
+                resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                return resp
+        except Exception as e:
+            print("RunPod Serverless 이미지 로드 에러:", e)
+        return Response(status=503)
+
     def proxy_stream():
         req = None
         try:
@@ -573,6 +758,17 @@ def video_feed():
 
 @vision_bp.route("/detections")
 def get_detections():
+    if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+        try:
+            state = _get_or_fetch_runpod_state(force=False)
+            return jsonify(
+                state["detection_data"]
+                or {"image": {"width": 960, "height": 540}, "source": "EMPTY", "predictions": []}
+            )
+        except Exception as e:
+            print("RunPod Serverless 탐지 조회 에러:", e)
+            return jsonify({"image": {"width": 960, "height": 540}, "source": "ERR", "predictions": []})
+
     try:
         res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
         if res.status_code == 200:
@@ -586,6 +782,9 @@ def get_detections():
 
 @vision_bp.route("/pause")
 def toggle_pause():
+    if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+        return jsonify({"status": "ok", "is_paused": False})
+
     try:
         res = requests.get(RUNPOD_PAUSE_URL, headers=_runpod_headers(), timeout=3, verify=False)
         return jsonify(res.json())
@@ -595,6 +794,23 @@ def toggle_pause():
 
 @vision_bp.route("/change_video/<filename>")
 def change_video(filename):
+    if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+        try:
+            stage = _resolve_stage(filename)
+            state = _get_or_fetch_runpod_state(stage=stage, force=True)
+            with _TRACKER_LOCK:
+                _SEEN_JOINT_TRACKER_KEYS.clear()
+                _SEEN_OCR_KEYS.clear()
+            return jsonify({
+                "status": "ok",
+                "stage": stage,
+                "image_data_url": state["image_data_url"],
+                "detection_data": state["detection_data"],
+            })
+        except Exception as e:
+            print("RunPod 스테이지 전환 에러:", e)
+            return jsonify({"status": "error", "message": str(e)}), 500
+
     try:
         mapped_name = VIDEO_FILENAME_ALIASES.get(filename.lower(), filename)
         target_url = f"{RUNPOD_CHANGE_VIDEO_URL}{mapped_name}"
@@ -627,6 +843,7 @@ def upload_and_run_yolo():
         media_file = request.files.get("media_file")
         camera_code = request.form.get("camera_code", "CAM-UPLOAD").strip() or "CAM-UPLOAD"
         work_id = request.form.get("work_id", 1, type=int)
+        stage = _resolve_stage(request.form.get("stage", "assembly"))
         auto_save = request.form.get("auto_save", "Y").strip().upper() == "Y"
 
         if not media_file or not media_file.filename:
@@ -655,6 +872,8 @@ def upload_and_run_yolo():
 
         media_type = "IMAGE" if ext in ALLOWED_IMAGE_EXT else "VIDEO"
         public_url = f"/static/uploads/vision/{saved_filename}"
+        vis_img_url = public_url
+        annotated_image_data_url = ""
 
         start_ts = time.time()
         width, height = (960, 540)
@@ -664,28 +883,49 @@ def upload_and_run_yolo():
         predictions = []
         infer_source = "AI_SERVER"
 
-        for endpoint in ("/predict", "/infer", "/upload"):
+        # 1) RunPod Serverless 우선 호출 (이미지 업로드 시)
+        if media_type == "IMAGE" and RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
             try:
-                with open(saved_path, "rb") as f_stream:
-                    resp = requests.post(
-                        f"{RUNPOD_BASE}{endpoint}",
-                        files={"file": (saved_filename, f_stream, media_file.mimetype or "application/octet-stream")},
-                        timeout=8,
-                        verify=False,
-                    )
-                if resp.status_code == 200:
-                    payload = resp.json()
-                    if isinstance(payload, dict) and "predictions" in payload:
-                        predictions = payload.get("predictions") or []
-                        img_info = payload.get("image") or {}
-                        width = int(img_info.get("width") or width)
-                        height = int(img_info.get("height") or height)
-                        infer_source = "AI_SERVER"
-                        break
-            except Exception:
-                continue
+                raw_b64 = base64.b64encode(saved_path.read_bytes()).decode("utf-8")
+                rp_res = _call_runpod_serverless(stage=stage, bay_id=camera_code, image_base64=raw_b64)
+                det_data = rp_res.get("detection_data") or {}
+                predictions = det_data.get("predictions") or []
+                img_info = det_data.get("image") or {}
+                width = int(img_info.get("width") or width)
+                height = int(img_info.get("height") or height)
+                annotated_image_data_url = rp_res.get("image_data_url") or ""
+                if rp_res.get("image_bytes"):
+                    vis_filename = f"vis_{now_tag}_{safe_name}.jpg"
+                    (VISION_UPLOAD_DIR / vis_filename).write_bytes(rp_res["image_bytes"])
+                    vis_img_url = f"/static/uploads/vision/{vis_filename}"
+                infer_source = "RUNPOD_SERVERLESS"
+            except Exception as e:
+                print(f"[RunPod Serverless 업로드 분석 실패 - 폴백 전환]: {e}")
 
-        if not predictions:
+        # 2) 기존 Pod 서버 폴백
+        if not predictions and not (RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY):
+            for endpoint in ("/predict", "/infer", "/upload"):
+                try:
+                    with open(saved_path, "rb") as f_stream:
+                        resp = requests.post(
+                            f"{RUNPOD_BASE}{endpoint}",
+                            files={"file": (saved_filename, f_stream, media_file.mimetype or "application/octet-stream")},
+                            timeout=8,
+                            verify=False,
+                        )
+                    if resp.status_code == 200:
+                        payload = resp.json()
+                        if isinstance(payload, dict) and "predictions" in payload:
+                            predictions = payload.get("predictions") or []
+                            img_info = payload.get("image") or {}
+                            width = int(img_info.get("width") or width)
+                            height = int(img_info.get("height") or height)
+                            infer_source = "AI_SERVER"
+                            break
+                except Exception:
+                    continue
+
+        if not predictions and not (RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY):
             try:
                 det_resp = requests.get(RUNPOD_JSON_URL, timeout=2.0, verify=False)
                 if det_resp.status_code == 200:
@@ -717,7 +957,7 @@ def upload_and_run_yolo():
                     camera_code=camera_code,
                     source_uri=public_url,
                     orig_img_uri=public_url,
-                    vis_img_uri=public_url,
+                    vis_img_uri=vis_img_url,
                     width=width,
                     height=height,
                     inference_ms=inference_ms,
@@ -730,7 +970,8 @@ def upload_and_run_yolo():
         return jsonify({
             "status": "SUCCESS",
             "media_type": media_type,
-            "media_url": public_url,
+            "media_url": vis_img_url,
+            "image_data_url": annotated_image_data_url,
             "filename": orig_name,
             "saved_filename": saved_filename,
             "inference_time_ms": inference_ms,
@@ -889,12 +1130,19 @@ def save_vision_snapshot():
     detection_data = payload.get("detection_data") or {}
 
     if not detection_data or not detection_data.get("predictions"):
-        try:
-            det_res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
-            if det_res.status_code == 200:
-                detection_data = det_res.json()
-        except Exception:
-            pass
+        if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+            try:
+                state = _get_or_fetch_runpod_state(force=False)
+                detection_data = state.get("detection_data") or {}
+            except Exception:
+                pass
+        else:
+            try:
+                det_res = requests.get(RUNPOD_JSON_URL, headers=_runpod_headers(), timeout=1.5, verify=False)
+                if det_res.status_code == 200:
+                    detection_data = det_res.json()
+            except Exception:
+                pass
 
     image_meta = detection_data.get("image") or {"width": 960, "height": 540}
     predictions = detection_data.get("predictions") or []
@@ -914,7 +1162,6 @@ def save_vision_snapshot():
     if auto_mode and welding_state == "IN_WELDING":
         return jsonify({"status": "LOCKED", "welding_state": "IN_WELDING"})
 
-    # 수동 저장 시 연속 클릭(3초 이내 중복 클릭)으로 인한 DB 과다 적재 방지
     if not auto_mode:
         now_ts = time.time()
         with _CAMERA_AUTOSAVE_LOCK:
@@ -926,7 +1173,6 @@ def save_vision_snapshot():
                 })
             _LAST_MANUAL_SAVE_TS[camera_code] = now_ts
 
-    # ⭐ 자동 저장 시: 동일 tracker_id(용접선) 또는 동일 OCR 블록 번호 중복 저장 원천 차단
     if auto_mode:
         joint_preds = [
             p for p in predictions
@@ -945,7 +1191,6 @@ def save_vision_snapshot():
         if not new_joints and not is_new_ocr:
             return jsonify({"status": "SKIPPED", "message": "이미 기록된 추적 ID입니다."})
 
-        # 카메라당 최소 10초 쿨다운 (다중 접속 보호)
         now_ts = time.time()
         with _CAMERA_AUTOSAVE_LOCK:
             last_ts = _LAST_CAMERA_AUTOSAVE_TS.get(camera_code, 0.0)
@@ -961,7 +1206,10 @@ def save_vision_snapshot():
         public_capture_uri = f"/static/captures/{capture_filename}"
 
         if not auto_mode:
-            frame_bytes = _capture_single_mjpeg_frame(timeout_sec=2.0)
+            if RUNPOD_SERVERLESS_URL and RUNPOD_API_KEY:
+                frame_bytes = _get_or_fetch_runpod_state(force=False).get("image_bytes")
+            else:
+                frame_bytes = _capture_single_mjpeg_frame(timeout_sec=2.0)
             if frame_bytes:
                 capture_path.write_bytes(frame_bytes)
                 _prune_old_disk_files(VISION_CAPTURE_DIR, max_keep=MAX_DISK_FILES_PER_FOLDER)
@@ -969,7 +1217,7 @@ def save_vision_snapshot():
         analysis_id = _insert_vision_records(
             work_id=int(work_id) if work_id else 1,
             camera_code=camera_code,
-            source_uri=f"{RUNPOD_STREAM_URL} ({video_name})",
+            source_uri=f"{RUNPOD_SERVERLESS_URL or RUNPOD_STREAM_URL} ({video_name})",
             orig_img_uri=public_capture_uri,
             vis_img_uri=public_capture_uri,
             width=int(image_meta.get("width", 960)),
