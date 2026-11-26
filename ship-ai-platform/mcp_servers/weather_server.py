@@ -24,43 +24,35 @@ mcp = FastMCP("weather-server", host="0.0.0.0", port=8000)
 
 
 def extract_clean_city(query: str) -> str:
-  clean_query = (query or "").strip()
-  if not clean_query:
-    return ""
+    clean_query = (query or "").strip()
+    if not clean_query:
+        return ""
 
-  if clean_query.isascii() and clean_query.isalpha():
+    if clean_query.isascii() and clean_query.isalpha():
+        return clean_query
+
+    prompt = (
+        "다음 문장이나 단어에서 날씨를 조회할 대표 도시의 영문명만 출력하세요.\n"
+        "예: Seoul, Busan, Ulsan, Geoje, Daegu, Jeju\n"
+        "설명이나 마침표 없이 오직 영문 도시명만 반환하세요."
+    )
+    try:
+        res = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": clean_query},
+            ],
+            temperature=0,
+            max_tokens=15,
+        )
+        city = res.choices[0].message.content.strip().splitlines()[0].strip(" .'\"")
+        if city and city.upper() != "NONE":
+            return city
+    except Exception as e:
+        print(f"🚨 [weather_server LLM 예외]: {e}")
+
     return clean_query
-
-  prompt = (
-      "다음 입력에서 기상 조회가 가능한 대표 도시의 영문명 딱 1단어만"
-      " 출력하세요.\n"
-      "특정 도시를 식별할 수 없으면 'NONE'이라고만 출력하세요.\n"
-      "설명 없이 영문 도시명 1단어만 반환할 것."
-  )
-  try:
-    res = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": clean_query},
-        ],
-        temperature=0,
-        max_tokens=10,
-    )
-    city = (
-        res.choices[0]
-        .message.content.strip()
-        .split()[0]
-        .replace(".", "")
-        .replace("'", "")
-    )
-    if city.upper() != "NONE":
-      return city
-  except Exception as e:
-    print(f"🚨 [weather_server LLM 예외]: {e}")
-
-  # LLM 호출 실패 시 지오코딩 API에 원본 쿼리 직접 전달
-  return clean_query
 
 
 def get_geo(city_query: str):

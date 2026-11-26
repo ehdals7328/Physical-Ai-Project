@@ -65,7 +65,7 @@
   <div class="table-responsive">
     <table class="table table-enterprise">
       <thead>
-        <tr><th>도면번호</th><th>선박 호선</th><th>도면명</th><th>배치 야드 · 구역</th><th>등록자</th><th>상태</th></tr>
+        <tr><th>도면번호</th><th>선박 호선</th><th>도면명</th><th>배치 야드 · 구역</th><th>등록자</th><th>상태</th><th>관리</th></tr>
       </thead>
       <tbody>
         {% for d in existing_drawings %}
@@ -76,6 +76,17 @@
           <td>{{ branch_map.get(d.branch_code, d.branch_code) }} · {{ d.work_zone }}</td>
           <td class="small">{{ d.uploaded_by }}</td>
           <td><span class="status-chip status-ok">{{ d.plan_status }}</span></td>
+          <td class="text-nowrap">
+            <a href="/service/agent/analyze?cad_drawing_id={{ d.drawing_id }}&branch_code={{ d.branch_code }}"
+               class="btn btn-outline-primary btn-sm py-0 px-2">
+              AI 재분석
+            </a>
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm py-0 px-2 ms-1"
+                    onclick="deleteCadDrawing('{{ d.drawing_id }}')">
+              삭제
+            </button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -120,8 +131,13 @@ $('#cad-upload-form').on('submit', function (e) {
     processData: false,
     contentType: false,
     success: function (res) {
-      $alert.removeClass('d-none').addClass('alert-success').text(res.message);
-      setTimeout(function () { location.reload(); }, 1200);
+      var analyzeUrl = '/service/agent/analyze?cad_drawing_id=' + encodeURIComponent(res.drawing_id) +
+                       '&branch_code=' + encodeURIComponent($('#cad-branch-select').val() || '');
+      $alert.removeClass('d-none').addClass('alert-success').html(
+        window.KSmartMd.esc(res.message) +
+        ' <a href="' + analyzeUrl + '" class="btn btn-primary btn-sm ms-2 fw-semibold">AI 블록 분할 · 공정계획 수립 →</a>'
+      );
+      $btn.prop('disabled', false).text('도면 등록');
     },
     error: function (xhr) {
       var msg = (xhr.responseJSON && xhr.responseJSON.message) || '도면 등록에 실패했습니다.';
@@ -131,5 +147,22 @@ $('#cad-upload-form').on('submit', function (e) {
     }
   });
 });
+function deleteCadDrawing(drawingId) {
+  if (!confirm('도면(' + drawingId + ')과 연결된 대기 공정 계획을 삭제하시겠습니까?\n(진행 중인 작업이 있으면 삭제되지 않습니다.)')) {
+    return;
+  }
+  $.ajax({
+    url: '/service/api/library/cad-delete/' + encodeURIComponent(drawingId),
+    method: 'DELETE',
+    success: function (res) {
+      alert(res.message || '삭제되었습니다.');
+      location.reload();
+    },
+    error: function (xhr) {
+      var msg = (xhr.responseJSON && xhr.responseJSON.message) || '삭제에 실패했습니다.';
+      alert(msg);
+    }
+  });
+}
 </script>
 {% endblock %}

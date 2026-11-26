@@ -1,8 +1,8 @@
 """
 modules/agent/tools/erp_tools.py
 본사 Oracle SHIP_ERP 및 외부 협력사 FastMCP B2B 게이트웨이 연동 도구
-- 본사 Oracle(SHIP_ERP_DATABASE_URL)만 직접 접속하며, 협력사 PostgreSQL은 partner_mcp_client를 통해 MCP 통신으로 분리
-- 용접 공정(WPS) 상호 일치 검증 및 대상 야드 우선 배차 로직 탑재
+- 본사 Oracle(SHIP_ERP_DATABASE_URL)만 직접 접속하며, 협력사 PostgreSQL은 partner_mcp_client를 통해 MCP/A2A 통신으로 분리
+- 용접 공정(WPS) 상호 일치 검증, 중량물 정격하중 안전율(90% 이하) 진단, 대상 야드 우선 배차 및 외주 실패 보상 롤백 탑재
 """
 
 import os
@@ -41,13 +41,262 @@ except Exception as e:
 def calculate_required_wire_kg(
     estimated_length_mm: Optional[float] = None,
     weight_ton: Optional[float] = None,
+    plan_wire_kg: Optional[float] = None,
 ) -> float:
-    """비전 계측 용접선 길이(mm) 또는 블록 중량(ton)을 기반으로 필요 와이어 소모량(kg) 산출"""
+    """CAD 공정계획 블록 산출량(kg) > 비전 계측 길이(mm) > 블록 중량(ton) 순으로 필요 와이어 소모량 산출"""
+    if plan_wire_kg and float(plan_wire_kg) > 0:
+        return round(float(plan_wire_kg), 2)
     if estimated_length_mm and float(estimated_length_mm) > 0:
         return round((float(estimated_length_mm) / 1000.0) * 6.25, 2)
     if weight_ton and float(weight_ton) > 0:
         return round(float(weight_ton) * 0.08, 2)
     return 15.0
+
+
+def _get_user_engine() -> Any:
+    try:
+        from modules.agent.tools.vision_tools import user_engine
+        return user_engine
+    except Exception:
+        return None
+
+def _truncate_utf8(val: str, max_bytes: int) -> str:
+    encoded = val.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return val
+    return encoded[:max_bytes].decode("utf-8", errors="ignore").strip()
+
+def _sync_work_plans_to_block_master() -> Dict[str, Dict[str, Any]]:
+    """
+    SHIP_USER.WORK_PLANS의 활성 공정 계획(PENDING/IN_PROGRESS)을 조회해
+    SHIP_ERP.ERP_BLOCK_MASTER에 자동 동기화(MERGE)하고 블록별 계획 메타데이터 맵을 반환합니다.
+    """
+    plan_map: Dict[str, Dict[str, Any]] = {}
+    u_eng = _get_user_engine()
+    if u_eng is None:
+        return plan_map
+
+    try:
+        with u_eng.connect() as u_conn:
+            rows = u_conn.execute(
+                text("""
+                    SELECT wp.PLAN_ID, wp.DRAWING_ID, wp.BRANCH_CODE, wp.WORK_ZONE,
+                           wp.PRIORITY_RANK, wp.BLOCK_CODE, wp.BLOCK_NAME,
+                           wp.MATERIAL_GRADE, wp.THICKNESS_MM, wp.PROCESS_CODE,
+                           wp.JOINT_TYPE, wp.WIRE_MAT_CODE, wp.EST_WELD_LENGTH_MM,
+                           wp.EST_WEIGHT_TON, wp.EST_WIRE_KG, wp.EST_DURATION_DAYS,
+                           wp.PLANNED_START_DATE, wp.PLANNED_END_DATE,
+                           wp.PLAN_STATE, wp.ASSIGNED_WO_NUMBER,
+                           cd.SHIP_CODE
+                    FROM WORK_PLANS wp
+                    LEFT JOIN CAD_DRAWINGS cd ON wp.DRAWING_ID = cd.DRAWING_ID
+                    WHERE wp.PLAN_STATE IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'LOCKED', 'QUEUED')
+                    ORDER BY wp.PRIORITY_RANK ASC, wp.CREATED_AT ASC
+                """)
+            ).mappings().all()
+
+        for r in rows:
+            d = dict(r)
+            b_code = str(d.get("block_code") or "").strip().upper()
+            if not b_code:
+                continue
+            # 동일 블록 코드가 여러 건일 경우 PENDING/IN_PROGRESS 우선 유지
+            if b_code not in plan_map or d.get("plan_state") in ("PENDING", "IN_PROGRESS"):
+                plan_map[b_code] = d
+
+        if erp_engine is not None and plan_map:
+            with erp_engine.begin() as e_conn:
+                for b_code, d in plan_map.items():
+                    if d.get("plan_state") not in ("PENDING", "IN_PROGRESS"):
+                        continue
+                    e_conn.execute(
+                        text("""
+                            MERGE INTO ERP_BLOCK_MASTER dst
+                            USING (
+                                SELECT :block_id AS block_id,
+                                       :ship_code AS ship_code,
+                                       :block_name AS block_name,
+                                       :steel_type AS steel_type,
+                                       :thickness_mm AS thickness_mm,
+                                       :joint_type AS joint_type,
+                                       :process AS process,
+                                       :target_dock AS target_dock,
+                                       :branch_code AS branch_code,
+                                       :weight_ton AS weight_ton
+                                FROM DUAL
+                            ) src
+                            ON (UPPER(TRIM(dst.block_id)) = UPPER(TRIM(src.block_id)))
+                            WHEN MATCHED THEN
+                                UPDATE SET
+                                    dst.ship_code = src.ship_code,
+                                    dst.block_name = src.block_name,
+                                    dst.steel_type = src.steel_type,
+                                    dst.thickness_mm = src.thickness_mm,
+                                    dst.joint_type = src.joint_type,
+                                    dst.process = src.process,
+                                    dst.target_dock = src.target_dock,
+                                    dst.branch_code = src.branch_code,
+                                    dst.weight_ton = CASE WHEN src.weight_ton > 0 THEN src.weight_ton ELSE dst.weight_ton END
+                            WHEN NOT MATCHED THEN
+                                INSERT (
+                                    block_id, ship_code, block_name, steel_type, thickness_mm,
+                                    joint_type, process, target_dock, branch_code, weight_ton
+                                ) VALUES (
+                                    src.block_id, src.ship_code, src.block_name, src.steel_type, src.thickness_mm,
+                                    src.joint_type, src.process, src.target_dock, src.branch_code, src.weight_ton
+                                )
+                        """),
+                        {
+                            "block_id": _truncate_utf8(b_code, 45),
+                            "ship_code": _truncate_utf8(str(d.get("ship_code") or "HN-GUNNERUS-01"), 45),
+                            "block_name": _truncate_utf8(str(d.get("block_name") or b_code), 95),
+                            "steel_type": _truncate_utf8(str(d.get("material_grade") or "AH36"), 45),
+                            "thickness_mm": f"{int(float(d.get('thickness_mm') or 10.0))}T",
+                            "joint_type": _truncate_utf8(str(d.get("joint_type") or "BUTT"), 45),
+                            "process": _truncate_utf8(str(d.get("process_code") or "FCAW"), 45),
+                            "target_dock": _truncate_utf8(str(d.get("work_zone") or "ZONE-A-BAY1"), 45),
+                            "branch_code": _truncate_utf8(str(d.get("branch_code") or "BR-ULSAN-01"), 45),
+                            "weight_ton": float(d.get("est_weight_ton") or 0.0),
+                        },
+                    )
+    except Exception as e:
+        print(f"⚠️ [_sync_work_plans_to_block_master 참고]: {e}")
+
+    return plan_map
+
+
+def evaluate_heavy_lifting_capacity(
+    block_weight_ton: Optional[float],
+    vehicles_equipment: List[Dict[str, Any]],
+    target_branch: Optional[str] = None,
+    requested_equipment: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    [산업안전보건규칙 제38조 실무 기준]
+    블록 중량 + 줄걸이(Rigging) 자중 5%를 합산한 총 인양하중과 장비 정격하중(max_load_ton)을 대조해
+    안전 하중률(85% 이하 정상 / 85~90% 주의 / 90% 초과 과하중 차단)을 판정합니다.
+    """
+    weight = float(block_weight_ton or 0.0)
+    rigging_ton = round(weight * 0.05, 2)
+    total_lifting_ton = round(weight + rigging_ton, 2)
+
+    lifting_assets = [
+        eq for eq in (vehicles_equipment or [])
+        if any(
+            k in str(eq.get("asset_category", "")).upper()
+            for k in ("CRANE", "TRANSPORTER", "FORKLIFT", "VEHICLE")
+        )
+    ]
+
+    selected_eq = None
+    req_eq_upper = str(requested_equipment or "").upper().strip()
+
+    # 1순위: 사용자가 명시한 장비명/코드 매칭
+    if req_eq_upper:
+        for eq in lifting_assets:
+            text_key = (
+                f"{eq.get('asset_code', '')} "
+                f"{eq.get('asset_name', '')} "
+                f"{eq.get('asset_category', '')}"
+            ).upper()
+            if (
+                req_eq_upper in text_key
+                or ("크레인" in req_eq_upper and "CRANE" in text_key)
+                or ("트랜스포터" in req_eq_upper and "TRANSPORTER" in text_key)
+                or ("지게차" in req_eq_upper and "FORKLIFT" in text_key)
+            ):
+                selected_eq = eq
+                break
+
+    # 2순위: 대상 야드 내 대기(STANDBY) 장비 중 총 인양하중(안전율 90% 이내)을 감당할 수 있는 최적 장비 자동 선정
+    if not selected_eq:
+        candidates = [
+            eq for eq in lifting_assets
+            if str(eq.get("operation_status", "")).upper() == "STANDBY"
+            and (
+                not target_branch
+                or str(eq.get("branch_code", "")).upper() == str(target_branch).upper()
+            )
+        ]
+        safe_candidates = [
+            eq for eq in candidates
+            if float(eq.get("max_load_ton") or 0) * 0.90 >= total_lifting_ton
+        ]
+        if safe_candidates:
+            selected_eq = sorted(
+                safe_candidates, key=lambda x: float(x.get("max_load_ton") or 9999)
+            )[0]
+        elif candidates:
+            selected_eq = sorted(
+                candidates, key=lambda x: float(x.get("max_load_ton") or 0), reverse=True
+            )[0]
+
+    # 3순위: 타 야드 포함 안전 인양 가능한 대안 장비(외주 200톤 트랜스포터 등) 탐색
+    recommended_alternatives = [
+        eq for eq in lifting_assets
+        if str(eq.get("operation_status", "")).upper() == "STANDBY"
+        and float(eq.get("max_load_ton") or 0) * 0.90 >= total_lifting_ton
+    ]
+
+    if not selected_eq or weight <= 0:
+        return {
+            "status": "NO_EQUIPMENT" if not selected_eq else "WEIGHT_MISSING",
+            "is_safe": False,
+            "need_outsourcing": bool(weight > 0),
+            "block_weight_ton": weight,
+            "rigging_weight_ton": rigging_ton,
+            "total_lifting_ton": total_lifting_ton,
+            "selected_equipment": selected_eq,
+            "max_load_ton": float((selected_eq or {}).get("max_load_ton") or 0.0),
+            "load_ratio_pct": 0.0,
+            "recommended_alternatives": recommended_alternatives,
+            "reason": "대상 야드에 투입 가능한 중량물 양중/운반 장비가 없거나 블록 중량이 미지정되었습니다.",
+        }
+
+    max_load = float(selected_eq.get("max_load_ton") or 0.0)
+    load_ratio = round((total_lifting_ton / max_load) * 100.0, 1) if max_load > 0 else 999.0
+    is_standby = str(selected_eq.get("operation_status", "")).upper() == "STANDBY"
+    is_external = str(selected_eq.get("company_code", "COMP-HQ")).upper() != "COMP-HQ"
+
+    if not is_standby:
+        status_code, is_safe = "EQUIPMENT_BUSY", False
+        reason = (
+            f"지정 장비 {selected_eq.get('asset_name')}({selected_eq.get('asset_code')})가 "
+            f"현재 운행/정비 중입니다."
+        )
+    elif load_ratio > 90.0:
+        status_code, is_safe = "OVERLOAD", False
+        reason = (
+            f"정격하중 안전율 초과(위험): 총 인양하중 {total_lifting_ton}톤"
+            f"(블록 {weight}톤 + 줄걸이 {rigging_ton}톤) / 장비 정격 {max_load}톤 "
+            f"➔ 하중률 {load_ratio}% (법정 허용 안전기준 90% 초과)"
+        )
+    elif load_ratio > 85.0:
+        status_code, is_safe = "CONDITIONAL_PASS", True
+        reason = (
+            f"정격하중 주의 구간(하중률 {load_ratio}%): "
+            f"저속 인양 및 시험 인양(지상 30cm 정지 확인) 필수"
+        )
+    else:
+        status_code, is_safe = "PASS", True
+        reason = (
+            f"정격하중 안전 기준 충족(하중률 {load_ratio}%, "
+            f"여유 하중 {round(max_load - total_lifting_ton, 1)}톤)"
+        )
+
+    return {
+        "status": status_code,
+        "is_safe": is_safe,
+        "need_outsourcing": is_external or (status_code == "OVERLOAD"),
+        "block_weight_ton": weight,
+        "rigging_weight_ton": rigging_ton,
+        "total_lifting_ton": total_lifting_ton,
+        "selected_equipment": selected_eq,
+        "max_load_ton": max_load,
+        "load_ratio_pct": load_ratio,
+        "recommended_alternatives": recommended_alternatives,
+        "reason": reason,
+    }
 
 
 def get_branch_context_from_db(branch_code: Optional[str]) -> Dict[str, Any]:
@@ -147,12 +396,37 @@ def list_registered_partners_from_db() -> List[Dict[str, Any]]:
 # ==============================================================================
 @tool
 def list_erp_workers(branch_code: Optional[str] = None) -> Dict[str, Any]:
-    """Oracle ERP_WORKER_CERT 원장에서 사내외 전체 작업자 명단 및 자격 상태를 조회합니다."""
+    """Oracle ERP_WORKER_CERT 원장에서 사내외 전체 작업자 명단, 자격 상태 및 실시간 투입(is_busy) 여부를 조회합니다."""
     if not erp_engine:
         return {"status": "ERROR", "workers": []}
 
     try:
         with erp_engine.connect() as conn:
+            busy_rows = conn.execute(
+                text("""
+                    SELECT worker_id, worker_name, block_id, execution_type
+                    FROM MES_WORK_ORDER_DISPATCH
+                    WHERE UPPER(status) = 'COMMITTED'
+                """)
+            ).mappings().all()
+            busy_ids = {
+                str(r["worker_id"]).strip()
+                for r in busy_rows
+                if r.get("worker_id") and str(r.get("execution_type", "")).upper() == "IN_HOUSE"
+            }
+            busy_names = {str(r["worker_name"]).strip() for r in busy_rows if r.get("worker_name")}
+
+            eq_busy_rows = conn.execute(
+                text("""
+                    SELECT driver_worker_id
+                    FROM ERP_VEHICLES_EQUIPMENT
+                    WHERE UPPER(operation_status) = 'IN_USE'
+                      AND driver_worker_id IS NOT NULL
+                """)
+            ).mappings().all()
+            for er in eq_busy_rows:
+                busy_ids.add(str(er["driver_worker_id"]).strip())
+
             if branch_code:
                 rows = conn.execute(
                     text("""
@@ -177,7 +451,10 @@ def list_erp_workers(branch_code: Optional[str] = None) -> Dict[str, Any]:
             workers = []
             for r in rows:
                 d = dict(r)
-                d["is_valid"] = str(d.get("status", "")).upper() == "VALID"
+                w_id = str(d.get("worker_id") or "").strip()
+                w_nm = str(d.get("worker_name") or "").strip()
+                d["is_busy"] = (w_id in busy_ids) or (w_nm in busy_names)
+                d["is_valid"] = (str(d.get("status", "")).upper() == "VALID") and (not d["is_busy"])
                 workers.append(d)
 
             return {"status": "SUCCESS", "workers": workers}
@@ -226,6 +503,8 @@ def check_hq_erp_resources(
         result["status"] = "ERROR"
         return result
 
+    plan_map = _sync_work_plans_to_block_master()
+
     try:
         with erp_engine.connect() as conn:
             # 0. 전사 야드(ERP_BRANCHES) 전체 마스터 조회 및 동적 권역(region_name) 매핑
@@ -253,6 +532,7 @@ def check_hq_erp_resources(
                 ).mappings().first()
 
                 if b_row:
+                    p_meta = plan_map.get(norm_block_id) or {}
                     result["block_master"] = {
                         "block_id": b_row["block_id"],
                         "ship_code": b_row["ship_code"],
@@ -265,6 +545,12 @@ def check_hq_erp_resources(
                         "location": b_row["target_dock"],
                         "branch_code": b_row["branch_code"],
                         "weight_ton": float(b_row["weight_ton"]) if b_row["weight_ton"] else 0.0,
+                        "plan_id": p_meta.get("plan_id"),
+                        "priority_rank": p_meta.get("priority_rank"),
+                        "est_wire_kg": float(p_meta["est_wire_kg"]) if p_meta.get("est_wire_kg") is not None else None,
+                        "est_weld_length_mm": float(p_meta["est_weld_length_mm"]) if p_meta.get("est_weld_length_mm") is not None else None,
+                        "planned_start_date": p_meta.get("planned_start_date"),
+                        "planned_end_date": p_meta.get("planned_end_date"),
                     }
 
             # 블록 마스터에 지정된 실제 작업 야드가 있으면 로그인 사용자 기본 야드보다 최우선 적용
@@ -272,7 +558,17 @@ def check_hq_erp_resources(
                 target_branch = result["block_master"]["branch_code"]
             else:
                 target_branch = branch_code or "BR-GEOJE-01"
-            # 1-1. 전사 등록 블록 마스터 전체 목록 조회 (블록 현황/공정별 블록 질의 대응)
+
+            # 1-1. 활성 작업 배정(MES_WORK_ORDER_DISPATCH) 및 전사 등록 블록 마스터 전체 조회
+            active_block_rows = conn.execute(
+                text("""
+                    SELECT DISTINCT UPPER(TRIM(block_id)) AS block_id
+                    FROM MES_WORK_ORDER_DISPATCH
+                    WHERE UPPER(status) = 'COMMITTED'
+                """)
+            ).mappings().all()
+            active_block_set = {r["block_id"] for r in active_block_rows if r.get("block_id")}
+
             all_block_rows = conn.execute(
                 text("""
                     SELECT block_id, ship_code, block_name, steel_type AS material,
@@ -282,7 +578,31 @@ def check_hq_erp_resources(
                     ORDER BY block_id ASC
                 """)
             ).mappings().all()
-            result["available_blocks"] = [dict(r) for r in all_block_rows]
+            avail_blocks = []
+            for r in all_block_rows:
+                bd = dict(r)
+                bid_up = str(bd.get("block_id") or "").strip().upper()
+                p_meta = plan_map.get(bid_up)
+                if p_meta and p_meta.get("plan_state") in ("COMPLETED", "LOCKED", "QUEUED"):
+                    continue
+                bd["is_active_work"] = (bid_up in active_block_set) or (
+                    bool(p_meta) and p_meta.get("plan_state") == "IN_PROGRESS"
+                )
+                if p_meta:
+                    bd["plan_id"] = p_meta.get("plan_id")
+                    bd["priority_rank"] = p_meta.get("priority_rank")
+                    bd["planned_start_date"] = p_meta.get("planned_start_date")
+                    bd["planned_end_date"] = p_meta.get("planned_end_date")
+                avail_blocks.append(bd)
+            avail_blocks.sort(
+                key=lambda x: (
+                    x["is_active_work"],
+                    0 if x.get("priority_rank") else 1,
+                    x.get("priority_rank") or 999,
+                    x["block_id"],
+                )
+            )
+            result["available_blocks"] = avail_blocks
 
             # 2. 야드(Branch) 정보 조회
             br_row = conn.execute(
@@ -301,7 +621,11 @@ def check_hq_erp_resources(
                     "company_code": br_row["company_code"],
                     "region_name": br_row["region_name"],
                     "branch_name": br_row["branch_name"],
-                    "default_zone": "DOCK-1" if "GEOJE" in str(br_row["branch_code"]).upper() else "ZONE-A-BAY1",
+                    "default_zone": (
+                        "DOCK-1"
+                        if "GEOJE" in str(br_row["branch_code"]).upper()
+                        else "ZONE-A-BAY1"
+                    ),
                 }
 
             # 2-1. 해당 야드 소속 현장 반장/관리자(검토자) 동적 조회
@@ -329,10 +653,10 @@ def check_hq_erp_resources(
                 else None
             )
 
-            # 3. 현재 활성 작업 배정 원장(MES_WORK_ORDER_DISPATCH) 조회 (작업자 중복 투입 방지용)
+            # 3. 현재 활성 작업 배정 원장(MES_WORK_ORDER_DISPATCH) 및 가동 중 장비 운전자 조회 (중복 투입 방지용)
             active_dispatch_rows = conn.execute(
                 text("""
-                    SELECT worker_id, worker_name, block_id, wo_number
+                    SELECT worker_id, worker_name, block_id, wo_number, execution_type
                     FROM MES_WORK_ORDER_DISPATCH
                     WHERE UPPER(status) = 'COMMITTED'
                 """)
@@ -345,10 +669,27 @@ def check_hq_erp_resources(
                     "block_id": d_row["block_id"],
                     "wo_number": d_row["wo_number"],
                 }
-                if d_row.get("worker_id"):
+                # 외주(OUTSOURCED_B2B)의 FK 대리 매핑(본사 반장 사번)은 본사 인력 잠금에서 제외
+                if d_row.get("worker_id") and str(d_row.get("execution_type", "")).upper() == "IN_HOUSE":
                     busy_by_id[str(d_row["worker_id"]).strip()] = info
                 if d_row.get("worker_name"):
                     busy_by_name[str(d_row["worker_name"]).strip()] = info
+
+            eq_busy_rows = conn.execute(
+                text("""
+                    SELECT asset_code, driver_worker_id
+                    FROM ERP_VEHICLES_EQUIPMENT
+                    WHERE UPPER(operation_status) = 'IN_USE'
+                      AND driver_worker_id IS NOT NULL
+                """)
+            ).mappings().all()
+            for er in eq_busy_rows:
+                drv_id = str(er["driver_worker_id"]).strip()
+                if drv_id and drv_id not in busy_by_id:
+                    busy_by_id[drv_id] = {
+                        "block_id": er["asset_code"],
+                        "wo_number": "EQUIPMENT_IN_USE",
+                    }
 
             # 3-1. 전체 작업자 자격 및 실시간 투입 현황 요약 조회
             all_workers = conn.execute(
@@ -393,6 +734,7 @@ def check_hq_erp_resources(
                                cert_code, weld_process, cert_expiry_date, status
                         FROM ERP_WORKER_CERT
                         WHERE worker_name = :worker_name
+                           OR UPPER(TRIM(worker_id)) = UPPER(TRIM(:worker_name))
                         ORDER BY cert_expiry_date DESC
                         FETCH FIRST 1 ROWS ONLY
                     """),
@@ -400,7 +742,7 @@ def check_hq_erp_resources(
                 ).mappings().first()
 
                 if w_row:
-                    is_cert_valid = (str(w_row["status"]).upper() == "VALID")
+                    is_cert_valid = str(w_row["status"]).upper() == "VALID"
                     req_process = (
                         result["block_master"].get("process")
                         if result["block_master"]
@@ -408,7 +750,6 @@ def check_hq_erp_resources(
                     )
                     worker_proc = w_row["weld_process"]
 
-                    # 중복 투입 여부 확인
                     active_job = (
                         busy_by_id.get(str(w_row["worker_id"]).strip())
                         or busy_by_name.get(str(w_row["worker_name"]).strip())
@@ -421,7 +762,6 @@ def check_hq_erp_resources(
                             f"현재 블록 '{active_job['block_id']}'(오더: {active_job['wo_number']})에 이미 투입 중입니다."
                         )
 
-                    # 용접 공정(WPS) 일치 여부 확인
                     is_proc_matched = True
                     proc_mismatch_reason = None
                     if (
@@ -437,7 +777,6 @@ def check_hq_erp_resources(
                                 f"작업자({w_row['worker_name']})의 인증 공정은 '{worker_proc}'입니다."
                             )
 
-                    # 작업 야드 권역(region_name) 일치 여부 확인 (동일 지역 인접 야드 허용, 타 지역 차단)
                     worker_branch_upper = str(w_row["branch_code"] or "").strip().upper()
                     target_branch_upper = str(target_branch or "").strip().upper()
                     worker_region = branch_region_map.get(worker_branch_upper, "")
@@ -504,7 +843,6 @@ def check_hq_erp_resources(
                             or f"작업자 자격 상태 부적격({w_row['status']})"
                         )
                 else:
-                    # 사내 원장에 없는 경우 외주 인력 중복 투입 여부도 체크
                     ext_active = busy_by_name.get(clean_worker_name)
                     if ext_active:
                         result["worker_qualified"] = False
@@ -552,12 +890,15 @@ def check_hq_erp_resources(
             )
             plate_match_score = -1
             wire_match_score = -1
-            selected_wire_avail = None
+            selected_wire_avail = 0.0
 
             for r in inv_rows:
                 total_q = float(r["total_qty"])
                 res_q = float(r["reserved_qty"])
                 avail_q = max(0.0, total_q - res_q)
+                is_same_branch = (
+                    str(r.get("branch_code") or "").upper() == str(target_branch).upper()
+                )
                 item_dict = {
                     "item_code": r["item_code"],
                     "item_name": r["item_name"],
@@ -570,10 +911,10 @@ def check_hq_erp_resources(
                     "lot_no": r["lot_no"],
                     "supplier_code": r["supplier_code"],
                 }
-                result["inventory"][r["item_code"]] = item_dict
+                if r["item_code"] not in result["inventory"] or is_same_branch:
+                    result["inventory"][r["item_code"]] = item_dict
 
                 item_text_upper = f"{r['item_code']} {r['item_name']}".upper()
-                is_same_branch = str(r.get("branch_code") or "").upper() == str(target_branch).upper()
 
                 if r["material_category"] == "STEEL_PLATE" and avail_q > 0:
                     score = 0
@@ -596,13 +937,18 @@ def check_hq_erp_resources(
                         wire_match_score = score
                         result["selected_wire_code"] = r["item_code"]
                         result["selected_wire_supplier"] = r["supplier_code"]
-                        selected_wire_avail = avail_q
+                        # 대상 야드(target_branch) 실제 보유 재고만 가용량으로 인정 (타 야드 재고 혼용 방지)
+                        selected_wire_avail = avail_q if is_same_branch else 0.0
 
-            if selected_wire_avail is not None and selected_wire_avail < 15.0:
+            req_wire_needed = float(
+                (result["block_master"] or {}).get("est_wire_kg") or 15.0
+            )
+            if result["selected_wire_code"] and selected_wire_avail < req_wire_needed:
                 result["stock_available"] = False
                 result["require_outsourcing"] = True
                 result["outsourcing_reason"] = (
-                    f"사내 용접 와이어({result['selected_wire_code']}) 가용 재고 부족({selected_wire_avail}kg)"
+                    f"대상 야드({target_branch}) 용접 와이어({result['selected_wire_code']}) "
+                    f"가용 재고 부족(보유 {selected_wire_avail}kg < 필요 {req_wire_needed}kg)"
                 )
 
             # 5. 장비 및 운반 차량 배정 - 작업 대상 야드(target_branch) 우선 매칭
@@ -737,7 +1083,12 @@ def commit_erp_work_order(
     reserve_wire_kg: float = 15.0,
     delivery_yard_zone: str = "ZONE-A-BAY1",
 ) -> Dict[str, Any]:
-    """관리자 승인(HITL) 완료 후 Oracle MES 원장 커밋 및 외주 시 협력사 FastMCP 게이트웨이를 통해 수주 원장을 동시 갱신합니다."""
+    """
+    관리자 승인(HITL) 완료 후 Oracle MES 원장 커밋 및 외주 시 협력사 FastMCP 게이트웨이를 통해 수주 원장을 동시 갱신합니다.
+    - [패치 1] 미등록 블록 번호 입력 시 임의 블록(B-104 등) 대체 금지 — 즉시 커밋 중단
+    - [패치 3] 사내 직영 시 요청 와이어 수량 전체 확보 검증 — 재고 부족 시 부분 선점 없이 커밋 중단
+    - 외주 수주 접수 실패 시 본사 Oracle 원장 오더를 자동 보상 롤백(ROLLED_BACK)
+    """
     now_str = datetime.now().strftime("%Y%m%d-%H%M%S")
     committed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     wo_no = f"WO-{now_str}"
@@ -746,6 +1097,7 @@ def commit_erp_work_order(
     if not erp_engine:
         return {
             "erp_transaction_status": "ERROR",
+            "purchase_status": "FAILED",
             "error_message": "SHIP_ERP_DATABASE_URL이 설정되지 않았습니다.",
             "work_order_number": wo_no,
             "execution_type": exec_type,
@@ -756,32 +1108,90 @@ def commit_erp_work_order(
     resolved_worker_id = worker_id or "EMP-1002"
 
     try:
-        # 1. Oracle SHIP_ERP 원장 커밋 (재고 선점 + MES_WORK_ORDER_DISPATCH 등록)
+        # 1. Oracle SHIP_ERP 원장 커밋 (블록/재고 엄격 검증 + 재고 선점 + MES_WORK_ORDER_DISPATCH 등록)
         with erp_engine.begin() as conn:
             if not worker_id and worker_name:
                 w_row = conn.execute(
-                    text("SELECT worker_id FROM ERP_WORKER_CERT WHERE worker_name = :w_name FETCH FIRST 1 ROWS ONLY"),
+                    text(
+                        "SELECT worker_id FROM ERP_WORKER_CERT "
+                        "WHERE worker_name = :w_name FETCH FIRST 1 ROWS ONLY"
+                    ),
                     {"w_name": worker_name},
                 ).mappings().first()
                 if w_row:
                     resolved_worker_id = w_row["worker_id"]
 
-            # FK_DISPATCH_WORKER 무결성 보장: Oracle 본사 원장(ERP_WORKER_CERT) 등록 여부 확인
             fk_worker_id = conn.execute(
                 text("SELECT worker_id FROM ERP_WORKER_CERT WHERE worker_id = :wid"),
                 {"wid": resolved_worker_id},
             ).scalar()
 
-            # FK_DISPATCH_BLOCK 무결성 보장: 단독 발주('DIRECT-PO' 등) 시 유효 블록 코드 매핑
-            fk_block_id = conn.execute(
-                text("SELECT block_id FROM ERP_BLOCK_MASTER WHERE block_id = :bid"),
+            # [패치 1] FK_DISPATCH_BLOCK 무결성 보장: 유효한 등록 블록인지 엄격 검증 (임의 블록 대체 금지)
+            blk_row = conn.execute(
+                text("""
+                    SELECT block_id, branch_code
+                    FROM ERP_BLOCK_MASTER
+                    WHERE UPPER(TRIM(block_id)) = UPPER(TRIM(:bid))
+                """),
                 {"bid": block_id},
-            ).scalar()
+            ).mappings().first()
 
-            if not fk_block_id:
-                fk_block_id = conn.execute(
-                    text("SELECT block_id FROM ERP_BLOCK_MASTER ORDER BY block_id ASC FETCH FIRST 1 ROWS ONLY")
-                ).scalar() or "B-104"
+            if not blk_row:
+                raise ValueError(
+                    f"유효하지 않은 블록 번호('{block_id}')입니다. "
+                    "ERP_BLOCK_MASTER에 등록된 블록만 작업 오더를 커밋할 수 있습니다."
+                )
+            fk_block_id = blk_row["block_id"]
+            fk_branch_code = blk_row.get("branch_code")
+
+            # [Pre-commit 재검증 1] 동일 블록 중복 오더 차단
+            dup_block = conn.execute(
+                text("""
+                    SELECT wo_number
+                    FROM MES_WORK_ORDER_DISPATCH
+                    WHERE UPPER(TRIM(block_id)) = UPPER(TRIM(:bid))
+                      AND UPPER(status) = 'COMMITTED'
+                    FETCH FIRST 1 ROWS ONLY
+                """),
+                {"bid": fk_block_id},
+            ).scalar()
+            if dup_block:
+                raise ValueError(
+                    f"블록 '{fk_block_id}'은 이미 확정된 작업오더({dup_block})가 진행 중이어서 중복 커밋할 수 없습니다."
+                )
+
+            # [Pre-commit 재검증 2] 사내 직영 작업자 중복 투입 차단
+            if not is_outsourced and fk_worker_id:
+                dup_worker = conn.execute(
+                    text("""
+                        SELECT wo_number
+                        FROM MES_WORK_ORDER_DISPATCH
+                        WHERE worker_id = :wid
+                          AND UPPER(execution_type) = 'IN_HOUSE'
+                          AND UPPER(status) = 'COMMITTED'
+                        FETCH FIRST 1 ROWS ONLY
+                    """),
+                    {"wid": fk_worker_id},
+                ).scalar()
+                if dup_worker:
+                    raise ValueError(
+                        f"작업자 '{worker_name}({fk_worker_id})'는 이미 작업오더({dup_worker})에 투입 중입니다."
+                    )
+
+            # [Pre-commit 재검증 3] 사내 배차 차량/장비 STANDBY 상태 확인
+            if assigned_vehicle_code:
+                veh_row = conn.execute(
+                    text("""
+                        SELECT asset_code, operation_status
+                        FROM ERP_VEHICLES_EQUIPMENT
+                        WHERE UPPER(TRIM(asset_code)) = UPPER(TRIM(:veh_code))
+                    """),
+                    {"veh_code": assigned_vehicle_code},
+                ).mappings().first()
+                if veh_row and str(veh_row["operation_status"]).upper() != "STANDBY":
+                    raise ValueError(
+                        f"장비 '{assigned_vehicle_code}'는 현재 '{veh_row['operation_status']}' 상태여서 중복 배차할 수 없습니다."
+                    )
 
             # 외부 협력사(PostgreSQL) 전용 작업자인 경우 본사 현장 담당자(EMP-*)를 FK 대리 매핑
             if not fk_worker_id:
@@ -794,33 +1204,48 @@ def commit_erp_work_order(
                     """)
                 ).scalar() or "EMP-1002"
 
-            if wire_item_code:
+            # [패치 3] 사내 직영 시 요청 수량 전체 확보 검증 (부분 선점 후 COMMITTED 방지)
+            if wire_item_code and not is_outsourced:
                 wire_row = conn.execute(
                     text("""
-                        SELECT item_code, total_qty, reserved_qty
+                        SELECT item_code, branch_code, total_qty, reserved_qty
                         FROM ERP_BOM_INVENTORY
                         WHERE item_code = :i_code
+                          AND (:b_code IS NULL OR UPPER(TRIM(branch_code)) = UPPER(TRIM(:b_code)))
                         FETCH FIRST 1 ROWS ONLY
                     """),
-                    {"i_code": wire_item_code},
+                    {"i_code": wire_item_code, "b_code": fk_branch_code},
                 ).mappings().first()
 
-                if wire_row:
-                    tot_q = float(wire_row["total_qty"] or 0)
-                    res_q = float(wire_row["reserved_qty"] or 0)
-                    avail_q = max(0.0, tot_q - res_q)
-                    reserved_applied = min(float(reserve_wire_kg), avail_q)
-                    remaining_wire = avail_q - reserved_applied
+                if not wire_row:
+                    raise ValueError(
+                        f"자재 품번('{wire_item_code}')이 ERP_BOM_INVENTORY에 존재하지 않습니다."
+                    )
 
-                    if reserved_applied > 0:
-                        conn.execute(
-                            text("""
-                                UPDATE ERP_BOM_INVENTORY
-                                SET reserved_qty = reserved_qty + :add_qty
-                                WHERE item_code = :i_code
-                            """),
-                            {"add_qty": reserved_applied, "i_code": wire_item_code},
-                        )
+                tot_q = float(wire_row["total_qty"] or 0)
+                res_q = float(wire_row["reserved_qty"] or 0)
+                avail_q = max(0.0, tot_q - res_q)
+                req_q = float(reserve_wire_kg)
+
+                if avail_q < req_q:
+                    raise ValueError(
+                        f"사내 자재({wire_item_code}) 가용 재고 부족: "
+                        f"요청 {req_q}kg > 가용 {avail_q}kg (부분 선점 불가 — 커밋 중단)"
+                    )
+
+                reserved_applied = req_q
+                remaining_wire = avail_q - reserved_applied
+
+                if reserved_applied > 0:
+                    conn.execute(
+                        text("""
+                            UPDATE ERP_BOM_INVENTORY
+                            SET reserved_qty = reserved_qty + :add_qty
+                            WHERE item_code = :i_code
+                              AND UPPER(TRIM(branch_code)) = UPPER(TRIM(:b_code))
+                        """),
+                        {"add_qty": reserved_applied, "i_code": wire_item_code, "b_code": wire_row["branch_code"]},
+                    )
 
             conn.execute(
                 text("""
@@ -845,10 +1270,21 @@ def commit_erp_work_order(
                     "veh_code": assigned_vehicle_code,
                 },
             )
+            if assigned_vehicle_code:
+                conn.execute(
+                    text("""
+                        UPDATE ERP_VEHICLES_EQUIPMENT
+                        SET operation_status = 'IN_USE'
+                        WHERE UPPER(TRIM(asset_code)) = UPPER(TRIM(:veh_code))
+                          AND UPPER(operation_status) = 'STANDBY'
+                    """),
+                    {"veh_code": assigned_vehicle_code},
+                )
     except Exception as e:
         print(f"⚠️ [Oracle MES 원장 커밋 오류]: {e}")
         return {
             "erp_transaction_status": "ERROR",
+            "purchase_status": "FAILED",
             "error_message": str(e),
             "work_order_number": wo_no,
             "execution_type": exec_type,
@@ -857,6 +1293,7 @@ def commit_erp_work_order(
     # 2. 외주 연계(OUTSOURCED_B2B)인 경우 협력사 FastMCP 게이트웨이를 통해 수주 원장 동시 기록
     po_no = None
     b2b_ack = None
+    purchase_status = "CONFIRMED"
     if is_outsourced:
         po_no = f"PO-{now_str}"
         b2b_ack = f"ACK-{wo_no}-{partner_id}"
@@ -870,12 +1307,78 @@ def commit_erp_work_order(
             delivery_yard_zone=delivery_yard_zone,
         )
         if mcp_order_res.get("status") not in ("CONFIRMED", "SUCCESS"):
-            print(f"⚠️ [Partner FastMCP 수주 원장 기록 참고]: {mcp_order_res}")
-        elif mcp_order_res.get("b2b_ack"):
+            print(f"🚨 [외주 발주 실패 ➔ 본사 원장 보상 롤백 실행]: {mcp_order_res}")
+            try:
+                with erp_engine.begin() as rb_conn:
+                    if assigned_vehicle_code:
+                        rb_conn.execute(
+                            text("""
+                                UPDATE ERP_VEHICLES_EQUIPMENT
+                                SET operation_status = 'STANDBY'
+                                WHERE UPPER(TRIM(asset_code)) = UPPER(TRIM(:veh_code))
+                            """),
+                            {"veh_code": assigned_vehicle_code},
+                        )
+
+                    if wire_item_code and reserved_applied > 0:
+                        rb_conn.execute(
+                            text("""
+                                UPDATE ERP_BOM_INVENTORY
+                                SET reserved_qty = GREATEST(0, reserved_qty - :sub_qty)
+                                WHERE item_code = :i_code
+                            """),
+                            {"sub_qty": reserved_applied, "i_code": wire_item_code},
+                        )
+                    rb_conn.execute(
+                        text("""
+                            UPDATE MES_WORK_ORDER_DISPATCH
+                            SET status = 'ROLLED_BACK'
+                            WHERE wo_number = :wo_no
+                        """),
+                        {"wo_no": wo_no},
+                    )
+            except Exception as rb_err:
+                print(f"🚨 [보상 롤백 실패 — 수동 확인 필요]: {rb_err}")
+
+            return {
+                "erp_transaction_status": "ROLLED_BACK",
+                "purchase_status": "FAILED",
+                "work_order_number": wo_no,
+                "execution_type": exec_type,
+                "partner_id": partner_id,
+                "po_number": po_no,
+                "error_message": (
+                    "협력사 수주 접수 실패로 본사 ERP 선점 및 오더를 자동 보상 롤백했습니다: "
+                    f"{mcp_order_res.get('error_message')}"
+                ),
+                "committed_at": committed_at,
+            }
+
+        if mcp_order_res.get("b2b_ack"):
             b2b_ack = mcp_order_res["b2b_ack"]
+        purchase_status = "CONFIRMED"
+
+    # CAD 공정계획(WORK_PLANS)에서 편성된 블록인 경우 PENDING -> IN_PROGRESS 상태 및 발급 지시서 번호 동기화
+    u_eng = _get_user_engine()
+    if u_eng is not None:
+        try:
+            with u_eng.begin() as u_conn:
+                u_conn.execute(
+                    text("""
+                        UPDATE WORK_PLANS
+                        SET PLAN_STATE = 'IN_PROGRESS',
+                            ASSIGNED_WO_NUMBER = :wo_no
+                        WHERE UPPER(TRIM(BLOCK_CODE)) = UPPER(TRIM(:bid))
+                          AND PLAN_STATE = 'PENDING'
+                    """),
+                    {"wo_no": wo_no, "bid": fk_block_id},
+                )
+        except Exception as wp_err:
+            print(f"⚠️ [WORK_PLANS 상태 동기화 경고]: {wp_err}")
 
     return {
         "erp_transaction_status": "COMMITTED",
+        "purchase_status": purchase_status,
         "work_order_number": wo_no,
         "execution_type": exec_type,
         "partner_id": partner_id,
@@ -890,4 +1393,260 @@ def commit_erp_work_order(
         "reserved_wire_kg": reserved_applied,
         "remaining_hq_wire_kg": remaining_wire,
         "committed_at": committed_at,
+    }
+
+# ==============================================================================
+# 4. ReAct 에이전트 자율 탐색(Auto-Discovery)용 원자적 도구 3종
+# ==============================================================================
+@tool
+def find_pending_blocks(
+    branch_code: Optional[str] = None,
+    process: Optional[str] = None,
+    exclude_blocks: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    ERP_BLOCK_MASTER와 MES_WORK_ORDER_DISPATCH를 대조해 현재 야드에서
+    작업 편성 가능한 대기(미투입) 블록 후보 목록을 우선순위순으로 조회합니다.
+    """
+    if not erp_engine:
+        return {"status": "ERROR", "blocks": [], "error_message": "Oracle 연결 없음"}
+
+    valid_procs = {"FCAW", "SAW", "GMAW", "SMAW", "GTAW", "TIG", "MIG"}
+    if process and str(process).strip().upper() not in valid_procs:
+        process = None
+
+    plan_map = _sync_work_plans_to_block_master()
+    excluded = {str(b).strip().upper() for b in (exclude_blocks or []) if b}
+    try:
+        with erp_engine.connect() as conn:
+            br_rows = conn.execute(
+                text("SELECT branch_code FROM ERP_BRANCHES")
+            ).mappings().all()
+            valid_branch_codes = {
+                str(r["branch_code"]).strip().upper()
+                for r in br_rows
+                if r.get("branch_code")
+            }
+            if branch_code and str(branch_code).strip().upper() not in valid_branch_codes:
+                branch_code = None
+
+            active_rows = conn.execute(
+                text("""
+                    SELECT DISTINCT UPPER(TRIM(block_id)) AS block_id
+                    FROM MES_WORK_ORDER_DISPATCH
+                    WHERE UPPER(status) = 'COMMITTED'
+                """)
+            ).mappings().all()
+            active_blocks = {r["block_id"] for r in active_rows if r.get("block_id")}
+
+            rows = conn.execute(
+                text("""
+                    SELECT b.block_id, b.ship_code, b.block_name, b.steel_type AS material,
+                           b.thickness_mm AS thickness, b.joint_type, b.process,
+                           b.target_dock AS work_zone, b.branch_code, b.weight_ton,
+                           br.region_name
+                    FROM ERP_BLOCK_MASTER b
+                    LEFT JOIN ERP_BRANCHES br ON b.branch_code = br.branch_code
+                    ORDER BY b.block_id ASC
+                """)
+            ).mappings().all()
+
+            candidates = []
+            for r in rows:
+                d = dict(r)
+                bid = str(d.get("block_id") or "").strip().upper()
+                if bid in excluded:
+                    continue
+                p_meta = plan_map.get(bid)
+                if p_meta and p_meta.get("plan_state") in ("COMPLETED", "LOCKED", "QUEUED"):
+                    continue
+                if branch_code and str(d.get("branch_code") or "").upper() != str(branch_code).upper():
+                    continue
+                if process and str(d.get("process") or "").upper() != str(process).upper():
+                    continue
+                d["weight_ton"] = float(d["weight_ton"]) if d.get("weight_ton") is not None else 0.0
+                d["is_active_work"] = (bid in active_blocks) or (
+                    bool(p_meta) and p_meta.get("plan_state") == "IN_PROGRESS"
+                )
+                if p_meta:
+                    d["plan_id"] = p_meta.get("plan_id")
+                    d["priority_rank"] = p_meta.get("priority_rank")
+                    d["est_wire_kg"] = float(p_meta["est_wire_kg"]) if p_meta.get("est_wire_kg") is not None else None
+                    d["planned_start_date"] = p_meta.get("planned_start_date")
+                    d["planned_end_date"] = p_meta.get("planned_end_date")
+                candidates.append(d)
+
+            # 미투입(is_active_work=False) 우선 -> CAD 공정계획 P1~P3 우선순위 순 정렬
+            candidates.sort(
+                key=lambda x: (
+                    x["is_active_work"],
+                    0 if x.get("priority_rank") else 1,
+                    x.get("priority_rank") or 999,
+                    x["block_id"],
+                )
+            )
+            return {
+                "status": "SUCCESS",
+                "total_candidates": len(candidates),
+                "blocks": candidates,
+            }
+    except Exception as e:
+        return {"status": "ERROR", "blocks": [], "error_message": str(e)}
+
+
+@tool
+def find_eligible_workers(
+    branch_code: Optional[str] = None,
+    process: Optional[str] = None,
+    exclude_workers: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """
+    대상 야드 권역과 용접 공정에 부합하고, 선급 자격증이 유효(VALID)하며
+    현재 다른 블록에 중복 투입(COMMITTED)되지 않은 대기(IDLE) 작업자 후보를 우선순위순으로 조회합니다.
+    """
+    if not erp_engine:
+        return {"status": "ERROR", "workers": [], "error_message": "Oracle 연결 없음"}
+
+    valid_procs = {"FCAW", "SAW", "GMAW", "SMAW", "GTAW", "TIG", "MIG"}
+    if process and str(process).strip().upper() not in valid_procs:
+        process = None
+
+    excluded = {str(w).strip() for w in (exclude_workers or []) if w}
+    try:
+        with erp_engine.connect() as conn:
+            br_rows = conn.execute(
+                text("SELECT branch_code, region_name FROM ERP_BRANCHES")
+            ).mappings().all()
+            br_region_map = {
+                str(r["branch_code"]).strip().upper(): str(r["region_name"]).strip()
+                for r in br_rows
+                if r.get("branch_code")
+            }
+            if branch_code and str(branch_code).strip().upper() not in br_region_map:
+                branch_code = None
+
+            target_region = (
+                br_region_map.get(str(branch_code).strip().upper(), "")
+                if branch_code
+                else ""
+            )
+
+            busy_rows = conn.execute(
+                text("""
+                    SELECT worker_id, worker_name, block_id, execution_type
+                    FROM MES_WORK_ORDER_DISPATCH
+                    WHERE UPPER(status) = 'COMMITTED'
+                """)
+            ).mappings().all()
+            busy_ids = {
+                str(r["worker_id"]).strip()
+                for r in busy_rows
+                if r.get("worker_id") and str(r.get("execution_type", "")).upper() == "IN_HOUSE"
+            }
+            busy_names = {str(r["worker_name"]).strip() for r in busy_rows if r.get("worker_name")}
+
+            eq_busy_rows = conn.execute(
+                text("""
+                    SELECT driver_worker_id
+                    FROM ERP_VEHICLES_EQUIPMENT
+                    WHERE UPPER(operation_status) = 'IN_USE'
+                      AND driver_worker_id IS NOT NULL
+                """)
+            ).mappings().all()
+            for er in eq_busy_rows:
+                busy_ids.add(str(er["driver_worker_id"]).strip())
+
+            w_rows = conn.execute(
+                text("""
+                    SELECT worker_id, worker_name, employment_type, company_code,
+                           branch_code, role, cert_code, weld_process,
+                           cert_expiry_date, status
+                    FROM ERP_WORKER_CERT
+                    WHERE UPPER(status) = 'VALID'
+                    ORDER BY worker_id ASC
+                """)
+            ).mappings().all()
+
+            eligible = []
+            for r in w_rows:
+                d = dict(r)
+                w_id = str(d.get("worker_id") or "").strip()
+                w_nm = str(d.get("worker_name") or "").strip()
+                if w_nm in excluded or w_id in excluded:
+                    continue
+                if w_id in busy_ids or w_nm in busy_names:
+                    continue
+
+                w_proc = str(d.get("weld_process") or "").upper()
+                if process and w_proc != str(process).upper():
+                    continue
+
+                w_br = str(d.get("branch_code") or "").strip().upper()
+                w_region = br_region_map.get(w_br, "")
+                if target_region and w_region and w_region != target_region:
+                    continue
+
+                d["region_name"] = w_region
+                d["is_hq"] = str(d.get("company_code") or "").upper() == "COMP-HQ"
+                eligible.append(d)
+
+            # 본사 직영(COMP-HQ) 우선, 그 다음 동일 야드 코드 우선 정렬
+            eligible.sort(
+                key=lambda x: (
+                    not x["is_hq"],
+                    str(x.get("branch_code") or "").upper() != str(branch_code or "").upper(),
+                    x["worker_id"],
+                )
+            )
+            return {
+                "status": "SUCCESS",
+                "target_branch": branch_code,
+                "target_region": target_region,
+                "required_process": process,
+                "eligible_count": len(eligible),
+                "workers": eligible,
+            }
+    except Exception as e:
+        return {"status": "ERROR", "workers": [], "error_message": str(e)}
+
+
+@tool
+def check_yard_materials_and_equipment(
+    branch_code: Optional[str] = None,
+    process: Optional[str] = None,
+    weight_ton: Optional[float] = None,
+    requested_equipment: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    특정 야드의 가용 용접 와이어·강판 재고 및 대기(STANDBY) 양중/운반 장비를 점검하고,
+    블록 중량(weight_ton)이 주어진 경우 정격하중 안전율(90% 이하)까지 함께 계산합니다.
+    """
+    erp_res = check_hq_erp_resources.invoke({
+        "branch_code": branch_code,
+        "process": process,
+        "equipment": requested_equipment,
+    })
+    lifting_eval = None
+    if weight_ton is not None and float(weight_ton) > 0:
+        lifting_eval = evaluate_heavy_lifting_capacity(
+            block_weight_ton=float(weight_ton),
+            vehicles_equipment=erp_res.get("vehicles_equipment") or [],
+            target_branch=branch_code,
+            requested_equipment=requested_equipment,
+        )
+
+    standby_eq = [
+        eq for eq in (erp_res.get("vehicles_equipment") or [])
+        if str(eq.get("operation_status", "")).upper() == "STANDBY"
+    ]
+    return {
+        "status": erp_res.get("status"),
+        "branch_code": branch_code,
+        "stock_available": erp_res.get("stock_available"),
+        "selected_wire_code": erp_res.get("selected_wire_code"),
+        "selected_plate_code": erp_res.get("selected_plate_code"),
+        "assigned_lot_no": erp_res.get("assigned_lot_no"),
+        "outsourcing_reason": erp_res.get("outsourcing_reason"),
+        "standby_equipment": standby_eq,
+        "lifting_capacity_eval": lifting_eval,
     }

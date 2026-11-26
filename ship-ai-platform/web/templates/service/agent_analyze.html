@@ -113,10 +113,13 @@ var PROMPT_TEXT = {{ prompt | tojson }};
 var BRANCH_CODE = {{ branch_code | tojson }};
 var BLOCK_CODE = {{ block_code | tojson }};
 var RESUME_SID = {{ resume_session_id | tojson }};
+var CONTINUE_SID = {{ (continue_session_id or '') | tojson }};
+var CAD_DXF_PATH = {{ (cad_dxf_path or '') | tojson }};
+var CAD_PDF_PATH = {{ (cad_pdf_path or '') | tojson }};
 var analyzePoll = null;
 
 function setToolStates(stage, pctFromServer) {
-  var order = { RUNNING_AGENT: 0, top_supervisor_init: 0, team1_analysis: 1, team2_search: 2, team2_knowledge: 2, team3_docgen: 3 };
+  var order = { RUNNING_AGENT: 0, top_supervisor_init: 0, team1_analysis: 1, team2_search: 2, team2_knowledge: 2, team4_planning: 2, team3_docgen: 3 };
   var idx = order[stage] !== undefined ? order[stage] : 1;
   var pct = pctFromServer || [25, 50, 75, 92][idx] || 30;
   $('#step-bar').css('width', pct + '%');
@@ -162,7 +165,10 @@ if (RESUME_SID) {
     contentType: 'application/json',
     data: JSON.stringify({
       question: PROMPT_TEXT,
-      new_session: true,
+      session_id: CONTINUE_SID || undefined,
+      new_session: !CONTINUE_SID,
+      cad_dxf_path: CAD_DXF_PATH || undefined,
+      cad_pdf_path: CAD_PDF_PATH || undefined,
       page_context: {
         page_title: '작업 준비 분석',
         branch_code: BRANCH_CODE,

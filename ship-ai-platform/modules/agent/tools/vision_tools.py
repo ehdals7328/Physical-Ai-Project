@@ -46,52 +46,123 @@ def _lookup_work_order_meta(conn, work_id: Any) -> Dict[str, Any]:
     except Exception:
         return {}
 
+def _resolve_work_ids_by_block(conn, block_id: str) -> List[str]:
+    """WORK_ORDERS에서 block_id(또는 block_code)에 매핑된 실제 work_id 목록을 조회합니다."""
+    norm_bid = str(block_id or "").strip().upper()
+    if not norm_bid:
+        return []
+    for col in ("block_id", "block_code"):
+        try:
+            rows = conn.execute(
+                text(
+                    f"SELECT work_id FROM WORK_ORDERS "
+                    f"WHERE UPPER(TRIM({col})) = :bid "
+                    f"ORDER BY work_id DESC FETCH FIRST 20 ROWS ONLY"
+                ),
+                {"bid": norm_bid},
+            ).scalars().all()
+            return [str(r) for r in rows if r is not None]
+        except Exception:
+            continue
+    return []
+
 
 @tool
 def get_vision_inspection_status(
     work_id: Optional[str] = None,
+    block_id: Optional[str] = None,
     camera_code: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     [Oracle SHIP_USER 비전 & 로봇 상태 단건 조회 - 작업지시서 및 안전 인터록용]
+    - 다른 작업의 비전 기록 대체 조회(폴백) 절대 금지
+    - NO_DATA: 대상 작업/블록의 분석 또는 검사 이력이 없음 (safety_clearance_yn=None 반환)
+    - ERROR: DB/조회 장애 발생 시 Fail-Closed 원칙에 따라 safety_clearance_yn='N' 반환
     """
+    norm_work_id = str(work_id).strip() if work_id is not None and str(work_id).strip() else None
+    norm_block_id = str(block_id).strip().upper() if block_id is not None and str(block_id).strip() else None
+    norm_camera = str(camera_code).strip() if camera_code is not None and str(camera_code).strip() else None
+
+    # 기존 호출부 호환: 숫자가 아닌 블록 코드가 work_id로 잘못 전달된 경우 block_id로 재분류
+    if norm_work_id and not norm_block_id and not norm_work_id.isdigit():
+        norm_block_id = norm_work_id.upper()
+        norm_work_id = None
+
+    # 식별자가 하나도 없으면 임의 행 조회 금지
+    if not norm_work_id and not norm_block_id and not norm_camera:
+        return {
+            "status": "NO_DATA",
+            "inspection_status": "NO_DATA",
+            "welding_state": "UNKNOWN",
+            "safety_clearance_yn": None,
+            "reason": "MISSING_IDENTIFIER",
+            "interfering_objects": [],
+            "detections": [],
+        }
+
     try:
         with user_engine.connect() as conn:
-            sql_ana = """
+            target_work_ids: List[str] = []
+            if norm_work_id:
+                target_work_ids = [norm_work_id]
+            elif norm_block_id:
+                target_work_ids = _resolve_work_ids_by_block(conn, norm_block_id)
+                if not target_work_ids:
+                    return {
+                        "status": "NO_DATA",
+                        "inspection_status": "NO_DATA",
+                        "welding_state": "BEFORE_WELD",
+                        "block_id": norm_block_id,
+                        "safety_clearance_yn": None,
+                        "reason": "NO_MAPPED_WORK_ORDER_FOR_BLOCK",
+                        "interfering_objects": [],
+                        "detections": [],
+                    }
+
+            where_parts: List[str] = []
+            bind_params: Dict[str, Any] = {}
+
+            if target_work_ids:
+                in_placeholders = []
+                for idx, wid in enumerate(target_work_ids):
+                    key = f"wid_{idx}"
+                    in_placeholders.append(f":{key}")
+                    bind_params[key] = wid
+                where_parts.append(f"TO_CHAR(work_id) IN ({', '.join(in_placeholders)})")
+
+            if norm_camera:
+                where_parts.append("UPPER(camera_code) = UPPER(:camera_code)")
+                bind_params["camera_code"] = norm_camera
+
+            sql_ana = f"""
                 SELECT analysis_id, work_id, camera_code, original_image_uri,
                        visualized_image_uri, image_width, image_height,
                        status_code, welding_state
                 FROM VISION_ANALYSES
-                WHERE (:work_id IS NULL OR TO_CHAR(work_id) = :work_id)
-                  AND (:camera_code IS NULL OR camera_code = :camera_code)
-                ORDER BY created_at DESC
+                WHERE {' AND '.join(where_parts)}
+                ORDER BY created_at DESC NULLS LAST, analysis_id DESC
                 FETCH FIRST 1 ROWS ONLY
             """
-            ana_row = conn.execute(
-                text(sql_ana),
-                {"work_id": str(work_id) if work_id else None, "camera_code": camera_code},
-            ).mappings().first()
+            ana_row = conn.execute(text(sql_ana), bind_params).mappings().first()
 
-            if not ana_row:
-                ana_row = conn.execute(
-                    text(
-                        "SELECT analysis_id, work_id, camera_code, original_image_uri, "
-                        "visualized_image_uri, image_width, image_height, status_code, welding_state "
-                        "FROM VISION_ANALYSES ORDER BY created_at DESC FETCH FIRST 1 ROWS ONLY"
-                    )
-                ).mappings().first()
-
+            # 타 작업 최신 데이터 대체 조회 완전 제거: 이력이 없으면 즉시 NO_DATA
             if not ana_row:
                 return {
                     "status": "NO_DATA",
-                    "inspection_status": "BEFORE_WELD",
+                    "inspection_status": "NO_DATA",
                     "welding_state": "BEFORE_WELD",
-                    "safety_clearance_yn": "Y",
+                    "work_id": norm_work_id,
+                    "block_id": norm_block_id,
+                    "camera_code": norm_camera,
+                    "safety_clearance_yn": None,
+                    "reason": "NO_VISION_ANALYSIS_RECORD",
+                    "interfering_objects": [],
                     "detections": [],
                 }
 
             analysis_id = ana_row["analysis_id"]
-            actual_work_id = ana_row["work_id"] or work_id
+            actual_work_id = ana_row["work_id"] or norm_work_id
+            wo_meta = _lookup_work_order_meta(conn, actual_work_id)
 
             sql_det = """
                 SELECT detection_id, class_id, class_name, confidence, tracker_id,
@@ -108,7 +179,11 @@ def get_vision_inspection_status(
             for d in det_rows:
                 c_name = str(d["class_name"] or "").lower()
                 wp_raw = d["centerline_waypoints_json"]
-                wp_parsed = json.loads(wp_raw) if isinstance(wp_raw, str) and wp_raw.strip() else (wp_raw or [])
+                wp_parsed = (
+                    json.loads(wp_raw)
+                    if isinstance(wp_raw, str) and wp_raw.strip()
+                    else (wp_raw or [])
+                )
                 if c_name == "weld_joint" and wp_parsed:
                     waypoints = wp_parsed
 
@@ -131,12 +206,10 @@ def get_vision_inspection_status(
                 })
 
             sql_ins = """
-                SELECT inspection_id, start_point_json, end_point_json,
-                       estimated_length_mm, safety_clearance_yn,
-                       inspection_status, defect_detail_json
+                SELECT *
                 FROM VISION_INSPECTIONS
                 WHERE analysis_id = :analysis_id
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC NULLS LAST, inspection_id DESC
                 FETCH FIRST 1 ROWS ONLY
             """
             ins_row = conn.execute(text(sql_ins), {"analysis_id": analysis_id}).mappings().first()
@@ -144,50 +217,62 @@ def get_vision_inspection_status(
             start_pt = waypoints[0] if waypoints else None
             end_pt = waypoints[-1] if waypoints else None
             est_len = _calc_pixel_length_mm(waypoints) if waypoints else None
-            safety_yn = "N" if interfering_objects else "Y"
-            ins_status = "BEFORE_WELD"
+
+            # 검사 이력 미존재 시 기본값을 'Y'로 설정하지 않음 (간섭물 감지 시에만 즉시 'N')
+            has_interference = bool(interfering_objects)
+            safety_yn: Optional[str] = "N" if has_interference else None
+            ins_status = "NO_DATA"
             defect_detail = None
 
             if ins_row:
-                if ins_row["start_point_json"]:
+                if ins_row.get("start_point_json"):
                     sp = ins_row["start_point_json"]
                     start_pt = json.loads(sp) if isinstance(sp, str) else sp
-                if ins_row["end_point_json"]:
+                if ins_row.get("end_point_json"):
                     ep = ins_row["end_point_json"]
                     end_pt = json.loads(ep) if isinstance(ep, str) else ep
-                if ins_row["estimated_length_mm"] is not None:
+                if ins_row.get("estimated_length_mm") is not None:
                     est_len = float(ins_row["estimated_length_mm"])
-                if ins_row["safety_clearance_yn"]:
-                    safety_yn = str(ins_row["safety_clearance_yn"]).upper()
-                if ins_row["inspection_status"]:
-                    ins_status = str(ins_row["inspection_status"]).upper()
-                if ins_row["defect_detail_json"]:
+                if ins_row.get("safety_clearance_yn"):
+                    db_clearance = str(ins_row["safety_clearance_yn"]).strip().upper()
+                    if has_interference:
+                        safety_yn = "N"
+                    elif db_clearance in ("Y", "N"):
+                        safety_yn = db_clearance
+                if ins_row.get("inspection_status"):
+                    ins_status = str(ins_row["inspection_status"]).strip().upper()
+                if ins_row.get("defect_detail_json"):
                     dd = ins_row["defect_detail_json"]
                     defect_detail = json.loads(dd) if isinstance(dd, str) else dd
 
             robot_status = None
-            try:
-                r_row = conn.execute(
-                    text(
-                        "SELECT equipment_code, robot_name, robot_status, emergency_stop_yn, ros2_node_status "
-                        "FROM ROBOT_EXECUTIONS "
-                        "WHERE (:work_id IS NULL OR TO_CHAR(work_id) = :work_id) "
-                        "FETCH FIRST 1 ROWS ONLY"
-                    ),
-                    {"work_id": str(actual_work_id) if actual_work_id else None},
-                ).mappings().first()
-                if r_row:
-                    robot_status = dict(r_row)
-                    if str(r_row["emergency_stop_yn"] or "N").upper() == "Y":
-                        safety_yn = "N"
-                        interfering_objects.append("ROBOT_EMERGENCY_STOP")
-            except Exception:
-                pass
+            if actual_work_id is not None:
+                try:
+                    r_row = conn.execute(
+                        text(
+                            "SELECT equipment_code, robot_name, robot_status, emergency_stop_yn, ros2_node_status "
+                            "FROM ROBOT_EXECUTIONS "
+                            "WHERE TO_CHAR(work_id) = :work_id "
+                            "FETCH FIRST 1 ROWS ONLY"
+                        ),
+                        {"work_id": str(actual_work_id)},
+                    ).mappings().first()
+                    if r_row:
+                        robot_status = dict(r_row)
+                        if str(r_row["emergency_stop_yn"] or "N").upper() == "Y":
+                            safety_yn = "N"
+                            interfering_objects.append("ROBOT_EMERGENCY_STOP")
+                except Exception:
+                    pass
+
+            # 검사 레코드 자체가 없고 위험 요소도 미확정이면 NO_DATA 유지 (자동 PASS 방지)
+            overall_status = "NO_DATA" if (ins_row is None and safety_yn is None) else "SUCCESS"
 
             return {
-                "status": "SUCCESS",
+                "status": overall_status,
                 "analysis_id": analysis_id,
                 "work_id": actual_work_id,
+                "block_id": wo_meta.get("block_id") or norm_block_id,
                 "camera_code": ana_row["camera_code"],
                 "welding_state": ana_row["welding_state"] or "BEFORE_WELD",
                 "inspection_status": ins_status,
@@ -206,13 +291,13 @@ def get_vision_inspection_status(
         return {
             "status": "ERROR",
             "error": f"VISION DB 조회 오류: {str(e)}",
-            "inspection_status": "BEFORE_WELD",
-            "welding_state": "BEFORE_WELD",
-            "safety_clearance_yn": "Y",
+            "inspection_status": "ERROR",
+            "welding_state": "UNKNOWN",
+            "safety_clearance_yn": "N",
+            "interfering_objects": ["VISION_DB_ERROR"],
             "detections": [],
         }
-
-
+    
 @tool
 def get_vision_overview_for_qa(
     block_id: Optional[str] = None,
@@ -226,7 +311,7 @@ def get_vision_overview_for_qa(
     """
     try:
         with user_engine.connect() as conn:
-            sql_list = """
+            sql_base = """
                 SELECT
                     va.analysis_id,
                     va.work_id,
@@ -237,33 +322,41 @@ def get_vision_overview_for_qa(
                     vi.inspection_id,
                     vi.safety_clearance_yn,
                     vi.inspection_status,
-                    vi.defect_detail_json
+                    vi.defect_detail_json,
+                    vi.estimated_length_mm
                 FROM VISION_ANALYSES va
                 LEFT JOIN VISION_INSPECTIONS vi
                     ON va.analysis_id = vi.analysis_id
-                WHERE (:camera_code IS NULL OR UPPER(va.camera_code) = UPPER(:camera_code))
-                ORDER BY va.created_at DESC
+                {where_clause}
+                ORDER BY va.created_at DESC NULLS LAST, va.analysis_id DESC
                 FETCH FIRST 20 ROWS ONLY
             """
+
+            norm_cam = camera_code.strip() if camera_code else None
             rows = conn.execute(
-                text(sql_list),
-                {"camera_code": camera_code.strip() if camera_code else None},
+                text(
+                    sql_base.format(
+                        where_clause="WHERE UPPER(va.camera_code) = UPPER(:camera_code)"
+                        if norm_cam
+                        else ""
+                    )
+                ),
+                {"camera_code": norm_cam} if norm_cam else {},
             ).mappings().all()
 
-            records: List[Dict[str, Any]] = []
-            pending_weld_targets: List[Dict[str, Any]] = []
-            in_welding_targets: List[Dict[str, Any]] = []
-            completed_targets: List[Dict[str, Any]] = []
-            hazard_or_defect_targets: List[Dict[str, Any]] = []
+            # camera_code가 야드/구역명 등으로 넘어와 0건일 때 전체 최신 기록으로 자동 폴백
+            camera_fallback_used = False
+            if not rows and norm_cam:
+                camera_fallback_used = True
+                rows = conn.execute(
+                    text(sql_base.format(where_clause=""))
+                ).mappings().all()
 
-            for r in rows:
+            def _build_record(r) -> Dict[str, Any]:
                 aid = r["analysis_id"]
                 wid = r["work_id"]
                 wo_meta = _lookup_work_order_meta(conn, wid)
                 resolved_block = wo_meta.get("block_id")
-
-                if block_id and resolved_block and str(resolved_block).upper() != str(block_id).upper():
-                    continue
 
                 # 탐지된 객체 요약 (좌표 제외, 클래스별 개수만 집계)
                 det_rows = conn.execute(
@@ -278,7 +371,12 @@ def get_vision_overview_for_qa(
 
                 w_state = str(r["welding_state"] or "BEFORE_WELD").upper()
                 i_status = str(r["inspection_status"] or "BEFORE_WELD").upper()
-                clearance = str(r["safety_clearance_yn"] or "Y").upper()
+                clearance = str(r["safety_clearance_yn"]).upper() if r.get("safety_clearance_yn") else "NO_DATA"
+                est_len_mm = (
+                    float(r["estimated_length_mm"])
+                    if r.get("estimated_length_mm") is not None
+                    else None
+                )
 
                 defect_raw = r["defect_detail_json"]
                 defect_info = (
@@ -287,21 +385,48 @@ def get_vision_overview_for_qa(
                     else defect_raw
                 )
 
-                item = {
+                return {
                     "analysis_id": aid,
                     "work_id": wid,
                     "work_no": wo_meta.get("work_no"),
-                    "block_id": resolved_block or f"WORK-{wid}" if wid else "미매핑 블록",
+                    "block_id": resolved_block or (f"WORK-{wid}" if wid else "미매핑 블록"),
                     "camera_code": r["camera_code"],
                     "welding_state": w_state,
                     "inspection_status": i_status,
                     "weld_joint_detected": has_weld_joint,
+                    "estimated_length_mm": est_len_mm,
                     "detected_objects": detected_summary,
                     "safety_clearance_yn": clearance,
                     "defect_detail": defect_info,
                     "captured_at": str(r["captured_at"]) if r["captured_at"] else None,
                 }
-                records.append(item)
+
+            all_items = [_build_record(r) for r in rows]
+
+            # block_id 필터 적용 — 단, 일치 건이 0건이면 전체 최신 비전 로그로 자동 폴백
+            block_fallback_used = False
+            if block_id:
+                filtered = [
+                    it for it in all_items
+                    if str(it.get("block_id", "")).upper() == str(block_id).upper()
+                ]
+                if filtered:
+                    records = filtered
+                else:
+                    records = all_items
+                    block_fallback_used = True
+            else:
+                records = all_items
+
+            pending_weld_targets: List[Dict[str, Any]] = []
+            in_welding_targets: List[Dict[str, Any]] = []
+            completed_targets: List[Dict[str, Any]] = []
+            hazard_or_defect_targets: List[Dict[str, Any]] = []
+
+            for item in records:
+                w_state = item["welding_state"]
+                i_status = item["inspection_status"]
+                clearance = item["safety_clearance_yn"]
 
                 if w_state == "BEFORE_WELD" or i_status == "BEFORE_WELD":
                     pending_weld_targets.append(item)
@@ -331,6 +456,8 @@ def get_vision_overview_for_qa(
             return {
                 "status": "SUCCESS" if records else "NO_DATA",
                 "total_records": len(records),
+                "camera_fallback_used": camera_fallback_used,
+                "block_fallback_used": block_fallback_used,
                 "summary_counts": {
                     "pending_weld_count": len(pending_weld_targets),
                     "in_welding_count": len(in_welding_targets),

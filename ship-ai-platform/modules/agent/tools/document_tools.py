@@ -1,8 +1,10 @@
 """
 modules/agent/tools/document_tools.py
-에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환, 외주 발주 주문서(PO) PDF 생성 및 Audit 로그로 저장하는 표준 도구 모음
+에이전트가 발행한 구조화 문서를 표준 DOCX/PDF 템플릿 치환, 외주 발주 주문서(PO) PDF 생성,
+중량물 취급 작업계획서(Heavy Lifting Plan) PDF 생성 및 Audit 로그로 저장하는 표준 도구 모음
 """
 import json
+import html
 import os
 import re
 import shutil
@@ -350,7 +352,6 @@ def export_work_order_file(
         or ("DOCK-1" if "GEOJE" in str(resolved_branch).upper() else "ZONE-A-BAY1")
     )
 
-    # 수행구분, 수행사명 및 외주 발주(PO) 번호 동적 바인딩
     exec_type_raw = (
         erp_commit.get("execution_type")
         or document_data.get("execution_type")
@@ -482,15 +483,15 @@ def export_work_order_file(
     checklist_str = "\n".join(checklist_items)
     docx_checklist = "   /   ".join(checklist_items)
 
-    source_refs_str = (
-        ", ".join(
-            f"{ref.get('document_code') or ref.get('document_title', '-')}"
-            f" (p.{ref.get('page', 1)})"
-            for ref in source_refs
-        )
-        if source_refs
-        else "-"
-    )
+    refs = document_data.get("source_refs_json") or []
+    valid_ref_tokens = []
+    for r in refs:
+        label = str(r.get("document_title") or r.get("document_code") or "").strip()
+        if len(re.sub(r"[^A-Za-z0-9가-힣]", "", label)) >= 4:
+            token = f"{label} (p.{r.get('page', 1)})"
+            if token not in valid_ref_tokens:
+                valid_ref_tokens.append(token)
+    source_refs_str = ", ".join(valid_ref_tokens) or "선체 용접 및 비파괴검사(NDT) 표준 지침"
 
     resolved_reviewer = (
         document_data.get("reviewed_by")
@@ -562,16 +563,16 @@ def export_work_order_file(
         "travel_speed": clean_speed,
         "shielding_gas": resolved_gas,
         "preheat_temp": preheat_display,
-        "ndt_requirement": (
+        "ndt_requirement": html.escape(str(
             weld_params.get("ndt_requirement")
             or weld_params.get("ndt_spec")
             or "-"
-        ),
-        "consumable_spec": (
+        )),
+        "consumable_spec": html.escape(str(
             weld_params.get("consumable_spec")
             or weld_params.get("consumable_storage_rule")
             or "-"
-        ),
+        )),
         "vision_status_text": vision_status_text,
         "safety_clearance_text": safety_clearance_text,
         "safety_clearance_yn": clearance_yn or "-",
@@ -594,15 +595,16 @@ def export_work_order_file(
         docx_created = True
         pdf_path_str = _convert_docx_to_pdf(docx_path, daily_dir, context=context)
 
-        # 초안(DRAFT) 상태에서는 PDF만 유지하고 임시 .docx 파일은 삭제하여 불필요한 파일 누적 방지
         if approval_status == "DRAFT" and pdf_path_str and Path(pdf_path_str).exists():
             docx_path.unlink(missing_ok=True)
             docx_created = False
     else:
         print(
-            f"⚠️ [템플릿 미발견]: {TEMPLATE_PATH.resolve()} 경로에"
-            " work_order_template.docx 파일을 배치하세요."
+            f"⚠️ [템플릿 미발견 - 내장 HTML->PDF 폴백 실행]: {TEMPLATE_PATH.resolve()}"
         )
+        fallback_pdf = daily_dir / f"{base_name}.pdf"
+        if _render_html_to_pdf_fallback(context, fallback_pdf):
+            pdf_path_str = str(fallback_pdf)
 
     pdf_filename = Path(pdf_path_str).name if pdf_path_str else None
     docx_filename = docx_path.name if docx_created else None
@@ -627,9 +629,12 @@ def export_work_order_file(
 
 
 @tool
-def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
+def export_outsourcing_po_pdf(
+    document_data: Dict[str, Any], file_prefix: str = "po_order"
+) -> str:
     """
-    외주(OUTSOURCED_B2B) 작업 최종 승인 시 수주 협력사에 송부할 1페이지 공식 발주 주문서(Purchase Order) PDF를 생성합니다.
+    외주(OUTSOURCED_B2B) 작업 초안 생성 또는 최종 승인 시 수주 협력사에 송부할
+    1페이지 공식 발주 주문서(Purchase Order) PDF를 생성합니다. (A2A 자율 협의 합의 조건 자동 포함)
     """
     try:
         from xhtml2pdf import pisa  # type: ignore
@@ -648,17 +653,31 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     branch_info = erp_status.get("branch_info") or {}
     block_master = erp_status.get("block_master") or {}
 
-    wo_num = document_data.get("work_order_number") or f"WO-{datetime.now().strftime('%Y%m%d%H%M')}"
-    po_num = (
+    wo_num = str(
+        document_data.get("work_order_number")
+        or f"WO-{datetime.now().strftime('%Y%m%d%H%M')}"
+    ).strip()
+
+    raw_po = (
         erp_commit.get("po_number")
         or erp_commit.get("b2b_order_number")
         or erp_commit.get("b2b_sales_order_no")
         or erp_commit.get("b2b_po_ack")
-        or f"PO-{str(wo_num).replace('WO-DRAFT-', '').replace('WO-', '')}"
     )
+    if raw_po:
+        po_num = str(raw_po).strip()
+    elif wo_num.upper().startswith("PO-"):
+        po_num = wo_num
+    else:
+        po_num = f"PO-{wo_num.replace('WO-DRAFT-', '').replace('WO-', '')}"
+
     block_id = params.get("block_id") or block_master.get("block_id") or "DIRECT"
     safe_po_token = "".join(c if (c.isalnum() or c in "-_") else "_" for c in str(po_num))
-    pdf_filename = f"po_order_{block_id}_{safe_po_token}.pdf"
+    safe_prefix = "".join(c if (c.isalnum() or c in "-_") else "_" for c in str(file_prefix or "po_order"))
+    if safe_prefix == "po_order":
+        pdf_filename = f"po_order_{block_id}_{safe_po_token}.pdf"
+    else:
+        pdf_filename = f"{safe_prefix}_{safe_po_token}.pdf"
     pdf_path = daily_dir / pdf_filename
 
     partner_id = selected_partner.get("partner_id") or erp_commit.get("partner_id") or "-"
@@ -671,11 +690,22 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
 
     ship_code = params.get("ship_code") or block_master.get("ship_code") or "-"
     block_name = params.get("block_name") or block_master.get("block_name") or "-"
+    block_display = (
+        "단독 긴급 조달 (블록 미지정)"
+        if str(block_id).upper() in ("DIRECT", "BLK-DIRECT", "-")
+        else f"<b>{block_id}</b> ({block_name})"
+    )
+
     material = params.get("material") or block_master.get("material") or "-"
     thickness = re.sub(
         r"(?<=\d)[Tt]\b",
         "",
         str(params.get("thickness") or block_master.get("thickness") or "-"),
+    )
+    mat_thick_display = (
+        "-"
+        if material == "-" and thickness == "-"
+        else f"{material} / {thickness} mm"
     )
     process_code = params.get("process") or block_master.get("process") or "-"
 
@@ -701,7 +731,12 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     )
     wire_code = document_data.get("wire_item_code") or selected_partner.get("hq_item_code") or "-"
     wire_qty = document_data.get("reserve_wire_kg") or erp_commit.get("reserved_wire_kg") or "-"
-    vehicle_code = document_data.get("assigned_vehicle_code") or erp_commit.get("assigned_vehicle_code") or "-"
+    vehicle_code = (
+        document_data.get("assigned_vehicle_code")
+        or selected_partner.get("assigned_vehicle_code")
+        or erp_commit.get("assigned_vehicle_code")
+        or "-"
+    )
 
     if biz_type == "OUTSOURCED_WORKER":
         scope_label = "외주 용접 전문 인력 파견 (OUTSOURCED_WORKER)"
@@ -710,13 +745,21 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         rate_text = f"{int(float(daily_rate)):,} 원 / 일" if daily_rate else "협력사 단가표 기준"
     elif biz_type == "HEAVY_TRANSPORT":
         scope_label = "중량물 블록 운송 및 배차 (HEAVY_TRANSPORT)"
-        block_desc = f"대상 블록({block_id}, {block_master.get('weight_ton', '-')}톤)" if block_id not in ("DIRECT", "BLK", "-") else "야드 내 중량물 블록"
+        block_desc = (
+            f"대상 블록({block_id}, {block_master.get('weight_ton', '-')}톤)"
+            if block_id not in ("DIRECT", "BLK-DIRECT", "BLK", "-")
+            else "야드 내 중량물 블록"
+        )
         order_item_desc = f"{block_desc} 이송 배차 ({vehicle_code})"
         qty_spec_text = "1 대 / 왕복 배차"
         rate_text = f"{int(float(unit_price)):,} 원 / 회" if unit_price else "협력사 단가표 기준"
     else:
         scope_label = "용접 자재 긴급 조달 (WELDING_MATERIAL)"
-        item_nm = selected_partner.get("item_name") or wire_code
+        raw_item_nm = str(selected_partner.get("item_name") or "").strip()
+        if "SAW" in str(wire_code).upper() and ("CSF" in raw_item_nm.upper() or "플럭스코어드" in raw_item_nm):
+            item_nm = "서브머지드 아크 솔리드 와이어 (4.0mm)"
+        else:
+            item_nm = raw_item_nm or wire_code
         order_item_desc = f"{item_nm} ({wire_code})"
         qty_spec_text = f"{wire_qty} KG"
         rate_text = f"{int(float(unit_price)):,} 원 / KG" if unit_price else "협력사 단가표 기준"
@@ -738,6 +781,33 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
 
     font_family, font_face_css = _prepare_korean_font_css()
 
+    # A2A 자율 협의 결과가 있으면 발주서 본문에 합의 조건 섹션 자동 삽입
+    a2a_neg = partner_plan.get("a2a_negotiation") or {}
+    a2a_prop = a2a_neg.get("proposal") or {}
+    a2a_section_html = ""
+    if a2a_prop:
+        a2a_eta = a2a_prop.get("agreed_eta_hours")
+        a2a_price = a2a_prop.get("agreed_unit_price_krw")
+        a2a_section_html = f"""
+    <table>
+        <tr><td colspan="4" class="sec-hdr">■ 3-1. 본사-협력사 A2A 자율 협의 합의 내역</td></tr>
+        <tr>
+            <th>A2A Task ID</th><td>{a2a_neg.get('a2a_task_id', '-')}</td>
+            <th>협의 판정 / 상태</th><td><b>{a2a_prop.get('negotiation_decision', '-')}</b> ({a2a_neg.get('a2a_task_state', '-')})</td>
+        </tr>
+        <tr>
+            <th>합의 도착시간 (ETA)</th><td><b>{f"{a2a_eta} 시간 이내" if a2a_eta else "-"}</b></td>
+            <th>합의 단가</th><td><b>{f"{int(a2a_price):,} 원" if a2a_price else "-"}</b></td>
+        </tr>
+        <tr>
+            <th>협의 요약 및 조건</th><td colspan="3">{html.escape(str(a2a_prop.get('summary', '-')).replace('➔', '→').replace('➜', '→'))}</td>
+        </tr>
+        <tr>
+            <th>기밀 보호 경계</th><td colspan="3">{a2a_prop.get('privacy_boundary_notice', '-')}</td>
+        </tr>
+    </table>
+        """
+
     html_content = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -746,23 +816,23 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
     {font_face_css}
     @page {{ size: A4 portrait; margin: 12mm 14mm; }}
     * {{ font-family: {font_family}; }}
-    body {{ font-family: {font_family}; font-size: 9.0pt; color: #111111; line-height: 1.4; }}
-    .header-box {{ border-bottom: 2pt solid #1F4E79; padding-bottom: 8px; margin-bottom: 12px; }}
-    .title {{ text-align: center; font-size: 16.0pt; font-weight: bold; color: #1F4E79; letter-spacing: 2px; }}
-    .subtitle {{ text-align: center; font-size: 8.5pt; color: #555555; margin-top: 3px; }}
-    table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; }}
-    th, td {{ border: 0.6pt solid #333333; padding: 6px 7px; vertical-align: middle; font-family: {font_family}; }}
+    body {{ font-family: {font_family}; font-size: 8.6pt; color: #111111; line-height: 1.38; }}
+    .header-box {{ border-bottom: 2pt solid #1F4E79; padding-bottom: 7px; margin-bottom: 10px; }}
+    .title {{ text-align: center; font-size: 15.5pt; font-weight: bold; color: #1F4E79; }}
+    .subtitle {{ text-align: center; font-size: 8.2pt; color: #555555; margin-top: 3px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
+    th, td {{ border: 0.6pt solid #333333; padding: 5px 6px; vertical-align: middle; font-family: {font_family}; }}
     th {{ background-color: #E8EEF5; font-weight: bold; text-align: left; width: 20%; }}
     td {{ width: 30%; }}
-    .sec-hdr {{ background-color: #1F4E79; color: #FFFFFF; font-weight: bold; font-size: 9.5pt; padding: 5px 8px; }}
+    .sec-hdr {{ background-color: #1F4E79; color: #FFFFFF; font-weight: bold; font-size: 9.2pt; padding: 4px 8px; }}
     .center {{ text-align: center; }}
     .right {{ text-align: right; }}
-    .notice-box {{ border: 0.6pt solid #888888; background-color: #F8FAFC; padding: 8px 10px; font-size: 8.3pt; margin-top: 6px; }}
+    .notice-box {{ border: 0.6pt solid #888888; background-color: #F8FAFC; padding: 7px 9px; font-size: 8.1pt; margin-top: 5px; }}
 </style>
 </head>
 <body>
     <div class="header-box">
-        <div class="title">외 주 발 주 주 문 서 (PURCHASE ORDER)</div>
+        <div class="title">외주 발주 주문서 (PURCHASE ORDER)</div>
         <div class="subtitle">K-SMART SHIPYARD INTEGRATED SCM &amp; B2B EXECUTION SYSTEM</div>
     </div>
 
@@ -797,10 +867,10 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         <tr><td colspan="4" class="sec-hdr">■ 2. 대상 선박 블록 및 시공 제원</td></tr>
         <tr>
             <th>대상 호선</th><td>{ship_code}</td>
-            <th>대상 블록 코드</th><td><b>{block_id}</b> ({block_name})</td>
+            <th>대상 블록 코드</th><td>{block_display}</td>
         </tr>
         <tr>
-            <th>모재 강종 / 두께</th><td>{material} / {thickness} mm</td>
+            <th>모재 강종 / 두께</th><td>{mat_thick_display}</td>
             <th>적용 용접 공정</th><td><b>{process_code}</b></td>
         </tr>
     </table>
@@ -820,6 +890,7 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
             <td class="right">{rate_text}</td>
         </tr>
     </table>
+    {a2a_section_html}
 
     <div class="notice-box">
         <b>[필수 이행 및 안전 준수 조건]</b><br/>
@@ -828,7 +899,7 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         3. 현장 반입 시 본 발주번호(<b>{po_num}</b>)를 야드 게이트 및 자재·노무 검수 담당자에게 제시해 주시기 바랍니다.
     </div>
 
-    <table style="margin-top: 12px;">
+    <table style="margin-top: 10px;">
         <tr>
             <th>발주처 확인 (본사)</th><td>K-스마트조선소 통합생산관리본부 (직인생략)</td>
             <th>수주사 접수 확인</th><td>{partner_name} 담당자: _______________ (인)</td>
@@ -847,8 +918,235 @@ def export_outsourcing_po_pdf(document_data: Dict[str, Any]) -> str:
         {
             "status": "SUCCESS",
             "po_number": po_num,
+            "pdf_path": str(pdf_path.resolve()),
             "po_pdf_path": str(pdf_path.resolve()),
+            "download_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
             "download_po_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
+        },
+        ensure_ascii=False,
+    )
+
+
+@tool
+def export_heavy_lifting_plan_pdf(
+    document_data: Dict[str, Any], file_prefix: str = "heavy_lifting_plan"
+) -> str:
+    """
+    산업안전보건기준에 관한 규칙 제38조 기준 [중량물 취급 작업계획서] 1페이지 공식 PDF를 생성합니다.
+    """
+    try:
+        from xhtml2pdf import pisa  # type: ignore
+    except ImportError:
+        return json.dumps({"status": "ERROR", "reason": "xhtml2pdf 미설치"}, ensure_ascii=False)
+
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    daily_dir = DAILY_OUTPUT_ROOT / today_str
+    daily_dir.mkdir(parents=True, exist_ok=True)
+
+    plan_no = str(
+        document_data.get("work_order_number")
+        or f"HLP-{datetime.now().strftime('%Y%m%d%H%M')}"
+    ).strip()
+    safe_no = "".join(c if (c.isalnum() or c in "-_") else "_" for c in plan_no)
+    safe_prefix = "".join(
+        c if (c.isalnum() or c in "-_") else "_"
+        for c in str(file_prefix or "heavy_lifting_plan")
+    )
+    pdf_filename = f"{safe_prefix}_{safe_no}.pdf"
+    pdf_path = daily_dir / pdf_filename
+
+    params = document_data.get("parameters") or {}
+    lifting = document_data.get("lifting_plan_json") or {}
+    cap_eval = document_data.get("lifting_capacity_eval") or {}
+    weather = document_data.get("weather") or {}
+    vision = document_data.get("vision_inspection") or {}
+    erp_status = document_data.get("erp_resource_status") or {}
+    partner_plan = document_data.get("partner_erp_plan") or {}
+    a2a_prop = (partner_plan.get("a2a_negotiation") or {}).get("proposal") or {}
+    block_master = erp_status.get("block_master") or {}
+    branch_info = erp_status.get("branch_info") or {}
+
+    approval_status = document_data.get("approval_status") or "DRAFT"
+    reviewer = (
+        document_data.get("reviewed_by")
+        or erp_status.get("foreman_name")
+        or "현장반장(검토대기)"
+    )
+    approver = (
+        document_data.get("approved_by")
+        or ("공정관리자(HITL)" if approval_status == "APPROVED" else "결재대기")
+    )
+
+    eq = cap_eval.get("selected_equipment") or {}
+    eq_name = (
+        a2a_prop.get("assigned_vehicle_code")
+        if a2a_prop.get("assigned_vehicle_code")
+        else (eq.get("asset_name") or params.get("equipment") or "-")
+    )
+    eq_code = a2a_prop.get("assigned_vehicle_code") or eq.get("asset_code") or "-"
+    max_load = a2a_prop.get("max_load_ton") or cap_eval.get("max_load_ton") or "-"
+    blk_weight = (
+        cap_eval.get("block_weight_ton")
+        or params.get("weight_ton")
+        or block_master.get("weight_ton")
+        or "-"
+    )
+    rigging_w = cap_eval.get("rigging_weight_ton") or "-"
+    total_lift = cap_eval.get("total_lifting_ton") or "-"
+    load_ratio = a2a_prop.get("load_ratio_pct") or cap_eval.get("load_ratio_pct") or "-"
+    cap_status_display = (
+        "PASS (외주 A2A 안전 배차)"
+        if a2a_prop.get("assigned_vehicle_code")
+        else (cap_eval.get("status") or "PASS")
+    )
+
+    safety_eval = weather.get("safety_evaluation") or {}
+    env_rules = safety_eval.get("mandatory_rules") or []
+    plan_checks = lifting.get("safety_checklist") or []
+    all_checks = [f"□ {c}" for c in (plan_checks + env_rules) if c]
+    if not all_checks:
+        all_checks = [
+            "□ 줄걸이 와이어로프·샤클 손상 및 체결 각도(60° 이내) 사전 점검",
+            "□ 러그(Lifting Lug) 용접부 균열 확인 및 지상 30cm 시험 인양(무게중심 확인)",
+            "□ 인양 반경 하부 출입금지 구역 설정 및 전담 신호수 배치 완료",
+        ]
+    checks_html = "<br/>".join(all_checks)
+
+    weather_line = (
+        f"관측 야드: {params.get('location') or weather.get('location', '-')} | "
+        f"기온: {weather.get('temperature', '-')}℃ | "
+        f"풍속: {weather.get('wind_speed', '-')}m/s (중량물 기준: 10m/s 작업중지) | "
+        f"강수: {weather.get('precipitation', '-')}mm/h | "
+        f"판정: {safety_eval.get('status', '-')}"
+    )
+
+    font_family, font_face_css = _prepare_korean_font_css()
+    route_display = html.escape(
+        str(params.get("target_destination") or lifting.get("travel_route") or "야드 내 지정 작업 구역")
+        .replace("➔", "→")
+        .replace("➜", "→")
+    )
+    a2a_summary_display = html.escape(
+        str(a2a_prop.get("summary") or "-").replace("➔", "→").replace("➜", "→")
+    )
+
+    a2a_note_row = ""
+    if a2a_prop:
+        a2a_note_row = f"""
+        <tr>
+            <th>외주 배차 A2A 협의</th>
+            <td colspan="3"><b>{html.escape(str(a2a_prop.get('partner_name', '-')))}</b> — {a2a_summary_display}</td>
+        </tr>
+        """
+    html_content = f"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<style>
+    {font_face_css}
+    @page {{ size: A4 portrait; margin: 9mm 11mm; }}
+    * {{ font-family: {font_family}; }}
+    body {{ font-family: {font_family}; font-size: 8.2pt; color: #111111; line-height: 1.35; }}
+    .title {{ text-align: center; font-size: 14.5pt; font-weight: bold; color: #1F4E79; margin-bottom: 3px; }}
+    .subtitle {{ text-align: center; font-size: 8.0pt; color: #555555; margin-bottom: 8px; }}
+    table {{ width: 100%; border-collapse: collapse; margin-bottom: 6px; }}
+    th, td {{ border: 0.5pt solid #333333; padding: 4px 6px; vertical-align: middle; font-family: {font_family}; }}
+    th {{ background-color: #E8EEF5; font-weight: bold; text-align: left; width: 19%; }}
+    td {{ width: 31%; }}
+    .sec-hdr {{ background-color: #1F4E79; color: #FFFFFF; font-weight: bold; font-size: 9.0pt; padding: 4px 7px; }}
+</style>
+</head>
+<body>
+    <div class="title">중 량 물  취 급  작 업 계 획 서 (HEAVY LIFTING PLAN)</div>
+    <div class="subtitle">산업안전보건기준에 관한 규칙 제38조(사전조사 및 작업계획서의 작성) 준거</div>
+
+    <table>
+        <tr>
+            <th>계획서 번호</th><td><b>{plan_no}</b></td>
+            <th>결재 상태</th><td><b>{approval_status}</b></td>
+        </tr>
+        <tr>
+            <th>작성일자</th><td>{today_str}</td>
+            <th>결재 (작성/검토/승인)</th><td>작성: AI Agent | 검토: {reviewer} | 승인: {approver}</td>
+        </tr>
+    </table>
+
+    <table>
+        <tr><td colspan="4" class="sec-hdr">■ 1. 취급 중량물(선박 블록) 제원 및 이동 경로</td></tr>
+        <tr>
+            <th>대상 호선 / 블록</th><td><b>{params.get('ship_code') or block_master.get('ship_code', '-')} / {params.get('block_id', '-')}</b></td>
+            <th>블록명</th><td>{params.get('block_name') or block_master.get('block_name', '-')}</td>
+        </tr>
+        <tr>
+            <th>블록 중량 / 줄걸이 자중</th><td><b>{blk_weight} 톤</b> / {rigging_w} 톤 (5%)</td>
+            <th>총 인양 하중</th><td><b>{total_lift} 톤</b></td>
+        </tr>
+        <tr>
+            <th>작업 야드 / 출발 구역</th><td>{branch_info.get('branch_name') or params.get('branch_code', '-')} ({params.get('work_zone', '-')})</td>
+            <th>이동 목적지 / 경로</th><td>{route_display}</td>
+        </tr>
+
+        <tr><td colspan="4" class="sec-hdr">■ 2. 투입 양중·운반 장비 정격하중 및 안전율 검토</td></tr>
+        <tr>
+            <th>투입 장비 / 자산코드</th><td><b>{eq_name} ({eq_code})</b></td>
+            <th>장비 정격하중</th><td><b>{max_load} 톤</b></td>
+        </tr>
+        <tr>
+            <th>정격 하중률 (안전율)</th><td><b>{load_ratio}%</b> (기준: 90% 이하 안전)</td>
+            <th>하중 검토 판정</th><td><b>{cap_status_display}</b></td>
+        </tr>
+        <tr>
+            <th>운전원 / 작업지휘자</th><td>운전원: {eq.get('driver_worker_id', '지정운전원')} / 지휘자: {lifting.get('supervisor_name') or reviewer}</td>
+            <th>전담 신호수 / 수행구분</th><td>{lifting.get('signalman_assignment', '현장 전담 신호수 1인 배치')} / {document_data.get('execution_type', 'IN_HOUSE')}</td>
+        </tr>
+        {a2a_note_row}
+
+        <tr><td colspan="4" class="sec-hdr">■ 3. 줄걸이(Rigging) 기준 및 전도·낙하·협착 방지 대책</td></tr>
+        <tr>
+            <th>줄걸이 용구 규격</th><td>{lifting.get('rigging_spec', '-')}</td>
+            <th>인양 각도 / 무게중심</th><td>{lifting.get('sling_angle_and_cog', '체결 각도 60° 이내 유지 / 시험인양 무게중심 확인')}</td>
+        </tr>
+        <tr>
+            <th>하부 통제 및 이동 대책</th><td colspan="3">{lifting.get('fall_and_tip_prevention', '-')}</td>
+        </tr>
+        <tr>
+            <th>비상 정지 및 응급 조치</th><td colspan="3">{lifting.get('emergency_procedure', '-')}</td>
+        </tr>
+
+        <tr><td colspan="4" class="sec-hdr">■ 4. 실시간 기상(풍속)·비전 안전 인터록 및 작업 전 점검표</td></tr>
+        <tr>
+            <th>실시간 기상 스냅샷</th><td colspan="3">{weather_line}</td>
+        </tr>
+        <tr>
+            <th>비전 구역 장애물 감시</th><td colspan="3">안전거리 확보 여부: <b>{vision.get('safety_clearance_yn') or '계측 대기 (작업 전 현장 육안 확인 필수)'}</b> (인양 경로 간섭물 사전 제거 확인)</td>
+        </tr>
+        <tr>
+            <th>필수 안전 점검표</th><td colspan="3">{checks_html}</td>
+        </tr>
+
+        <tr><td colspan="4" class="sec-hdr">■ 5. 현장 확인 서명</td></tr>
+        <tr>
+            <th>작업지휘자 확인</th><td>{lifting.get('supervisor_name') or reviewer} (인)</td>
+            <th>안전관리자 확인</th><td>____________________ (인)</td>
+        </tr>
+    </table>
+</body>
+</html>"""
+
+    with open(pdf_path, "wb") as pdf_file:
+        status = pisa.CreatePDF(html_content, dest=pdf_file, encoding="utf-8")
+
+    if status.err or not pdf_path.exists():
+        return json.dumps({"status": "ERROR", "reason": "중량물 취급 계획서 PDF 렌더링 실패"}, ensure_ascii=False)
+
+    return json.dumps(
+        {
+            "status": "SUCCESS",
+            "date_folder": today_str,
+            "pdf_path": str(pdf_path.resolve()),
+            "docx_path": None,
+            "download_pdf_url": f"/api/files/download/{today_str}/{pdf_filename}",
+            "download_docx_url": None,
         },
         ensure_ascii=False,
     )

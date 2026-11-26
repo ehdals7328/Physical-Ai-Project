@@ -4,6 +4,11 @@
 {% block content %}
 {% set has_draft = (doc and doc.get('work_id')) %}
 {% set params = (doc.get('parameters') if doc else {}) or {} %}
+{% set is_lifting = (doc and doc.get('doc_type') == 'HEAVY_LIFTING_PLAN') %}
+{% set is_po_only = (doc and doc.get('is_standalone_po')) %}
+{% set files = (doc.get('files') if doc else {}) or {} %}
+{% set _cad = cad_staging if cad_staging is defined and cad_staging else {} %}
+{% set has_cad_staging = (_cad.get('status') == 'STAGING_SUCCESS') %}
 
 <!-- 상단 네이비 브리핑 배너 (보기 좋게 강조) -->
 <div class="rounded-3 text-white p-4 mb-3" style="background:linear-gradient(135deg, #0b1f3a 0%, #153663 100%);">
@@ -69,9 +74,19 @@
 <div class="panel-card">
   <div class="section-bar">
     <h3 class="panel-title">{{ '통합 조치 내역 및 착수 조건' if has_draft else '확인 필요한 항목 및 추천 목록' }}</h3>
-    {% if doc and doc.get('files', {}).get('download_pdf_url') %}
-      <a href="{{ doc.get('files', {}).get('download_pdf_url') }}" target="_blank" class="btn btn-outline-primary btn-sm">작업지시서 초안 PDF 미리보기</a>
-    {% endif %}
+    <div class="d-flex flex-wrap gap-2">
+      {% if files.get('download_pdf_url') %}
+        <a href="{{ files.get('download_pdf_url') }}" target="_blank" class="btn btn-outline-primary btn-sm">
+          {{ '중량물 계획서 PDF 미리보기' if is_lifting else ('외주 발주서(PO) PDF 미리보기' if is_po_only else '작업지시서 초안 PDF 미리보기') }}
+        </a>
+      {% endif %}
+      {% if files.get('download_po_pdf_url') and files.get('download_po_pdf_url') != files.get('download_pdf_url') %}
+        <a href="{{ files.get('download_po_pdf_url') }}" target="_blank" class="btn btn-outline-dark btn-sm">외주 발주서(PO) 초안 PDF</a>
+      {% endif %}
+      {% if files.get('download_docx_url') %}
+        <a href="{{ files.get('download_docx_url') }}" class="btn btn-outline-secondary btn-sm">Word(.docx) 다운로드</a>
+      {% endif %}
+    </div>
   </div>
   <div id="plan-md-body"></div>
 
@@ -84,6 +99,53 @@
   </div>
   {% endif %}
 </div>
+
+{% if has_cad_staging %}
+<div class="panel-card" id="cad-staging-confirm-card">
+  <div class="section-bar">
+    <h3 class="panel-title">CAD 자율 블록 분할 · APS 공정 계획 확정</h3>
+    <span class="status-chip {{ 'status-ok' if _cad.get('confirmed') else 'status-warn' }}">
+      {{ '확정 완료' if _cad.get('confirmed') else ('기존 작업 충돌 주의' if _cad.get('gate2_status') == 'COLLISION_WARNING' else '확정 대기') }}
+    </span>
+  </div>
+  <div class="table-responsive mb-3">
+    <table class="table table-sm table-enterprise">
+      <thead>
+        <tr><th>순위</th><th>블록 코드 / 명칭</th><th>강종·두께·공정</th><th>중량 / 공수</th><th>예정 일정</th><th>선제 조치</th></tr>
+      </thead>
+      <tbody>
+        {% for pkg in _cad.get('work_packages', []) %}
+        <tr>
+          <td><span class="badge bg-dark">P{{ pkg.priority_rank }}</span></td>
+          <td><strong>{{ pkg.block_code }}</strong><div class="small text-muted">{{ pkg.block_name }} ({{ pkg.frame_range }})</div></td>
+          <td>{{ pkg.material_grade }} {{ pkg.thickness_mm }}T · {{ pkg.process_code }}/{{ pkg.joint_type }}</td>
+          <td>{{ pkg.est_weight_ton }}톤 / {{ pkg.est_man_hours }}h</td>
+          <td class="small">{{ pkg.planned_start_date }} ~ {{ pkg.planned_end_date }}</td>
+          <td>
+            {% if pkg.need_material_po %}<span class="status-chip status-danger">자재 선제발주</span>{% endif %}
+            {% if pkg.need_external_lifting %}<span class="status-chip status-warn">외주 양중</span>{% endif %}
+            {% if not pkg.need_material_po and not pkg.need_external_lifting %}<span class="status-chip status-ok">자체 가능</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if can_approve and not _cad.get('confirmed') %}
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+    <select id="cad-confirm-mode" class="form-select form-select-sm w-auto">
+      {% for opt in _cad.get('gate2_options', ['ACTIVE']) %}
+      <option value="{{ opt }}">{{ '즉시 활성화 (ACTIVE)' if opt == 'ACTIVE' else ('대기열 예약 (QUEUED)' if opt == 'QUEUED' else '기존 계획 개정 교체 (REVISION)') }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" id="btn-confirm-cad-plan" class="btn btn-primary btn-sm px-4 fw-bold"
+            style="background:#0052cc;border-color:#0052cc;" onclick="confirmCadPlan()">
+      공정 계획 확정 및 DB · MRP 반영
+    </button>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
 
 <!-- 빠른 선택 보완 + 조건 수정 재산출 카드 -->
 <div class="panel-card">
@@ -124,22 +186,25 @@
   {% endif %}
 
   <form id="replan-form" action="/service/agent/analyze" method="get" class="d-flex gap-2">
+    <input type="hidden" name="continue_session_id" value="{{ session_id }}">
     <input type="text" id="replan-input" name="prompt" class="form-control"
            placeholder="{{ '예: 작업자를 변경하고 예열 기준을 다시 확인해줘' if has_draft else '위 추천 버튼을 누르거나 투입 작업자·블록 조건을 입력하세요' }}" required>
     <button type="submit" class="btn btn-dark px-4 text-nowrap fw-semibold">{{ '계획 재산출' if has_draft else '입력 후 계속' }}</button>
   </form>
 </div>
 
-<!-- 하단 단일 승인 바 (초안이 준비되었을 때만 활성화) -->
+<!-- 하단 승인 · 반려 바 (초안이 준비되었을 때만 활성화) -->
 {% if has_draft %}
 <div class="panel-card mb-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="background:#f8fafc;">
   <div class="small text-secondary">
-    <strong class="text-dark">최종 승인 안내:</strong> 승인 버튼 한 번으로 작업지시서 확정, 자재 예약, 문서 발행이 함께 완료됩니다.
+    <strong class="text-dark">최종 결재 안내:</strong> 승인 시 ERP 자원 배정·문서 발행이 확정되며, 반려 시 해당 초안이 즉시 보류 처리됩니다.
   </div>
   <div class="d-flex gap-2">
     {% if can_approve %}
+      <button type="button" id="btn-reject-plan" class="btn btn-outline-danger px-3 fw-semibold"
+              onclick="decidePlan('REJECT')">요청 반려</button>
       <button type="button" id="btn-approve-plan" class="btn btn-primary px-4 fw-bold"
-              style="background:#0052cc;border-color:#0052cc;" onclick="approvePlan()">승인 및 작업 확정</button>
+              style="background:#0052cc;border-color:#0052cc;" onclick="decidePlan('APPROVE')">승인 및 작업 확정</button>
     {% else %}
       <span class="status-chip status-muted">승인 권한은 관리자/팀장에게 있습니다</span>
     {% endif %}
@@ -152,6 +217,8 @@
 <script>
 var PLAN_DOC = {{ doc | tojson }};
 var RAW_ANSWER = {{ answer | tojson }};
+var CAD_STAGING = {{ (_cad if _cad is defined else {}) | tojson }};
+var SESSION_ID = {{ session_id | tojson }};
 
 $('#plan-md-body').html(window.KSmartMd.render(RAW_ANSWER));
 
@@ -161,26 +228,101 @@ function applyQuickChoice(text) {
   $('#replan-input').val(nextVal).focus();
 }
 
-function approvePlan() {
-  var $btn = $('#btn-approve-plan');
-  $btn.prop('disabled', true).text('확정 처리 중...');
+$('#replan-form').on('submit', function () {
+  var raw = $.trim($('#replan-input').val());
+  if (!raw) return;
+
+  var p = (PLAN_DOC && PLAN_DOC.parameters) || {};
+  var blk = p.block_id || '';
+  var ship = p.ship_code || '';
+  var mat = p.material || '';
+  var thk = p.thickness || '';
+  var proc = p.process || '';
+  var curWorker = p.worker_name || '';
+  var woNo = (PLAN_DOC && PLAN_DOC.work_order_number) || '';
+
+  if (blk || woNo) {
+    var docLabel = (PLAN_DOC && PLAN_DOC.doc_type === 'HEAVY_LIFTING_PLAN')
+      ? '중량물 취급 작업계획서'
+      : '용접 작업지시서';
+
+    var specParts = [];
+    if (ship) specParts.push('호선 ' + ship);
+    if (blk) specParts.push('블록 ' + blk);
+    if (mat) specParts.push('강종 ' + mat);
+    if (thk) specParts.push('두께 ' + thk);
+    if (proc) specParts.push('공정 ' + proc);
+
+    var isWorkerChange = /작업자|인력|사람|교체|바꿔|바꾸|변경/.test(raw);
+    var workerRule = (curWorker && isWorkerChange)
+      ? ('※ 주의: 기존 배정자(' + curWorker + ')는 반드시 제외하고 다른 적격 대기 작업자로 교체할 것. ')
+      : '';
+
+    var contextHeader =
+      '[기존 초안 수정·재발행 요청] ' +
+      (woNo ? '문서번호: ' + woNo + ' / ' : '') +
+      (specParts.length ? '제원: ' + specParts.join(', ') + ' / ' : '') +
+      workerRule +
+      '위 조건을 유지한 채 아래 변경 사항을 반영하여 ' + docLabel + ' 초안을 다시 생성해줘.\n' +
+      '변경 요청: ';
+
+    $('#replan-input').val(contextHeader + raw);
+  }
+});
+
+function decidePlan(actionType) {
+  if (actionType === 'REJECT' && !confirm('이 작업 초안을 반려(보류) 처리하시겠습니까?')) return;
+  var $ok = $('#btn-approve-plan');
+  var $no = $('#btn-reject-plan');
+  $ok.prop('disabled', true);
+  $no.prop('disabled', true);
+  if (actionType === 'APPROVE') $ok.text('확정 처리 중...');
+  else $no.text('반려 처리 중...');
+
   $.ajax({
     url: '/service/api/assistant/approve',
     method: 'POST',
     contentType: 'application/json',
     data: JSON.stringify({
-      action: 'APPROVE',
+      action: actionType,
       work_id: PLAN_DOC.work_id,
       instruction_id: PLAN_DOC.instruction_id,
       doc: PLAN_DOC
     }),
     success: function (res) {
-      alert(res.message || '승인 및 확정이 완료되었습니다.');
-      window.location.href = '/service/work-status?work_id=' + encodeURIComponent(PLAN_DOC.work_id || '');
+      alert(res.message || '처리가 완료되었습니다.');
+      window.location.href = (actionType === 'APPROVE')
+        ? ('/service/work-status?work_id=' + encodeURIComponent(PLAN_DOC.work_id || ''))
+        : '/service/workspace';
     },
     error: function (xhr) {
-      alert((xhr.responseJSON && xhr.responseJSON.message) || '승인 처리 중 오류가 발생했습니다.');
-      $btn.prop('disabled', false).text('승인 및 작업 확정');
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '처리 중 오류가 발생했습니다.');
+      $ok.prop('disabled', false).text('승인 및 작업 확정');
+      $no.prop('disabled', false).text('요청 반려');
+    }
+  });
+}
+
+function confirmCadPlan() {
+  var $btn = $('#btn-confirm-cad-plan');
+  $btn.prop('disabled', true).text('DB 및 MRP 반영 중...');
+  $.ajax({
+    url: '/service/api/cad/confirm',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      session_id: SESSION_ID,
+      confirm_mode: $('#cad-confirm-mode').val() || 'ACTIVE',
+      drawing_meta: CAD_STAGING.drawing_meta || {},
+      work_packages: CAD_STAGING.work_packages || []
+    }),
+    success: function (res) {
+      alert(res.message || '공정 계획이 확정되었습니다.');
+      window.location.href = '/service/workspace';
+    },
+    error: function (xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '확정 처리에 실패했습니다.');
+      $btn.prop('disabled', false).text('공정 계획 확정 및 DB · MRP 반영');
     }
   });
 }
