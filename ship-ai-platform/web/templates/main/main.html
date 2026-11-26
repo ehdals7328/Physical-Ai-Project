@@ -4,18 +4,6 @@
 
 {% block extra_css %}
 <style>
-  /* 메인 페이지 전용 풀스케일 스크롤텔링 스타일 (다른 페이지 비율에 영향 없음) */
-  .main-scroll-progress {
-    position: fixed;
-    top: 66px;
-    left: 0;
-    height: 3px;
-    width: 0%;
-    background: linear-gradient(90deg, #0052cc, #38bdf8);
-    z-index: 1029;
-    transition: width 0.08s linear;
-  }
-
   .main-wide-shell {
     width: 100%;
     max-width: 1380px;
@@ -25,11 +13,18 @@
   }
 
   /* 1. 대형 사진 배경 히어로 캐러셀 */
+  #mainHeroCarousel,
+  #mainHeroCarousel .carousel-inner {
+    overflow: hidden;
+    width: 100%;
+    background-color: #091930;
+  }
+
   .main-hero-slide {
     min-height: clamp(500px, 74vh, 680px);
     display: flex;
     align-items: center;
-    padding: clamp(64px, 8vw, 104px) 0;
+    padding: clamp(64px, 8vw, 104px) 0 clamp(84px, 10vw, 120px) 0;
     color: #ffffff;
     position: relative;
     background-size: cover;
@@ -37,7 +32,42 @@
     background-repeat: no-repeat;
   }
 
-  /* 사진 위에 차분한 어두운 필터를 얹어 흰 글씨가 선명하게 읽히도록 처리 */
+  /* 화면 하단 중앙 동그라미 인디케이터 */
+  .hero-indicators-wrap {
+    position: absolute;
+    bottom: 28px;
+    left: 0;
+    right: 0;
+    z-index: 15;
+    pointer-events: none;
+  }
+
+  #mainHeroCarousel .carousel-indicators {
+    position: static;
+    margin: 0;
+    justify-content: center;
+    gap: 10px;
+    pointer-events: auto;
+  }
+
+  #mainHeroCarousel .carousel-indicators [data-bs-target] {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.42);
+    border: none;
+    margin: 0;
+    padding: 0;
+    opacity: 1;
+    transition: transform 0.25s ease, background-color 0.25s ease;
+  }
+
+  #mainHeroCarousel .carousel-indicators .active {
+    background-color: #ffffff;
+    transform: scale(1.2);
+  }
+
+  /* 히어로 배경 이미지 */
   .hero-bg-1 {
     background-image:
       linear-gradient(105deg, rgba(9, 25, 48, 0.84) 0%, rgba(13, 39, 77, 0.62) 55%, rgba(13, 39, 77, 0.30) 100%),
@@ -94,28 +124,18 @@
     border-radius: 10px;
   }
 
-  .scroll-cue {
-    position: absolute;
-    bottom: 22px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: rgba(255, 255, 255, 0.84);
-    font-size: 13px;
-    font-weight: 600;
-    animation: cueBounce 2s infinite;
-  }
-
-  @keyframes cueBounce {
-    0%, 100% { transform: translate(-50%, 0); }
-    50% { transform: translate(-50%, 7px); }
-  }
-
   /* 2. 큼직한 스크롤텔링 밴드 */
   .st-band {
     padding: clamp(68px, 8vw, 116px) 0;
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
     overflow: hidden;
+  }
+
+  /* 3대 핵심 공간 섹션만 상하 여백을 컴팩트하게 조정 */
+  .st-band.quick-nav-band {
+    padding: clamp(44px, 5vw, 64px) 0;
+    background: #f8fafc;
   }
 
   .st-band.alt {
@@ -150,48 +170,111 @@
     margin-bottom: 26px;
   }
 
-  /* 3대 핵심 공간 카드 */
+  /* 3대 핵심 공간 카드 (가독성·컴팩트 개선) */
   .st-service-card {
     background: #ffffff;
-    border: 1px solid #dde3ec;
+    border: 1px solid #e2e8f0;
     border-radius: 16px;
-    padding: clamp(24px, 2.6vw, 34px);
+    padding: 24px 26px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    box-shadow: 0 4px 16px rgba(11, 31, 58, 0.03);
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   }
 
   .st-service-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     border-color: #0052cc;
-    box-shadow: 0 16px 36px rgba(11, 31, 58, 0.08);
+    box-shadow: 0 14px 30px rgba(11, 31, 58, 0.08);
   }
 
-  .st-service-num {
-    font-size: 13px;
-    font-weight: 700;
-    color: #0052cc;
-    background: #eff6ff;
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 999px;
+  .st-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-bottom: 16px;
   }
 
-  .st-service-title {
-    font-size: clamp(19px, 1.5vw, 22px);
-    font-weight: 800;
-    color: #0b1f3a;
-    margin-bottom: 10px;
+  .st-service-num {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0052cc;
+    background: #eff6ff;
+    padding: 5px 12px;
+    border-radius: 999px;
   }
 
-  .st-service-desc {
-    font-size: 15px;
-    line-height: 1.72;
-    color: #4b5563;
-    margin-bottom: 24px;
+  .st-card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #0052cc;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+
+  .st-service-card:hover .st-card-icon {
+    background: #0052cc;
+    color: #ffffff;
+  }
+
+  .st-service-title {
+    font-size: 19.5px;
+    font-weight: 800;
+    color: #0b1f3a;
+    margin-bottom: 6px;
+    letter-spacing: -0.015em;
+  }
+
+  .st-service-sub {
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 14px;
+  }
+
+  .st-service-list {
+    list-style: none;
+    padding: 12px 0 0 0;
+    margin: 0 0 20px 0;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .st-service-list li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #334155;
+  }
+
+  .st-check-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #eff6ff;
+    color: #0052cc;
+    font-size: 11px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .st-card-btn {
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 9px 16px;
   }
 
   /* 사진 + 설명 비주얼 카드 */
@@ -282,39 +365,37 @@
 
   @media (max-width: 767.98px) {
     .main-hero-slide { min-height: 430px; }
-    .scroll-cue { display: none; }
+    .hero-indicators-wrap { bottom: 20px; }
     .st-reveal.from-left, .st-reveal.from-right { transform: translateY(28px); }
   }
 </style>
 {% endblock %}
 
 {% block full_width_top %}
-<div class="main-scroll-progress" id="mainScrollBar"></div>
-
 <!-- 1. 상단 자동 슬라이드 히어로 (실제 조선소 사진 배경) -->
-<div id="mainHeroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5500">
-  <div class="carousel-indicators mb-4">
-    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active"></button>
-    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1"></button>
-    <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2"></button>
+<div id="mainHeroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="5500">
+  <div class="hero-indicators-wrap">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="슬라이드 1"></button>
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="1" aria-label="슬라이드 2"></button>
+      <button type="button" data-bs-target="#mainHeroCarousel" data-bs-slide-to="2" aria-label="슬라이드 3"></button>
+    </div>
   </div>
 
   <div class="carousel-inner">
     <div class="carousel-item active">
       <div class="main-hero-slide hero-bg-1">
         <div class="main-wide-shell">
-          <span class="main-hero-eyebrow">스마트 조선소 도우미</span>
-          <h1 class="main-hero-title">큰 배를 만드는 복잡한 일,<br>이제 한눈에 보고 쉽게 챙기세요</h1>
+          <span class="main-hero-eyebrow">통합 업무</span>
+          <h1 class="main-hero-title">전체적인 업무를 <br>한번에 처리합니다</h1>
           <p class="main-hero-sub">
-            현장 카메라로 배 상태를 바로 보고, 필요한 재료와 작업 안내서까지 알아서 준비해 드립니다.
-            어려운 전문 용어를 몰라도 누구나 쉽게 쓸 수 있습니다.
+            현장 카메라로 배 상태를 바로 보고, 필요한 재료와 작업 안내서까지 채팅 한번으로 처리합니다.
           </p>
           <div class="d-flex flex-wrap gap-3">
             <a href="/service/workspace" class="btn btn-light text-primary main-hero-btn">통합 업무 시작하기</a>
             <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-outline-light main-hero-btn">현장 카메라 보기</a>
           </div>
         </div>
-        <div class="scroll-cue">아래로 내려서 살펴보기 ↓</div>
       </div>
     </div>
 
@@ -332,7 +413,6 @@
             <a href="/service/library?tab=cad" class="btn btn-outline-light main-hero-btn">배 설계도 보기</a>
           </div>
         </div>
-        <div class="scroll-cue">아래로 내려서 살펴보기 ↓</div>
       </div>
     </div>
 
@@ -343,81 +423,86 @@
           <h1 class="main-hero-title">모자란 재료 확인부터 서류 준비까지,<br>확인 버튼 한 번이면 충분합니다</h1>
           <p class="main-hero-sub">
             두꺼운 규정집을 찾거나 여러 화면을 오갈 필요가 없습니다.
-            필요한 준비를 미리 정리해 두면 담당자가 확인하고 바로 일을 시작할 수 있습니다.
+            간단한 시지와 함께 바로 일을 시작할 수 있습니다.
           </p>
           <div class="d-flex flex-wrap gap-3">
             <a href="/service/work-status" class="btn btn-light text-primary main-hero-btn">작업 현황 보기</a>
             <a href="/service/workspace" class="btn btn-outline-light main-hero-btn">통합 업무 이동</a>
           </div>
         </div>
-        <div class="scroll-cue">아래로 내려서 살펴보기 ↓</div>
       </div>
     </div>
   </div>
-
-  <button class="carousel-control-prev" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon"></span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#mainHeroCarousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon"></span>
-  </button>
 </div>
 {% endblock %}
 
 {% block content %}
-<!-- 섹션 1: 누구나 이해하는 핵심 공간 3가지 -->
-<section class="st-band">
+<!-- 섹션 1: 핵심 공간 3가지 (상단 안내 문구 제거, 컴팩트 카드) -->
+<section class="st-band quick-nav-band">
   <div class="main-wide-shell">
-    <div class="text-center mb-5 st-reveal">
-      <div class="st-kicker">한눈에 보는 메뉴 안내</div>
-      <h2 class="st-heading">복잡한 메뉴 없이, 딱 세 곳만 알면 됩니다</h2>
-      <p class="st-lead mx-auto mb-0" style="max-width:640px;">
-        배 만드는 일을 처음 보시는 분도 화면에 적힌 순서대로 누르기만 하면 쉽게 운영할 수 있습니다.
-      </p>
-    </div>
-
-    <div class="row g-4">
+    <div class="row g-3 g-lg-4">
+      <!-- 카드 1 -->
       <div class="col-lg-4 st-reveal scale-up st-delay-1">
         <div class="st-service-card">
           <div>
-            <span class="st-service-num">01 · 통합 업무</span>
+            <div class="st-card-top">
+              <span class="st-service-num">01 · 통합 업무</span>
+              <span class="st-card-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              </span>
+            </div>
             <h3 class="st-service-title">물어보고, 챙기고, 결정하는 곳</h3>
-            <p class="st-service-desc">
-              오늘 해야 할 일을 한눈에 보고 궁금한 점을 편하게 물어보세요.
-              모자란 재료 주문과 자격증 갱신 안내도 여기서 바로 끝낼 수 있습니다.
-            </p>
+            <p class="st-service-sub">오늘 할 일 조회부터 자재 주문·승인까지 한 화면에서</p>
+            <ul class="st-service-list">
+              <li><span class="st-check-dot">✓</span><span>채팅으로 작업 안내서·안전 규정 즉시 확인</span></li>
+              <li><span class="st-check-dot">✓</span><span>부족한 재료 주문 및 작업자 자격증 만료 알림</span></li>
+            </ul>
           </div>
-          <a href="/service/workspace" class="btn btn-outline-primary fw-bold px-4 py-2 align-self-start" style="border-radius:9px;">통합 업무 가기 →</a>
+          <a href="/service/workspace" class="btn btn-outline-primary st-card-btn w-100">통합 업무 가기 →</a>
         </div>
       </div>
 
+      <!-- 카드 2 -->
       <div class="col-lg-4 st-reveal scale-up st-delay-2">
         <div class="st-service-card">
           <div>
-            <span class="st-service-num">02 · 현장 관제</span>
+            <div class="st-card-top">
+              <span class="st-service-num">02 · 현장 관제</span>
+              <span class="st-card-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              </span>
+            </div>
             <h3 class="st-service-title">현장을 실시간 눈으로 보는 곳</h3>
-            <p class="st-service-desc">
-              조선소 카메라 화면을 크게 띄워 배의 번호와 현장 안전을 확인합니다.
-              지도를 열어 다른 작업장으로 화면을 바꾸고 바로 작업 지시도 내릴 수 있습니다.
-            </p>
+            <p class="st-service-sub">조선소 카메라 화면과 지도로 현장 상태를 한눈에</p>
+            <ul class="st-service-list">
+              <li><span class="st-check-dot">✓</span><span>철판 블록 번호 자동 인식 및 주변 안전 감시</span></li>
+              <li><span class="st-check-dot">✓</span><span>지도에서 야드·도크 전환 후 바로 작업 지시</span></li>
+            </ul>
           </div>
-          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-outline-primary fw-bold px-4 py-2 align-self-start" style="border-radius:9px;">현장 관제 가기 →</a>
+          <a href="{{ '/vision/?branch=' ~ primary_vision_branch if primary_vision_branch else '/vision/' }}" class="btn btn-outline-primary st-card-btn w-100">현장 관제 가기 →</a>
         </div>
       </div>
 
+      <!-- 카드 3 -->
       <div class="col-lg-4 st-reveal scale-up st-delay-3">
         <div class="st-service-card">
           <div>
-            <span class="st-service-num">03 · 작업 현황 · 자료실</span>
+            <div class="st-card-top">
+              <span class="st-service-num">03 · 작업 현황 · 자료실</span>
+              <span class="st-card-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              </span>
+            </div>
             <h3 class="st-service-title">진행 상황과 서류를 모아보는 곳</h3>
-            <p class="st-service-desc">
-              지금 진행 중인 작업 안내서와 거래처에서 오는 재료가 언제 도착하는지 확인하고,
-              배의 설계도와 안전 수칙을 필요할 때마다 꺼내 볼 수 있습니다.
-            </p>
+            <p class="st-service-sub">공정 진행률, 거래처 자재 배송, 설계도 통합 관리</p>
+            <ul class="st-service-list">
+              <li><span class="st-check-dot">✓</span><span>작업 안내서 진행률 및 자재 도착 예정 시간 확인</span></li>
+              <li><span class="st-check-dot">✓</span><span>선박 CAD 설계도와 안전 수칙 문서 열람</span></li>
+            </ul>
           </div>
-          <div class="d-flex flex-wrap gap-2">
-            <a href="/service/work-status" class="btn btn-outline-primary fw-bold px-4 py-2" style="border-radius:9px;">작업 현황</a>
-            <a href="/service/library" class="btn btn-outline-secondary fw-bold px-4 py-2" style="border-radius:9px;">자료실</a>
+          <div class="d-flex gap-2">
+            <a href="/service/work-status" class="btn btn-outline-primary st-card-btn flex-fill">작업 현황</a>
+            <a href="/service/library" class="btn btn-outline-secondary st-card-btn flex-fill">자료실</a>
           </div>
         </div>
       </div>
@@ -440,13 +525,13 @@
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">전체 현장 보기</div>
-              <div class="small text-secondary">배 번호와 작업자·크레인 위치를 한눈에 확인해요.</div>
+              <div class="small text-secondary">배 번호와 작업자·크레인 위치를 한눈에 확인합니다.</div>
             </div>
           </div>
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">가까이 확대 보기</div>
-              <div class="small text-secondary">철판을 이어 붙일 자리를 정밀하게 살펴봐요.</div>
+              <div class="small text-secondary">철판을 이어 붙일 자리를 정밀하게 살펴봅니다.</div>
             </div>
           </div>
         </div>
@@ -481,31 +566,31 @@
         <h2 class="st-heading">어려운 규정집과 재료 확인,<br>이제 직접 찾지 마세요</h2>
         <p class="st-lead">
           철판 두께에 따라 어떻게 안전하게 작업해야 하는지, 창고에 재료가 넉넉한지,
-          일할 분의 자격 기간이 남아 있는지까지 업무 비서가 대신 확인해 쉬운 말로 정리해 드립니다.
+          용접공의 자격 기간이 남아 있는지까지 업무 비서가 대신 확인하고 정리해 드립니다.
         </p>
         <div class="row g-3 mb-4">
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">쉬운 작업 방법 안내</div>
-              <div class="small text-secondary">두꺼운 책 대신 필요한 안전 수칙만 콕 집어 알려줘요.</div>
+              <div class="small text-secondary">두꺼운 책 대신 필요한 안전 수칙만 알려드립니다.</div>
             </div>
           </div>
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">부족한 재료 미리 알림</div>
-              <div class="small text-secondary">모자란 재료가 있으면 거래처 주문까지 도와줘요.</div>
+              <div class="small text-secondary">모자란 재료가 있으면 거래처 주문까지 도와드립니다.</div>
             </div>
           </div>
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">자격 기간 챙김</div>
-              <div class="small text-secondary">만료가 다가온 자격증을 미리 알려 갱신을 챙겨요.</div>
+              <div class="small text-secondary">만료가 다가온 자격증을 미리 알려 갱신을 챙겨드립니다.</div>
             </div>
           </div>
           <div class="col-6">
             <div class="st-mini-tile">
               <div class="fw-bold mb-1" style="color:#0b1f3a;">중복 실수 방지</div>
-              <div class="small text-secondary">이미 시작한 작업은 겹치지 않게 알려줘요.</div>
+              <div class="small text-secondary">이미 시작한 작업은 겹치지 않게 알려드립니다.</div>
             </div>
           </div>
         </div>
@@ -595,16 +680,6 @@
 {% block extra_js %}
 <script>
 (function () {
-  var bar = document.getElementById('mainScrollBar');
-  function updateBar() {
-    if (!bar) return;
-    var docH = document.documentElement.scrollHeight - window.innerHeight;
-    var pct = docH > 0 ? Math.min(100, Math.max(0, (window.scrollY / docH) * 100)) : 0;
-    bar.style.width = pct + '%';
-  }
-  window.addEventListener('scroll', updateBar, { passive: true });
-  updateBar();
-
   var targets = document.querySelectorAll('.st-reveal');
   if (!targets.length) return;
   if ('IntersectionObserver' in window) {
