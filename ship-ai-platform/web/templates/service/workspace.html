@@ -52,10 +52,10 @@
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header py-3">
-        <h6 class="modal-title fw-bold" id="ws-pdf-title">문서 보기</h6>
-        <div class="d-flex gap-2 align-items-center">
+        <h6 class="modal-title fw-bold text-truncate me-3" id="ws-pdf-title">문서 보기</h6>
+        <div class="d-flex gap-2 align-items-center ms-auto flex-shrink-0">
           <a id="ws-pdf-newtab" href="#" target="_blank" class="btn btn-outline-primary btn-sm">새 탭에서 열기</a>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close m-0 ms-1" data-bs-dismiss="modal"></button>
         </div>
       </div>
       <div class="modal-body p-0" id="ws-pdf-body" style="min-height:520px;background:#f8fafc;"></div>
@@ -88,6 +88,61 @@
         <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">취소</button>
         <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" id="btn-fixed-mail-send"
                 style="background:#0052cc;border-color:#0052cc;">확인 및 즉시 발송</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- A2A 협력사 발주 협의 및 PO 초안 요청 모달 -->
+<div class="modal fade" id="a2aOrderModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-3">
+        <h6 class="modal-title fw-bold">협력사 A2A 발주 협의 요청</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="border rounded p-3 bg-light small mb-3">
+          <div class="fw-bold text-dark mb-1" id="a2a-po-item">-</div>
+          <div class="text-secondary" id="a2a-po-meta">-</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">발주 수량</label>
+          <div class="input-group input-group-sm">
+            <input type="number" id="a2a-po-qty" class="form-control" min="1" step="1" value="500">
+            <span class="input-group-text" id="a2a-po-unit">KG</span>
+          </div>
+          <div class="form-text" style="font-size:11.5px;">대량 주문(500kg 이상)은 기본가 대비 3% 할인 조건으로 자동 협의됩니다.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold d-block">납기 / 단가 협의 조건</label>
+          <div class="d-flex flex-column gap-2">
+            <label class="border rounded p-2 px-3 small d-flex align-items-start gap-2 cursor-pointer mb-0">
+              <input class="form-check-input mt-1" type="radio" name="a2aUrgency" value="NORMAL" checked>
+              <span><strong>일반 발주</strong><br><span class="text-muted">기본 단가 적용 · 대량 주문 시 3% 할인 협의</span></span>
+            </label>
+            <label class="border rounded p-2 px-3 small d-flex align-items-start gap-2 cursor-pointer mb-0">
+              <input class="form-check-input mt-1" type="radio" name="a2aUrgency" value="URGENT">
+              <span><strong>긴급 직송</strong><br><span class="text-muted">납기 50% 단축 요청 · 긴급 배차 할증(+5%) 역제안</span></span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label small fw-bold d-block">진행 방식</label>
+          <div class="btn-group btn-group-sm w-100" role="group">
+            <input type="radio" class="btn-check" name="a2aExecMode" id="a2aModeDraft" value="PO_DRAFT" checked>
+            <label class="btn btn-outline-primary" for="a2aModeDraft">A2A 협의 + PO 초안 생성</label>
+            <input type="radio" class="btn-check" name="a2aExecMode" id="a2aModeNeg" value="NEGOTIATE_ONLY">
+            <label class="btn btn-outline-secondary" for="a2aModeNeg">조건·역제안만 먼저 확인</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary btn-sm px-4 fw-semibold" id="btn-a2a-order-start"
+                style="background:#0052cc;border-color:#0052cc;">A2A 협의 시작</button>
       </div>
     </div>
   </div>
@@ -245,6 +300,49 @@
         $btn.prop('disabled', false).text('확인 및 즉시 발송');
       }
     });
+  });
+
+  var activeA2aItem = null;
+
+  function openA2aOrderModal(m) {
+    activeA2aItem = m;
+    var unitUp = String(m.unit || 'KG').toUpperCase();
+    var defaultQty = (unitUp === 'KG') ? 500 : 50;
+
+    $('#a2a-po-item').text(m.item_name + ' (' + m.item_code + ')');
+    $('#a2a-po-meta').text(
+      (m.branch_name || m.branch_code) + ' · 공급사: ' + (m.supplier_name || '협력사') +
+      ' · 현재 가용: ' + m.available_qty + ' ' + (m.unit || '')
+    );
+    $('#a2a-po-qty').val(defaultQty);
+    $('#a2a-po-unit').text(m.unit || 'EA');
+    $('input[name="a2aUrgency"][value="NORMAL"]').prop('checked', true);
+    $('#a2aModeDraft').prop('checked', true);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('a2aOrderModal')).show();
+  }
+
+  $('#btn-a2a-order-start').on('click', function () {
+    if (!activeA2aItem) return;
+    var qty = parseFloat($('#a2a-po-qty').val());
+    if (!qty || qty <= 0) {
+      alert('발주 수량을 1 이상으로 입력해 주세요.');
+      return;
+    }
+    var urgency = $('input[name="a2aUrgency"]:checked').val() || 'NORMAL';
+    var execMode = $('input[name="a2aExecMode"]:checked').val() || 'PO_DRAFT';
+    var m = activeA2aItem;
+    var urgTxt = (urgency === 'URGENT') ? '긴급 직송' : '일반';
+    var tailTxt = (execMode === 'PO_DRAFT')
+      ? '조건으로 A2A 협의 후 발주 주문서(PO) 초안 작성해줘'
+      : '납품 가능한지 단가와 납기 조건 A2A 협의해줘';
+
+    var prompt =
+      (m.branch_name || m.branch_code) + '(' + (m.branch_code || '') + ')에 ' +
+      (m.supplier_name || '협력사') + '의 ' + m.item_name + '(' + m.item_code + ') ' +
+      qty + (m.unit || '') + ' ' + urgTxt + ' ' + tailTxt;
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('a2aOrderModal')).hide();
+    submitWorkspaceQuery(prompt);
   });
 
   function buildContextSummary() {
@@ -435,16 +533,21 @@
       // 4) 우측 상단: 지금 처리할 일 (승인 대기 + 부족 자재 + 자격 만료를 1개 차분한 목록으로)
       var todoRows = [];
       (res.pending_docs || []).forEach(function (d) {
+        var titleTxt = d.is_po
+          ? String(d.work_title || '외주 발주 요청')
+              .replace(/^\[DRAFT\]\s*/i, '')
+              .replace(/^BR-[A-Z0-9-]+\s+/i, '') + ' 승인 대기'
+          : (d.block_code + ' 작업지시 승인 대기');
         todoRows.push(
           '<div class="ov-list-row">' +
-            '<div class="d-flex align-items-start gap-2 min-w-0">' +
-              '<span class="ov-dot dot-blue mt-2"></span>' +
-              '<div class="min-w-0">' +
-                '<div class="ov-item-main text-truncate">' + esc(d.block_code) + ' 작업지시 승인 대기</div>' +
+            '<div class="d-flex align-items-start gap-2 min-w-0 flex-grow-1 overflow-hidden me-2">' +
+              '<span class="ov-dot dot-blue mt-2 flex-shrink-0"></span>' +
+              '<div class="min-w-0 flex-grow-1">' +
+                '<div class="ov-item-main text-truncate" title="' + esc(titleTxt) + '">' + esc(titleTxt) + '</div>' +
                 '<div class="ov-item-sub">' + esc(shortYardName(d.branch_name)) + '</div>' +
               '</div>' +
             '</div>' +
-            '<a href="' + esc(d.review_url) + '" class="ov-btn-accent">승인 검토</a>' +
+            '<a href="' + esc(d.review_url) + '" class="ov-btn-accent flex-shrink-0">승인 검토</a>' +
           '</div>'
         );
       });
@@ -452,12 +555,7 @@
       if (res.can_erp) {
         (res.low_materials || []).forEach(function (m) {
           var actId = registerAction(function () {
-            openFixedMailConfirmModal(
-              'PO',
-              (m.supplier_name || '자재 공급사') + ' 영업담당자',
-              '[긴급 발주] ' + m.item_name + ' (' + m.item_code + ')',
-              m.branch_name + ' 공정용 ' + m.item_name + '(' + m.item_code + ') 가용 재고가 ' + m.available_qty + m.unit + '으로 부족하여 긴급 납품을 요청드립니다.'
-            );
+            openA2aOrderModal(m);
           });
           var cleanMatName = String(m.item_name || '').replace(/\s*\([^)]*\)\s*/g, '').trim() || m.item_name;
           todoRows.push(
@@ -741,12 +839,7 @@
       });
       var rows = list.map(function (m) {
         var poAct = registerAction(function () {
-          openFixedMailConfirmModal(
-            'PO',
-            m.supplier_name + ' 담당자',
-            '[발주 요청] ' + m.item_name + ' (' + m.item_code + ')',
-            m.branch_name + ' 공정용 ' + m.item_name + '(' + m.item_code + ') 현재 가용량 ' + m.available_qty + m.unit + '으로 긴급 납품을 요청드립니다.'
-          );
+          openA2aOrderModal(m);
         });
         var etaInfo = '';
         if (m.has_open_po && m.open_po_eta) {

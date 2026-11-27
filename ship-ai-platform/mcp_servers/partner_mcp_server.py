@@ -445,9 +445,13 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     or matched.get("qty")
                     or 0
                 )
+                unit_raw = str(matched.get("unit") or "KG").strip().upper()
+                unit_label = "장" if unit_raw == "SHEET" else ("병" if unit_raw == "EA" else "kg")
+                bulk_threshold = 50 if unit_raw in ("SHEET", "EA") else 500
+
                 base_price = float(matched.get("unit_price_krw") or 4500)
                 base_lead_h = float(matched.get("lead_time_hours") or 4)
-                eff_qty = req_qty if req_qty > 0 else 100.0
+                eff_qty = req_qty if req_qty > 0 else (50.0 if unit_raw in ("SHEET", "EA") else 100.0)
                 partner_name = matched.get("partner_name") or "대한특수철강"
                 partner_id = matched.get("partner_id") or "VEND-DAEHAN-MAT"
 
@@ -458,31 +462,32 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                         agreed_price = int(round(base_price * 1.05))
                         decision = "COUNTER_OFFER"
                         summary = (
-                            f"{partner_name}: 요청 수량 {eff_qty:g}kg 전량 보유 확인(가용 {avail_qty:g}kg). "
-                            f"긴급 직송 전환 시 납기를 {base_lead_h:g}시간 ➔ {agreed_eta_h:g}시간으로 단축 가능 "
-                            f"(긴급 배차 5% 반영 {agreed_price:,}원/kg)."
+                            f"{partner_name}: 요청 수량 {eff_qty:g}{unit_label} 전량 보유 확인(가용 {avail_qty:g}{unit_label}). "
+                            f"긴급 직송 전환 시 납기를 {base_lead_h:g}시간 → {agreed_eta_h:g}시간으로 단축 가능 "
+                            f"(긴급 배차 5% 반영 {agreed_price:,}원/{unit_label})."
                         )
-                    elif eff_qty >= 500:
+                    elif eff_qty >= bulk_threshold:
                         agreed_eta_h = base_lead_h
                         agreed_price = int(round(base_price * 0.97))
                         decision = "ACCEPTED"
                         summary = (
-                            f"{partner_name}: {eff_qty:g}kg 대량 발주 확인(가용 {avail_qty:g}kg). "
-                            f"단가 3% 협의 할인({agreed_price:,}원/kg) 적용, {agreed_eta_h:g}시간 내 일괄 납품 가능."
+                            f"{partner_name}: {eff_qty:g}{unit_label} 대량 발주 확인(가용 {avail_qty:g}{unit_label}). "
+                            f"단가 3% 협의 할인({agreed_price:,}원/{unit_label}) 적용, {agreed_eta_h:g}시간 내 일괄 납품 가능."
                         )
                     else:
                         agreed_eta_h = base_lead_h
                         agreed_price = int(round(base_price))
                         decision = "ACCEPTED"
                         summary = (
-                            f"{partner_name}: 요청 수량 {eff_qty:g}kg 전량 즉시 출고 가능 "
-                            f"({agreed_eta_h:g}시간 내 도착, {agreed_price:,}원/kg)."
+                            f"{partner_name}: 요청 수량 {eff_qty:g}{unit_label} 전량 즉시 출고 가능 "
+                            f"({agreed_eta_h:g}시간 내 도착, {agreed_price:,}원/{unit_label})."
                         )
                     options.append({
                         "option_code": "OPT-FULL-DELIVERY",
                         "label": "전량 일괄 납품",
                         "first_batch_qty": eff_qty,
                         "second_batch_qty": 0,
+                        "unit": unit_raw,
                         "eta_hours": agreed_eta_h,
                         "unit_price_krw": agreed_price,
                         "lot_no": matched.get("partner_lot_no") or matched.get("lot_no"),
@@ -494,10 +499,7 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                             dict(it)
                             for it in items
                             if it.get("supplier_sku") != matched.get("supplier_sku")
-                            and (
-                                "WIRE" in str(it.get("supplier_sku", "")).upper()
-                                or "와이어" in str(it.get("item_name", ""))
-                            )
+                            and str(it.get("unit") or "").upper() == unit_raw
                             and float(it.get("available_qty") or it.get("stock_qty") or 0) >= shortage
                         ),
                         None,
@@ -507,9 +509,10 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     agreed_price = int(round(base_price))
                     options.append({
                         "option_code": "OPT-SPLIT-DELIVERY",
-                        "label": f"분할 납품 (1차 {avail_qty:g}kg 즉시 + 2차 {shortage:g}kg 익일 오전 08:00)",
+                        "label": f"분할 납품 (1차 {avail_qty:g}{unit_label} 즉시 + 2차 {shortage:g}{unit_label} 익일 오전 08:00)",
                         "first_batch_qty": avail_qty,
                         "second_batch_qty": shortage,
+                        "unit": unit_raw,
                         "eta_hours": base_lead_h,
                         "second_batch_eta_hours": 16.0,
                         "unit_price_krw": agreed_price,
@@ -519,19 +522,20 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                         options.append({
                             "option_code": "OPT-MIXED-EQUIV-LOT",
                             "label": (
-                                f"동급 선급 대체 합산 납품 (주품목 {avail_qty:g}kg + "
-                                f"대체품 {alt_item.get('item_name')} {shortage:g}kg)"
+                                f"동급 선급 대체 합산 납품 (주품목 {avail_qty:g}{unit_label} + "
+                                f"대체품 {alt_item.get('item_name')} {shortage:g}{unit_label})"
                             ),
                             "first_batch_qty": avail_qty,
                             "alt_batch_qty": shortage,
+                            "unit": unit_raw,
                             "alt_item_code": alt_item.get("hq_item_code") or alt_item.get("supplier_sku"),
                             "alt_lot_no": alt_item.get("partner_lot_no") or alt_item.get("lot_no"),
                             "eta_hours": max(base_lead_h, float(alt_item.get("lead_time_hours") or 2)),
                             "unit_price_krw": int(round(float(alt_item.get("unit_price_krw") or base_price))),
                         })
                     summary = (
-                        f"{partner_name}: 요청 {eff_qty:g}kg 대비 즉시 가용 재고 {avail_qty:g}kg(부족 {shortage:g}kg). "
-                        f"1차 {avail_qty:g}kg {base_lead_h:g}시간 내 우선 출고 + 잔여 {shortage:g}kg 분할/대체 납품안 역제안."
+                        f"{partner_name}: 요청 {eff_qty:g}{unit_label} 대비 즉시 가용 재고 {avail_qty:g}{unit_label}(부족 {shortage:g}{unit_label}). "
+                        f"1차 {avail_qty:g}{unit_label} {base_lead_h:g}시간 내 우선 출고 + 잔여 {shortage:g}{unit_label} 분할/대체 납품안 역제안."
                     )
 
                 return {
@@ -541,6 +545,7 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     "partner_id": partner_id,
                     "partner_name": partner_name,
                     "domain": domain,
+                    "unit": unit_raw,
                     "requested_qty": eff_qty,
                     "available_qty": avail_qty,
                     "agreed_eta_hours": agreed_eta_h,
@@ -549,9 +554,9 @@ def _evaluate_partner_a2a_rfq(rfq: Dict[str, Any]) -> Dict[str, Any]:
                     "summary": summary,
                     "privacy_boundary_notice": privacy_notice,
                     "negotiation_trace": [
-                        f"[HQ ➔ Partner RFQ] 품목={matched.get('item_name')}, 요청수량={eff_qty:g}kg, 긴급도={urgency}",
-                        f"[Partner 제약 분석] 가용재고={avail_qty:g}kg, 기본리드타임={base_lead_h:g}h",
-                        f"[Partner ➔ HQ 응답] 판정={decision} | {summary}",
+                        f"[HQ → Partner RFQ] 품목={matched.get('item_name')}, 요청수량={eff_qty:g}{unit_label}, 긴급도={urgency}",
+                        f"[Partner 제약 분석] 가용재고={avail_qty:g}{unit_label}, 기본리드타임={base_lead_h:g}h",
+                        f"[Partner → HQ 응답] 판정={decision} | {summary}",
                     ],
                     "timestamp": now_iso,
                 }

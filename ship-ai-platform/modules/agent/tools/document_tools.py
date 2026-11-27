@@ -374,7 +374,8 @@ def export_work_order_file(
     else:
         hq_comp = branch_info.get("company_code") or erp_status.get("hq_company_code") or "COMP-HQ"
         resolved_partner_name = f"본사 직영 ({hq_comp})"
-        b2b_po_display = "해당없음 (사내직영)"
+        linked_ref_po = erp_commit.get("b2b_po_ack") or erp_status.get("linked_po_number")
+        b2b_po_display = f"{linked_ref_po} (선행 자재발주 연계)" if linked_ref_po else "해당없음 (사내직영)"
 
     resolved_vehicle_code = (
         document_data.get("assigned_vehicle_code")
@@ -807,6 +808,15 @@ def export_outsourcing_po_pdf(
         </tr>
     </table>
         """
+    def _wrap_long_code(code: str, limit: int = 24) -> str:
+        s = str(code or "-")
+        if len(s) <= limit or "-" not in s:
+            return s
+        idx = s.rfind("-", 0, limit)
+        return f"{s[:idx + 1]}<br/>{s[idx + 1:]}" if idx > 0 else s
+
+    po_num_html = _wrap_long_code(po_num)
+    wo_num_html = _wrap_long_code(wo_num)
 
     html_content = f"""<!DOCTYPE html>
 <html lang="ko">
@@ -823,7 +833,7 @@ def export_outsourcing_po_pdf(
     table {{ width: 100%; border-collapse: collapse; margin-bottom: 8px; }}
     th, td {{ border: 0.6pt solid #333333; padding: 5px 6px; vertical-align: middle; font-family: {font_family}; }}
     th {{ background-color: #E8EEF5; font-weight: bold; text-align: left; width: 20%; }}
-    td {{ width: 30%; }}
+    td {{ width: 30%; word-wrap: break-word; }}
     .sec-hdr {{ background-color: #1F4E79; color: #FFFFFF; font-weight: bold; font-size: 9.2pt; padding: 4px 8px; }}
     .center {{ text-align: center; }}
     .right {{ text-align: right; }}
@@ -838,11 +848,11 @@ def export_outsourcing_po_pdf(
 
     <table>
         <tr>
-            <th>발주번호 (PO NO)</th><td><b>{po_num}</b></td>
+            <th>발주번호 (PO NO)</th><td style="font-size:8.2pt;"><b>{po_num_html}</b></td>
             <th>발주일자</th><td>{today_str}</td>
         </tr>
         <tr>
-            <th>연계 작업지시번호</th><td><b>{wo_num}</b></td>
+            <th>연계 작업지시번호</th><td style="font-size:8.2pt;"><b>{wo_num_html}</b></td>
             <th>승인상태 / 결재자</th><td>{status_cell_html}</td>
         </tr>
     </table>

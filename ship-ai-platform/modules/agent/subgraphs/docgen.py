@@ -369,24 +369,26 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
             for det in (vision.get("detections") or [])
         )
     )
-    # [신규] 자재(WELDING_MATERIAL) 부족 시 선행 PO 승인 여부 인터록 검증 (이중 발주 방지)
+    # [Stage-Gate] 자재(WELDING_MATERIAL) 부족 시 선행 PO 승인 여부 인터록 검증 (이중 발주 방지)
     outsourcing_domain = str(state.get("outsourcing_domain") or "").upper()
     stock_available = erp_status.get("stock_available", True)
     existing_approved_po = None
     existing_draft_po = None
+    target_br = ""
+    wire_code = ""
 
     if not stock_available and outsourcing_domain in ("", "WELDING_MATERIAL"):
+        target_br = str(
+            worker_qual.get("target_branch_code")
+            or params.get("branch_code")
+            or state.get("branch_code")
+            or "BR-ULSAN-01"
+        ).upper()
+        wire_code = str(erp_status.get("selected_wire_code") or "WIRE-").upper()
+
         try:
             from sqlalchemy import text
             from modules.agent.tools.vision_tools import user_engine as user_eng
-
-            target_br = str(
-                worker_qual.get("target_branch_code")
-                or params.get("branch_code")
-                or state.get("branch_code")
-                or "BR-ULSAN-01"
-            ).upper()
-            wire_code = str(erp_status.get("selected_wire_code") or "WIRE-").upper()
 
             if user_eng:
                 with user_eng.connect() as conn:
@@ -396,8 +398,14 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
                               FROM WORK_INSTRUCTIONS WI
                               JOIN WORK_ORDERS WO ON WI.WORK_ID = WO.WORK_ID
                              WHERE UPPER(WO.WORK_REGION) = :branch
+                               AND WO.STATUS_CODE != 'SUSPENDED'
                                AND (UPPER(WO.WORK_NO) LIKE 'PO-MRP-%' OR UPPER(WO.WORK_NO) LIKE 'PO-%')
-                               AND DBMS_LOB.INSTR(UPPER(WI.INSTRUCTION_TEXT), :wire_code) > 0
+                               AND (
+                                   UPPER(WO.MATERIAL_GRADE) = :wire_code
+                                   OR UPPER(WO.BLOCK_CODE) = :wire_code
+                                   OR DBMS_LOB.INSTR(UPPER(WI.INSTRUCTION_TEXT), :wire_code) > 0
+                                   OR DBMS_LOB.INSTR(UPPER(WI.WELDING_PARAMS_JSON), :wire_code) > 0
+                               )
                              ORDER BY WI.CREATED_AT DESC
                         """),
                         {"branch": target_br, "wire_code": wire_code},
@@ -410,17 +418,46 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
                         existing_approved_po = wno
                     elif st == "DRAFT" and not existing_draft_po:
                         existing_draft_po = wno
-
-                if existing_approved_po:
-                    erp_status["linked_po_number"] = existing_approved_po
-                elif existing_draft_po:
-                    erp_status["pending_po_number"] = existing_draft_po
         except Exception as po_chk_err:
             print(f"⚠️ [Gatekeeper 선행 PO 조회 경고]: {po_chk_err}")
+
+        if existing_approved_po:
+            erp_status["linked_po_number"] = existing_approved_po
+        elif existing_draft_po:
+            erp_status["pending_po_number"] = existing_draft_po
         
     is_weather_failed = (
         weather_status != "SUCCESS"
         or safety_status not in ("PASS", "CONDITIONAL_PASS")
+    )
+
+    stock_available = bool(erp_status.get("stock_available", True))
+    chk_wire = str(erp_status.get("selected_wire_code") or "").strip().upper()
+    chk_br = str(
+        worker_qual.get("target_branch_code")
+        or params.get("branch_code")
+        or state.get("branch_code")
+        or ""
+    ).strip().upper()
+    inv_map = erp_status.get("inventory") or {}
+    if stock_available and chk_wire and isinstance(inv_map, dict):
+        w_inv = inv_map.get(chk_wire)
+        if isinstance(w_inv, dict):
+            inv_br = str(w_inv.get("branch_code") or "").strip().upper()
+            avail_q = w_inv.get("available_qty")
+            req_q = float(
+                (erp_status.get("block_master") or {}).get("est_wire_kg")
+                or params.get("quantity")
+                or 15.0
+            )
+            if (not chk_br or inv_br == chk_br) and avail_q is not None and float(avail_q) < req_q:
+                stock_available = False
+                erp_status["stock_available"] = False
+
+    is_material_unsecured = (
+        not stock_available
+        and outsourcing_domain in ("", "WELDING_MATERIAL")
+        and not existing_approved_po
     )
 
     is_blocked = (
@@ -429,6 +466,7 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
         or not is_worker_valid
         or not is_yard_matched
         or has_vision_hazard
+        or is_material_unsecured
     )
 
     print("\n" + "=" * 65)
@@ -486,6 +524,12 @@ def governance_gatekeeper_node(state: ShipAgentState) -> Dict[str, Any]:
             fail_reasons.append("비전안전거리미확보(간섭장애물감지)")
         elif has_vision_hazard:
             fail_reasons.append("비전결함/용접중Lock/로봇비상정지")
+
+        if is_material_unsecured:
+            if existing_draft_po:
+                fail_reasons.append(f"자재미확보(선행PO {existing_draft_po} 결재대기)")
+            else:
+                fail_reasons.append(f"자재미확보({target_br} {wire_code} 재고부족 및 승인된 선행PO 없음)")
 
         erp_status["interlock_fail_reasons"] = fail_reasons
         if not is_worker_valid:
@@ -600,10 +644,11 @@ QA_PROMPT = ChatPromptTemplate.from_messages([
         "   - 전사 야드 목록 문의 시 전체 야드 마스터를 기준으로, 특정 야드 자원 문의 시 해당 야드 자원만 필터링하여 `###` 소제목과 **마크다운 표**로 정리하세요(장비의 대기 중 / 운행 중 상태 명확 구분).\n"
         "   - 협력사 목록, 위치, 취급 품목, 외주 인력·장비 문의 시 [협력사 B2B 조회 결과]의 등록 협력사 및 상세 가용 목록을 반드시 표 위·아래 빈 줄을 띄워 깨지지 않는 **마크다운 표**로 정리하세요.\n"
         "   - A2A 자율 협의 결과(`a2a_negotiation`)에 분할 납품이나 긴급 ETA 역제안이 포함된 경우, 협의 옵션별 조건(납기, 수량, 단가)을 현장 실무자가 선택하기 쉽게 정리하세요.\n"
-        "   - **[시스템 지원 한계 엄수 — 없는 기능 제안 금지]**:\n"
-        "     * 우리 시스템은 협력사로 단순 재고·견적 문의 메일/문자를 발송하거나 회신을 수신하는 기능이 **없습니다.**\n"
-        "     * 따라서 외부 발송용 이메일·문자 템플릿(복사용 요청문)을 작성하거나, '연락처/메일 방법을 알려주시면 대신 발송해 드리겠다'는 식의 실행 불가능한 선택지를 절대 제시하지 마세요.\n"
-        "     * 대신 DB·A2A에서 조회된 **실시간 재고·LOT·단가·협의 납기 정보만 정확히 브리핑**하고, 시스템에서 바로 처리 가능한 후속 단계인 **'발주할 품목과 수량(또는 배차 대수)을 지정해 주시면 공식 외주 발주 주문서(PO) 초안을 생성해 드립니다'**로만 안내하세요.\n"
+        "   - **[발주(PO) 초안 및 메일 자동 발송 안내 원칙]**:\n"
+        "     * 단순 견적·재고 문의용 이메일/문자 템플릿(복사용 요청문)은 작성하지 마세요.\n"
+        "     * 사용자가 품목과 수량(또는 배차 대수)을 지정해 발주/배차를 요청한 경우, 시스템이 **공식 외주 발주 주문서(PO) 초안 PDF를 자동 생성**하고 **관리자 최종 승인(HITL) 시 양사 DB 커밋 및 협력사 Gmail 자동 발송**까지 수행합니다.\n"
+        "     * 따라서 절대 '메일 발송 기능이 없다'거나 '복사해 직접 발송하라'고 안내하지 말고, **'우측 상단의 [실행안 검토 및 승인] 또는 [PDF 보기]에서 PO 초안을 확인하신 뒤 최종 승인하시면 협력사로 공식 발주서 메일이 자동 발송됩니다'**로 안내하세요.\n"
+        "     * 마크다운 표를 작성할 때는 **반드시 첫 줄에 헤더 행(`| 항목 | 내용 |`)을 쓰고 둘째 줄에 구분선(`|---|---|`)을 작성**하세요(헤더 없이 `|---|---|`로 시작 금지).\n"
         "5. **규정 범위 한계 명시 및 불필요한 자원 나열 금지**:\n"
         "   - 사용자가 사내 자재, 블록, 장비, 작업자 현황을 명시적으로 묻지 않은 일반 기술·규정 질문에서는 사내 자원 상세 표나 전체 목록을 나열하지 마세요.\n"
         "   - 질문 대상 분야나 공법이 [인출된 사내 규격 문서(RAG)]에 존재하지 않는 경우, 장황한 일반론을 생성하지 말고 아래 3가지만 4~5줄 이내로 간결하게 답변하세요:\n"
@@ -1141,38 +1186,29 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
 
     pref_mode = state.get("preferred_execution_mode", "AUTO")
     worker_qual = erp_status.get("worker_qualification") or {}
+    worker_company = str(worker_qual.get("company_code") or "COMP-HQ").upper()
     hq_worker_missing = worker_qual.get("status") == "NOT_FOUND"
     hq_worker_found_valid = (
         bool(worker_qual.get("worker_id"))
         and worker_qual.get("status") == "VALID"
-        and str(worker_qual.get("company_code", "COMP-HQ")).upper() == "COMP-HQ"
+        and worker_company == "COMP-HQ"
+    )
+    is_external_worker = (
+        bool(worker_qual.get("worker_id"))
+        and worker_company != "COMP-HQ"
     )
 
-    outsourcing_domain = str(state.get("outsourcing_domain") or "").upper()
-    stock_shortage_only = (
-        not erp_status.get("stock_available", True)
-        and hq_worker_found_valid
-        and pref_mode != "OUTSOURCED_B2B"
-        and outsourcing_domain in ("", "WELDING_MATERIAL")
-    )
-
-    # 외주 역무(인력 파견/중량물 배차)만 작업지시서와 외주 PO를 동시 발행하고,
-    # 단순 자재 부족은 선행 승인된 PO(PO-MRP-...) 참조만 연결하여 중복 발주 차단
+    # [역할 분리] 용접 작업지시서(WO)는 '용접 인력 외주'일 때만 외주 역무(PO 동반 발행)로 처리
+    # (자재 발주는 선행 PO 참조만, 중량물 배차 외주는 HLP에서 전담)
     is_service_outsourced = (
         pref_mode == "OUTSOURCED_B2B"
-        or (erp_status.get("require_outsourcing") is True and not stock_shortage_only)
         or hq_worker_missing
+        or is_external_worker
     )
-    is_outsourced = is_service_outsourced or not erp_status.get("stock_available", True)
-
-    if pref_mode == "IN_HOUSE" or (
-        pref_mode == "AUTO"
-        and hq_worker_found_valid
-        and erp_status.get("stock_available", True)
-        and not erp_status.get("require_outsourcing", False)
-    ):
-        is_outsourced = False
+    if pref_mode == "IN_HOUSE":
         is_service_outsourced = False
+
+    is_outsourced = is_service_outsourced
 
     fallback_wire_code = erp_status.get("selected_wire_code")
     if not fallback_wire_code:
@@ -1182,31 +1218,12 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
                 break
 
     if is_outsourced:
-        if (
-            hq_worker_found_valid
-            and pref_mode != "OUTSOURCED_B2B"
-            and selected_partner.get("business_type") == "OUTSOURCED_WORKER"
-        ):
-            partner_id = (
-                erp_status.get("selected_wire_supplier")
-                or get_active_partner_from_db("STEEL_SUPPLY").get("company_code")
-            )
-        else:
-            partner_id = selected_partner.get("partner_id") or erp_status.get("selected_wire_supplier")
-
-        if not partner_id:
-            domain_map = {
-                "HEAVY_TRANSPORT": "LOGISTICS",
-                "OUTSOURCED_WORKER": "BLOCK_WELDING",
-                "WELDING_MATERIAL": "STEEL_SUPPLY",
-            }
-            spec_field = domain_map.get(
-                state.get("outsourcing_domain") or "WELDING_MATERIAL",
-                "STEEL_SUPPLY",
-            )
-            fallback_comp = get_active_partner_from_db(spec_field)
-            partner_id = fallback_comp.get("company_code")
-
+        sp_biz = str(selected_partner.get("business_type") or "").upper()
+        partner_id = (
+            (worker_company if is_external_worker else None)
+            or (selected_partner.get("partner_id") if sp_biz == "OUTSOURCED_WORKER" else None)
+            or get_active_partner_from_db("BLOCK_WELDING").get("company_code")
+        )
         wire_item_code = (
             fallback_wire_code
             or selected_partner.get("hq_item_code")
@@ -1280,7 +1297,7 @@ def work_order_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "worker_id": worker_id,
             "assigned_vehicle_code": vehicle_code,
             "wire_item_code": wire_item_code,
-            "is_outsourced": is_outsourced,
+            "is_outsourced": is_service_outsourced,
             "partner_id": partner_id if is_service_outsourced else hq_code,
             "reserve_wire_kg": req_wire_kg,
             "delivery_yard_zone": delivery_zone,
@@ -1656,10 +1673,27 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
         "\n\n".join(str(d.get("content", ""))[:500] for d in docs[:3])
         or "사내 중량물 취급 안전 지침 기본 적용"
     )
+    def _clean_hlp_ref_title(raw_title: Any, doc_code: Any = None) -> str:
+        title = str(raw_title or "").strip()
+        cleaned = re.sub(r"[^A-Za-z0-9가-힣\s\-\._()/&]", " ", title)
+        cleaned = re.sub(r"\s*\|\s*|\s*-\s*PDFCOFFEE\.COM", " ", cleaned, flags=re.IGNORECASE)
+        if re.search(r"[A-Za-z]{4,}", cleaned):
+            cleaned = re.sub(r"(?:^|\s)[가-힣]{1,2}(?=\s|$|[A-Za-z(])", " ", cleaned)
+        cleaned = re.sub(r"^[\s\-_|:;.,()0-9]+(?=[A-Za-z가-힣])", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" -_|")
+        valid_chars = re.sub(r"[^A-Za-z0-9가-힣]", "", cleaned)
+        if len(valid_chars) >= 4:
+            return cleaned
+        code_clean = re.sub(r"[^A-Za-z0-9가-힣\-_.]", "", str(doc_code or "")).strip()
+        return code_clean if len(code_clean) >= 4 else "중량물 취급 및 양중 안전 지침"
+
     source_refs_list = [
         {
             "document_code": d.get("metadata", {}).get("document_code"),
-            "document_title": d.get("metadata", {}).get("document_name"),
+            "document_title": _clean_hlp_ref_title(
+                d.get("metadata", {}).get("document_name"),
+                d.get("metadata", {}).get("document_code"),
+            ),
             "page": d.get("metadata", {}).get("page", 1),
             "similarity": d.get("metadata", {}).get("similarity"),
         }
@@ -1773,7 +1807,37 @@ def heavy_lifting_plan_writer_node(state: ShipAgentState) -> Dict[str, Any]:
             "document_data": generated_doc,
             "file_prefix": f"heavy_lifting_plan_{block_code}",
         })
-        generated_doc["files"] = json.loads(export_raw) if isinstance(export_raw, str) else {}
+        export_meta = json.loads(export_raw) if isinstance(export_raw, str) else {}
+
+        if is_outsourced:
+            try:
+                from modules.agent.tools.document_tools import export_outsourcing_po_pdf
+
+                hlp_po_doc = dict(generated_doc)
+                hlp_po_doc["partner_erp_plan"] = {
+                    "selected_partner": {
+                        "partner_id": partner_id,
+                        "partner_name": a2a_prop.get("partner_name") or (partner_plan.get("selected_partner") or {}).get("partner_name") or partner_id,
+                        "business_type": "HEAVY_TRANSPORT",
+                        "assigned_vehicle_code": vehicle_code,
+                        "max_load_ton": max_load_ton,
+                        "unit_price_krw": a2a_prop.get("agreed_unit_price_krw"),
+                    },
+                    "a2a_negotiation": a2a_neg,
+                }
+                po_export_raw = export_outsourcing_po_pdf.invoke({
+                    "document_data": hlp_po_doc,
+                    "file_prefix": f"po_order_{block_code}",
+                })
+                po_meta = json.loads(po_export_raw) if isinstance(po_export_raw, str) else (po_export_raw or {})
+                if po_meta.get("pdf_path"):
+                    export_meta["po_pdf_path"] = po_meta["pdf_path"]
+                if po_meta.get("download_pdf_url"):
+                    export_meta["download_po_pdf_url"] = po_meta["download_pdf_url"]
+            except Exception as hlp_po_err:
+                print(f"⚠️ [중량물 외주 배차 PO PDF 생성 경고]: {hlp_po_err}")
+
+        generated_doc["files"] = export_meta
     except Exception as e:
         print(f"⚠️ [Heavy Lifting PDF 생성 오류]: {e}")
 

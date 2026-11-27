@@ -24,7 +24,7 @@
   </div>
   <div class="col-6 col-lg-3">
     <div class="kpi-tile kpi-warn clickable" onclick="location.href='/service/work-status?status=READY'">
-      <div class="kpi-label">착수 대기</div>
+      <div class="kpi-label">결재 · 착수 대기</div>
       <div class="kpi-value">{{ kpi.ready }}<span class="fs-6 fw-normal text-muted ms-1">건</span></div>
     </div>
   </div>
@@ -43,7 +43,7 @@
       <div class="d-flex gap-1 mb-3 flex-wrap">
         <a href="/service/work-status?status=ALL" class="btn btn-sm {% if status_filter == 'ALL' %}btn-primary{% else %}btn-outline-secondary{% endif %}">전체</a>
         <a href="/service/work-status?status=IN_PROGRESS" class="btn btn-sm {% if status_filter == 'IN_PROGRESS' %}btn-primary{% else %}btn-outline-secondary{% endif %}">진행 중</a>
-        <a href="/service/work-status?status=READY" class="btn btn-sm {% if status_filter == 'READY' %}btn-primary{% else %}btn-outline-secondary{% endif %}">대기</a>
+        <a href="/service/work-status?status=READY" class="btn btn-sm {% if status_filter == 'READY' %}btn-primary{% else %}btn-outline-secondary{% endif %}">결재·대기</a>
         <a href="/service/work-status?status=COMPLETED" class="btn btn-sm {% if status_filter == 'COMPLETED' %}btn-primary{% else %}btn-outline-secondary{% endif %}">완료</a>
         <a href="/service/work-status?status=SUSPENDED" class="btn btn-sm {% if status_filter == 'SUSPENDED' %}btn-danger{% else %}btn-outline-secondary{% endif %}">반려/중단 ({{ kpi.suspended or 0 }})</a>
       </div>
@@ -58,23 +58,64 @@
               {{ '완료' if item.wo.status_code == 'COMPLETED' else ('진행 중' if item.wo.status_code == 'IN_PROGRESS' else ('반려/중단' if item.wo.status_code == 'SUSPENDED' else '착수 대기')) }}
             </span>
           </div>
+          {% if item.is_po %}
+          <div class="small text-secondary"><span class="badge bg-light text-primary border me-1">발주</span>{{ item.branch_name }} · {{ item.wo.material_grade }}</div>
+          <div class="text-muted mt-1" style="font-size:11.5px;">발주: {{ item.issued_at_kst }}</div>
+          {% elif item.wo.work_no and item.wo.work_no.startswith('HLP-') %}
+          <div class="small text-secondary"><span class="badge bg-warning-subtle text-warning-emphasis border me-1">중량물</span>{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>
+          <div class="text-muted mt-1" style="font-size:11.5px;">지시: {{ item.issued_at_kst }}</div>
+          {% else %}
           <div class="small text-secondary">{{ item.wo.ship_code }} / {{ item.wo.block_code }} · {{ item.wo.process_code }}</div>
           <div class="text-muted mt-1" style="font-size:11.5px;">지시: {{ item.issued_at_kst }}</div>
+          {% endif %}
         </a>
         {% else %}
-        <div class="small text-muted py-4 text-center">조회된 작업이 없습니다.</div>
+        <div class="small text-muted py-4 text-center">
+          {{ '결재 또는 착수 대기 중인 작업지시서가 없습니다. 아래 대기 블록을 선택해 새 지시서를 준비할 수 있습니다.' if status_filter == 'READY' else '조회된 작업이 없습니다.' }}
+        </div>
         {% endfor %}
       </div>
 
-      {% if queued_plans %}
+      {% if queued_plan_groups %}
       <div class="border-top pt-3">
-        <div class="small fw-bold text-muted mb-2">다음 대기 블록</div>
-        {% for qp in queued_plans %}
-        <div class="small py-1 d-flex justify-content-between border-bottom">
-          <span><span class="badge bg-secondary me-1">순서 {{ qp.priority_rank }}</span>{{ qp.block_code }}</span>
-          <span class="text-muted">{{ qp.process_code }} · {{ qp.planned_start_date or (qp.est_duration_days ~ '일') }}</span>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="small fw-bold text-muted">다음 대기 블록 <span class="fw-normal">(지시서 미발행)</span></div>
+          {% if is_manager %}
+          <span class="text-muted" style="font-size:11px;">클릭 시 지시 준비 →</span>
+          {% endif %}
         </div>
+        <div class="d-flex flex-column" style="max-height:380px;overflow-y:auto;">
+        {% for grp in queued_plan_groups %}
+          <div class="px-2 py-1 mt-1 bg-light rounded-1 text-secondary fw-semibold" style="font-size:11.5px;">
+            {{ grp.branch_name }} ({{ grp.plans|length }})
+          </div>
+          {% for qp in grp.plans %}
+            {% set short_date = qp.planned_start_date[5:] if (qp.planned_start_date and qp.planned_start_date|length >= 10) else (qp.planned_start_date or (qp.est_duration_days ~ '일')) %}
+            {% if is_manager %}
+            <a href="/service/agent/analyze?mode=NEW&branch_code={{ qp.branch_code | urlencode }}&block_code={{ qp.block_code | urlencode }}"
+               class="py-2 px-2 d-flex justify-content-between align-items-center gap-2 border-bottom text-decoration-none text-dark rounded-1"
+               style="font-size:12.5px;transition:background .15s;"
+               onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <span class="badge bg-light text-secondary border flex-shrink-0" style="min-width:28px;font-size:11px;">P{{ qp.priority_rank }}</span>
+                <strong class="text-truncate" title="{{ qp.block_code }}">{{ qp.block_code }}</strong>
+              </div>
+              <span class="text-muted flex-shrink-0 text-nowrap" style="font-size:11.5px;">
+                {{ qp.process_code }} · {{ short_date }}<span class="text-primary ms-1">→</span>
+              </span>
+            </a>
+            {% else %}
+            <div class="py-2 px-2 d-flex justify-content-between align-items-center gap-2 border-bottom" style="font-size:12.5px;">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                <span class="badge bg-light text-secondary border flex-shrink-0" style="min-width:28px;font-size:11px;">P{{ qp.priority_rank }}</span>
+                <span class="text-truncate" title="{{ qp.block_code }}">{{ qp.block_code }}</span>
+              </div>
+              <span class="text-muted flex-shrink-0 text-nowrap" style="font-size:11.5px;">{{ qp.process_code }} · {{ short_date }}</span>
+            </div>
+            {% endif %}
+          {% endfor %}
         {% endfor %}
+        </div>
       </div>
       {% endif %}
     </div>
@@ -83,8 +124,43 @@
   <!-- 우측: 선택 작업 상세 -->
   <div class="col-lg-8">
     {% if selected %}
-    <!-- 1. 기본 작업 · 작업 지시 시간 · 예상(완료) 납기 시간 -->
+    <!-- 1. 기본 정보 (발주 주문서 PO vs 작업지시서 WO 분기) -->
     <div class="panel-card">
+      {% if selected.is_po and po_summary %}
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+          <h2 class="fw-bold mb-1" style="font-size:19px;color:#0b1f3a;">{{ selected.wo.work_no }} · {{ po_summary.item_name }}</h2>
+          <div class="small text-muted">{{ selected.branch_name }} · 납품 구역 {{ po_summary.delivery_zone }} · 품번 {{ po_summary.item_code }}</div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="status-chip {{ 'status-ok' if po_summary.is_delivered else ('status-info' if selected.wo.status_code == 'IN_PROGRESS' else 'status-warn') }}">
+            {{ '입고 완료' if po_summary.is_delivered else ('발주 진행 중' if selected.wo.status_code == 'IN_PROGRESS' else '승인 대기') }}
+          </span>
+          <span class="badge bg-primary">외주 발주(PO)</span>
+        </div>
+      </div>
+
+      <div class="row g-2 small mb-2">
+        <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">공급 협력사</div><strong class="fs-6">{{ po_summary.partner_name }}</strong></div></div>
+        <div class="col-6 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">발주 수량</div><strong class="fs-6">{{ po_summary.qty_label }}</strong></div></div>
+        <div class="col-12 col-md-4"><div class="border rounded p-3 bg-light"><div class="text-muted">공급사 LOT / 납품 구역</div><strong class="fs-6">{{ po_summary.lot_no }}</strong></div></div>
+      </div>
+
+      <div class="row g-2 small">
+        <div class="col-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="text-muted">발주 승인 시간 (KST)</div>
+            <strong class="text-dark">{{ selected.issued_at_kst }}</strong>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="text-muted">{{ '입고 완료 시간 (KST)' if po_summary.is_delivered else '예상 도착 시간 (KST)' }}</div>
+            <strong class="{{ 'text-success' if po_summary.is_delivered else 'text-primary' }}">{{ selected.expected_due_kst }}</strong>
+          </div>
+        </div>
+      </div>
+      {% else %}
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
         <div>
           <h2 class="fw-bold mb-1" style="font-size:19px;color:#0b1f3a;">{{ selected.wo.work_no }} · {{ selected.wo.block_code }} ({{ selected.wo.ship_code }})</h2>
@@ -118,6 +194,57 @@
           </div>
         </div>
       </div>
+      {% endif %}
+
+      {% if is_manager and selected.wo.status_code in ('IN_PROGRESS', 'COMPLETED') %}
+      <div class="border-top mt-3 pt-3">
+        {% if selected.is_po %}
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="small text-muted">
+              {% if selected.wo.status_code == 'COMPLETED' or (po_summary and po_summary.is_delivered) %}
+                야드 입고 검수 및 본사 창고 재고 반영이 완료된 발주 건입니다.
+              {% else %}
+                자재가 야드에 도착했으면 아래 버튼으로 입고 확정 및 창고 재고 합산을 즉시 처리할 수 있습니다.
+              {% endif %}
+            </div>
+            {% if selected.wo.status_code != 'COMPLETED' and not (po_summary and po_summary.is_delivered) %}
+            <button type="button" class="btn btn-success btn-sm px-3 fw-semibold"
+                    onclick="confirmPoReceipt({{ selected.wo.work_id }})">
+              입고 완료 확인 (재고 반영)
+            </button>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+            <div class="small fw-semibold text-dark">
+              작업 진척률: <span id="wo-prog-val" class="text-primary">{{ selected.progress_pct }}</span>%
+            </div>
+            <div class="d-flex gap-2">
+              {% if selected.wo.status_code != 'COMPLETED' %}
+              <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold"
+                      onclick="saveWoProgress({{ selected.wo.work_id }}, parseInt($('#wo-prog-range').val(), 10), '')">
+                진척률 저장
+              </button>
+              <button type="button" class="btn btn-success btn-sm px-3 fw-semibold"
+                      onclick="completeWoOrder({{ selected.wo.work_id }})">
+                작업 완료 처리
+              </button>
+              {% else %}
+              <button type="button" class="btn btn-outline-secondary btn-sm px-3 fw-semibold"
+                      onclick="saveWoProgress({{ selected.wo.work_id }}, 80, 'IN_PROGRESS')">
+                진행 중으로 되돌리기
+              </button>
+              {% endif %}
+            </div>
+          </div>
+          {% if selected.wo.status_code != 'COMPLETED' %}
+          <input type="range" id="wo-prog-range" class="form-range mb-0" min="0" max="100" step="10"
+                 value="{{ selected.progress_pct }}"
+                 oninput="$('#wo-prog-val').text(this.value)">
+          {% endif %}
+        {% endif %}
+      </div>
+      {% endif %}
     </div>
 
     <!-- 2. 관련 최신 문서 (항상 클릭 가능한 작업지시서 뷰 + 실제 선박 CAD 도면 + 발주 계획서) -->
@@ -131,8 +258,8 @@
         {% if selected.pdf_url %}
           <button type="button" class="btn btn-primary btn-sm px-3 fw-semibold js-open-inline-pdf" style="background:#0052cc;border-color:#0052cc;"
                   data-pdf-url="{{ selected.pdf_url }}"
-                  data-pdf-title="작업지시서 ({{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }})">
-            최신 작업지시서 보기 ({{ selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1' }})
+                  data-pdf-title="{{ '외주 발주 주문서 (' ~ selected.wo.work_no ~ ')' if selected.is_po else '작업지시서 (' ~ (selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1') ~ ')' }}">
+            {{ '발주 주문서(PO) PDF 보기' if selected.is_po else '최신 작업지시서 보기 (' ~ (selected.latest_inst.revision_no if selected.latest_inst else 'Rev.1') ~ ')' }}
           </button>
         {% endif %}
         {% if cad_doc_info %}
@@ -147,6 +274,12 @@
             선박 도면 원본 다운로드 ({{ cad_doc_info.ext }})
           </a>
           {% endif %}
+        {% endif %}
+        {% if is_manager and selected.wo.status_code == 'COMPLETED' and not (selected.wo.work_no or '').startswith('PO-') and not (selected.wo.work_no or '').startswith('HLP-') %}
+        <a href="/service/agent/analyze?mode=HLP&branch_code={{ selected.wo.work_region | urlencode }}&block_code={{ selected.wo.block_code | urlencode }}"
+           class="btn btn-sm btn-warning fw-semibold">
+          중량물 반출 계획서 작성 →
+        </a>
         {% endif %}
         {% if not selected.pdf_url and not cad_doc_info %}
           <span class="small text-muted">연결된 작업지시서나 도면이 아직 없습니다.</span>
@@ -246,11 +379,11 @@
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header py-3">
-        <h6 class="modal-title fw-bold" id="wdp-title">문서 미리보기</h6>
-        <div class="d-flex align-items-center gap-2">
+        <h6 class="modal-title fw-bold text-truncate me-3" id="wdp-title">문서 미리보기</h6>
+        <div class="d-flex align-items-center gap-2 ms-auto flex-shrink-0">
           <a id="wdp-newtab" href="#" target="_blank" class="btn btn-outline-primary btn-sm" style="display:none;">새 탭에서 크게 보기</a>
           <a id="wdp-download" href="#" class="btn btn-outline-secondary btn-sm" style="display:none;">원본 다운로드</a>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close m-0 ms-1" data-bs-dismiss="modal"></button>
         </div>
       </div>
       <div class="modal-body p-0" id="wdp-body" style="min-height:540px;background:#f8fafc;"></div>
@@ -348,6 +481,43 @@ function openWorkCadPreview(docId) {
 $(document).on('click', '.js-open-inline-pdf', function () {
   openInlinePdfModal($(this).attr('data-pdf-url'), $(this).attr('data-pdf-title'));
 });
+
+function saveWoProgress(workId, pct, statusCode, noteText) {
+  $.ajax({
+    url: '/service/api/work-status/progress',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify({
+      work_id: workId,
+      progress_pct: pct,
+      status_code: statusCode || '',
+      note: noteText || ''
+    }),
+    success: function (res) {
+      var msg = '상태가 정상 반영되었습니다.';
+      if (res.stock_added) {
+        msg = '입고 완료 처리되었습니다. (창고 재고 반영: ' + res.stock_added + ')';
+      } else if (res.activated_next_block) {
+        msg = '작업이 완료되었습니다. 다음 대기 블록(' + res.activated_next_block + ')이 자동 활성화되었습니다.';
+      }
+      alert(msg);
+      location.reload();
+    },
+    error: function (xhr) {
+      alert((xhr.responseJSON && xhr.responseJSON.message) || '상태 변경 중 오류가 발생했습니다.');
+    }
+  });
+}
+
+function confirmPoReceipt(workId) {
+  if (!confirm('해당 발주 자재의 야드 입고를 확정하고 본사 창고 재고에 반영할까요?')) return;
+  saveWoProgress(workId, 100, 'COMPLETED', '현장 자재 입고 검수 완료');
+}
+
+function completeWoOrder(workId) {
+  if (!confirm('이 작업을 완료(100%) 처리할까요? 투입 작업자와 장비가 대기 상태로 자동 복귀합니다.')) return;
+  saveWoProgress(workId, 100, 'COMPLETED', '현장 작업 및 검사 완료');
+}
 
 renderVerticalTimeline(ALL_EVENTS);
 </script>

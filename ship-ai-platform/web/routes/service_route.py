@@ -81,7 +81,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
+def _is_low_stock(mat, avail: float) -> bool:
+    """자재 분류/단위별 안전재고 기준선(ROP) 판정"""
+    cat = (getattr(mat, "material_category", "") or "").upper()
+    unit = (getattr(mat, "unit", "") or "").upper()
+    if cat == "STEEL_PLATE" or unit == "SHEET":
+        return avail <= 15.0   # 강판: 15장 이하 부족
+    if cat == "SHIELDING_GAS" or unit == "EA":
+        return avail <= 20.0   # 차폐가스: 20병 이하 부족
+    return avail <= 50.0       # 용접 와이어(KG) 등: 50kg 이하 부족
 
 def _build_page_items(page: int, total_pages: int) -> list:
     """10페이지 초과 시 중간을 '...'으로 축약하는 스마트 페이지네이션"""
@@ -703,10 +711,7 @@ def _run_assistant_background(
                 # 외주(OUTSOURCED_B2B) 연계 초안인 경우: 발주 주문서(PO) 초안 PDF 함께 생성
                 is_draft_outsourced = (
                     not is_standalone_draft
-                    and (
-                        generated_doc.get("execution_type") == "OUTSOURCED_B2B"
-                        or bool(((generated_doc.get("partner_erp_plan") or {}).get("selected_partner") or {}).get("partner_id"))
-                    )
+                    and generated_doc.get("execution_type") == "OUTSOURCED_B2B"
                 )
                 already_has_po_pdf = bool((generated_doc.get("files") or {}).get("download_po_pdf_url"))
                 if is_draft_outsourced and not already_has_po_pdf:
@@ -762,9 +767,9 @@ def _run_assistant_background(
                         from modules.agent.tools.gmail_mcp_client import send_approval_request_email
 
                         draft_files = generated_doc.get("files") or {}
-                        draft_attachments = [
+                        draft_attachments = list(dict.fromkeys(
                             p for p in [draft_files.get("pdf_path"), draft_files.get("po_pdf_path")] if p
-                        ]
+                        ))
                         requester_str = f"{user.full_name} ({user.erp_employee_code or user.username})"
 
                         send_approval_request_email(
@@ -913,7 +918,13 @@ def ask_assistant_agent():
                 ctx_parts.append(f"현재화면={page_ctx.get('page_title')}")
             sel = page_ctx.get("selected_work") or {}
             if isinstance(sel, dict) and sel.get("block_id"):
-                ctx_parts.append(f"선택대상={sel.get('branch_code','')}/{sel.get('ship_code','')}/{sel.get('block_id','')}")
+                sel_parts = []
+                if sel.get("branch_code"):
+                    sel_parts.append(f"야드={sel.get('branch_code')}")
+                if sel.get("ship_code"):
+                    sel_parts.append(f"호선={sel.get('ship_code')}")
+                sel_parts.append(f"블록={sel.get('block_id')}")
+                ctx_parts.append(" ".join(sel_parts))
             if page_ctx.get("summary"):
                 ctx_parts.append(f"화면요약={page_ctx.get('summary')}")
             if ctx_parts:
@@ -1244,7 +1255,6 @@ def approve_work_instruction():
     partner_plan = doc.get("partner_erp_plan") or {}
     is_outsourced = (
         doc.get("execution_type") == "OUTSOURCED_B2B"
-        or bool((partner_plan.get("selected_partner") or {}).get("partner_id"))
         or bool((doc.get("erp_commit") or {}).get("is_outsourced"))
     )
 
@@ -1267,26 +1277,42 @@ def approve_work_instruction():
             target_wo.status_code = "SUSPENDED"
             target_wo.work_title = str(target_wo.work_title or "").replace("[DRAFT]", "[REJECTED]")
 
-        # 👇 이 블록은 그대로 유지하세요! (채팅창 새로고침 시 결재 박스 재노출 차단)
+        # 반려된 초안의 블록·작업자를 LangGraph 세션 메모리(drafted_*_history)에서도 즉시 해제
         reject_sid = source_session_id or session.get("assistant_thread_id")
         if reject_sid:
-            last_ai_msg = (
-                AgentChatHistory.query
-                .filter_by(session_id=reject_sid, role_code="ASSISTANT")
-                .order_by(AgentChatHistory.message_id.desc())
-                .first()
-            )
-            if last_ai_msg:
-                existing_chunks = _parse_json_or_literal(last_ai_msg.retrieval_chunks_json)
-                for c in existing_chunks:
-                    if isinstance(c, dict) and c.get("_type") == "WORK_ORDER_FILES":
-                        c["approval_status"] = "REJECTED"
-                        c["doc"] = None
-                last_ai_msg.retrieval_chunks_json = json.dumps(existing_chunks, ensure_ascii=False, default=str)
-                last_ai_msg.content = (
-                    _read_clob(last_ai_msg.content)
-                    + f"\n\n> ❌ **[요청 반려 완료 (`STATUS: REJECTED`)]** {user.full_name} 관리자에 의해 요청이 반려(Rollback)되었습니다."
+            try:
+                from modules.agent.supervisor import ship_agent_app
+
+                cfg = {"configurable": {"thread_id": reject_sid}}
+                snap = ship_agent_app.get_state(cfg)
+                cur_vals = (snap.values or {}) if snap else {}
+
+                rej_blk = str(
+                    (params.get("block_id") if isinstance(params, dict) else "")
+                    or (target_wo.block_code if target_wo else "")
+                ).strip().upper()
+                rej_wrk = str(
+                    (doc.get("erp_commit") or {}).get("worker_name")
+                    or (params.get("worker_name") if isinstance(params, dict) else "")
+                ).strip()
+
+                new_blks = [b for b in (cur_vals.get("drafted_blocks_history") or []) if str(b).upper() != rej_blk]
+                new_wrks = [w for w in (cur_vals.get("drafted_workers_history") or []) if str(w) != rej_wrk]
+                new_ex_blks = [b for b in (cur_vals.get("excluded_blocks") or []) if str(b).upper() != rej_blk]
+                new_ex_wrks = [w for w in (cur_vals.get("excluded_workers") or []) if str(w) != rej_wrk]
+
+                ship_agent_app.update_state(
+                    cfg,
+                    {
+                        "generated_document": None,
+                        "drafted_blocks_history": new_blks,
+                        "drafted_workers_history": new_wrks,
+                        "excluded_blocks": new_ex_blks,
+                        "excluded_workers": new_ex_wrks,
+                    },
                 )
+            except Exception as state_err:
+                print(f"⚠️ [반려 시 세션 이력 해제 경고]: {state_err}")
 
         db.session.commit()
         return jsonify({
@@ -1362,7 +1388,7 @@ def approve_work_instruction():
             po_no_now = f"PO-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
             mcp_res = dispatch_partner_b2b_order_via_mcp(
                 po_no=po_no_now,
-                wo_no=target_wo.work_no if target_wo else po_no_now,
+                wo_no=po_no_now,
                 partner_id=resolved_partner_id,
                 ordered_ref_code=wire_code or vehicle_code or worker_id or "MATERIAL",
                 order_qty=req_wire_kg if req_wire_kg > 0 else 1.0,
@@ -1460,9 +1486,9 @@ def approve_work_instruction():
         # 해외 공개 Gmail MCP (@gongrzhe/server-gmail-autoauth-mcp) 자동 메일 발송
         gmail_result = None
         if is_outsourced or is_standalone_po:
-            attachments_to_send = [
+            attachments_to_send = list(dict.fromkeys(
                 p for p in [file_links.get("pdf_path"), po_pdf_path] if p
-            ]
+            ))
             partner_display_name = (
                 selected_partner.get("partner_name")
                 or resolved_partner_id
@@ -2166,7 +2192,7 @@ def api_workspace_summary():
         all_equips = ErpVehiclesEquipment.query.all()
         for m in all_mats:
             avail = float(m.total_qty or 0) - float(m.reserved_qty or 0)
-            if avail <= 50.0:
+            if _is_low_stock(m, avail):
                 low_materials.append({
                     "item_code": m.item_code,
                     "item_name": m.item_name,
@@ -2230,6 +2256,8 @@ def api_workspace_summary():
             "work_id": wo.work_id,
             "instruction_id": inst.instruction_id,
             "work_no": wo.work_no,
+            "work_title": wo.work_title,
+            "is_po": str(wo.work_no or "").upper().startswith("PO-") or wo.block_code == "DIRECT-PO",
             "ship_code": wo.ship_code,
             "block_code": wo.block_code,
             "branch_name": branch_map.get(wo.work_region, wo.work_region),
@@ -2586,11 +2614,15 @@ def api_workspace_erp_yard():
             partner_loc_map[loc.partner_id] = loc
         for dm in B2BDaehanMaterial.query.all():
             lead_hours_map[dm.hq_item_code] = float(dm.lead_time_hours or 1.0)
-        open_pos = B2BSalesOrder.query.filter(B2BSalesOrder.order_status.in_(["PENDING", "CONFIRMED", "SHIPPED"])).order_by(B2BSalesOrder.created_at.desc()).all()
-        open_po_codes = {po.ordered_ref_code for po in open_pos}
+        now_kst = _now_kst()
+        auto_delivered = False
+        open_pos = (
+            B2BSalesOrder.query
+            .filter(B2BSalesOrder.order_status.in_(["PENDING", "CONFIRMED", "SHIPPED"]))
+            .order_by(B2BSalesOrder.created_at.desc())
+            .all()
+        )
         for po in open_pos:
-            if po.ordered_ref_code in open_po_eta_map:
-                continue
             ploc = partner_loc_map.get(po.partner_id)
             wo_match = WorkOrder.query.filter_by(work_no=po.hq_wo_number).first()
             dest_br = branch_obj_map.get(wo_match.work_region) if wo_match else (branches[0] if branches else None)
@@ -2602,12 +2634,40 @@ def api_workspace_erp_yard():
                 base_dt=po.created_at,
                 prep_hours=lead_hours_map.get(po.ordered_ref_code, 1.0),
             )
-            open_po_eta_map[po.ordered_ref_code] = {
-                "eta_str": nav["eta_str"],
-                "road_km": nav["road_km"],
-                "drive_label": nav["drive_label"],
-                "partner_name": comp_map.get(po.partner_id, po.partner_id),
-            }
+
+            # 도착 예정 시각이 현재 시각을 지났으면 자동 입고 완료 처리 + 창고 보유량 합산
+            if nav["eta_kst"] <= now_kst:
+                po.order_status = "DELIVERED"
+                inv_q = ErpBomInventory.query.filter_by(item_code=po.ordered_ref_code)
+                inv_row = (
+                    inv_q.filter_by(branch_code=dest_br.branch_code).first()
+                    if dest_br else None
+                ) or inv_q.first()
+                if inv_row and float(po.order_qty or 0) > 0:
+                    inv_row.total_qty = float(inv_row.total_qty or 0) + float(po.order_qty or 0)
+                po_wo = (
+                    WorkOrder.query.filter_by(work_no=po.b2b_order_no).first()
+                    or WorkOrder.query.filter_by(work_no=po.hq_wo_number).first()
+                )
+                if po_wo and (str(po_wo.work_no or "").upper().startswith("PO-") or po_wo.block_code == "DIRECT-PO"):
+                    po_wo.status_code = "COMPLETED"
+                    po_wo.updated_at = datetime.utcnow()
+                auto_delivered = True
+                continue
+
+            # 아직 도착 전인 건만 '발주중' 배지 및 ETA 표시
+            open_po_codes.add(po.ordered_ref_code)
+            if po.ordered_ref_code not in open_po_eta_map:
+                open_po_eta_map[po.ordered_ref_code] = {
+                    "eta_str": nav["eta_str"],
+                    "road_km": nav["road_km"],
+                    "drive_label": nav["drive_label"],
+                    "partner_name": comp_map.get(po.partner_id, po.partner_id),
+                }
+
+        if auto_delivered:
+            db.session.commit()
+            mats_raw = mat_q.order_by(ErpBomInventory.branch_code.asc(), ErpBomInventory.item_code.asc()).all()
         for m in B2BDaehanMaterial.query.all():
             b2b_materials.append({
                 "partner_name": comp_map.get(m.partner_id, m.partner_id),
@@ -2655,7 +2715,7 @@ def api_workspace_erp_yard():
             "reserved_qty": float(m.reserved_qty or 0),
             "available_qty": avail,
             "unit": m.unit,
-            "is_low": avail <= 50.0,
+            "is_low": _is_low_stock(m, avail),
             "has_open_po": m.item_code in open_po_codes,
             "open_po_eta": open_po_eta_map.get(m.item_code),
         })
@@ -2765,7 +2825,7 @@ def api_workspace_draft_center():
     low_materials = []
     for m in ErpBomInventory.query.all():
         avail = float(m.total_qty or 0) - float(m.reserved_qty or 0)
-        if avail <= 50.0:
+        if _is_low_stock(m, avail):
             low_materials.append({
                 "item_code": m.item_code,
                 "item_name": m.item_name,
@@ -3110,7 +3170,7 @@ def agent_analyze_page():
     continue_session_id = (request.args.get("continue_session_id") or "").strip()
     cad_drawing_id = (request.args.get("cad_drawing_id") or "").strip()
     prompt = (request.args.get("prompt") or "").strip()
-    mode = (request.args.get("mode") or "NEW").upper()
+    mode = (request.args.get("mode") or "NEW").strip().upper()
     branch_code = (request.args.get("branch_code") or "").strip()
     block_code = (request.args.get("block_code") or "").strip()
     work_id = request.args.get("work_id", type=int)
@@ -3205,7 +3265,10 @@ def agent_analyze_page():
     revise_waiting_input = (mode == "REVISE" and not prompt)
 
     if not prompt and not revise_waiting_input:
-        prompt = f"{branch_code} {block_code} 용접 작업지시서와 취급 계획을 발행하기 위해 규격, 자재, 인력, 로봇, 기상을 통합 분석해줘"
+        if mode == "HLP":
+            prompt = f"{branch_code} 야드 {block_code} 블록 반출용 중량물 취급 작업계획서 초안 작성해줘"
+        else:
+            prompt = f"{branch_code} {block_code} 용접 작업지시서와 취급 계획을 발행하기 위해 규격, 자재, 인력, 로봇, 기상을 통합 분석해줘"
     elif mode == "REVISE" and prompt and existing_wo:
         prompt = (
             f"[기존 작업지시서 조건 변경·개정 요청] 대상: {existing_wo.work_no} "
@@ -3407,11 +3470,21 @@ def api_confirm_cad_plan():
 def b2b_po_view_page(b2b_order_no: str):
     """PostgreSQL b2b_sales_orders 원장 기반 발주 계획서 인라인 뷰어 (PDF 인쇄/저장 지원)"""
     po = B2BSalesOrder.query.filter_by(b2b_order_no=b2b_order_no).first_or_404()
-    wo = WorkOrder.query.filter_by(work_no=po.hq_wo_number).first()
+    wo = (
+        WorkOrder.query.filter_by(work_no=po.hq_wo_number).first()
+        or WorkOrder.query.filter_by(work_no=po.b2b_order_no).first()
+    )
     partner = ErpCompany.query.filter_by(company_code=po.partner_id).first()
     partner_loc = B2BCompanyLocation.query.filter_by(partner_id=po.partner_id).first()
     branch = ErpBranch.query.filter_by(branch_code=wo.work_region).first() if wo else None
-    type_ko = "자재 발주" if po.order_type == "WELDING_MATERIAL" else ("인력 파견" if po.order_type == "OUTSOURCED_WORKER" else "장비 배차")
+
+    ref_up = str(po.ordered_ref_code or "").upper()
+    if po.order_type == "WELDING_MATERIAL" or any(k in ref_up for k in ("WIRE", "MAT", "GAS")):
+        type_ko = "자재 발주"
+    elif po.order_type == "OUTSOURCED_WORKER" or any(k in ref_up for k in ("WELD", "EXT-WELD")):
+        type_ko = "인력 파견"
+    else:
+        type_ko = "장비 배차"
 
     return render_template(
         "service/b2b_po_view.html",
@@ -3486,8 +3559,10 @@ def work_status_page():
             est_days = int(linked_plan.est_duration_days or 1) if linked_plan else 1
             expected_due_kst = (issued_kst_dt + timedelta(days=est_days)).strftime("%Y-%m-%d %H:%M") + " (예상)"
 
+        is_po_item = str(wo.work_no or "").upper().startswith("PO-") or wo.block_code == "DIRECT-PO"
         item = {
             "wo": wo,
+            "is_po": is_po_item,
             "branch_name": branch_map.get(wo.work_region, wo.work_region),
             "progress_pct": pct,
             "progress_timeline": progress_timeline,
@@ -3512,8 +3587,22 @@ def work_status_page():
         states=["PENDING"],
         today_only=False,
     )
+    queued_plan_groups = []
+    _q_group_map = {}
+    for qp in queued_plans:
+        b_code = qp.branch_code or "UNASSIGNED"
+        if b_code not in _q_group_map:
+            grp = {
+                "branch_code": b_code,
+                "branch_name": branch_map.get(b_code, b_code),
+                "plans": [],
+            }
+            _q_group_map[b_code] = grp
+            queued_plan_groups.append(grp)
+        _q_group_map[b_code]["plans"].append(qp)
     dispatch_info, robot_info = None, None
     cad_doc_info = None
+    po_summary = None
     yard_po_docs = []
     partner_tabs = []
     all_timeline_events = []
@@ -3521,89 +3610,91 @@ def work_status_page():
 
     if selected_detail:
         wo = selected_detail["wo"]
+        is_selected_po = bool(selected_detail.get("is_po"))
         yard_code = wo.work_region
         dest_branch = branch_obj_map.get(yard_code)
-        dispatch_info = (
-            MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).first()
-            or MesWorkOrderDispatch.query.filter_by(block_id=wo.block_code, status="COMMITTED")
-            .order_by(MesWorkOrderDispatch.created_at.desc())
-            .first()
-        )
-        if not dispatch_info and selected_detail.get("latest_inst"):
-            env_m = _load_env_meta(selected_detail["latest_inst"])
-            dp = env_m.get("_draft_payload") if isinstance(env_m.get("_draft_payload"), dict) else {}
-            dp_params = dp.get("parameters") or {}
-            dp_commit = dp.get("erp_commit") or {}
-            dp_res = dp.get("erp_resource_status") or {}
-            w_name = (
-                dp_commit.get("worker_name")
-                or dp_params.get("worker_name")
-                or (dp_res.get("worker_qualification") or {}).get("worker_name")
-            )
-            lot_val = (
-                dp.get("allocated_lot_no")
-                or dp_commit.get("allocated_lot_no")
-                or dp_res.get("assigned_lot_no")
-            )
-            if w_name or lot_val:
-                dispatch_info = {
-                    "worker_name": w_name or "배정 대기",
-                    "allocated_lot_no": lot_val or "-",
-                }
-        robot_info = RobotExecution.query.filter_by(work_id=wo.work_id).first()
 
-        # 1) 실제 선박 선체 CAD 도면 선택 (프로펠러 등 비선체 부품 제외 + 호선/야드 매칭 우선)
-        if is_manager or user.can_access_internal_rag == "Y":
-            cad_rows_raw = (
-                DocumentMetadata.query
-                .filter(DocumentMetadata.category_code == "CAD_DRAWING", DocumentMetadata.is_active == "Y")
-                .order_by(DocumentMetadata.document_id.desc())
-                .all()
+        # 작업지시서(WO)일 때만 배정 작업자 · 용접 로봇 · 선박 CAD 도면 조회
+        if not is_selected_po:
+            dispatch_info = (
+                MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).first()
+                or MesWorkOrderDispatch.query.filter_by(block_id=wo.block_code, status="COMMITTED")
+                .order_by(MesWorkOrderDispatch.created_at.desc())
+                .first()
             )
-            cad_rows = [c for c in cad_rows_raw if not _is_non_hull_cad_file(c.original_file_name, c.storage_uri)]
-
-            chosen_cad = None
-            # 1순위: CAD_DRAWINGS에서 ship_code 또는 branch_code 매칭되는 실제 선체 도면
-            try:
-                dwg = (
-                    CadDrawing.query.filter_by(ship_code=wo.ship_code).order_by(CadDrawing.created_at.desc()).first()
-                    or CadDrawing.query.filter_by(branch_code=yard_code).order_by(CadDrawing.created_at.desc()).first()
+            if not dispatch_info and selected_detail.get("latest_inst"):
+                env_m = _load_env_meta(selected_detail["latest_inst"])
+                dp = env_m.get("_draft_payload") if isinstance(env_m.get("_draft_payload"), dict) else {}
+                dp_params = dp.get("parameters") or {}
+                dp_commit = dp.get("erp_commit") or {}
+                dp_res = dp.get("erp_resource_status") or {}
+                w_name = (
+                    dp_commit.get("worker_name")
+                    or dp_params.get("worker_name")
+                    or (dp_res.get("worker_qualification") or {}).get("worker_name")
                 )
-                if dwg:
+                lot_val = (
+                    dp.get("allocated_lot_no")
+                    or dp_commit.get("allocated_lot_no")
+                    or dp_res.get("assigned_lot_no")
+                )
+                if w_name or lot_val:
+                    dispatch_info = {
+                        "worker_name": w_name or "배정 대기",
+                        "allocated_lot_no": lot_val or "-",
+                    }
+            robot_info = RobotExecution.query.filter_by(work_id=wo.work_id).first()
+
+            # 1) 실제 선박 선체 CAD 도면 선택 (프로펠러 등 비선체 부품 제외 + 호선/야드 매칭 우선)
+            if is_manager or user.can_access_internal_rag == "Y":
+                cad_rows_raw = (
+                    DocumentMetadata.query
+                    .filter(DocumentMetadata.category_code == "CAD_DRAWING", DocumentMetadata.is_active == "Y")
+                    .order_by(DocumentMetadata.document_id.desc())
+                    .all()
+                )
+                cad_rows = [c for c in cad_rows_raw if not _is_non_hull_cad_file(c.original_file_name, c.storage_uri)]
+
+                chosen_cad = None
+                try:
+                    dwg = (
+                        CadDrawing.query.filter_by(ship_code=wo.ship_code).order_by(CadDrawing.created_at.desc()).first()
+                        or CadDrawing.query.filter_by(branch_code=yard_code).order_by(CadDrawing.created_at.desc()).first()
+                    )
+                    if dwg:
+                        for c in cad_rows:
+                            if (dwg.file_sha256 and c.file_hash_sha256 == dwg.file_sha256) or (
+                                dwg.dxf_file_path and Path(dwg.dxf_file_path).name == c.original_file_name
+                            ):
+                                chosen_cad = c
+                                break
+                except Exception:
+                    pass
+
+                if not chosen_cad:
                     for c in cad_rows:
-                        if (dwg.file_sha256 and c.file_hash_sha256 == dwg.file_sha256) or (
-                            dwg.dxf_file_path and Path(dwg.dxf_file_path).name == c.original_file_name
-                        ):
+                        if Path(c.original_file_name or "").suffix.lower() == ".pdf":
                             chosen_cad = c
                             break
-            except Exception:
-                pass
+                if not chosen_cad and cad_rows:
+                    chosen_cad = cad_rows[0]
 
-            # 2순위: 실제 선박 도면 PDF (Construction Plan 등) 최우선 선택
-            if not chosen_cad:
-                for c in cad_rows:
-                    if Path(c.original_file_name or "").suffix.lower() == ".pdf":
-                        chosen_cad = c
-                        break
-            if not chosen_cad and cad_rows:
-                chosen_cad = cad_rows[0]
+                if chosen_cad:
+                    abs_c = _resolve_doc_abs_path(chosen_cad.storage_uri, chosen_cad.original_file_name)
+                    c_ext = Path(chosen_cad.original_file_name or "").suffix.lower()
+                    twin_pdf = bool(abs_c and abs_c.with_suffix(".pdf").is_file() and not _is_non_hull_cad_file(abs_c.with_suffix(".pdf").name))
+                    has_viewable_pdf = (c_ext == ".pdf") or twin_pdf
+                    cad_doc_info = {
+                        "document_id": chosen_cad.document_id,
+                        "title": _clean_doc_title(chosen_cad.document_title, chosen_cad.original_file_name),
+                        "file_name": chosen_cad.original_file_name,
+                        "ext": "PDF" if has_viewable_pdf else (c_ext.lstrip(".").upper() or "CAD"),
+                        "has_pdf": has_viewable_pdf,
+                        "pdf_url": (f"/api/document/file/{chosen_cad.document_id}" if c_ext == ".pdf" else f"/api/document/file/{chosen_cad.document_id}?preview_pdf=1") if has_viewable_pdf else "",
+                        "download_url": f"/api/document/file/{chosen_cad.document_id}?download=1",
+                    }
 
-            if chosen_cad:
-                abs_c = _resolve_doc_abs_path(chosen_cad.storage_uri, chosen_cad.original_file_name)
-                c_ext = Path(chosen_cad.original_file_name or "").suffix.lower()
-                twin_pdf = bool(abs_c and abs_c.with_suffix(".pdf").is_file() and not _is_non_hull_cad_file(abs_c.with_suffix(".pdf").name))
-                has_viewable_pdf = (c_ext == ".pdf") or twin_pdf
-                cad_doc_info = {
-                    "document_id": chosen_cad.document_id,
-                    "title": _clean_doc_title(chosen_cad.document_title, chosen_cad.original_file_name),
-                    "file_name": chosen_cad.original_file_name,
-                    "ext": "PDF" if has_viewable_pdf else (c_ext.lstrip(".").upper() or "CAD"),
-                    "has_pdf": has_viewable_pdf,
-                    "pdf_url": (f"/api/document/file/{chosen_cad.document_id}" if c_ext == ".pdf" else f"/api/document/file/{chosen_cad.document_id}?preview_pdf=1") if has_viewable_pdf else "",
-                    "download_url": f"/api/document/file/{chosen_cad.document_id}?download=1",
-                }
-
-        # 2) 현재 선택된 작업지시서의 실제 발주 계획서 PDF만 수집 (반려/중단 제외)
+        # 2) 현재 선택 건의 실제 발주 계획서 PDF 수집 (단독 PO는 자신의 발주서 PDF도 포함)
         seen_po_urls = set()
         if wo.status_code != "SUSPENDED":
             for y_inst in selected_detail["revisions"]:
@@ -3611,28 +3702,33 @@ def work_status_page():
                     continue
                 purl = _extract_inst_po_pdf_url(y_inst)
                 wo_url = _extract_inst_pdf_url(y_inst)
-                if purl and purl != wo_url and purl not in seen_po_urls:
+                if purl and (not is_selected_po) and purl != wo_url and purl not in seen_po_urls:
                     seen_po_urls.add(purl)
                     yard_po_docs.append({
-                        "title": f"{wo.work_no} ({wo.block_code}) 발주 계획서",
+                        "title": f"{wo.work_no} 외주 발주 주문서" if is_selected_po else f"{wo.work_no} ({wo.block_code}) 발주 계획서",
                         "pdf_url": purl,
                         "revision_no": y_inst.revision_no,
                         "created_at": _fmt_kst(y_inst.created_at),
                         "is_current": True,
                     })
 
-        # 3) 협력사 발주 납기 및 처리 이력 (현재 선택된 작업번호 소속 B2B 발주만 엄격 조회)
+        # 3) 협력사 발주 납기 및 처리 이력 (hq_wo_number 또는 b2b_order_no 매칭)
         b2b_rows = []
         partner_loc_map = {}
         lead_hours_map = {}
+        mat_info_map = {}
         try:
             for loc in B2BCompanyLocation.query.all():
                 partner_loc_map[loc.partner_id] = loc
             for m in B2BDaehanMaterial.query.all():
                 lead_hours_map[m.hq_item_code] = float(m.lead_time_hours or 1.5)
+                mat_info_map[m.hq_item_code] = {"name": m.item_name, "unit": m.unit or "KG"}
             b2b_rows = (
                 B2BSalesOrder.query
-                .filter_by(hq_wo_number=wo.work_no)
+                .filter(or_(
+                    B2BSalesOrder.hq_wo_number == wo.work_no,
+                    B2BSalesOrder.b2b_order_no == wo.work_no,
+                ))
                 .order_by(B2BSalesOrder.created_at.desc())
                 .all()
             )
@@ -3665,7 +3761,7 @@ def work_status_page():
                 prep_hours=prep_h,
             )
             ref_up = str(po.ordered_ref_code or "").upper()
-            if po.order_type == "WELDING_MATERIAL" or "WIRE" in ref_up or "MAT" in ref_up:
+            if po.order_type == "WELDING_MATERIAL" or "WIRE" in ref_up or "MAT" in ref_up or "GAS" in ref_up:
                 type_ko = "자재 발주"
             elif po.order_type == "OUTSOURCED_WORKER" or "WELD" in ref_up or "EXT-" in ref_up:
                 type_ko = "인력 파견"
@@ -3686,7 +3782,7 @@ def work_status_page():
                     "pdf_url": po_view_url,
                     "revision_no": po.order_status,
                     "created_at": dt_str,
-                    "is_current": (po.hq_wo_number == wo.work_no),
+                    "is_current": True,
                 })
 
             partner_nav_cards.append({
@@ -3708,7 +3804,7 @@ def work_status_page():
             ev1 = {
                 "time": dt_str,
                 "title": f"[{po.b2b_order_no}] {type_ko} 접수",
-                "detail": f"대상 작업 {po.hq_wo_number} · 품목/코드 {po.ordered_ref_code} (수량 {po.order_qty}) · 납품 구역 {po.delivery_yard_zone}",
+                "detail": f"품목/코드 {po.ordered_ref_code} (수량 {po.order_qty:g}) · 납품 구역 {po.delivery_yard_zone}",
                 "state": "done",
                 "partner_name": pname,
             }
@@ -3730,13 +3826,53 @@ def work_status_page():
             partner_groups[pid]["events"].extend([ev1, ev2, ev3])
             all_timeline_events.extend([ev1, ev2, ev3])
 
-        # 작업지시서 발행/개정 이력 (KST)
+        # 단독 PO 전용 요약 데이터 조립 + 실제 네비 ETA로 예상 도착 시각 교정
+        if is_selected_po:
+            env_m = _load_env_meta(selected_detail.get("latest_inst"))
+            dp = env_m.get("_draft_payload") if isinstance(env_m.get("_draft_payload"), dict) else {}
+            sel_p = (dp.get("partner_erp_plan") or {}).get("selected_partner") or {}
+            a2a_p = ((dp.get("partner_erp_plan") or {}).get("a2a_negotiation") or {}).get("proposal") or {}
+            first_po = b2b_rows[0] if b2b_rows else None
+
+            ref_code = (first_po.ordered_ref_code if first_po else None) or dp.get("wire_item_code") or wo.material_grade or "-"
+            mat_meta = mat_info_map.get(ref_code) or {}
+            item_name = mat_meta.get("name") or sel_p.get("item_name") or ref_code
+            unit_txt = mat_meta.get("unit") or a2a_p.get("unit") or sel_p.get("unit") or ""
+            qty_val = float(first_po.order_qty) if first_po else float(dp.get("reserve_wire_kg") or 0)
+            partner_name = (
+                comp_map.get(first_po.partner_id, first_po.partner_id) if first_po
+                else (sel_p.get("partner_name") or a2a_p.get("partner_name") or "협력사")
+            )
+            lot_txt = (first_po.allocated_lot_or_id if first_po else None) or sel_p.get("partner_lot_no") or dp.get("allocated_lot_no") or "-"
+            is_po_delivered = bool(partner_nav_cards and partner_nav_cards[0]["is_done"])
+
+            if partner_nav_cards:
+                nav0 = partner_nav_cards[0]
+                selected_detail["expected_due_kst"] = nav0["eta_str"] + (" (입고 완료)" if nav0["is_done"] else " (예상 도착)")
+
+            po_summary = {
+                "partner_name": partner_name,
+                "item_code": ref_code,
+                "item_name": item_name,
+                "qty_label": f"{qty_val:g} {unit_txt}".strip() if qty_val > 0 else "-",
+                "lot_no": lot_txt,
+                "delivery_zone": (first_po.delivery_yard_zone if first_po else None) or wo.work_zone or "-",
+                "order_status": first_po.order_status if first_po else wo.status_code,
+                "is_delivered": is_po_delivered,
+            }
+
+        # 본사 승인/개정 이력 (PO와 WO 명칭 분리)
         for rev in reversed(selected_detail["revisions"]):
             r_time = _fmt_kst(rev.created_at)
+            st_txt = "승인 완료" if rev.approval_status == "APPROVED" else ("반려됨" if rev.approval_status == "REJECTED" else "승인 대기")
             all_timeline_events.append({
                 "time": r_time,
-                "title": f"작업지시서 {rev.revision_no} ({'승인 완료' if rev.approval_status == 'APPROVED' else '승인 대기'})",
-                "detail": f"작업번호 {wo.work_no} · {wo.ship_code} / {wo.block_code}",
+                "title": f"외주 발주 주문서 ({st_txt})" if is_selected_po else f"작업지시서 {rev.revision_no} ({st_txt})",
+                "detail": (
+                    f"발주번호 {wo.work_no} · {branch_map.get(wo.work_region, wo.work_region)} {wo.work_zone}"
+                    if is_selected_po
+                    else f"작업번호 {wo.work_no} · {wo.ship_code} / {wo.block_code}"
+                ),
                 "state": "done" if rev.approval_status == "APPROVED" else "active",
                 "partner_name": "본사 승인",
             })
@@ -3752,7 +3888,9 @@ def work_status_page():
         status_filter=status_filter,
         orders=orders_data,
         selected=selected_detail,
+        po_summary=po_summary,
         queued_plans=queued_plans,
+        queued_plan_groups=queued_plan_groups,
         dispatch_info=dispatch_info,
         robot_info=robot_info,
         cad_doc_info=cad_doc_info,
@@ -3792,9 +3930,7 @@ def api_update_work_progress():
     else:
         if progress_pct >= 100:
             wo.status_code = "COMPLETED"
-        elif progress_pct == 0:
-            wo.status_code = "READY"
-        else:
+        elif progress_pct > 0:
             wo.status_code = "IN_PROGRESS"
 
     wo.updated_at = datetime.utcnow()
@@ -3858,6 +3994,52 @@ def api_update_work_progress():
     except Exception:
         pass
 
+    # 4) 단독 외주 발주(PO) 입고 완료 처리 시: B2BSalesOrder -> DELIVERED & 본사 창고 재고 합산
+    is_po_wo = str(wo.work_no or "").upper().startswith("PO-") or wo.block_code == "DIRECT-PO"
+    stock_added_msg = ""
+    if is_po_wo and wo.status_code == "COMPLETED":
+        try:
+            linked_pos = B2BSalesOrder.query.filter(
+                or_(
+                    B2BSalesOrder.b2b_order_no == wo.work_no,
+                    B2BSalesOrder.hq_wo_number == wo.work_no,
+                )
+            ).all()
+            added_parts = []
+            for po in linked_pos:
+                if str(po.order_status or "").upper() not in ("DELIVERED", "COMPLETED"):
+                    po.order_status = "DELIVERED"
+                    inv_q = ErpBomInventory.query.filter_by(item_code=po.ordered_ref_code)
+                    inv_row = (
+                        inv_q.filter_by(branch_code=wo.work_region).first()
+                        if wo.work_region else None
+                    ) or inv_q.first()
+                    qty_val = float(po.order_qty or 0)
+                    if inv_row and qty_val > 0:
+                        inv_row.total_qty = float(inv_row.total_qty or 0) + qty_val
+                        added_parts.append(f"{po.ordered_ref_code} +{qty_val:g}{inv_row.unit or ''}")
+            if added_parts:
+                stock_added_msg = ", ".join(added_parts)
+        except Exception as po_fin_err:
+            print(f"⚠️ [PO 입고 완료 동기화 경고]: {po_fin_err}")
+
+    # 5) 현장 작업지시서(WO/HLP) 완료·중단 시: MES_WORK_ORDER_DISPATCH 작업자 및 장비(STANDBY) 자동 해제
+    if not is_po_wo and wo.status_code in ("COMPLETED", "SUSPENDED", "IN_PROGRESS"):
+        try:
+            erp_stat = (
+                "COMPLETED" if wo.status_code == "COMPLETED"
+                else ("ROLLED_BACK" if wo.status_code == "SUSPENDED" else "COMMITTED")
+            )
+            dispatches = MesWorkOrderDispatch.query.filter_by(wo_number=wo.work_no).all()
+            for dp in dispatches:
+                dp.status = erp_stat
+                if wo.status_code in ("COMPLETED", "SUSPENDED") and dp.assigned_vehicle_code:
+                    eq_row = ErpVehiclesEquipment.query.filter_by(asset_code=dp.assigned_vehicle_code).first()
+                    if eq_row:
+                        eq_row.operation_status = "STANDBY"
+        except Exception as disp_err:
+            print(f"⚠️ [MES 배정 상태 동기화 경고]: {disp_err}")
+
     db.session.commit()
     return jsonify({
         "status": "SUCCESS",
@@ -3865,6 +4047,7 @@ def api_update_work_progress():
         "progress_pct": progress_pct,
         "status_code": wo.status_code,
         "activated_next_block": activated_next_block,
+        "stock_added": stock_added_msg,
     })
 
 
